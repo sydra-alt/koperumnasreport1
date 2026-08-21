@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Barlow_Condensed, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { KopHalaman } from "../components/KopHalaman";
 import { Providers } from "../components/Providers";
 import "./globals.css";
 
@@ -32,7 +33,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${barlowCondensed.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable}`}
     >
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <KopHalaman />
+          {children}
+        </Providers>
       </body>
     </html>
   );
