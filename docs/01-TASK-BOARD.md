@@ -60,7 +60,7 @@ Syarat mulai: seluruh checklist `00-SETUP-MANUAL.md` M1–M7 sudah ✅.
 
 **Kerjakan**
 - `lib/supabase/client.ts` (`createBrowserClient`) dan `lib/supabase/server.ts` (`createServerClient` + `cookies()`), keduanya dari `@supabase/ssr`
-- `middleware.ts` di root — menyegarkan sesi dan mengalihkan pengunjung belum login ke `/masuk`
+- `proxy.ts` di root — menyegarkan sesi dan mengalihkan pengunjung belum login ke `/masuk`. Di Next.js 16 berkas ini bernama `proxy.ts` dengan fungsi `proxy`, bukan `middleware.ts` lagi
 - `lib/auth/AuthProvider.tsx` (`'use client'`) — context berisi `session`, `profile`, `roles[]`, `assignments[]`, `loading`, `signIn`, `signOut`
 - Halaman `app/masuk/page.tsx` — form email + password, pesan error berbahasa Indonesia
 - Setelah login, ambil `profile`, `role`, dan `assignment` milik user
@@ -68,7 +68,7 @@ Syarat mulai: seluruh checklist `00-SETUP-MANUAL.md` M1–M7 sudah ✅.
 **Selesai kalau**
 - Login dengan akun CEO (dibuat di M9) berhasil dan `roles` terisi `['ceo','karyawan']`
 - Refresh halaman tidak melempar user keluar (sesi lewat cookie, bukan localStorage)
-- Membuka `/papan` tanpa login dialihkan ke `/masuk` oleh middleware, bukan oleh kode di komponen
+- Membuka `/papan` tanpa login dialihkan ke `/masuk` oleh proxy, bukan oleh kode di komponen
 - Keluar (`signOut`) mengembalikan ke `/masuk`
 - Salah password memunculkan pesan Indonesia, bukan teks Inggris dari Supabase
 

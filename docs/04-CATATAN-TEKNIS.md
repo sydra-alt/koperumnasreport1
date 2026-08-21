@@ -508,8 +508,10 @@ Aturan pemakaian:
    }
    ```
 
+9b. **`setAll` menerima parameter kedua.** Pada `@supabase/ssr` 0.12.x, tipe `SetAllCookies` memberikan `headers` sebagai argumen kedua: `setAll(cookiesToSet, headers)`. Dipakai di `proxy.ts` agar cookie sesi tidak ikut ter-cache CDN. Banyak panduan meringkasnya jadi satu parameter saja — periksa `node_modules/@supabase/ssr/dist/main/types.d.ts` untuk versi yang benar-benar terpasang.
+
 10. **`cookies()` sekarang asinkron.** Di Next.js 16 wajib `await cookies()`. Kode tanpa `await` akan lolos TypeScript di beberapa kasus lalu gagal saat dijalankan dengan pesan yang tidak menunjuk ke akar masalah.
 
-11. **Nama berkas penyegar sesi berubah di Next.js 16.** Sebagian dokumentasi menyebutnya Proxy, bukan Middleware lagi. Periksa dokumentasi resmi Next.js 16 yang berlaku sebelum membuat berkasnya — jangan menyalin pola Next.js 14 dari ingatan.
+11. **Penyegar sesi bernama `proxy.ts`, bukan `middleware.ts`.** Dikonfirmasi pada Next.js 16: berkas `proxy.ts` di root, fungsi bernama `proxy`, `export const config = { matcher }`. Pola `middleware.ts` dari Next.js 14 sudah tidak berlaku.
 
 12. **Jangan mematikan aturan ESLint secara global.** Kalau ada satu pola yang memicu peringatan palsu, matikan di baris itu saja atau batasi ke folder terkait lewat `overrides`. Aturan yang dimatikan global akan tetap mati bertahun-tahun dan menyembunyikan bug asli yang berbeda.
