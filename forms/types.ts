@@ -8,6 +8,10 @@ export interface Field {
   type: FieldType;
   wajib?: boolean;
   buktiWajib?: boolean;          // centang tanpa lampiran → ditolak
+  buktiKunci?: string;           // field_key di tabel attachment untuk bukti field ini;
+                                  // default ke `key`. Perlu beda kalau nama field data
+                                  // (mis. undang_jumlah) beda dari nama tag bukti (undang)
+                                  // -- lihat 03-CALC-SPEC.md §2, dua namespace berbeda.
   pilihan?: string[];            // untuk 'pilih'
   kolom?: { key: string; label: string; type: FieldType }[]; // untuk 'tabel'
   bantuan?: string;

@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { FormProvider, useForm, type FieldValues } from 'react-hook-form';
 import type { FormSchema } from '../forms/types';
 import { buildZodSchema } from '../forms/validasi';
@@ -21,15 +21,20 @@ interface FormRendererProps {
   schema: FormSchema;
   nilaiAwal?: FieldValues;
   onSubmit: (data: FieldValues) => void;
+  /** Dipanggil tiap nilai form berubah -- dipakai pemanggil untuk autosave ter-debounce. */
+  onChange?: (data: FieldValues) => void;
+  /** Laporan hari ini, kalau sudah ada -- diteruskan ke field lampiran supaya bisa unggah sungguhan. */
+  reportId?: string | null;
 }
 
-export function FormRenderer({ schema, nilaiAwal, onSubmit }: FormRendererProps) {
+export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId }: FormRendererProps) {
   const methods = useForm({
     defaultValues: nilaiAwal,
     resolver: zodResolver(buildZodSchema(schema)),
   });
   const {
     handleSubmit,
+    watch,
     formState: { errors },
   } = methods;
 
@@ -42,6 +47,14 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit }: FormRendererProps)
     document.getElementById(`baris-${pesanError[0].key}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [errors]);
+
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  useEffect(() => {
+    const sub = watch((nilai) => onChangeRef.current?.(nilai as FieldValues));
+    return () => sub.unsubscribe();
+  }, [watch]);
 
   return (
     <FormProvider {...methods}>
@@ -79,9 +92,16 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit }: FormRendererProps)
                   {field.type === 'centang' && <Centang field={field} />}
                   {field.type === 'status_warna' && <StatusWarna field={field} />}
                   {field.type === 'tabel' && <Tabel field={field} />}
-                  {field.type === 'lampiran' && <Lampiran field={field} />}
+                  {field.type === 'lampiran' && <Lampiran field={field} reportId={reportId} />}
 
-                  {field.buktiWajib && <LampiranInput name={`_bukti.${field.key}`} label="Lampirkan bukti" />}
+                  {field.buktiWajib && (
+                    <LampiranInput
+                      name={`_bukti.${field.key}`}
+                      label="Lampirkan bukti"
+                      reportId={reportId}
+                      fieldKeyAsli={field.buktiKunci ?? field.key}
+                    />
+                  )}
 
                   {field.bantuan && (
                     <span className="text-sm" style={{ color: 'var(--kosong)' }}>
