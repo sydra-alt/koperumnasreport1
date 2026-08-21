@@ -80,6 +80,7 @@ Yang **tidak bisa** dipindah 1:1 (perbedaan mendasar Vite vs Next.js App Router,
 
 Belum bisa diuji di sesi ini karena tidak ada tool browser/DOM headless. Bukan diklaim selesai — **wajib dicek ulang saat sampai CHECKPOINT 4**, sebelum lanjut ke batch berikutnya:
 
+- 🔴 **WAJIB — bukan opsional:** ketujuh akun uji (`docs/DATA-KARYAWAN.md` §3) masih berpassword **`123456`**, sama untuk semua, termasuk `ceo` dan `accounting` (pemegang laporan keuangan). Project Supabase ini terjangkau dari internet. **Reset ke password kuat berbeda per orang sebelum data laporan ASLI masuk ke sistem** — jangan lanjut ke pemakaian sungguhan selagi ini masih `123456`. (Ditegaskan ulang oleh user sebagai syarat keras, bukan catatan biasa.)
 - Interaksi submit form → `onSubmit` benar-benar terpanggil dengan data yang benar, diklik sungguhan di browser (Task 07)
 - Readback nilai *default* untuk field tak-terkontrol berbasis `register()` (angka, teks, teks_panjang, pilih, centang, isi sel tabel) — bergantung pada `useEffect` react-hook-form yang tidak jalan di SSR (Task 08)
 - Field `tabel` tidak menyebabkan scroll horizontal di lebar 360px — baru diverifikasi lewat tinjauan kode (`flex-col`), bukan tangkapan layar viewport sungguhan (Task 08)
