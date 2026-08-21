@@ -2,6 +2,27 @@
 
 > Diperbarui setiap task selesai. Status: ⬜ belum · 🟨 berjalan · ✅ selesai
 
+## Perbaikan cacat spesifikasi: hari_wajib tanpa tanggal mulai (22 Agustus 2026)
+
+**Ditemukan lewat data uji Checkpoint 3 (bukan bug kode — cacat di rumus `03-CALC-SPEC.md` §3 versi awal).** Toyib bekerja 5 hari, selesai 3, tapi `hari_wajib` lama dihitung dari tanggal 1 bulan berjalan → tercatat bolong 16 hari. Kalau dipakai sungguhan, di bulan pertama peluncuran **seluruh 36 karyawan** akan kehilangan bonus Rp500.000 bukan karena lalai, tapi karena sistemnya baru menyala. User memperbaiki spesifikasi, saya menjalankan perbaikannya.
+
+**Rumus baru:** `hari_wajib` dihitung dari **tanggal mulai** = yang paling akhir di antara (1) tanggal 1 bulan berjalan, (2) `policy.pte_mulai_berlaku` — kalau `null`, `hari_wajib = 0` untuk SEMUA orang, (3) `profile.mulai_kerja`.
+
+- `supabase/migrations/0005_pte_mulai_berlaku.sql` — kolom `profile.mulai_kerja` (date, nullable) + seed `policy.pte_mulai_berlaku = null`. Dijalankan, kolom & seed diverifikasi lewat query langsung.
+- `supabase/migrations/0006_marketing_view_perbaikan.sql` — **migrasi baru, bukan edit `0004_marketing_view.sql`** yang sudah pernah jalan (riwayat migrasi tidak diubah diam-diam). **Catatan penting**: blok SQL `v_marketing_bulanan` di `03-CALC-SPEC.md` §3 sendiri **belum diperbarui** — cuma prosa/tabelnya yang diedit user, SQL di dokumen masih versi lama. View di migrasi ini ditulis mengikuti ATURAN BARU di prosa, bukan menyalin SQL basi di dokumen — perlu diberitahukan ke user supaya dokumennya ikut diperbaiki.
+- **Jebakan teknis ditemukan saat menulis SQL:** fungsi `greatest()` Postgres **mengabaikan NULL** (bukan mem-propagasi NULL seperti kebanyakan fungsi lain) — kalau cuma ditulis `greatest(tgl1, pte_mulai_berlaku, tgl3)` tanpa guard eksplisit, saat `pte_mulai_berlaku` NULL rumusnya akan diam-diam jatuh balik ke `greatest(tgl1, tgl3)` dan tetap menghitung hari_wajib seolah sistem sudah aktif — persis bug yang sedang diperbaiki, muncul lagi lewat jalur berbeda. Ditambahkan `where p.pte_mulai_berlaku is not null` eksplisit di view.
+- `lib/api/pte.ts` — `hitungKelayakanBonus()` dan `hitungPotongan()` ditambahkan sebagai **satu-satunya tempat** rumus bonus/potongan boleh dihitung; keduanya mengembalikan `{ berlaku: false }` (tanpa field angka sama sekali) kalau `policy.pte_mulai_berlaku` masih `null` — "belum berlaku" tertanam di *tipe* return-nya, bukan cuma konvensi, supaya UI masa depan (Task 21/22) tidak bisa lupa memeriksanya sebelum membaca `.layak`/`.nominal`/`.potongan`. Belum ada UI yang menampilkan angka ini sama sekali sampai titik ini (bukan retrofit — memang belum dibangun), jadi ini infrastruktur untuk konsumen masa depan.
+
+**Diverifikasi lewat DB sungguhan:**
+1. Dengan `pte_mulai_berlaku` masih `null` (keadaan asli sebelum diuji): `hari_wajib = 0` untuk Toyib walau `pte_daily` historisnya masih ada (`hari_lengkap=3`, `hari_bolong=-3` — nilai mentah view, negatif karena `0-3`; tidak dibersihkan jadi 0 karena UI diinstruksikan menyembunyikan angka sepenuhnya saat `berlaku=false`, jadi nilai mentah ini tidak pernah tampil ke pengguna).
+2. Dengan `pte_mulai_berlaku` di-set sementara ke `'2026-08-18'` (tanggal mulai data uji Toyib) untuk pengujian: **`hari_wajib=5, hari_bolong=2`** — persis harapan user.
+3. `hitungKelayakanBonus`/`hitungPotongan` diuji 6 skenario langsung: `berlaku:false` tanpa angka apa pun saat null; `no_gap` dengan bolong→`layak:false,nominal:0`; `no_gap` tanpa bolong→`layak:true,nominal:500000`; `per_day` proporsional→`nominal:300000` (`round(500000*3/5)`); `potongan:0` saat closing≥target; `potongan:300000` saat closing<target. Semua cocok.
+4. **Dibersihkan setelahnya**: `pte_mulai_berlaku` dikembalikan ke `null` (nilai produksi sesungguhnya — CEO belum mengumumkan tanggal aktivasi), data uji 5-hari + 3 closing dihapus, dicek ulang `count(*)=0` untuk keduanya.
+
+**Utang wajib sebelum sistem menghitung gaji sungguhan** (dicatat eksplisit atas instruksi user): **hari cuti/sakit/izin yang disetujui juga tidak boleh dihitung bolong.** Datanya ada di laporan HRD, yang formnya baru dibangun Task 14. Sampai form HRD dan integrasinya ke `hari_wajib`/`hari_bolong` selesai, karyawan yang cuti resmi akan tetap tercatat bolong secara tidak adil — **ini blocker sebelum go-live untuk penggajian sungguhan**, bukan cuma catatan biasa.
+
+---
+
 ## Migrasi stack: Vite → Next.js 15/16 (21 Agustus 2026)
 
 Keputusan diambil ulang oleh user, didokumentasikan di `BLUEPRINT.md` §2. Proyek di-scaffold ulang total dengan `create-next-app@latest --ts --app --tailwind --eslint --src-dir=false` (perintah persis dari `docs/MULAI-DI-SINI.md`).
@@ -98,6 +119,11 @@ Belum bisa diuji di sesi ini karena tidak ada tool browser/DOM headless. Bukan d
 - Bilah progres unggah per file benar-benar terlihat & bergerak di UI sungguhan (Task 11)
 - Seluruh alur form `personal_marketing` diklik/diketik sungguhan di browser: autosave 5 detik, tombol kirim, tampilan "undangan ___/20" di layar (logikanya sudah diuji lewat DB langsung, interaksinya belum) (Task 12)
 - Field `personal_marketing` di luar 6 PTE + closing (kalau memang ada di format asli) — menunggu `docs/REFERENSI-FORMAT-LAPORAN.md` disediakan (Task 12)
+
+## Utang WAJIB sebelum go-live penggajian sungguhan
+
+- 🔴 **Cuti/sakit/izin yang disetujui belum mengecualikan `hari_bolong`.** Datanya ada di laporan HRD (Task 14, belum dibangun). Sampai ini selesai, karyawan yang cuti resmi tetap tercatat bolong. Ditemukan & dicatat 22 Agustus 2026 (lihat "Perbaikan cacat spesifikasi" di atas). **Wajib selesai sebelum sistem dipakai menghitung gaji sungguhan** — bukan boleh ditunda tanpa batas.
+- 🔴 **`policy.pte_mulai_berlaku` masih `null`** (nilai produksi asli, disengaja — CEO belum mengumumkan tanggal aktivasi PTE). Sampai diisi, `hari_wajib=0` untuk semua orang dan seluruh status bonus/potongan tampil "belum berlaku". Ini **benar**, bukan bug — jangan diisi tanggal sembarangan hanya supaya angka muncul.
 
 ## Utang uji (jangan sampai hilang)
 

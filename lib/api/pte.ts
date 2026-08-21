@@ -1,5 +1,6 @@
 'use client';
 
+import type { PolicyMap } from './policy';
 import { createClient } from '../supabase/client';
 import { tanggalWIB } from '../tanggal';
 
@@ -74,4 +75,50 @@ export async function sinkronClosing(userId: string, reportId: string, daftarClo
 
   const { error } = await supabase.from('closing').insert(baris);
   if (error) throw error;
+}
+
+export interface KelayakanBonus {
+  /** false = policy.pte_mulai_berlaku masih null. JANGAN tampilkan `layak`/`nominal` -- tampilkan "belum berlaku". */
+  berlaku: boolean;
+  layak?: boolean;
+  nominal?: number;
+}
+
+/**
+ * Kelayakan bonus PTE Rp500rb, persis 03-CALC-SPEC.md §3.
+ * SATU-SATUNYA tempat rumus ini boleh dihitung -- UI mana pun yang mau
+ * menampilkan status bonus WAJIB lewat fungsi ini, bukan menghitung ulang
+ * sendiri, supaya guard `berlaku` tidak pernah kelewat.
+ */
+export function hitungKelayakanBonus(policy: PolicyMap, hariBolong: number, hariLengkap: number, hariWajib: number): KelayakanBonus {
+  if (!policy.pte_mulai_berlaku) {
+    return { berlaku: false };
+  }
+  const jumlahBonus = Number(policy.pte_bonus_amount);
+
+  if (policy.pte_bonus_rule === 'per_day') {
+    const layak = hariLengkap > 0;
+    const nominal = hariWajib > 0 ? Math.round((jumlahBonus * hariLengkap) / hariWajib) : 0;
+    return { berlaku: true, layak, nominal };
+  }
+
+  // default: 'no_gap'
+  const layak = hariBolong === 0;
+  return { berlaku: true, layak, nominal: layak ? jumlahBonus : 0 };
+}
+
+export interface InfoPotongan {
+  /** false = policy.pte_mulai_berlaku masih null. JANGAN tampilkan `potongan` -- tampilkan "belum berlaku". */
+  berlaku: boolean;
+  potongan?: number;
+}
+
+/** Potongan closing Rp300rb, persis 03-CALC-SPEC.md §3. Sama seperti hitungKelayakanBonus -- satu-satunya tempat rumus ini boleh dihitung. */
+export function hitungPotongan(policy: PolicyMap, closing: number): InfoPotongan {
+  if (!policy.pte_mulai_berlaku) {
+    return { berlaku: false };
+  }
+  const target = Number(policy.closing_target);
+  const nominal = Number(policy.closing_penalty);
+  return { berlaku: true, potongan: closing < target ? nominal : 0 };
 }

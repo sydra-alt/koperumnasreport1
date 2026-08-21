@@ -30,6 +30,7 @@ insert into public.policy (key, value) values
    }'),
   ('shift_deadline',     '{"pagi":"14:30","siang":"22:30","malam":"07:30"}'),
   ('lampiran_max_mb',    '50'),
+  ('pte_mulai_berlaku',  'null'),
   ('gambar_max_px',      '1600')
 on conflict (key) do nothing;
 ```
@@ -97,7 +98,19 @@ Kolom `lengkap` adalah generated column di Postgres, tidak dihitung di frontend.
 
 | Besaran | Rumus |
 |---|---|
-| `hari_wajib` | Jumlah tanggal dalam bulan berjalan **sampai hari ini** yang hari-ISO-nya ada di `policy.workdays` |
+| `hari_wajib` | Jumlah tanggal yang hari-ISO-nya ada di `policy.workdays`, dihitung dari **tanggal mulai** sampai **hari ini** |
+
+**Tanggal mulai** adalah yang paling akhir di antara tiga ini:
+
+1. Tanggal 1 bulan berjalan
+2. `policy.pte_mulai_berlaku` — tanggal sistem resmi diberlakukan. Selama masih `null`, kewajiban PTE belum berjalan dan `hari_wajib` = 0
+3. `profile.mulai_kerja` — tanggal karyawan mulai bekerja
+
+⚠️ **Kenapa ini penting.** Tanpa tanggal mulai, hari yang tidak punya data sama sekali ikut dihitung bolong. Di bulan pertama peluncuran, seluruh karyawan akan tampak bolong belasan hari dan kehilangan bonus Rp500.000 — bukan karena lalai, tapi karena sistemnya baru menyala. Hal yang sama menimpa karyawan yang baru masuk pertengahan bulan.
+
+Ditemukan saat pengujian Checkpoint 3, 22 Agustus 2026: karyawan yang bekerja 5 hari dan menyelesaikan 3 tercatat bolong 16 hari.
+
+**Hari cuti, sakit, dan izin yang disetujui juga tidak boleh dihitung bolong.** Datanya ada di laporan HRD, tapi form itu baru dibangun di Task 14. Sampai saat itu, hari cuti masih terhitung bolong — catat sebagai utang dan selesaikan sebelum sistem dipakai menghitung gaji sungguhan.
 | `hari_lengkap` | `count(pte_daily where lengkap = true)` di bulan itu |
 | `hari_bolong` | `hari_wajib − hari_lengkap` |
 | `undangan` | `sum(pte_daily.undang_jumlah)` di bulan itu |
@@ -136,6 +149,8 @@ potongan = (closing < policy.closing_target) ? policy.closing_penalty : 0
 ```
 
 ⚠️ Sebelum tanggal terakhir bulan berjalan, potongan ditampilkan sebagai **proyeksi**, bukan keputusan. Beri label `proyeksi` di antarmuka. Ini menyangkut gaji orang — jangan tampilkan angka final di tanggal 5.
+
+⚠️ **Selama `policy.pte_mulai_berlaku` masih `null`**, seluruh antarmuka menampilkan status bonus dan potongan sebagai `belum berlaku`, bukan angka. Sistem tidak boleh menghitung konsekuensi gaji sebelum aturannya resmi diumumkan ke karyawan.
 
 ### View
 
@@ -301,7 +316,7 @@ Alasan: pengisi bisa saja menandai laporannya hijau padahal ada selisih uang. Si
 Semua "hari ini" berarti **hari ini di WIB**.
 
 ```ts
-// src/lib/tanggal.ts
+// lib/tanggal.ts
 export const TZ = 'Asia/Jakarta';
 
 export function tanggalWIB(d = new Date()): string {
