@@ -319,10 +319,25 @@ create policy closing_write on public.closing for all
 
 -- decision: dilihat CEO & Pusat, dibuat pemilik laporan, diputuskan CEO saja
 alter table public.decision enable row level security;
+
+create or replace function public.laporan_form_key(r_id uuid)
+returns text
+language sql stable security definer set search_path = public as $$
+  select form_key from public.report where id = r_id;
+$$;
+
 create policy dec_select on public.decision for select using (
-  public.has_role('ceo') or public.has_role('pusat')
+  public.has_role('ceo')
+  or (public.has_role('pusat') and public.laporan_form_key(report_id) is distinct from 'accounting')
   or exists (select 1 from public.report r where r.id = report_id and r.author_id = auth.uid())
 );
+```
+
+⚠️ **Diperbaiki Task 19, 23 Agustus 2026** (migrasi `0016` + `0017`): versi awal mengizinkan `pusat` melihat SEMUA baris `decision` tanpa kecuali. Sejak Task 17 (blok "Prioritas Pembayaran" `accounting`, `sumberKeputusan`), laporan `accounting` juga membuat baris `decision` -- tanpa pengecualian, Pusat bisa membaca judul/nominal/dampak keputusan Accounting lewat Antrean Keputusan, melanggar kerahasiaan `accounting` (CLAUDE.md aturan #3).
+
+Perbaikan PERTAMA (`0016`, `not exists (select ... from report where form_key='accounting')`) TERNYATA masih salah -- ditemukan lewat uji DB sungguhan, bukan cuma dibaca kodenya. Subquery di dalam sebuah RLS policy tunduk pada RLS `report_select` milik PEMANGGIL YANG SAMA: untuk Pusat, baris `form_key='accounting'` itu sendiri sudah tidak terlihat lewat `report_select`, jadi `exists(...)` selalu 0 baris -- BUKAN karena form_key-nya beda, tapi karena baris itu memang tak terlihat sama sekali. Akibatnya `not exists(...)` selalu TRUE dan pengecualian tidak pernah menyala; Pusat tetap bocor. Jebakan ini berlaku umum: **jangan pernah menaruh subquery RLS-sensitif langsung di definisi policy lain** -- selalu lewat fungsi `security definer` (seperti `laporan_form_key` di atas) supaya jawabannya berdasarkan data SEBENARNYA, bukan yang kebetulan terlihat pemanggil. `dec_decide` (di bawah) tidak terpengaruh -- cuma `ceo` yang pernah bisa memutuskan, dari sononya.
+
+```sql
 create policy dec_insert on public.decision for insert with check (
   exists (select 1 from public.report r where r.id = report_id and r.author_id = auth.uid())
 );
