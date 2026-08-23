@@ -9,6 +9,8 @@ export interface ScopeOpsi {
   lokasiId?: string;
   outletId?: string;
   shift?: string;
+  /** false = query dimatikan -- dipakai selagi scope (mis. lokasi) belum dipilih user. Default true. */
+  aktif?: boolean;
 }
 
 export interface ReportRow {
@@ -33,6 +35,7 @@ function kunciQuery(formKey: string, opsi?: ScopeOpsi) {
 export function useReportHariIni(formKey: string, opsi?: ScopeOpsi) {
   return useQuery({
     queryKey: kunciQuery(formKey, opsi),
+    enabled: opsi?.aktif ?? true,
     queryFn: async (): Promise<ReportRow | null> => {
       const supabase = createClient();
       const {

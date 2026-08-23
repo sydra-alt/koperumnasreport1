@@ -6,7 +6,10 @@ import { useAuth } from '../lib/auth/AuthProvider';
 import { usePolicy } from '../lib/api/policy';
 import { statusClosing, statusUndangan, useProgresBulananSaya } from '../lib/api/marketing';
 import { hitungKelayakanBonus, hitungPotongan, ringkasanPteHariIni, sinkronClosing, sinkronPteDaily } from '../lib/api/pte';
-import { useKirimReport, useReportHariIni, useSimpanDraft } from '../lib/api/report';
+import { useDaftarLokasi } from '../lib/api/lokasi';
+import { buatKeputusanDariLaporan } from '../lib/api/decision';
+import { useKirimReport, useReportHariIni, useSimpanDraft, type ScopeOpsi } from '../lib/api/report';
+import { tanggalIndonesiaWIB } from '../lib/tanggal';
 import { debounce } from '../lib/debounce';
 import { formRegistry } from '../forms';
 import { FormRenderer } from './FormRenderer';
@@ -15,12 +18,34 @@ const IKON: Record<'hijau' | 'kuning' | 'merah', string> = { hijau: '🟢', kuni
 
 export function LaporForm({ formKey }: { formKey: string }) {
   const schema = formRegistry[formKey];
-  const { session, profile } = useAuth();
-  const { data: reportHariIni, isLoading: memuatReport } = useReportHariIni(formKey);
+  const { session, profile, assignments } = useAuth();
+  const { data: daftarLokasi } = useDaftarLokasi();
+
+  // Scope 'lokasi' (mis. pic_lokasi): kalau PIC di-assign lebih dari satu lokasi,
+  // dia harus pilih dulu -- laporan hari ini per lokasi berbeda adalah baris
+  // report terpisah (report_uniq sudah meng-coalesce lokasi_id, lihat 0001_init.sql).
+  // Kalau cuma satu lokasi, langsung otomatis, tidak perlu pemilih.
+  const lokasiDitugaskan = useMemo(
+    () =>
+      schema?.scope === 'lokasi'
+        ? Array.from(new Set(assignments.filter((a) => a.form_key === formKey && a.lokasi_id).map((a) => a.lokasi_id as string)))
+        : [],
+    [assignments, formKey, schema?.scope],
+  );
+  const [lokasiTerpilih, setLokasiTerpilih] = useState<string | null>(null);
+  const lokasiAktif = lokasiTerpilih ?? (lokasiDitugaskan.length === 1 ? lokasiDitugaskan[0] : null);
+  const perluPilihLokasi = schema?.scope === 'lokasi' && lokasiDitugaskan.length > 1 && !lokasiAktif;
+  const namaLokasi = (id: string) => daftarLokasi?.find((l) => l.id === id)?.nama ?? id;
+
+  const opsi: ScopeOpsi | undefined =
+    schema?.scope === 'lokasi' ? { lokasiId: lokasiAktif ?? undefined, aktif: Boolean(lokasiAktif) } : undefined;
+
+  const { data: reportHariIni, isLoading: memuatReport } = useReportHariIni(formKey, opsi);
   const { data: policy } = usePolicy();
   const { data: progres } = useProgresBulananSaya();
-  const simpanDraft = useSimpanDraft(formKey);
-  const kirimReport = useKirimReport(formKey);
+  const { data: laporanMarketingHariIni } = useReportHariIni('personal_marketing', { aktif: formKey === 'pic_lokasi' });
+  const simpanDraft = useSimpanDraft(formKey, opsi);
+  const kirimReport = useKirimReport(formKey, opsi);
 
   // reportId diturunkan dari query (`reportHariIni`) begitu ada; `reportIdBaru`
   // cuma dipakai untuk jeda singkat setelah baris pertama dibuat, sebelum
@@ -72,6 +97,38 @@ export function LaporForm({ formKey }: { formKey: string }) {
     );
   }
 
+  if (schema.scope === 'lokasi' && lokasiDitugaskan.length === 0) {
+    return (
+      <main className="p-6">
+        <p>Anda tidak punya penugasan lokasi untuk laporan ini.</p>
+      </main>
+    );
+  }
+
+  if (perluPilihLokasi) {
+    return (
+      <main className="flex flex-col gap-4 p-6">
+        <h1 className="text-2xl" style={{ color: 'var(--biru)' }}>
+          {schema.nama}
+        </h1>
+        <p>Anda mengurus lebih dari satu lokasi. Pilih lokasi untuk laporan hari ini:</p>
+        <div className="flex flex-col gap-2">
+          {lokasiDitugaskan.map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setLokasiTerpilih(id)}
+              className="border px-4 py-3 text-left"
+              style={{ borderColor: 'var(--garis)', minHeight: 44 }}
+            >
+              {namaLokasi(id)}
+            </button>
+          ))}
+        </div>
+      </main>
+    );
+  }
+
   if (memuatReport) {
     return (
       <main className="p-6">
@@ -117,6 +174,14 @@ export function LaporForm({ formKey }: { formKey: string }) {
         );
       }
 
+      if (formKey === 'pic_lokasi' && isiKirim.keputusan_ceo === true) {
+        const judul = typeof isiKirim.keputusan_ceo_judul === 'string' ? isiKirim.keputusan_ceo_judul.trim() : '';
+        if (judul.length > 0) {
+          const masalah = typeof isiKirim.masalah_utama === 'string' && isiKirim.masalah_utama.trim() ? isiKirim.masalah_utama : null;
+          await buatKeputusanDariLaporan(idAkhir, judul, masalah);
+        }
+      }
+
       setPesanKirim(status === 'terlambat' ? 'Terkirim, tapi tercatat TERLAMBAT.' : 'Terkirim tepat waktu.');
     } catch (err) {
       setPesanKirim(err instanceof Error ? err.message : 'Gagal mengirim laporan.');
@@ -147,6 +212,15 @@ export function LaporForm({ formKey }: { formKey: string }) {
           <p style={{ fontFamily: 'var(--display)' }}>Blok 1 · Identitas</p>
           <p>
             {profile.nama} · {profile.divisi ?? '—'} · {profile.jabatan ?? '—'}
+          </p>
+        </div>
+      )}
+
+      {formKey === 'pic_lokasi' && profile && (
+        <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }} suppressHydrationWarning>
+          <p style={{ fontFamily: 'var(--display)' }}>1 · Identitas</p>
+          <p>
+            {tanggalIndonesiaWIB()} · {lokasiAktif ? namaLokasi(lokasiAktif) : '—'} · PIC: {profile.nama}
           </p>
         </div>
       )}
@@ -199,6 +273,16 @@ export function LaporForm({ formKey }: { formKey: string }) {
               ? 'Target closing terpenuhi: Rp300.000 tidak dipotong.'
               : `Target closing belum terpenuhi: mengikuti ketentuan potongan Rp${infoPotongan.potongan?.toLocaleString('id-ID')} (proyeksi).`}
         </p>
+      )}
+
+      {formKey === 'pic_lokasi' && progres && invitTarget !== null && closingTarget !== null && (
+        <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
+          <p style={{ fontFamily: 'var(--display)' }}>9 · Laporan Personal Marketing</p>
+          <p>
+            Laporan personal sudah dikirim: {laporanMarketingHariIni?.status && laporanMarketingHariIni.status !== 'draft' ? '✅' : '❌'} · Undangan
+            bulan ini: {progres.undangan} / {invitTarget} · Closing bulan ini: {progres.closing} / {closingTarget}
+          </p>
+        </div>
       )}
 
       <p className="text-sm" style={{ color: 'var(--kosong)' }}>
