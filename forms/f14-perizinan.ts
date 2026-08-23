@@ -9,11 +9,10 @@ import type { FormSchema } from './types';
  * baris tabel berulang di SATU laporan, bukan laporan terpisah per lokasi
  * seperti pic_lokasi/security).
  *
- * "Tahapan" (6 checkbox: persiapan/pengajuan/verifikasi/peninjauan/
- * pembayaran/terbit) dimodelkan sebagai kolom teks bebas di tabel (tahap
- * saat ini), BUKAN 6 checkbox terpisah per baris -- komponen `Tabel`
- * (Task 08) cuma punya input teks per sel, belum ada checkbox per sel.
- * Keterbatasan yang sama sudah dicatat di f13 untuk kasus lain.
+ * "Tahapan" (persiapan/pengajuan/verifikasi/peninjauan/pembayaran/terbit)
+ * dimodelkan sebagai kolom `pilih` berurutan -- sebuah izin ada di SATU
+ * tahap pada satu waktu, bukan beberapa sekaligus, jadi bukan checkbox
+ * melainkan satu dropdown berurutan.
  */
 export const f14Perizinan: FormSchema = {
   key: 'perizinan',
@@ -35,7 +34,7 @@ export const f14Perizinan: FormSchema = {
             { key: 'jenis_izin', label: 'Jenis izin', type: 'teks' },
             { key: 'instansi', label: 'Instansi', type: 'teks' },
             { key: 'nomor_berkas', label: 'Nomor berkas', type: 'teks' },
-            { key: 'tahap', label: 'Tahapan saat ini', type: 'teks' },
+            { key: 'tahap', label: 'Tahapan saat ini', type: 'pilih', pilihan: ['Persiapan dokumen', 'Pengajuan', 'Verifikasi instansi', 'Peninjauan lapangan', 'Pembayaran retribusi', 'Terbit'] },
             { key: 'progress_persen', label: 'Progress (%)', type: 'teks' },
             { key: 'mulai_diproses', label: 'Mulai diproses', type: 'teks' },
             { key: 'target_terbit', label: 'Target terbit', type: 'teks' },
@@ -78,7 +77,7 @@ export const f14Perizinan: FormSchema = {
           kolom: [
             { key: 'lokasi', label: 'Lokasi', type: 'teks' },
             { key: 'jenis_izin', label: 'Jenis izin', type: 'teks' },
-            { key: 'tahap_saat_ini', label: 'Tahap saat ini', type: 'teks' },
+            { key: 'tahap_saat_ini', label: 'Tahap saat ini', type: 'pilih', pilihan: ['Persiapan dokumen', 'Pengajuan', 'Verifikasi instansi', 'Peninjauan lapangan', 'Pembayaran retribusi', 'Terbit'] },
             { key: 'hambatan', label: 'Hambatan', type: 'teks' },
             { key: 'target', label: 'Target', type: 'teks' },
           ],

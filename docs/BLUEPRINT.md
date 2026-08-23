@@ -86,6 +86,22 @@ Ini sumber bug paling sering pada kode Next.js yang ditulis agent. Kalau muncul 
 
 `SUPABASE_SERVICE_ROLE_KEY` **tanpa** awalan `NEXT_PUBLIC_`, hanya boleh dibaca di Route Handler atau Server Action. Kunci itu melewati seluruh RLS. Salah menaruh awalan `NEXT_PUBLIC_` di depannya sama dengan membocorkan seluruh database.
 
+### 3.5b Satu angka, satu pengisi
+
+Setiap besaran hanya boleh diketik oleh **satu orang** — yang paling dekat dengan kenyataannya. Semua orang lain menerimanya sebagai angka terisi otomatis, hanya baca.
+
+Contoh yang menentukan: jumlah unit dibangun diketik **PIC Lokasi**, karena merekalah yang berdiri di lokasi dan menghitung. Kepala Pembangunan **tidak** mengetik ulang totalnya — form dia menampilkan jumlah dari seluruh PIC lokasi sebagai angka terisi.
+
+Kalau dua orang mengetik besaran yang sama, angkanya pasti berbeda cepat atau lambat, dan CEO akan melihat dua jumlah unit yang bertentangan di dua layar. Sejak saat itu kedua angka kehilangan kepercayaan, bukan hanya yang salah.
+
+Form Kepala Pembangunan berisi hal yang hanya dia tahu: kontraktor, material, infrastruktur, pengawasan kualitas, dan **catatan selisih** kalau angka dari PIC lokasi menurutnya tidak sesuai kenyataan lapangan.
+
+**Bedakan duplikasi dari silang-cek.** Duplikasi: dua orang mengetik hal yang sama, salah satunya pasti salah — hapus salah satunya. Silang-cek: dua orang mengukur hal yang **berbeda** yang seharusnya mirip — pertahankan keduanya, dan munculkan selisihnya sebagai peringatan.
+
+Contoh silang-cek yang sehat: satpam menghitung tamu yang masuk gerbang, PIC lokasi menghitung konsumen yang dilayani. Kalau 12 orang masuk tapi hanya 5 dilayani, selisih 7 itu justru yang perlu ditanyakan.
+
+Ditemukan saat Batch D, 22 Agustus 2026.
+
 ### 3.6 Aturan bisnis hidup di tabel `policy`, bukan hardcode
 
 Nilai seperti Rp500.000, Rp300.000, target 20 undangan, target 2 closing, hari kerja, dan jam batas laporan disimpan di tabel `policy` sebagai JSONB. Jangan tulis angka ini di kode React.

@@ -9,6 +9,12 @@ import { hitungKelayakanBonus, hitungPotongan, ringkasanPteHariIni, sinkronClosi
 import { useDaftarLokasi } from '../lib/api/lokasi';
 import { buatKeputusanDariLaporan } from '../lib/api/decision';
 import { useKirimReport, useReportHariIni, useSimpanDraft, type ScopeOpsi } from '../lib/api/report';
+import {
+  useRekapPicLokasi,
+  type InfrastrukturPerLokasiRow,
+  type MaterialPerLokasiRow,
+  type PembangunanPerLokasiRow,
+} from '../lib/api/pembangunan';
 import { tanggalIndonesiaWIB } from '../lib/tanggal';
 import { debounce } from '../lib/debounce';
 import { formRegistry } from '../forms';
@@ -59,6 +65,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
   const { data: reportHariIni, isLoading: memuatReport } = useReportHariIni(formKey, opsi);
   const { data: policy } = usePolicy();
   const { data: progres } = useProgresBulananSaya();
+  const { data: rekapPicLokasi } = useRekapPicLokasi(formKey === 'pembangunan');
   // Blok "Laporan Personal Marketing" (rekap PTE/undangan/closing milik pengirim
   // sendiri) muncul di HAMPIR SEMUA form divisi -- lihat forms/blok-bersama.ts.
   // Query ini cuma perlu jalan utk form SELAIN personal_marketing itu sendiri.
@@ -309,6 +316,14 @@ export function LaporForm({ formKey }: { formKey: string }) {
         </div>
       )}
 
+      {formKey === 'pembangunan' && rekapPicLokasi && (
+        <>
+          <RekapUnitOtomatis data={rekapPicLokasi.unit} />
+          <RekapMaterialOtomatis data={rekapPicLokasi.material} />
+          <RekapInfrastrukturOtomatis data={rekapPicLokasi.infrastruktur} />
+        </>
+      )}
+
       <p className="text-sm" style={{ color: 'var(--kosong)' }}>
         {statusSimpan === 'menyimpan' && 'Menyimpan draft…'}
         {statusSimpan === 'tersimpan' && 'Draft tersimpan.'}
@@ -326,5 +341,152 @@ export function LaporForm({ formKey }: { formKey: string }) {
       {mengirim && <p>Mengirim…</p>}
       {pesanKirim && <p style={{ color: 'var(--biru)' }}>{pesanKirim}</p>}
     </main>
+  );
+}
+
+/** Tabel read-only rekap unit pembangunan per lokasi, datanya dari PIC Lokasi. */
+function RekapUnitOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
+  const total = data.reduce(
+    (acc, r) => ({
+      target: (acc.target ?? 0) + (r.target ?? 0),
+      sedang_dibangun: (acc.sedang_dibangun ?? 0) + (r.sedang_dibangun ?? 0),
+      finishing: (acc.finishing ?? 0) + (r.finishing ?? 0),
+      selesai_hari_ini: (acc.selesai_hari_ini ?? 0) + (r.selesai_hari_ini ?? 0),
+      belum_mulai: (acc.belum_mulai ?? 0) + (r.belum_mulai ?? 0),
+    }),
+    { target: 0, sedang_dibangun: 0, finishing: 0, selesai_hari_ini: 0, belum_mulai: 0 },
+  );
+
+  const kolom = ['Lokasi', 'Target', 'Dibangun', 'Finishing', 'Selesai hari ini', 'Belum mulai'];
+
+  const sel = (n: number | null) => (n ?? 0).toString();
+
+  return (
+    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
+      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+        1 · Rekap Unit Seluruh Lokasi (dari PIC Lokasi)
+      </p>
+      <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
+        Angka di bawah berasal dari Laporan PIC Lokasi hari ini. Hanya baca — tidak bisa diedit di sini.
+      </p>
+      {data.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+          Belum ada PIC Lokasi yang mengirim laporan hari ini.
+        </p>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {kolom.map((k) => (
+                  <th key={k} className="border px-2 py-1 text-left" style={{ borderColor: 'var(--garis)', background: 'var(--kertas-2)' }}>
+                    {k}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((r) => (
+                <tr key={r.lokasi}>
+                  <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)' }}>{r.lokasi}</td>
+                  <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)' }}>{sel(r.target)}</td>
+                  <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)' }}>{sel(r.sedang_dibangun)}</td>
+                  <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)' }}>{sel(r.finishing)}</td>
+                  <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)' }}>{sel(r.selesai_hari_ini)}</td>
+                  <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)' }}>{sel(r.belum_mulai)}</td>
+                </tr>
+              ))}
+              <tr style={{ fontFamily: 'var(--display)' }}>
+                <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)' }}>Total</td>
+                <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)' }}>{sel(total.target)}</td>
+                <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)' }}>{sel(total.sedang_dibangun)}</td>
+                <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)' }}>{sel(total.finishing)}</td>
+                <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)' }}>{sel(total.selesai_hari_ini)}</td>
+                <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)' }}>{sel(total.belum_mulai)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Tabel read-only rekap material per lokasi, datanya dari PIC Lokasi -- §3.5b, D3. */
+function RekapMaterialOtomatis({ data }: { data: MaterialPerLokasiRow[] }) {
+  const yaTidak = (v: boolean | null) => (v === null ? '—' : v ? '✅' : '❌');
+
+  return (
+    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
+      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+        3 · Material per Lokasi (dari PIC Lokasi)
+      </p>
+      <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
+        Status material per lokasi berasal dari Laporan PIC Lokasi hari ini. Hanya baca.
+      </p>
+      {data.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+          Belum ada PIC Lokasi yang mengirim laporan hari ini.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {data.map((r) => (
+            <div key={r.lokasi} className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
+              <p style={{ fontFamily: 'var(--display)' }}>{r.lokasi}</p>
+              <p>
+                Material cukup: {yaTidak(r.material_cukup)} · Kiriman precast/perikas diterima: {r.kiriman_precast_jumlah ?? 0} pcs
+              </p>
+              {r.kiriman_kekurangan && <p>Kekurangan kiriman: {r.kiriman_kekurangan}</p>}
+              {r.material_kurang.length > 0 && (
+                <ul className="list-disc pl-5">
+                  {r.material_kurang.map((m, i) => (
+                    <li key={i}>
+                      {m.material ?? '—'} -- kebutuhan {m.kebutuhan ?? '—'}, untuk unit {m.untuk_unit ?? '—'}, dibutuhkan {m.dibutuhkan_tanggal ?? '—'}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Tabel read-only kondisi infrastruktur per lokasi, datanya dari PIC Lokasi -- §3.5b, D4. */
+function RekapInfrastrukturOtomatis({ data }: { data: InfrastrukturPerLokasiRow[] }) {
+  const yaTidak = (v: boolean | string | null) => (v === null ? '—' : v === true || v === 'ya' ? '✅' : '❌');
+
+  return (
+    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
+      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+        5 · Kondisi Infrastruktur per Lokasi (dari PIC Lokasi)
+      </p>
+      <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
+        Kondisi infrastruktur (jalan, listrik, air, drainase) berasal dari Laporan PIC Lokasi hari ini. Hanya baca -- rencana &amp; biaya
+        perbaikan diisi di blok 6.
+      </p>
+      {data.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+          Belum ada PIC Lokasi yang mengirim laporan hari ini.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {data.map((r) => (
+            <div key={r.lokasi} className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
+              <p style={{ fontFamily: 'var(--display)' }}>{r.lokasi}</p>
+              <p>
+                Jalan: {r.jalan_status ?? '—'} · Listrik: {r.listrik_status ?? '—'} · Air: {r.air_status ?? '—'}
+              </p>
+              <p>
+                Drainase: {yaTidak(r.drainase_baik)} · Penerangan: {yaTidak(r.penerangan_baik)} · Gerbang: {yaTidak(r.gerbang_baik)}
+              </p>
+              {r.infrastruktur_kebutuhan && <p>Kebutuhan: {r.infrastruktur_kebutuhan}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

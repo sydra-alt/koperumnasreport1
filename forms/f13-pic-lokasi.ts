@@ -18,6 +18,24 @@ import type { FormSchema } from './types';
  * SELALU "terisi" begitu form valid, buktiWajib di situ otomatis berarti bukti
  * dituntut di SETIAP pengiriman, bukan cuma kalau nilai tertentu dijawab.
  *
+ * §3.5b (D2): field `foto_progress_jumlah`, `video_progress_jumlah`,
+ * `progress_dikirim_it` DIHAPUS -- jawabannya sudah ada di tabel attachment,
+ * sistem tahu sendiri siapa yang sudah unggah tanpa perlu bertanya.
+ *
+ * §3.5b (D4): blok 4 "Infrastruktur Lokasi" cuma KONDISI hari ini (status
+ * jalan/listrik/air, drainase/penerangan/gerbang, kebutuhan sebagai
+ * observasi bebas) -- field `infrastruktur_estimasi_biaya` (anggaran)
+ * DIHAPUS, karena "berapa anggarannya" sekarang murni wilayah Kepala
+ * Pembangunan (forms/f15-pembangunan.ts blok 6 "Rencana & Biaya
+ * Infrastruktur"), bukan PIC lokasi.
+ *
+ * §3.5b (D3): blok 8 "Material di Lokasi" TIDAK PERNAH punya kolom biaya
+ * (sesuai dokumen asli PIC Lokasi) -- estimasi biaya material memang cuma
+ * ada di form Pembangunan sejak awal, jadi tidak ada yang perlu dihapus
+ * di sini untuk D3. `unit_dibangun` dkk. (blok 3) tetap kontrak dengan
+ * `v_pembangunan_hari_ini`; sekarang JUGA sumber untuk rollup baca-saja
+ * di form Pembangunan lewat `useRekapPicLokasi()` (lib/api/pembangunan.ts).
+ *
  * Bagian 9 "LAPORAN PERSONAL MARKETING" (rekap PTE/undangan/closing milik PIC
  * sendiri) TIDAK dijadikan field -- itu murni tampilan dihitung/digabung dari
  * data yang sudah ada, dirender LaporForm.tsx (sama alasannya dengan Blok
@@ -82,9 +100,6 @@ export const f13PicLokasi: FormSchema = {
         { key: 'jumlah_tukang', label: 'Jumlah tukang hari ini (orang)', type: 'angka' },
         { key: 'pekerjaan_berhenti', label: 'Pekerjaan yang berhenti (kosongkan kalau tidak ada)', type: 'teks_panjang' },
         { key: 'pekerjaan_berhenti_penyebab', label: 'Penyebab pekerjaan berhenti', type: 'teks_panjang' },
-        { key: 'foto_progress_jumlah', label: 'Jumlah foto', type: 'angka' },
-        { key: 'video_progress_jumlah', label: 'Jumlah video', type: 'angka' },
-        { key: 'progress_dikirim_it', label: 'Sudah dikirim ke IT', type: 'ya_tidak' },
       ],
     },
     {
@@ -100,8 +115,7 @@ export const f13PicLokasi: FormSchema = {
         { key: 'drainase_baik', label: 'Drainase/saluran baik', type: 'ya_tidak' },
         { key: 'penerangan_baik', label: 'Penerangan jalan baik', type: 'ya_tidak' },
         { key: 'gerbang_baik', label: 'Gerbang/pagar baik', type: 'ya_tidak' },
-        { key: 'infrastruktur_kebutuhan', label: 'Kebutuhan infrastruktur', type: 'teks_panjang' },
-        { key: 'infrastruktur_estimasi_biaya', label: 'Estimasi biaya', type: 'uang' },
+        { key: 'infrastruktur_kebutuhan', label: 'Kebutuhan infrastruktur (observasi, bukan anggaran)', type: 'teks_panjang' },
       ],
     },
     {

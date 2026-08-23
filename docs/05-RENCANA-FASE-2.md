@@ -64,6 +64,7 @@ Berjalan sebagai Edge Function terjadwal, setelah jam batas laporan lewat.
 | Omzet resto versi Manager ≠ versi Ita | Dua laporan ditandai 🔴, buat `decision` urgensi 2 |
 | Cash resto diterima tapi belum disetor > 1 hari | Naik ke Accounting, tandai 🔴 |
 | Data konsumen versi IT ≠ jumlah di laporan PIC lokasi | Tandai 🟡 di kedua sisi |
+| Tamu/konsumen masuk gerbang (Security) ≠ konsumen dilayani (PIC Lokasi) | Bukan duplikasi -- dua pengukuran berbeda yang seharusnya mirip (§3.5b). Selisih besar (mis. 12 masuk, 5 dilayani) ditandai 🟡, munculkan di Papan Kontrol lokasi terkait. Ditetapkan saat Batch D, 23 Agustus 2026 -- lihat BLUEPRINT.md §3.5b. |
 | Stok sistem ≠ stok aktual tanpa penyebab | Tolak sejak validasi form (sudah ada di fase 1) |
 | Kiriman DTI ≠ penerimaan di lokasi | Tandai 🟡, minta konfirmasi surat jalan |
 

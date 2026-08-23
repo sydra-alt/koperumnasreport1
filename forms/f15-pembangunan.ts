@@ -5,23 +5,30 @@ import type { FormSchema } from './types';
  * Sesuai docs/02-FORMAT-LAPORAN-DIVISI-BARU.md, bagian "LAPORAN HARIAN
  * PEMBANGUNAN" (baris 464-605). scope 'global' -- SATU laporan rekap
  * SELURUH lokasi oleh Kepala Pembangunan, BUKAN pengganti/duplikat
- * f13-pic-lokasi. Dokumen sendiri menandaskan: "Laporan ini adalah rekap
- * seluruh lokasi. Detail per lokasi ada di Laporan PIC Lokasi."
+ * f13-pic-lokasi.
  *
- * PENTING -- bukan kontrak dengan v_pembangunan_hari_ini: kunci
- * unit_dibangun/unit_finishing/unit_selesai/unit_belum_mulai di
- * 03-CALC-SPEC.md §4.2 dijumlahkan dari `report where form_key='pic_lokasi'`
- * SAJA, bukan dari form_key='pembangunan' ini. Karena itu field di form ini
- * dinamai dengan sufiks `_total` (unit_sedang_dibangun_total, dst.) supaya
- * TIDAK bisa disalahsangka sebagai kunci yang sama dengan f13 -- keduanya
- * memang angka yang mirip secara konsep (rekap vs per-lokasi) tapi hidup
- * di form_key & namespace JSON yang sama sekali terpisah. Tidak ada view
- * yang membaca form_key='pembangunan' saat ini; kalau nanti dibutuhkan
- * (mis. dashboard CEO Task 20), itu view baru, bukan perluasan §4.2.
+ * PRINSIP §3.5b -- satu angka, satu pengisi; duplikasi vs silang-cek.
  *
- * "📹 Foto/video progress sudah dikirim ke IT: ✅/❌" TIDAK dipasangi
- * buktiWajib -- beda dari f13, kalimatnya berupa status ("sudah dikirim"),
- * bukan instruksi lampirkan bukti di form INI. Task 15 tidak memintanya.
+ * Blok read-only (TIDAK ADA di `blocks` di bawah -- dirender LaporForm.tsx
+ * langsung dari `useRekapPicLokasi()`, lib/api/pembangunan.ts, sama alasannya
+ * dengan Blok 1/5/8 di f01-personal-marketing.ts: kalau tetap dimasukkan ke
+ * `blocks` sebagai entri ber-`fields: []`, FormRenderer tetap merendernya
+ * jadi fieldset kosong -- judul & catatan akan tampil DUA KALI):
+ *   1. Rekap Unit       — dari report.data pic_lokasi (PIC Lokasi sumbernya)
+ *   3. Material Lokasi  — rollup dari pic_lokasi blok 8 (PIC yang lihat tumpukan habis)
+ *   5. Kondisi Infra    — rollup dari pic_lokasi blok 4 (PIC yang lihat kondisi)
+ *
+ * Blok input (cuma Kepala Pembangunan yang tahu):
+ *   2. Catatan Selisih  — kalau angka PIC tidak cocok kenyataan
+ *   4. Material Perusahaan — pembelian borongan, masalah supplier (bukan per lokasi)
+ *   6. Rencana Infrastruktur — pekerjaan dijadwalkan, kontraktor, anggaran
+ *   7. Kontraktor       — progress, masalah, rekomendasi
+ *   8. Kualitas & Pengawasan
+ *   9. Target Besok
+ *  10. Rekap untuk Sabrina / Keputusan CEO
+ *
+ * D2: foto/video/kirim IT DIHAPUS — tabel attachment sudah tahu siapa yang
+ * unggah, tidak perlu bertanya hal yang sudah diketahui sistem.
  */
 export const f15Pembangunan: FormSchema = {
   key: 'pembangunan',
@@ -29,38 +36,89 @@ export const f15Pembangunan: FormSchema = {
   navLabel: 'Lapor Pembangunan',
   scope: 'global',
   blocks: [
+    // ── 1. Rekap Unit (read-only dari PIC Lokasi) -- BUKAN entri di sini,
+    // dirender LaporForm.tsx sebagai <RekapUnitOtomatis>, sama alasannya
+    // dengan Blok 1/5/8 di f01-personal-marketing.ts: FormRenderer merender
+    // SETIAP block di array ini apa adanya, termasuk yang fields-nya kosong
+    // -- kalau tetap dimasukkan di sini, judul & catatannya akan tampil DUA
+    // KALI (sekali dari komponen baca-saja, sekali lagi dari fieldset kosong
+    // FormRenderer). ──────────────────────────────────────────────────────
+    // ── 2. Catatan Selisih (input) ─────────────────────────────────────
     {
-      id: 'rekap_unit',
-      judul: '1 · Rekap Unit Seluruh Lokasi',
+      id: 'catatan_selisih',
+      judul: '2 · Catatan Selisih',
+      catatan: 'Isi kalau angka dari PIC Lokasi tidak sesuai kenyataan lapangan. Kosongkan kalau tidak ada selisih.',
       fields: [
-        { key: 'target_pembangunan_total', label: 'Target pembangunan (unit)', type: 'angka' },
-        { key: 'unit_sedang_dibangun_total', label: 'Sedang dibangun (unit)', type: 'angka' },
-        { key: 'unit_finishing_total', label: 'Finishing (unit)', type: 'angka' },
-        { key: 'unit_selesai_hari_ini_total', label: 'Selesai hari ini (unit)', type: 'angka' },
-        { key: 'unit_selesai_bulan_ini_total', label: 'Selesai bulan ini (unit)', type: 'angka' },
-        { key: 'unit_belum_mulai_total', label: 'Belum mulai (unit)', type: 'angka' },
-        { key: 'pencapaian_persen', label: 'Pencapaian terhadap target (%)', type: 'angka' },
         {
-          key: 'rincian_per_lokasi',
-          label: 'Rincian per lokasi',
+          key: 'selisih_unit',
+          label: 'Selisih unit',
           type: 'tabel',
           kolom: [
             { key: 'lokasi', label: 'Lokasi', type: 'teks' },
-            { key: 'target', label: 'Target', type: 'teks' },
-            { key: 'dibangun', label: 'Dibangun', type: 'teks' },
-            { key: 'finishing', label: 'Finishing', type: 'teks' },
-            { key: 'selesai_hari_ini', label: 'Selesai hari ini', type: 'teks' },
-            { key: 'belum_mulai', label: 'Belum mulai', type: 'teks' },
+            { key: 'field', label: 'Besaran', type: 'teks' },
+            { key: 'angka_pic', label: 'Angka menurut PIC', type: 'teks' },
+            { key: 'angka_saya', label: 'Angka menurut saya', type: 'teks' },
+            { key: 'penyebab', label: 'Penyebab', type: 'teks' },
+          ],
+        },
+      ],
+    },
+    // ── 3. Material per Lokasi (read-only dari PIC Lokasi) -- dirender
+    // <RekapMaterialOtomatis>, bukan entri di sini (alasan sama seperti 1). ──
+    // ── 4. Material Perusahaan (input — cuma Kepala Pembangunan) ───────
+    {
+      id: 'material_perusahaan',
+      judul: '4 · Material Tingkat Perusahaan',
+      catatan: 'Kebutuhan material yang tidak terikat lokasi tertentu: pembelian borongan, masalah supplier, pasokan dari DTI.',
+      fields: [
+        { key: 'material_dari_dti', label: 'Material dari DTI/precast', type: 'teks' },
+        { key: 'material_dari_supplier_luar', label: 'Material dari supplier luar', type: 'teks' },
+        {
+          key: 'material_borongan',
+          label: 'Kebutuhan material borongan (tidak terikat lokasi)',
+          type: 'tabel',
+          kolom: [
+            { key: 'material', label: 'Material', type: 'teks' },
+            { key: 'kebutuhan', label: 'Kebutuhan', type: 'teks' },
+            { key: 'estimasi_biaya', label: 'Estimasi biaya (Rp)', type: 'teks' },
+            { key: 'dibutuhkan_tanggal', label: 'Dibutuhkan tanggal', type: 'teks' },
+          ],
+        },
+        { key: 'total_kebutuhan_material_perusahaan', label: 'Total kebutuhan material perusahaan', type: 'uang' },
+        { key: 'material_diajukan_accounting', label: 'Sudah diajukan ke Accounting', type: 'ya_tidak' },
+        { key: 'masalah_supplier', label: 'Masalah supplier', type: 'teks_panjang' },
+        { key: 'pekerjaan_berhenti_material', label: 'Pekerjaan berhenti karena material', type: 'teks_panjang' },
+      ],
+    },
+    // ── 5. Kondisi Infrastruktur (read-only dari PIC Lokasi) -- dirender
+    // <RekapInfrastrukturOtomatis>, bukan entri di sini (alasan sama). ─────
+    // ── 6. Rencana Infrastruktur (input — cuma Kepala Pembangunan) ─────
+    {
+      id: 'infrastruktur_rencana',
+      judul: '6 · Rencana & Biaya Infrastruktur',
+      catatan: 'Pekerjaan infrastruktur yang dijadwalkan, kontraktor, anggaran, target selesai. Ini yang hanya Kepala Pembangunan yang tahu.',
+      fields: [
+        {
+          key: 'infrastruktur_rencana_kerja',
+          label: 'Rencana pekerjaan infrastruktur',
+          type: 'tabel',
+          kolom: [
+            { key: 'lokasi', label: 'Lokasi', type: 'teks' },
+            { key: 'pekerjaan', label: 'Pekerjaan', type: 'teks' },
+            { key: 'kontraktor', label: 'Kontraktor', type: 'teks' },
+            { key: 'anggaran', label: 'Anggaran (Rp)', type: 'teks' },
+            { key: 'target_selesai', label: 'Target selesai', type: 'teks' },
             { key: 'status', label: 'Status', type: 'teks' },
           ],
         },
-        { key: 'lokasi_tertinggal_target', label: 'Lokasi tertinggal target', type: 'teks_panjang' },
-        { key: 'penyebab_tertinggal', label: 'Penyebab', type: 'teks_panjang' },
+        { key: 'infrastruktur_harus_dikerjakan', label: 'Infrastruktur yang harus dikerjakan', type: 'teks_panjang' },
+        { key: 'infrastruktur_estimasi_biaya', label: 'Total estimasi biaya', type: 'uang' },
       ],
     },
+    // ── 7. Kontraktor (input) ──────────────────────────────────────────
     {
       id: 'kontraktor',
-      judul: '2 · Kontraktor',
+      judul: '7 · Kontraktor',
       fields: [
         {
           key: 'kontraktor_progress',
@@ -83,54 +141,10 @@ export const f15Pembangunan: FormSchema = {
         { key: 'kontraktor_rekomendasi', label: 'Rekomendasi', type: 'pilih', pilihan: ['Lanjut', 'Peringatan', 'Ganti'] },
       ],
     },
-    {
-      id: 'material',
-      judul: '3 · Material',
-      fields: [
-        { key: 'material_cukup_semua_lokasi', label: 'Material cukup di seluruh lokasi', type: 'ya_tidak' },
-        {
-          key: 'material_kurang',
-          label: 'Material habis/kurang',
-          type: 'tabel',
-          kolom: [
-            { key: 'material', label: 'Material', type: 'teks' },
-            { key: 'lokasi', label: 'Lokasi', type: 'teks' },
-            { key: 'kebutuhan', label: 'Kebutuhan', type: 'teks' },
-            { key: 'dibutuhkan_tanggal', label: 'Dibutuhkan tanggal', type: 'teks' },
-            { key: 'estimasi_biaya', label: 'Estimasi biaya (Rp)', type: 'teks' },
-          ],
-        },
-        { key: 'total_kebutuhan_material', label: 'Total kebutuhan material', type: 'uang' },
-        { key: 'material_dari_dti', label: 'Material dari DTI/precast', type: 'teks' },
-        { key: 'material_dari_supplier_luar', label: 'Material dari supplier luar', type: 'teks' },
-        { key: 'material_diajukan_accounting', label: 'Sudah diajukan ke Accounting', type: 'ya_tidak' },
-        { key: 'pekerjaan_berhenti_material', label: 'Pekerjaan berhenti karena material', type: 'teks_panjang' },
-      ],
-    },
-    {
-      id: 'infrastruktur',
-      judul: '4 · Infrastruktur',
-      fields: [
-        {
-          key: 'infrastruktur_per_lokasi',
-          label: 'Infrastruktur per lokasi',
-          type: 'tabel',
-          kolom: [
-            { key: 'lokasi', label: 'Lokasi', type: 'teks' },
-            { key: 'jalan', label: 'Jalan (ya/tidak)', type: 'teks' },
-            { key: 'listrik', label: 'Listrik (ya/tidak)', type: 'teks' },
-            { key: 'air', label: 'Air (ya/tidak)', type: 'teks' },
-            { key: 'drainase', label: 'Drainase (ya/tidak)', type: 'teks' },
-            { key: 'keterangan', label: 'Keterangan', type: 'teks' },
-          ],
-        },
-        { key: 'infrastruktur_harus_dikerjakan', label: 'Infrastruktur yang harus dikerjakan', type: 'teks_panjang' },
-        { key: 'infrastruktur_estimasi_biaya', label: 'Estimasi biaya', type: 'uang' },
-      ],
-    },
+    // ── 8. Kualitas & Pengawasan (input — D2: foto/video hapus) ────────
     {
       id: 'kualitas',
-      judul: '5 · Kualitas & Pengawasan',
+      judul: '8 · Kualitas & Pengawasan',
       fields: [
         { key: 'lokasi_dikunjungi', label: 'Lokasi dikunjungi hari ini', type: 'teks' },
         { key: 'sesuai_spesifikasi', label: 'Pekerjaan sesuai spesifikasi', type: 'ya_tidak' },
@@ -138,14 +152,12 @@ export const f15Pembangunan: FormSchema = {
         { key: 'pekerjaan_diulang', label: 'Pekerjaan yang harus diulang', type: 'teks' },
         { key: 'kecelakaan_kerja', label: 'Kecelakaan kerja', type: 'ya_tidak' },
         { key: 'detail_kecelakaan', label: 'Detail kecelakaan (kalau ada)', type: 'teks_panjang' },
-        { key: 'progress_dikirim_it', label: 'Foto/video progress pembangunan sudah dikirim ke IT', type: 'ya_tidak' },
-        { key: 'foto_progress_jumlah', label: 'Jumlah foto', type: 'angka' },
-        { key: 'video_progress_jumlah', label: 'Jumlah video', type: 'angka' },
       ],
     },
+    // ── 9. Target Besok (input) ────────────────────────────────────────
     {
       id: 'besok',
-      judul: '7 · Target Pembangunan Besok',
+      judul: '9 · Target Pembangunan Besok',
       fields: [
         { key: 'besok_unit_dikejar', label: 'Unit yang dikejar selesai', type: 'angka' },
         { key: 'besok_lokasi_prioritas', label: 'Lokasi prioritas', type: 'teks' },
@@ -154,6 +166,6 @@ export const f15Pembangunan: FormSchema = {
         { key: 'besok_infrastruktur', label: 'Infrastruktur', type: 'teks' },
       ],
     },
-    blokKeputusanCeo(8, 'Rekap Pembangunan untuk Sabrina', 'Status pembangunan hari ini'),
+    blokKeputusanCeo(10, 'Rekap Pembangunan untuk Sabrina', 'Status pembangunan hari ini'),
   ],
 };

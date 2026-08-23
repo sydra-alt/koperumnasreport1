@@ -15,7 +15,7 @@ export interface Field {
                                   // (mis. undang_jumlah) beda dari nama tag bukti (undang)
                                   // -- lihat 03-CALC-SPEC.md §2, dua namespace berbeda.
   pilihan?: string[];            // untuk 'pilih'
-  kolom?: { key: string; label: string; type: FieldType }[]; // untuk 'tabel'
+  kolom?: { key: string; label: string; type: FieldType; pilihan?: string[] }[]; // untuk 'tabel'
   bantuan?: string;
   min?: number; max?: number;
 }
