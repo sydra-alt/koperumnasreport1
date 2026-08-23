@@ -70,7 +70,7 @@ for (const akun of daftarAkun) {
   hasil.push(akun.email);
 }
 
-console.log(`\nSelesai -- ${hasil.length}/${daftarAkun.length} akun berhasil direset.`);
-console.log('Password lama (123456) sudah tidak berlaku lagi untuk akun-akun di atas.');
+console.log(`\nSelesai -- ${hasil.length}/${daftarAkun.length} akun berhasil di-set password barunya.`);
+console.log('Password SEBELUM ini (apa pun itu) sudah tidak berlaku lagi untuk akun-akun di atas.');
 
 await db.end();

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "db": "node scripts/db.mjs",
-    "akun": "node scripts/buat-akun.mjs"
+    "akun": "node scripts/buat-akun.mjs",
+    "set-password": "node scripts/set-password.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
