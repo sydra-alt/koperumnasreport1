@@ -7,10 +7,19 @@ import { usePolicy } from '../lib/api/policy';
 import { statusClosing, statusUndangan, useProgresBulananSaya } from '../lib/api/marketing';
 import { hitungKelayakanBonus, hitungPotongan, ringkasanPteHariIni, sinkronClosing, sinkronPteDaily } from '../lib/api/pte';
 import { useDaftarLokasi } from '../lib/api/lokasi';
+import { useDaftarOutlet } from '../lib/api/outlet';
 import { buatKeputusanDariLaporan } from '../lib/api/decision';
 import { useKirimReport, useReportHariIni, useSimpanDraft, type ScopeOpsi } from '../lib/api/report';
 import { useRekapPembangunanPerLokasi, type PembangunanPerLokasiRow } from '../lib/api/pembangunan';
 import { usePicLokasiBelumUpload, type LokasiBelumUpload } from '../lib/api/it';
+import { ringkasanKebutuhanBesok } from '../lib/api/manager-resto';
+import { useManagerRestoUntukIta, type ManagerRestoUntukItaRow } from '../lib/api/ita';
+import {
+  useKebutuhanPembangunanAccounting,
+  useOmzetRestoHariIni,
+  type KebutuhanPembangunanAccounting,
+  type OmzetRestoRow,
+} from '../lib/api/accounting';
 import { tanggalIndonesiaWIB } from '../lib/tanggal';
 import { debounce } from '../lib/debounce';
 import { formRegistry } from '../forms';
@@ -21,48 +30,82 @@ const LABEL_SHIFT: Record<string, string> = { pagi: 'Pagi', siang: 'Siang', mala
 
 interface KombinasiScope {
   lokasiId: string | null;
+  outletId: string | null;
   shift: string | null;
+}
+
+/** Sel tabel berupa teks bebas -- ambil angka dari "Rp 5.000.000" / "5000000" dkk. */
+function angkaDariTeks(v: unknown): number {
+  if (typeof v === 'number') return v;
+  if (typeof v !== 'string') return 0;
+  const bersih = v.replace(/[^0-9-]/g, '');
+  const n = Number(bersih);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Sel tabel tanggal berupa teks bebas -- CUMA diterima kalau sudah persis
+ * format YYYY-MM-DD, tidak dicoba-parse format lain (mis. "01/09" atau "besok")
+ * supaya tidak ada tebakan zona waktu yang bisa meleset -- lihat CLAUDE.md
+ * aturan #2, jangan pernah menebak tanggal lewat konversi yang tidak pasti.
+ * Kalau tidak cocok, dikosongkan daripada memasukkan tanggal yang salah. */
+function tanggalDariTeks(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const cocok = /^\d{4}-\d{2}-\d{2}$/.test(v.trim());
+  return cocok ? v.trim() : null;
 }
 
 export function LaporForm({ formKey }: { formKey: string }) {
   const schema = formRegistry[formKey];
   const { session, profile, assignments } = useAuth();
   const { data: daftarLokasi } = useDaftarLokasi();
+  const { data: daftarOutlet } = useDaftarOutlet();
 
-  // Scope 'lokasi' (pic_lokasi, security, dst.): kalau user di-assign lebih dari
-  // satu kombinasi (lokasi, shift), dia harus pilih dulu -- laporan hari ini per
-  // kombinasi berbeda adalah baris report terpisah (report_uniq meng-coalesce
-  // lokasi_id/shift, lihat 0001_init.sql). Kalau cuma satu kombinasi, otomatis,
-  // tidak perlu pemilih. `shift` bernilai null utk form yang tidak ber-shift
-  // (mis. pic_lokasi) -- dedup lewat kunci gabungan otomatis mengecil jadi
-  // pemilih-lokasi-saja untuk kasus itu, tidak ada cabang kode terpisah.
+  // Scope 'lokasi' (pic_lokasi, security, dst.) atau 'outlet' (manager_resto):
+  // kalau user di-assign lebih dari satu kombinasi (lokasi/outlet, shift), dia
+  // harus pilih dulu -- laporan hari ini per kombinasi berbeda adalah baris
+  // report terpisah (report_uniq meng-coalesce lokasi_id/outlet_id/shift,
+  // lihat 0001_init.sql). Kalau cuma satu kombinasi, otomatis, tidak perlu
+  // pemilih. `shift` bernilai null utk form tanpa shift (mis. pic_lokasi,
+  // manager_resto) -- dedup lewat kunci gabungan otomatis mengecil jadi
+  // pemilih-lokasi/outlet-saja untuk kasus itu, tidak ada cabang kode terpisah.
+  const berScope = schema?.scope === 'lokasi' || schema?.scope === 'outlet';
   const kombinasiDitugaskan = useMemo(() => {
-    if (schema?.scope !== 'lokasi') return [];
+    if (!berScope) return [];
     const peta = new Map<string, KombinasiScope>();
     for (const a of assignments) {
       if (a.form_key !== formKey) continue;
-      const kunci = `${a.lokasi_id ?? ''}|${a.shift ?? ''}`;
-      if (!peta.has(kunci)) peta.set(kunci, { lokasiId: a.lokasi_id, shift: a.shift });
+      const kunci = `${a.lokasi_id ?? ''}|${a.outlet_id ?? ''}|${a.shift ?? ''}`;
+      if (!peta.has(kunci)) peta.set(kunci, { lokasiId: a.lokasi_id, outletId: a.outlet_id, shift: a.shift });
     }
     return Array.from(peta.values());
-  }, [assignments, formKey, schema?.scope]);
+  }, [assignments, formKey, berScope]);
   const [kombinasiTerpilih, setKombinasiTerpilih] = useState<KombinasiScope | null>(null);
   const kombinasiAktif = kombinasiTerpilih ?? (kombinasiDitugaskan.length === 1 ? kombinasiDitugaskan[0] : null);
-  const perluPilihKombinasi = schema?.scope === 'lokasi' && kombinasiDitugaskan.length > 1 && !kombinasiTerpilih;
+  const perluPilihKombinasi = berScope && kombinasiDitugaskan.length > 1 && !kombinasiTerpilih;
   const namaLokasi = (id: string) => daftarLokasi?.find((l) => l.id === id)?.nama ?? id;
-  const labelKombinasi = (k: KombinasiScope) =>
-    k.lokasiId ? `${namaLokasi(k.lokasiId)}${k.shift ? ` · ${LABEL_SHIFT[k.shift] ?? k.shift}` : ''}` : '—';
+  const namaOutlet = (id: string) => daftarOutlet?.find((o) => o.id === id)?.nama ?? id;
+  const labelKombinasi = (k: KombinasiScope) => {
+    const namaScope = k.lokasiId ? namaLokasi(k.lokasiId) : k.outletId ? namaOutlet(k.outletId) : '—';
+    return `${namaScope}${k.shift ? ` · ${LABEL_SHIFT[k.shift] ?? k.shift}` : ''}`;
+  };
 
-  const opsi: ScopeOpsi | undefined =
-    schema?.scope === 'lokasi'
-      ? { lokasiId: kombinasiAktif?.lokasiId ?? undefined, shift: kombinasiAktif?.shift ?? undefined, aktif: Boolean(kombinasiAktif) }
-      : undefined;
+  const opsi: ScopeOpsi | undefined = berScope
+    ? {
+        lokasiId: kombinasiAktif?.lokasiId ?? undefined,
+        outletId: kombinasiAktif?.outletId ?? undefined,
+        shift: kombinasiAktif?.shift ?? undefined,
+        aktif: Boolean(kombinasiAktif),
+      }
+    : undefined;
 
   const { data: reportHariIni, isLoading: memuatReport } = useReportHariIni(formKey, opsi);
   const { data: policy } = usePolicy();
   const { data: progres } = useProgresBulananSaya();
   const { data: rekapPembangunan } = useRekapPembangunanPerLokasi(formKey === 'pembangunan');
   const { data: belumUpload } = usePicLokasiBelumUpload(formKey === 'it');
+  const { data: stokManagerUntukIta } = useManagerRestoUntukIta(formKey === 'ita');
+  const { data: kebutuhanPembangunanAccounting } = useKebutuhanPembangunanAccounting(formKey === 'accounting');
+  const { data: omzetResto } = useOmzetRestoHariIni(formKey === 'accounting');
   // Blok "Laporan Personal Marketing" (rekap PTE/undangan/closing milik pengirim
   // sendiri) muncul di HAMPIR SEMUA form divisi -- lihat forms/blok-bersama.ts.
   // Query ini cuma perlu jalan utk form SELAIN personal_marketing itu sendiri.
@@ -121,7 +164,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
     );
   }
 
-  if (schema.scope === 'lokasi' && kombinasiDitugaskan.length === 0) {
+  if (berScope && kombinasiDitugaskan.length === 0) {
     return (
       <main className="p-6">
         <p>Anda tidak punya penugasan untuk laporan ini.</p>
@@ -209,6 +252,28 @@ export function LaporForm({ formKey }: { formKey: string }) {
         }
       }
 
+      // Generik utk field type:'tabel' ber-`sumberKeputusan: true` (forms/types.ts)
+      // -- tiap BARIS jadi satu baris `decision` terpisah, urgensi = urutan baris
+      // (maksimal 3, dibatasi constraint decision.urgensi). Dipakai accounting §16
+      // "Prioritas Pembayaran", tapi mekanismenya generik utk form apa pun.
+      for (const block of schema.blocks) {
+        for (const field of block.fields) {
+          if (field.type !== 'tabel' || !field.sumberKeputusan) continue;
+          const baris = (isiKirim[field.key] as Record<string, unknown>[] | undefined) ?? [];
+          for (let i = 0; i < baris.length; i++) {
+            const r = baris[i];
+            const judulBaris = typeof r.judul === 'string' ? r.judul.trim() : '';
+            if (!judulBaris) continue;
+            await buatKeputusanDariLaporan(idAkhir, judulBaris, null, {
+              nominal: angkaDariTeks(r.nominal),
+              deadline: tanggalDariTeks(r.deadline),
+              dampak: typeof r.dampak === 'string' && r.dampak.trim() ? r.dampak : null,
+              urgensi: Math.min(i + 1, 3),
+            });
+          }
+        }
+      }
+
       setPesanKirim(status === 'terlambat' ? 'Terkirim, tapi tercatat TERLAMBAT.' : 'Terkirim tepat waktu.');
     } catch (err) {
       setPesanKirim(err instanceof Error ? err.message : 'Gagal mengirim laporan.');
@@ -227,6 +292,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
       : null;
   const infoPotongan =
     formKey === 'personal_marketing' && policy && progres ? hitungPotongan(policy, progres.pte_berlaku, progres.closing) : null;
+  const kebutuhanBesokResto = formKey === 'manager_resto' ? ringkasanKebutuhanBesok(nilaiUntukPratinjau) : null;
 
   return (
     <main className="flex flex-col gap-6 p-6">
@@ -316,6 +382,16 @@ export function LaporForm({ formKey }: { formKey: string }) {
       {formKey === 'pembangunan' && rekapPembangunan && <RekapPembangunanOtomatis data={rekapPembangunan} />}
 
       {formKey === 'it' && belumUpload && <BelumUploadOtomatis data={belumUpload} />}
+
+      {formKey === 'manager_resto' && kebutuhanBesokResto && <KebutuhanBesokRestoOtomatis data={kebutuhanBesokResto} />}
+
+      {formKey === 'ita' && stokManagerUntukIta && <StokManagerUntukItaOtomatis data={stokManagerUntukIta} />}
+
+      {formKey === 'accounting' && kebutuhanPembangunanAccounting && (
+        <KebutuhanPembangunanAccountingOtomatis data={kebutuhanPembangunanAccounting} />
+      )}
+
+      {formKey === 'accounting' && omzetResto && <OmzetRestoOtomatis data={omzetResto} />}
 
       <p className="text-sm" style={{ color: 'var(--kosong)' }}>
         {statusSimpan === 'menyimpan' && 'Menyimpan draft…'}
@@ -537,6 +613,187 @@ function BelumUploadOtomatis({ data }: { data: LokasiBelumUpload[] }) {
             </li>
           ))}
         </ul>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 12 · Kebutuhan untuk Besok (manager_resto) -- rollup DALAM SATU FORM dari
+ * blok 4 (stok habis) + blok 5 (kebutuhan besok) yang sedang diisi Manager
+ * sendiri (§3.5b berlaku juga di dalam satu form, keputusan D3.5b/2).
+ */
+function KebutuhanBesokRestoOtomatis({ data }: { data: ReturnType<typeof ringkasanKebutuhanBesok> }) {
+  const adaKebutuhan = data.stokHabis.length > 0 || data.stokAkanHabis.length > 0 || data.esBatu || data.air || data.gas;
+  return (
+    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
+      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+        12 · Kebutuhan untuk Besok
+      </p>
+      <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
+        Ringkasan otomatis dari Blok 4 (Stok Habis) dan Blok 5 (Utilitas) di atas. Hanya baca.
+      </p>
+      {!adaKebutuhan ? (
+        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+          Belum ada kebutuhan tercatat di Blok 4/5.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2 text-sm">
+          {data.stokHabis.map((b, i) => (
+            <p key={`habis-${i}`}>
+              Sudah habis: {b.barang ?? '—'} -- {b.jumlah ?? '—'} {b.satuan ?? ''}
+            </p>
+          ))}
+          {data.stokAkanHabis.map((b, i) => (
+            <p key={`akan-habis-${i}`}>
+              Akan habis: {b.barang ?? '—'} -- {b.jumlah ?? '—'} {b.satuan ?? ''}, dibutuhkan {b.kebutuhan_tanggal ?? '—'}
+            </p>
+          ))}
+          {data.esBatu !== null && <p>Es batu -- kebutuhan besok: {data.esBatu}</p>}
+          {data.air !== null && <p>Air -- kebutuhan besok: {data.air}</p>}
+          {data.gas !== null && <p>Gas -- kebutuhan besok: {data.gas}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 8/9 (ita) -- angka Manager Resto per outlet, dari view security-definer
+ * `v_manager_resto_untuk_ita` (§3.4b). Dipakai utk dua hal sekaligus:
+ * pembanding di blok "Kontrol Stok Restoran" (silang-cek Ita, keputusan 3)
+ * dan rollup baca-saja di blok "Kebutuhan Stok/RAB" (keputusan D-lanjutan).
+ */
+function StokManagerUntukItaOtomatis({ data }: { data: ManagerRestoUntukItaRow[] }) {
+  return (
+    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
+      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+        Angka Manager Resto (pembanding &amp; kebutuhan stok)
+      </p>
+      <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
+        Dari laporan Manager Resto hari ini, per outlet. Hanya baca -- dipakai sebagai pembanding di Blok 8 dan sumber daftar di Blok 9.
+      </p>
+      {data.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+          Belum ada laporan Manager Resto hari ini.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {data.map((o) => (
+            <div key={o.outlet} className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
+              <p style={{ fontFamily: 'var(--display)' }}>{o.outlet}</p>
+              <p>
+                Ada selisih stok (versi Manager): {o.ada_selisih_stok === null ? '—' : o.ada_selisih_stok ? '✅' : '❌'} -- jumlah item
+                selisih: {o.jumlah_item_selisih ?? 0}
+              </p>
+              {o.stok_habis.length > 0 && (
+                <ul className="list-disc pl-5">
+                  {o.stok_habis.map((b, i) => (
+                    <li key={i}>
+                      Habis: {b.barang ?? '—'} -- {b.jumlah ?? '—'} {b.satuan ?? ''}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {o.stok_akan_habis.length > 0 && (
+                <ul className="list-disc pl-5">
+                  {o.stok_akan_habis.map((b, i) => (
+                    <li key={i}>
+                      Akan habis: {b.barang ?? '—'} -- {b.jumlah ?? '—'} {b.satuan ?? ''}, dibutuhkan {b.kebutuhan_tanggal ?? '—'}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 8 · Kebutuhan Pembangunan + bagian otomatis Blok 10 (accounting) -- dari
+ * view security-definer `v_kebutuhan_pembangunan_accounting` (§3.4b,
+ * keputusan 4: precast/DTI, material, infrastruktur/jalan adalah pengajuan
+ * divisi lain, bukan diketik Accounting).
+ */
+function KebutuhanPembangunanAccountingOtomatis({ data }: { data: KebutuhanPembangunanAccounting }) {
+  const rupiah = (n: number) => `Rp${n.toLocaleString('id-ID')}`;
+  return (
+    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
+      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+        8 · Kebutuhan Pembangunan
+      </p>
+      <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
+        Pengajuan Kepala Pembangunan &amp; DTI hari ini. Hanya baca -- dipakai juga sebagai angka otomatis di Blok 10 (Precast/DTI,
+        Material, Infrastruktur/jalan).
+      </p>
+      <div className="flex flex-col gap-2 text-sm">
+        <p>Precast/DTI: {rupiah(data.precastDti)}</p>
+        <p style={{ fontFamily: 'var(--display)' }}>Material borongan (total {rupiah(data.totalMaterial)})</p>
+        {data.materialBorongan.length === 0 ? (
+          <p style={{ color: 'var(--kosong)' }}>Tidak ada pengajuan material hari ini.</p>
+        ) : (
+          <ul className="list-disc pl-5">
+            {data.materialBorongan.map((m, i) => (
+              <li key={i}>
+                {m.material ?? '—'} -- {m.kebutuhan ?? '—'}, {m.estimasi_biaya ?? '—'}, dibutuhkan {m.dibutuhkan_tanggal ?? '—'}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p style={{ fontFamily: 'var(--display)' }}>Rencana infrastruktur (total {rupiah(data.totalInfrastruktur)})</p>
+        {data.infrastrukturRencana.length === 0 ? (
+          <p style={{ color: 'var(--kosong)' }}>Tidak ada rencana infrastruktur hari ini.</p>
+        ) : (
+          <ul className="list-disc pl-5">
+            {data.infrastrukturRencana.map((r, i) => (
+              <li key={i}>
+                {r.lokasi ?? '—'} -- {r.pekerjaan ?? '—'} ({r.kontraktor ?? '—'}), anggaran {r.anggaran ?? '—'}, target{' '}
+                {r.target_selesai ?? '—'}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 13 · Rekonsiliasi Resto (accounting) -- omzet versi Manager & versi Ita
+ * ditampilkan berdampingan, selisih dihitung sistem (keputusan D, "tiga
+ * pengukuran satu layar"). Query biasa (lib/api/accounting.ts) -- accounting
+ * sudah punya can_see_report() ke manager_resto/ita, tidak perlu security
+ * definer.
+ */
+function OmzetRestoOtomatis({ data }: { data: OmzetRestoRow[] }) {
+  const rupiah = (n: number | null) => (n === null ? '—' : `Rp${n.toLocaleString('id-ID')}`);
+  return (
+    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
+      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+        Omzet Resto -- Tiga Pengukuran
+      </p>
+      <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
+        Omzet versi Manager Resto dan versi Ita, hari ini. Hanya baca -- lengkapi angka sisi bank di Blok 13, selisih dihitung otomatis.
+      </p>
+      {data.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+          Belum ada laporan Manager Resto hari ini.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2 text-sm">
+          {data.map((o) => {
+            const selisih = o.omzetManager !== null && o.omzetIta !== null ? o.omzetManager - o.omzetIta : null;
+            return (
+              <p key={o.outlet}>
+                <b style={{ fontFamily: 'var(--display)' }}>{o.outlet}</b> -- versi Manager: {rupiah(o.omzetManager)} · versi Ita:{' '}
+                {rupiah(o.omzetIta)} · selisih: {selisih === null ? '—' : rupiah(selisih)}
+              </p>
+            );
+          })}
+        </div>
       )}
     </div>
   );

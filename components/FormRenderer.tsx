@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useRef } from 'react';
 import { FormProvider, useForm, type FieldValues } from 'react-hook-form';
 import type { FormSchema } from '../forms/types';
-import { buildZodSchema } from '../forms/validasi';
+import { blokBerlakuHariIni, buildZodSchema } from '../forms/validasi';
 import { Angka } from './fields/Angka';
 import { Centang } from './fields/Centang';
 import { Lampiran } from './fields/Lampiran';
@@ -59,7 +59,7 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId }
   return (
     <FormProvider {...methods}>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
-        {schema.blocks.map((block) => (
+        {blokBerlakuHariIni(schema).map((block) => (
           <fieldset key={block.id} className="flex flex-col gap-3 border p-4" style={{ borderColor: 'var(--garis)' }}>
             <legend className="px-1 text-lg" style={{ fontFamily: 'var(--display)' }}>
               {block.judul}

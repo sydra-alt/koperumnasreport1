@@ -1,5 +1,16 @@
 import { z } from 'zod';
 import type { Field, FieldType, FormSchema } from './types';
+import { hariISOWIB } from '../lib/tanggal';
+
+/** Blok yang benar-benar berlaku hari ini -- `hanyaHari` menyaring blok yang
+ * cuma muncul hari tertentu (mis. Stock Opname Senin, forms/f16-ita.ts).
+ * Dipakai FormRenderer (tampilan) DAN buildZodSchema (validasi) supaya
+ * keduanya selalu sinkron -- field di blok yang sedang tersembunyi tidak
+ * pernah dituntut wajib. */
+export function blokBerlakuHariIni(schema: FormSchema, tanggal = new Date()): FormSchema['blocks'] {
+  const hariIni = hariISOWIB(tanggal);
+  return schema.blocks.filter((b) => !b.hanyaHari || b.hanyaHari.includes(hariIni));
+}
 
 function skemaPerField(f: Field): z.ZodTypeAny {
   switch (f.type) {
@@ -61,6 +72,10 @@ export function buildZodSchema(schema: FormSchema) {
   const shape: Record<string, z.ZodTypeAny> = {};
   const buktiShape: Record<string, z.ZodTypeAny> = {};
 
+  // Field di blok `hanyaHari` yang tidak berlaku hari ini TETAP dimasukkan ke
+  // shape (data lama dari hari lain tidak boleh ditolak zod), tapi TIDAK
+  // dituntut wajib/bukti -- lihat loop superRefine di bawah, yang cuma
+  // memeriksa blok yang berlaku hari ini.
   for (const block of schema.blocks) {
     for (const f of block.fields) {
       shape[f.key] = skemaPerField(f);
@@ -75,16 +90,24 @@ export function buildZodSchema(schema: FormSchema) {
   return dasar.superRefine((val, ctx) => {
     const record = val as Record<string, unknown>;
     const bukti = (record._bukti as Record<string, { nama: string }[]> | undefined) ?? {};
-    for (const block of schema.blocks) {
+    for (const block of blokBerlakuHariIni(schema)) {
       for (const f of block.fields) {
-        if (!f.buktiWajib) continue;
-        const isiTerisi = terisi(f.type, record[f.key]);
-        const jumlahBukti = bukti[f.key]?.length ?? 0;
-        if (isiTerisi && jumlahBukti === 0) {
+        if (f.buktiWajib) {
+          const isiTerisi = terisi(f.type, record[f.key]);
+          const jumlahBukti = bukti[f.key]?.length ?? 0;
+          if (isiTerisi && jumlahBukti === 0) {
+            ctx.addIssue({
+              code: 'custom',
+              path: [f.key],
+              message: `${f.label} ${kataKerja(f.type)} tapi belum ada bukti`,
+            });
+          }
+        }
+        if (f.wajibJika && record[f.wajibJika.field] === f.wajibJika.nilai && !terisi(f.type, record[f.key])) {
           ctx.addIssue({
             code: 'custom',
             path: [f.key],
-            message: `${f.label} ${kataKerja(f.type)} tapi belum ada bukti`,
+            message: `${f.label} wajib diisi kalau ada selisih`,
           });
         }
       }

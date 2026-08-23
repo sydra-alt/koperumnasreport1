@@ -9,6 +9,9 @@ import { f15Dti } from './f15-dti';
 import { f15Kendaraan } from './f15-kendaraan';
 import { f15Cs } from './f15-cs';
 import { f15Ga } from './f15-ga';
+import { f16ManagerResto } from './f16-manager-resto';
+import { f16Ita } from './f16-ita';
+import { f17Accounting } from './f17-accounting';
 import type { FormSchema } from './types';
 
 export const formRegistry: Record<string, FormSchema> = {
@@ -23,4 +26,7 @@ export const formRegistry: Record<string, FormSchema> = {
   kendaraan: f15Kendaraan,
   cs: f15Cs,
   ga: f15Ga,
+  manager_resto: f16ManagerResto,
+  ita: f16Ita,
+  accounting: f17Accounting,
 };
