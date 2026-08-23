@@ -128,6 +128,81 @@ export function useOmzetRestoHariIni(enabled = true) {
  * itu rincian CARA masuknya uang yang sama, bukan pemasukan tambahan;
  * menjumlahkannya akan menghitung dobel.
  */
+/**
+ * Task 20 -- panel keuangan CEO (bukan Sabrina). CEO sudah punya akses baris
+ * PENUH ke laporan `accounting` lewat `can_see_report()` (`has_role('ceo')`
+ * ada di klausa pertama), jadi ini query BIASA ke `report`, bukan lewat
+ * `v_keuangan_rekap` -- view 4-angka itu khusus utk pembaca yang TIDAK
+ * berhak atas barisnya (Sabrina). Rule #7 CLAUDE.md ("semua agregasi lewat
+ * view") soal AGREGASI LINTAS LAPORAN; ini menjumlahkan field DALAM SATU
+ * baris yang sudah dipunya CEO, pola yang sama dengan `hitungCashflowHariIni`
+ * di atas dan `ringkasanKebutuhanBesok`/`ringkasanPteHariIni` di modul lain.
+ */
+export function useLaporanAccountingHariIni(enabled = true) {
+  return useQuery({
+    queryKey: ['laporan-accounting-hari-ini'],
+    queryFn: async (): Promise<Record<string, unknown> | null> => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('report')
+        .select('data')
+        .eq('form_key', 'accounting')
+        .eq('tanggal', tanggalWIB())
+        .neq('status', 'draft')
+        .maybeSingle();
+      if (error) throw error;
+      return (data?.data as Record<string, unknown> | undefined) ?? null;
+    },
+    enabled,
+  });
+}
+
+export interface RingkasanKeuanganCeo {
+  danaTersedia: number;
+  piutangTotal: number;
+  kewajiban7Hari: number;
+  kewajiban30Hari: number;
+  surplusKekurangan: number;
+}
+
+/**
+ * ⚠️ "Surplus/kekurangan" TIDAK punya rumus eksplisit di 03-CALC-SPEC.md §4
+ * (istilah itu cuma muncul di daftar kerja Task 20 di task board, bukan
+ * sebagai formula bernomor). Dipilih di sini: `danaTersedia - kewajiban30Hari`
+ * -- satu-satunya field kewajiban yang benar-benar diketik sebagai TOTAL
+ * (`total_kewajiban_30_hari`, blok 7), bukan angka yang ditebak. "Kewajiban
+ * 7 hari" TETAP dihitung terpisah (dijumlah dari tabel `jatuh_tempo_7_hari`)
+ * dan ditampilkan sendiri karena diminta task board, tapi TIDAK dipakai di
+ * rumus surplus/kekurangan supaya tidak menghitung dobel dengan yang 30 hari.
+ * Label di UI menyebut ini eksplisit "vs kewajiban 30 hari" -- BUKAN diklaim
+ * sebagai KPI resmi yang sudah disetujui CEO. Kalau CEO mau rumus lain,
+ * yang berubah cukup fungsi ini, satu tempat.
+ */
+export function hitungRingkasanKeuanganCeo(data: Record<string, unknown>): RingkasanKeuanganCeo {
+  const uang = (k: string) => (typeof data[k] === 'number' ? (data[k] as number) : 0);
+  const daftarSaldoBank = (data.daftar_saldo_bank as Record<string, unknown>[] | undefined) ?? [];
+  const jatuhTempo7Hari = (data.jatuh_tempo_7_hari as Record<string, unknown>[] | undefined) ?? [];
+
+  const totalSaldoBank = daftarSaldoBank.reduce((total, r) => total + angkaDariTeks(r.saldo), 0);
+  const danaTersedia = totalSaldoBank + uang('cash_kantor') + uang('cash_outlet') + uang('cash_lainnya_saldo');
+  const piutangTotal =
+    uang('piutang_konsumen') +
+    uang('tunggakan_konsumen') +
+    uang('piutang_kontraktor') +
+    uang('piutang_operasional_lahan') +
+    uang('piutang_lainnya');
+  const kewajiban7Hari = jatuhTempo7Hari.reduce((total, r) => total + angkaDariTeks(r.nominal), 0);
+  const kewajiban30Hari = uang('total_kewajiban_30_hari');
+
+  return {
+    danaTersedia,
+    piutangTotal,
+    kewajiban7Hari,
+    kewajiban30Hari,
+    surplusKekurangan: danaTersedia - kewajiban30Hari,
+  };
+}
+
 export function hitungCashflowHariIni(data: Record<string, unknown>): { totalMasuk: number; totalKeluar: number; net: number } {
   const uang = (k: string) => (typeof data[k] === 'number' ? (data[k] as number) : 0);
   const penerimaanLain = (data.penerimaan_lain as Record<string, unknown>[] | undefined) ?? [];
