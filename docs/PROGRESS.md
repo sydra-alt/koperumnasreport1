@@ -248,6 +248,23 @@ Awal Batch E, dikerjakan berurutan tanpa berhenti di antara task per instruksi u
 - Seluruh alur UI sungguhan (klik Tagih, klik Setujui/Cicil/Tunda/Tolak, lihat kartu berubah warna di layar, tab Menunggu/Riwayat) belum diklik di browser -- logikanya sudah teruji lewat DB langsung.
 - Panel "otomatis" blok 1/15/18 `accounting` (lihat Task 18 di atas) tetap belum dibangun -- di luar kebutuhan Task 20/21 yang konkret, bukan diklaim selesai.
 
+### Kenapa ini dicatat sebagai pelajaran metodologi, bukan cuma dua entri bug biasa
+
+User menandai kedua temuan di atas sebagai contoh konkret kenapa **uji DB sungguhan tidak bisa digantikan membaca kode**. Alasannya nyata di kedua kasus:
+
+1. **Warna laporan selalu `'hijau'`** -- kalau cuma dibaca, `useKirimReport({ warna: 'hijau', ... })` di `tanganiKirim()` (Task 10) terlihat SAH secara TypeScript, lolos `tsc`, lolos `lint`, lolos `build`. Tidak ada satu pun pemeriksaan statis yang bisa menandai "nilai ini seharusnya dinamis, bukan konstanta" -- itu murni soal MAKSUD, bukan sintaks. Baru ketahuan janggal saat menulis `scripts/uji-papan-kontrol.mjs` dan membandingkan warna kartu yang DIHARAPKAN dengan yang SUNGGUH tersimpan di baris `report` setelah kirim sungguhan.
+2. **Kebocoran `dec_select`** -- ini yang lebih tajam: PERBAIKAN PERTAMANYA SENDIRI (migrasi `0016`) juga terlihat benar kalau cuma dibaca. `not exists (select ... from report where form_key='accounting')` terlihat seperti pengecualian yang sah secara SQL. Yang tidak kelihatan dari membaca teks policy-nya adalah bahwa subquery itu **berjalan di bawah RLS pemanggil yang sama** -- fakta yang cuma muncul kalau benar-benar dijalankan SEBAGAI Pusat dan hasilnya dibandingkan dengan kenyataan (baris `report` accounting yang seharusnya dikecualikan, tapi tidak). `scripts/uji-keputusan-ceo.mjs` menangkapnya di percobaan PERTAMA dijalankan setelah `0016` -- bukan dugaan, output mentahnya `SALAH: decision accounting TIDAK muncul untuk Pusat` (artinya justru MUNCUL, kebalikan dari yang diharapkan).
+
+Pola yang sama di keduanya: kesalahan yang **valid secara sintaks dan valid secara "terlihat masuk akal saat dibaca"**, cuma kelihatan salah kalau dijalankan sebagai orang yang tepat dan hasilnya dibandingkan dengan kenyataan. Ini alasan kenapa setiap task di proyek ini (bukan cuma yang menyentuh RLS) tetap memakai `scripts/uji-*.mjs` dengan penyamaran role sungguhan lewat `set_config('request.jwt.claims', ...)`, bukan berhenti di `tsc`/`lint`/`build` bersih.
+
+---
+
+## Reset password 7 akun uji + persiapan deploy (24 Agustus 2026)
+
+**Cara reset password diganti atas instruksi user.** Versi pertama (`update auth.users set encrypted_password = crypt(...)`) ditolak -- itu menulis langsung ke kolom internal GoTrue, bukan jalur yang didukung Supabase secara resmi walau `pgcrypto`/`crypt()`/`gen_salt('bf')` kebetulan menghasilkan format yang sama. **Diganti** `scripts/reset-password.mjs` (baru) -- memakai `supabase.auth.admin.updateUserById(id, { password })` (Auth Admin API resmi, `service_role`, pola yang sama dengan `app/api/admin/user/route.ts` Task 23), password 16 karakter dari `crypto.randomBytes` (bukan `Math.random`) BERBEDA per akun, dicetak SEKALI ke terminal, TIDAK ditulis ke file/log/commit mana pun. `id` per email dicari lewat `SUPABASE_DB_URL` (cuma **membaca** `auth.users`, tidak pernah menulis ke situ langsung).
+
+Dijalankan sungguhan 24 Agustus 2026 -- ketujuh akun uji (`docs/DATA-KARYAWAN.md` §3) berhasil direset, password lama `123456` sudah tidak berlaku untuk semuanya. Password baru ada di scrollback percakapan sesi ini (bukan file) -- **pindahkan ke pengelola password sebelum riwayat sesi ini hilang**, dan jalankan ulang skrip ini kapan pun perlu rotasi lagi (aman diulang, password lama otomatis diganti).
+
 ---
 
 ## Migrasi stack: Vite → Next.js 15/16 (21 Agustus 2026)

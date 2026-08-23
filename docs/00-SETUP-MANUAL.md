@@ -136,12 +136,17 @@ Ulangi untuk Ibu Sabrina (`pusat`, `karyawan`) dan Accounting (`accounting`, `ka
 
 ## M10 · Vercel
 
-Bisa ditunda sampai Task 20.
+Dikerjakan setelah Batch E (Task 18-23) selesai -- daftar M10 di bawah sudah mencakup langkah tambahan yang muncul sejak Task 23 (Route Handler admin butuh `service_role`).
 
 1. Push repo ke GitHub
 2. <https://vercel.com> → **Import Project** → pilih repo
 3. Framework Preset: **Next.js** (terdeteksi otomatis)
-4. **Environment Variables** → tambahkan `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+4. **Environment Variables** → tambahkan TIGA ini (bukan cuma dua):
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY` -- **wajib sejak Task 23** (dipakai `app/api/admin/user/route.ts` untuk membuat pengguna baru). Isi sama dengan `.env.local`, JANGAN diberi awalan `NEXT_PUBLIC_`.
+
+   `SUPABASE_DB_URL` **TIDAK** perlu ditambahkan di Vercel -- itu cuma dipakai skrip `scripts/*.mjs` (migrasi, uji DB) yang jalan di komputer lokal, tidak pernah dibaca kode aplikasi yang di-deploy.
 5. Deploy
 6. Salin domain hasil deploy → kembali ke Supabase **Authentication → URL Configuration** → masukkan ke **Site URL** dan **Redirect URLs**
 
