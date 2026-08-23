@@ -9,12 +9,7 @@ import { hitungKelayakanBonus, hitungPotongan, ringkasanPteHariIni, sinkronClosi
 import { useDaftarLokasi } from '../lib/api/lokasi';
 import { buatKeputusanDariLaporan } from '../lib/api/decision';
 import { useKirimReport, useReportHariIni, useSimpanDraft, type ScopeOpsi } from '../lib/api/report';
-import {
-  useRekapPicLokasi,
-  type InfrastrukturPerLokasiRow,
-  type MaterialPerLokasiRow,
-  type PembangunanPerLokasiRow,
-} from '../lib/api/pembangunan';
+import { useRekapPembangunanPerLokasi, type PembangunanPerLokasiRow } from '../lib/api/pembangunan';
 import { tanggalIndonesiaWIB } from '../lib/tanggal';
 import { debounce } from '../lib/debounce';
 import { formRegistry } from '../forms';
@@ -65,7 +60,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
   const { data: reportHariIni, isLoading: memuatReport } = useReportHariIni(formKey, opsi);
   const { data: policy } = usePolicy();
   const { data: progres } = useProgresBulananSaya();
-  const { data: rekapPicLokasi } = useRekapPicLokasi(formKey === 'pembangunan');
+  const { data: rekapPembangunan } = useRekapPembangunanPerLokasi(formKey === 'pembangunan');
   // Blok "Laporan Personal Marketing" (rekap PTE/undangan/closing milik pengirim
   // sendiri) muncul di HAMPIR SEMUA form divisi -- lihat forms/blok-bersama.ts.
   // Query ini cuma perlu jalan utk form SELAIN personal_marketing itu sendiri.
@@ -316,13 +311,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
         </div>
       )}
 
-      {formKey === 'pembangunan' && rekapPicLokasi && (
-        <>
-          <RekapUnitOtomatis data={rekapPicLokasi.unit} />
-          <RekapMaterialOtomatis data={rekapPicLokasi.material} />
-          <RekapInfrastrukturOtomatis data={rekapPicLokasi.infrastruktur} />
-        </>
-      )}
+      {formKey === 'pembangunan' && rekapPembangunan && <RekapPembangunanOtomatis data={rekapPembangunan} />}
 
       <p className="text-sm" style={{ color: 'var(--kosong)' }}>
         {statusSimpan === 'menyimpan' && 'Menyimpan draft…'}
@@ -344,7 +333,25 @@ export function LaporForm({ formKey }: { formKey: string }) {
   );
 }
 
-/** Tabel read-only rekap unit pembangunan per lokasi, datanya dari PIC Lokasi. */
+/**
+ * Rekap baca-saja per lokasi untuk blok 1/3/5 form Pembangunan -- SATU query
+ * ke `v_pembangunan_per_lokasi` (view agregat security-definer, lihat
+ * lib/api/pembangunan.ts), bukan ke `report` langsung. Sengaja tidak
+ * menampilkan `kiriman_kekurangan`/`infrastruktur_kebutuhan` (teks bebas)
+ * atau isi baris `material_kurang` (nama material per item) -- view-nya
+ * memang tidak pernah mengirim itu (§3.4b syarat #1), cuma jumlah baris.
+ */
+function RekapPembangunanOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
+  return (
+    <>
+      <RekapUnitOtomatis data={data} />
+      <RekapMaterialOtomatis data={data} />
+      <RekapInfrastrukturOtomatis data={data} />
+    </>
+  );
+}
+
+/** 1 · Rekap unit pembangunan per lokasi. */
 function RekapUnitOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
   const total = data.reduce(
     (acc, r) => ({
@@ -412,8 +419,8 @@ function RekapUnitOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
   );
 }
 
-/** Tabel read-only rekap material per lokasi, datanya dari PIC Lokasi -- §3.5b, D3. */
-function RekapMaterialOtomatis({ data }: { data: MaterialPerLokasiRow[] }) {
+/** 3 · Rekap material per lokasi -- angka saja, bukan isi/nama material (§3.4b). */
+function RekapMaterialOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
   const yaTidak = (v: boolean | null) => (v === null ? '—' : v ? '✅' : '❌');
 
   return (
@@ -422,7 +429,8 @@ function RekapMaterialOtomatis({ data }: { data: MaterialPerLokasiRow[] }) {
         3 · Material per Lokasi (dari PIC Lokasi)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
-        Status material per lokasi berasal dari Laporan PIC Lokasi hari ini. Hanya baca.
+        Rekap angka material per lokasi, hari ini. Hanya baca -- rincian nama material & catatan PIC tidak ditampilkan di sini, cukup PIC
+        lokasi & Accounting yang perlu tahu isinya.
       </p>
       {data.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--kosong)' }}>
@@ -434,18 +442,9 @@ function RekapMaterialOtomatis({ data }: { data: MaterialPerLokasiRow[] }) {
             <div key={r.lokasi} className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
               <p style={{ fontFamily: 'var(--display)' }}>{r.lokasi}</p>
               <p>
-                Material cukup: {yaTidak(r.material_cukup)} · Kiriman precast/perikas diterima: {r.kiriman_precast_jumlah ?? 0} pcs
+                Material cukup: {yaTidak(r.material_cukup)} · Item kurang: {r.material_kurang_jumlah ?? 0} · Kiriman precast/perikas
+                diterima: {r.kiriman_precast_jumlah ?? 0} pcs
               </p>
-              {r.kiriman_kekurangan && <p>Kekurangan kiriman: {r.kiriman_kekurangan}</p>}
-              {r.material_kurang.length > 0 && (
-                <ul className="list-disc pl-5">
-                  {r.material_kurang.map((m, i) => (
-                    <li key={i}>
-                      {m.material ?? '—'} -- kebutuhan {m.kebutuhan ?? '—'}, untuk unit {m.untuk_unit ?? '—'}, dibutuhkan {m.dibutuhkan_tanggal ?? '—'}
-                    </li>
-                  ))}
-                </ul>
-              )}
             </div>
           ))}
         </div>
@@ -454,9 +453,9 @@ function RekapMaterialOtomatis({ data }: { data: MaterialPerLokasiRow[] }) {
   );
 }
 
-/** Tabel read-only kondisi infrastruktur per lokasi, datanya dari PIC Lokasi -- §3.5b, D4. */
-function RekapInfrastrukturOtomatis({ data }: { data: InfrastrukturPerLokasiRow[] }) {
-  const yaTidak = (v: boolean | string | null) => (v === null ? '—' : v === true || v === 'ya' ? '✅' : '❌');
+/** 5 · Rekap kondisi infrastruktur per lokasi -- status saja, bukan observasi bebas (§3.4b). */
+function RekapInfrastrukturOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
+  const yaTidak = (v: boolean | null) => (v === null ? '—' : v ? '✅' : '❌');
 
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
@@ -482,7 +481,6 @@ function RekapInfrastrukturOtomatis({ data }: { data: InfrastrukturPerLokasiRow[
               <p>
                 Drainase: {yaTidak(r.drainase_baik)} · Penerangan: {yaTidak(r.penerangan_baik)} · Gerbang: {yaTidak(r.gerbang_baik)}
               </p>
-              {r.infrastruktur_kebutuhan && <p>Kebutuhan: {r.infrastruktur_kebutuhan}</p>}
             </div>
           ))}
         </div>

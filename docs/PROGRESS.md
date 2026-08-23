@@ -56,6 +56,45 @@ Dikonfirmasi KONKRET (bukan cuma dibaca dari kode) lewat `scripts/uji-rls-gap-pe
 
 Menunggu keputusan user opsi mana. Sampai itu terjadi, kode yang ada BENAR secara RLS (tidak membocorkan apa pun) tapi fitur rollup D3/D4 belum berfungsi untuk Kepala Pembangunan sungguhan -- dicatat juga di komentar `lib/api/pembangunan.ts` dan `supabase/migrations/0008_pembangunan_per_lokasi_view.sql` supaya tidak lupa.
 
+### ✅ Diselesaikan — opsi (d): view agregat security-definer (23 Agustus 2026)
+
+User menolak ketiga opsi (a/b/c) di atas -- semuanya masih memberi Ronald akses ke BARIS `pic_lokasi` (termasuk keluhan konsumen, nama, permintaan keputusan CEO milik Dadang/Jery), padahal dia cuma butuh angkanya. `04-CATATAN-TEKNIS.md` §3.4b ditambahkan user: pola view agregat `security_invoker = off` dengan penjaga `boleh_lihat_rekap()` di `where`-nya, sama seperti `v_keuangan_rekap` (Ibu Sabrina tidak dapat baris Accounting, cuma 4 angka).
+
+**`supabase/migrations/0009_boleh_lihat_rekap.sql`** (dijalankan langsung, `create or replace function` + `drop view`/`create view` -- bukan DDL yang membutuhkan izin terpisah karena bagian dari implementasi yang eksplisit diminta):
+- `boleh_lihat_rekap(untuk_form text)` -- `security definer`, true kalau `ceo`, `pusat`, atau punya baris `assignment` untuk `untuk_form` itu.
+- `v_pembangunan_per_lokasi` ditulis ULANG total: `security_invoker = off` (bukan `on` seperti migrasi 0008 sebelumnya -- SENGAJA, penjaganya ada di `where public.boleh_lihat_rekap('pembangunan')`), dan kolomnya diperluas mencakup rekap material + kondisi infrastruktur (bukan cuma unit seperti sebelumnya) -- TAPI **cuma angka/status terstruktur**: `material_kurang` (array nama material + catatan bebas per baris) diringkas jadi `material_kurang_jumlah` (hitungan, bukan isi); `kiriman_kekurangan` dan `infrastruktur_kebutuhan` (teks_panjang bebas) **tidak dimasukkan sama sekali** -- tidak ada padanan angka yang aman untuk keduanya, jadi dibuang, bukan disamarkan.
+
+**`lib/api/pembangunan.ts`** ditulis ulang total: `useRekapPicLokasi()` (query mentah ke `report.data`, TIDAK PERNAH BISA jalan untuk Ronald) dihapus, diganti `useRekapPembangunanPerLokasi()` yang query `v_pembangunan_per_lokasi` langsung -- satu query gabungan utk blok 1/3/5 (dulu 3 hook terpisah). **`components/LaporForm.tsx`**: 3 komponen baca-saja lama disatukan sumbernya jadi satu `data` prop (dari satu query), tampilan tetap 3 seksi terpisah (1/3/5) sesuai penomoran blok skema, tapi `RekapMaterialOtomatis`/`RekapInfrastrukturOtomatis` kehilangan rincian nama material & catatan bebas PIC -- SENGAJA, bukan bug, karena view-nya memang tidak pernah mengirim itu.
+
+**Diverifikasi lewat `scripts/uji-boleh-lihat-rekap.mjs`, tiga uji persis yang diminta, output mentah:**
+
+```
+════ UJI 1 — sebagai Ronald, SELECT * FROM v_pembangunan_per_lokasi (RAW OUTPUT) ════
+[
+  {
+    "lokasi": "Tajur", "target": "10", "sedang_dibangun": "4", "finishing": "2",
+    "selesai_hari_ini": "1", "belum_mulai": "3", "material_cukup": false,
+    "material_kurang_jumlah": "2", "kiriman_precast_jumlah": "12",
+    "jalan_status": "Rusak", "listrik_status": "Proses", "air_status": "Sudah",
+    "drainase_baik": false, "penerangan_baik": true, "gerbang_baik": true
+  }
+]
+--> 1 baris.
+Tidak ada field "RAHASIA" yang bocor lewat view.
+
+════ UJI 2 — sebagai Toyib (karyawan polos, TANPA assignment apa pun) ════
+[]
+--> 0 baris.
+
+════ UJI 3 — sebagai Ronald, SELECT langsung ke report WHERE form_key='pic_lokasi' ════
+[]
+--> 0 baris.
+```
+
+Data uji Dadang sengaja disisipi field bernama harfiah `"RAHASIA -- ..."` di `kiriman_kekurangan`, `infrastruktur_kebutuhan`, dan `keperluan_konsumen` untuk memastikan tidak ada satu pun bocor lewat view -- dicek otomatis di skrip (`bocor = JSON.stringify(hasil1).includes('RAHASIA')` → `false`). Semua di dalam `BEGIN...ROLLBACK`, dikonfirmasi ulang lewat `count(*)` -- 0 sisa `report`/profil-Ronald-palsu/assignment setelahnya.
+
+`tsc`/`build`/`lint` bersih, `grep` angka bisnis nol hasil di seluruh file yang diubah. `scripts/uji-rls-gap-pembangunan.mjs` dan `scripts/uji-rollup-pembangunan.mjs` (dari opsi yang ditolak) dibiarkan ada sebagai bukti historis kenapa opsi (a/b/c) ditolak -- keduanya menguji jalur row-level yang sekarang sudah tidak dipakai kode aplikasi, tapi tetap valid sebagai dokumentasi teknis alasan penolakan.
+
 ---
 
 ## Migrasi stack: Vite → Next.js 15/16 (21 Agustus 2026)
@@ -157,7 +196,7 @@ Belum bisa diuji di sesi ini karena tidak ada tool browser/DOM headless. Bukan d
 - Form `pic_lokasi`: pemilih lokasi (PIC dengan >1 lokasi) benar-benar tampil dan bisa diklik, ke-10 blok (60+ field) bisa diisi & tersimpan draft, bukti foto/video progress benar-benar menahan submit tanpa lampiran di browser sungguhan, dan baris `decision` yang tercipta benar-benar muncul saat halaman `/keputusan` (Task 19) dibangun — logikanya sudah diuji lewat DB/SSR langsung, interaksinya belum (Task 13)
 - Tab nav dinamis (`lib/navLapor.ts`): benar-benar muncul di header saat user dengan assignment sungguhan login di browser (mis. Dadang → tab "Lapor Lokasi", Kasam → "Lapor Keamanan") — logikanya sudah diuji murni (6 skenario tanpa React), belum diklik di browser (Task 06, diperbaiki 23 Agustus 2026)
 - Kedelapan form Task 14/15 (`hrd`, `security`, `perizinan`, `pembangunan`, `dti`, `kendaraan`, `cs`, `ga`): seluruh alur UI sungguhan (pemilih kombinasi lokasi+shift utk `security`, isi puluhan field per form, tabel dinamis tambah/hapus baris, kirim, baris `decision` yang tercipta dari kedelapannya) belum diklik/diketik di browser — logikanya sudah diuji lewat DB/SSR langsung (Task 14/15)
-- Tiga blok rollup baca-saja di `pembangunan` (`RekapUnitOtomatis`/`RekapMaterialOtomatis`/`RekapInfrastrukturOtomatis`, revisi D3/D4): tampilannya di browser sungguhan belum dilihat — logika query & parsing sudah diuji lewat DB langsung sebagai `ceo` (`scripts/uji-rollup-pembangunan.mjs`), tapi INI TIDAK BISA benar-benar dipakai Kepala Pembangunan sungguhan sampai celah RLS `kadiv` ditutup (lihat "Revisi Batch D" + "Utang uji" di atas) — bukan cuma belum diuji UI, memang belum berfungsi untuk penggunanya
+- Tiga blok rollup baca-saja di `pembangunan` (`RekapUnitOtomatis`/`RekapMaterialOtomatis`/`RekapInfrastrukturOtomatis`, revisi D3/D4, sekarang lewat view agregat `v_pembangunan_per_lokasi` + `boleh_lihat_rekap()`): tampilannya di browser sungguhan belum dilihat — logika query sudah diuji lewat DB langsung sebagai profil persis Ronald (`scripts/uji-boleh-lihat-rekap.mjs`, RLS-nya sudah SELESAI, bukan lagi diblokir), interaksi manusia-ke-layarnya belum
 
 ## Utang WAJIB sebelum go-live penggajian sungguhan
 
@@ -168,7 +207,7 @@ Belum bisa diuji di sesi ini karena tidak ada tool browser/DOM headless. Bukan d
 
 - **Matriks RLS #3** (`select * from v_keuangan_rekap` sebagai `pusat` → harap 4 kolom saja, tanpa saldo bank) — **belum bisa diuji**, view-nya belum ada. Uji ulang begitu `0004_views.sql` dibuat (Task 20).
 - **Matriks RLS #10** (buka path storage orang lain tanpa signed URL → harap ditolak) — **belum bisa diuji**, butuh baris nyata di `storage.objects` dari unggahan sungguhan. Uji ulang begitu unggah lampiran jalan (Task 11).
-- 🔴 **`can_see_report()` tidak memberi role `kadiv` akses ke laporan `pic_lokasi` milik orang lain** — Kepala Pembangunan sungguhan (Ronald) tidak bisa melihat rollup D3/D4 sama sekali. Detail lengkap + 3 opsi desain di bagian "Revisi Batch D" di atas. **Menunggu keputusan user, BUKAN diperbaiki tanpa izin** — RLS. Uji ulang dengan `scripts/uji-rls-gap-pembangunan.mjs` (harus 0 baris hari ini → harus jadi >0 baris setelah policy baru) begitu keputusan dijalankan.
+- ✅ **SELESAI (23 Agustus 2026)** — ~~`can_see_report()` tidak memberi role `kadiv` akses ke laporan `pic_lokasi` milik orang lain~~. Diselesaikan BUKAN dengan melebarkan `can_see_report()` (semua opsi begitu ditolak user), melainkan opsi (d): view agregat `security_invoker=off` + penjaga `boleh_lihat_rekap()` (`04-CATATAN-TEKNIS.md` §3.4b, migrasi `0009_boleh_lihat_rekap.sql`). Detail lengkap + output mentah 3 uji di bagian "Revisi Batch D" di atas, subbagian "Diselesaikan — opsi (d)".
 
 ## Catatan lintas-task
 

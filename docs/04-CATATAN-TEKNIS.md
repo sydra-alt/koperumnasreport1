@@ -347,6 +347,52 @@ alter view public.v_selisih_resto   set (security_invoker = on);
 Tanpa baris ini, Ibu Sabrina bisa melihat saldo bank lewat view. Ini kesalahan paling
 mudah terlewat di seluruh proyek.
 
+### 3.4b View agregat lintas divisi
+
+Ada kalanya seseorang butuh **angka** dari laporan divisi lain, tapi tidak berhak membaca **isinya**. Contoh: Kepala Pembangunan perlu jumlah unit dari seluruh PIC lokasi, tapi tidak perlu tahu keluhan konsumen atau permintaan keputusan CEO yang ada di laporan yang sama.
+
+Jangan melebarkan `can_see_report()` untuk kasus seperti ini. Melebarkan akses baris berarti memberi seluruh isi laporan, bukan cuma yang dibutuhkan.
+
+Pola yang benar — view agregat `security definer` dengan penjaga di dalamnya:
+
+```sql
+create or replace view public.v_pembangunan_per_lokasi
+with (security_invoker = off) as        -- SENGAJA off: lihat penjaga di bawah
+select
+  l.nama as lokasi,
+  sum((r.data->>'unit_dibangun')::int)    as dibangun,
+  sum((r.data->>'unit_finishing')::int)   as finishing,
+  sum((r.data->>'unit_selesai')::int)     as selesai_hari_ini
+from report r
+join lokasi l on l.id = r.lokasi_id
+where r.form_key = 'pic_lokasi'
+  and r.tanggal = (now() at time zone 'Asia/Jakarta')::date
+  and r.status <> 'draft'
+  and public.boleh_lihat_rekap('pembangunan')      -- PENJAGA
+group by l.nama;
+```
+
+```sql
+-- Boleh melihat rekap kalau memang ditugaskan mengisi form yang membutuhkannya
+create or replace function public.boleh_lihat_rekap(untuk_form text)
+returns boolean
+language sql stable security definer set search_path = public as $$
+  select
+       public.has_role('ceo')
+    or public.has_role('pusat')
+    or exists (select 1 from assignment a
+               where a.user_id = auth.uid() and a.form_key = untuk_form);
+$$;
+```
+
+**Tiga syarat mutlak** untuk setiap view semacam ini:
+
+1. Hanya berisi **angka agregat**. Tidak boleh ada teks bebas, nama konsumen, isi masalah, atau apa pun dari `report.data` selain besaran yang dijumlahkan.
+2. Wajib memanggil `boleh_lihat_rekap()` di klausa `where`. Tanpa itu, `security_invoker = off` membuat view terbuka untuk siapa pun yang login.
+3. **`form_key = 'accounting'` tidak boleh menjadi sumber view mana pun** selain `v_keuangan_rekap` yang sudah ada. Jangan pernah menambahkannya, dengan alasan apa pun.
+
+Alasan memilih pola ini: Ibu Sabrina tidak diberi akses ke baris laporan Accounting, melainkan view berisi empat angka. Kepala Pembangunan diperlakukan sama.
+
 ### 3.5 Storage
 
 ```sql
