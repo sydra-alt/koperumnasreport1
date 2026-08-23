@@ -1,8 +1,24 @@
 import { f01PersonalMarketing } from './f01-personal-marketing';
 import { f13PicLokasi } from './f13-pic-lokasi';
+import { f14Hrd } from './f14-hrd';
+import { f14Security } from './f14-security';
+import { f14Perizinan } from './f14-perizinan';
+import { f15Pembangunan } from './f15-pembangunan';
+import { f15Dti } from './f15-dti';
+import { f15Kendaraan } from './f15-kendaraan';
+import { f15Cs } from './f15-cs';
+import { f15Ga } from './f15-ga';
 import type { FormSchema } from './types';
 
 export const formRegistry: Record<string, FormSchema> = {
   personal_marketing: f01PersonalMarketing,
   pic_lokasi: f13PicLokasi,
+  hrd: f14Hrd,
+  security: f14Security,
+  perizinan: f14Perizinan,
+  pembangunan: f15Pembangunan,
+  dti: f15Dti,
+  kendaraan: f15Kendaraan,
+  cs: f15Cs,
+  ga: f15Ga,
 };

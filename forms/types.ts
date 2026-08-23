@@ -25,6 +25,7 @@ export interface Block { id: string; judul: string; catatan?: string; fields: Fi
 export interface FormSchema {
   key: string;
   nama: string;
+  navLabel?: string;             // label pendek utk tab navigasi (KopHalaman); default ke `nama` kalau tidak diisi
   scope: 'global' | 'lokasi' | 'outlet' | 'user';
   rahasia?: boolean;             // true hanya untuk 'accounting'
   blocks: Block[];

@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../lib/auth/AuthProvider';
+import { formRegistry } from '../forms';
+import { tabLaporDinamis } from '../lib/navLapor';
 import { tanggalIndonesiaWIB } from '../lib/tanggal';
 
 interface Tab {
@@ -11,7 +13,7 @@ interface Tab {
   peran: string | string[] | null; // null = selalu tampil untuk yang sudah login
 }
 
-const SEMUA_TAB: Tab[] = [
+const TAB_TETAP: Tab[] = [
   { label: 'Beranda', href: '/', peran: null },
   { label: 'Lapor', href: '/lapor/personal_marketing', peran: 'karyawan' },
   { label: 'Papan Kontrol', href: '/papan', peran: ['ceo', 'pusat'] },
@@ -22,14 +24,24 @@ const SEMUA_TAB: Tab[] = [
 ];
 
 export function KopHalaman() {
-  const { roles, session, signOut } = useAuth();
+  const { roles, session, signOut, assignments } = useAuth();
   const pathname = usePathname();
 
   if (!session) return null;
 
-  const tabTerlihat = SEMUA_TAB.filter(
+  const tabTetapTerlihat = TAB_TETAP.filter(
     (tab) => tab.peran === null || (Array.isArray(tab.peran) ? tab.peran : [tab.peran]).some((p) => roles.includes(p)),
   );
+
+  // Tab "Lapor ..." untuk form ber-scope lokasi/outlet/global dibangun dari
+  // tabel `assignment` lewat `tabLaporDinamis()` (lib/navLapor.ts) -- SATU
+  // SUMBER dengan Papan Kontrol nanti (Task 18), bukan daftar tetap di kode.
+  // Menambah baris assignment baru (lewat admin, Task 23) langsung
+  // memunculkan tab begitu sesi/assignments dimuat ulang, tanpa deploy.
+  const tabTerlihat: Tab[] = [
+    ...tabTetapTerlihat,
+    ...tabLaporDinamis(assignments, formRegistry).map((t) => ({ ...t, peran: null })),
+  ];
 
   return (
     <header className="border-b" style={{ borderColor: 'var(--tinta)', borderWidth: 1.5, background: 'var(--kertas-2)' }}>

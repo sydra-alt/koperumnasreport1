@@ -1,3 +1,4 @@
+import { blokKeputusanCeo } from './blok-bersama';
 import type { FormSchema } from './types';
 
 /**
@@ -18,16 +19,20 @@ import type { FormSchema } from './types';
  * dituntut di SETIAP pengiriman, bukan cuma kalau nilai tertentu dijawab.
  *
  * Bagian 9 "LAPORAN PERSONAL MARKETING" (rekap PTE/undangan/closing milik PIC
- * sendiri) dan bagian 11 "REKAP LOKASI UNTUK SABRINA" yang cuma me-restate
- * jawaban blok-blok di atas TIDAK dijadikan field -- itu murni tampilan
- * dihitung/digabung dari data yang sudah ada, dirender LaporForm.tsx (sama
- * alasannya dengan Blok 2/5/6/8 di f01). Yang jadi field dari bagian 11 cuma
- * TIGA hal yang benar-benar input baru: masalah utama, pemicu keputusan CEO,
- * dan status warna lokasi.
+ * sendiri) TIDAK dijadikan field -- itu murni tampilan dihitung/digabung dari
+ * data yang sudah ada, dirender LaporForm.tsx (sama alasannya dengan Blok
+ * 2/5/6/8 di f01), sekarang GENERIK untuk semua form selain personal_marketing.
+ *
+ * Bagian 11 "REKAP LOKASI UNTUK SABRINA" dipakai lewat `blokKeputusanCeo()`
+ * (forms/blok-bersama.ts) -- blok yang sama muncul di hampir semua format
+ * divisi lain (Task 14/15) dengan kunci field PERSIS SAMA, supaya logika
+ * "kalau dicentang & judul terisi, buat baris decision" di LaporForm.tsx
+ * bisa generik, bukan diperiksa satu-satu per formKey.
  */
 export const f13PicLokasi: FormSchema = {
   key: 'pic_lokasi',
   nama: 'Laporan Harian PIC Lokasi',
+  navLabel: 'Lapor Lokasi',
   scope: 'lokasi',
   blocks: [
     {
@@ -185,21 +190,6 @@ export const f13PicLokasi: FormSchema = {
         { key: 'besok_kirim_pusat', label: 'Yang harus dikirim pusat', type: 'teks' },
       ],
     },
-    {
-      id: 'rekap',
-      judul: '11 · Rekap Lokasi untuk Sabrina',
-      catatan: 'Bagian ini cuma tiga hal baru -- sisanya (lokasi, konsumen, kavling, dst.) sudah dijawab di blok atas dan tidak diulang di sini.',
-      fields: [
-        { key: 'masalah_utama', label: 'Masalah utama', type: 'teks_panjang' },
-        { key: 'keputusan_ceo', label: 'Butuh keputusan CEO', type: 'centang' },
-        {
-          key: 'keputusan_ceo_judul',
-          label: 'Judul keputusan yang dibutuhkan',
-          type: 'teks',
-          bantuan: 'Isi kalau "Butuh keputusan CEO" dicentang -- keduanya harus terisi supaya masuk antrean keputusan.',
-        },
-        { key: 'status_lokasi', label: 'Status lokasi hari ini', type: 'status_warna' },
-      ],
-    },
+    blokKeputusanCeo(11, 'Rekap Lokasi untuk Sabrina', 'Status lokasi hari ini'),
   ],
 };

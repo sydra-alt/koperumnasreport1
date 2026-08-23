@@ -15,35 +15,55 @@ import { formRegistry } from '../forms';
 import { FormRenderer } from './FormRenderer';
 
 const IKON: Record<'hijau' | 'kuning' | 'merah', string> = { hijau: '🟢', kuning: '🟡', merah: '🔴' };
+const LABEL_SHIFT: Record<string, string> = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
+
+interface KombinasiScope {
+  lokasiId: string | null;
+  shift: string | null;
+}
 
 export function LaporForm({ formKey }: { formKey: string }) {
   const schema = formRegistry[formKey];
   const { session, profile, assignments } = useAuth();
   const { data: daftarLokasi } = useDaftarLokasi();
 
-  // Scope 'lokasi' (mis. pic_lokasi): kalau PIC di-assign lebih dari satu lokasi,
-  // dia harus pilih dulu -- laporan hari ini per lokasi berbeda adalah baris
-  // report terpisah (report_uniq sudah meng-coalesce lokasi_id, lihat 0001_init.sql).
-  // Kalau cuma satu lokasi, langsung otomatis, tidak perlu pemilih.
-  const lokasiDitugaskan = useMemo(
-    () =>
-      schema?.scope === 'lokasi'
-        ? Array.from(new Set(assignments.filter((a) => a.form_key === formKey && a.lokasi_id).map((a) => a.lokasi_id as string)))
-        : [],
-    [assignments, formKey, schema?.scope],
-  );
-  const [lokasiTerpilih, setLokasiTerpilih] = useState<string | null>(null);
-  const lokasiAktif = lokasiTerpilih ?? (lokasiDitugaskan.length === 1 ? lokasiDitugaskan[0] : null);
-  const perluPilihLokasi = schema?.scope === 'lokasi' && lokasiDitugaskan.length > 1 && !lokasiAktif;
+  // Scope 'lokasi' (pic_lokasi, security, dst.): kalau user di-assign lebih dari
+  // satu kombinasi (lokasi, shift), dia harus pilih dulu -- laporan hari ini per
+  // kombinasi berbeda adalah baris report terpisah (report_uniq meng-coalesce
+  // lokasi_id/shift, lihat 0001_init.sql). Kalau cuma satu kombinasi, otomatis,
+  // tidak perlu pemilih. `shift` bernilai null utk form yang tidak ber-shift
+  // (mis. pic_lokasi) -- dedup lewat kunci gabungan otomatis mengecil jadi
+  // pemilih-lokasi-saja untuk kasus itu, tidak ada cabang kode terpisah.
+  const kombinasiDitugaskan = useMemo(() => {
+    if (schema?.scope !== 'lokasi') return [];
+    const peta = new Map<string, KombinasiScope>();
+    for (const a of assignments) {
+      if (a.form_key !== formKey) continue;
+      const kunci = `${a.lokasi_id ?? ''}|${a.shift ?? ''}`;
+      if (!peta.has(kunci)) peta.set(kunci, { lokasiId: a.lokasi_id, shift: a.shift });
+    }
+    return Array.from(peta.values());
+  }, [assignments, formKey, schema?.scope]);
+  const [kombinasiTerpilih, setKombinasiTerpilih] = useState<KombinasiScope | null>(null);
+  const kombinasiAktif = kombinasiTerpilih ?? (kombinasiDitugaskan.length === 1 ? kombinasiDitugaskan[0] : null);
+  const perluPilihKombinasi = schema?.scope === 'lokasi' && kombinasiDitugaskan.length > 1 && !kombinasiTerpilih;
   const namaLokasi = (id: string) => daftarLokasi?.find((l) => l.id === id)?.nama ?? id;
+  const labelKombinasi = (k: KombinasiScope) =>
+    k.lokasiId ? `${namaLokasi(k.lokasiId)}${k.shift ? ` · ${LABEL_SHIFT[k.shift] ?? k.shift}` : ''}` : '—';
 
   const opsi: ScopeOpsi | undefined =
-    schema?.scope === 'lokasi' ? { lokasiId: lokasiAktif ?? undefined, aktif: Boolean(lokasiAktif) } : undefined;
+    schema?.scope === 'lokasi'
+      ? { lokasiId: kombinasiAktif?.lokasiId ?? undefined, shift: kombinasiAktif?.shift ?? undefined, aktif: Boolean(kombinasiAktif) }
+      : undefined;
 
   const { data: reportHariIni, isLoading: memuatReport } = useReportHariIni(formKey, opsi);
   const { data: policy } = usePolicy();
   const { data: progres } = useProgresBulananSaya();
-  const { data: laporanMarketingHariIni } = useReportHariIni('personal_marketing', { aktif: formKey === 'pic_lokasi' });
+  // Blok "Laporan Personal Marketing" (rekap PTE/undangan/closing milik pengirim
+  // sendiri) muncul di HAMPIR SEMUA form divisi -- lihat forms/blok-bersama.ts.
+  // Query ini cuma perlu jalan utk form SELAIN personal_marketing itu sendiri.
+  const perluRollupMarketing = formKey !== 'personal_marketing';
+  const { data: laporanMarketingHariIni } = useReportHariIni('personal_marketing', { aktif: perluRollupMarketing });
   const simpanDraft = useSimpanDraft(formKey, opsi);
   const kirimReport = useKirimReport(formKey, opsi);
 
@@ -97,31 +117,31 @@ export function LaporForm({ formKey }: { formKey: string }) {
     );
   }
 
-  if (schema.scope === 'lokasi' && lokasiDitugaskan.length === 0) {
+  if (schema.scope === 'lokasi' && kombinasiDitugaskan.length === 0) {
     return (
       <main className="p-6">
-        <p>Anda tidak punya penugasan lokasi untuk laporan ini.</p>
+        <p>Anda tidak punya penugasan untuk laporan ini.</p>
       </main>
     );
   }
 
-  if (perluPilihLokasi) {
+  if (perluPilihKombinasi) {
     return (
       <main className="flex flex-col gap-4 p-6">
         <h1 className="text-2xl" style={{ color: 'var(--biru)' }}>
           {schema.nama}
         </h1>
-        <p>Anda mengurus lebih dari satu lokasi. Pilih lokasi untuk laporan hari ini:</p>
+        <p>Anda punya lebih dari satu penugasan. Pilih untuk laporan hari ini:</p>
         <div className="flex flex-col gap-2">
-          {lokasiDitugaskan.map((id) => (
+          {kombinasiDitugaskan.map((k, i) => (
             <button
-              key={id}
+              key={i}
               type="button"
-              onClick={() => setLokasiTerpilih(id)}
+              onClick={() => setKombinasiTerpilih(k)}
               className="border px-4 py-3 text-left"
               style={{ borderColor: 'var(--garis)', minHeight: 44 }}
             >
-              {namaLokasi(id)}
+              {labelKombinasi(k)}
             </button>
           ))}
         </div>
@@ -174,7 +194,10 @@ export function LaporForm({ formKey }: { formKey: string }) {
         );
       }
 
-      if (formKey === 'pic_lokasi' && isiKirim.keputusan_ceo === true) {
+      // Generik utk SEMUA form yang memakai blokKeputusanCeo() (forms/blok-bersama.ts)
+      // -- kunci field disengaja sama persis di semua form itu, jadi cukup satu
+      // pemeriksaan di sini, bukan per-formKey.
+      if (isiKirim.keputusan_ceo === true) {
         const judul = typeof isiKirim.keputusan_ceo_judul === 'string' ? isiKirim.keputusan_ceo_judul.trim() : '';
         if (judul.length > 0) {
           const masalah = typeof isiKirim.masalah_utama === 'string' && isiKirim.masalah_utama.trim() ? isiKirim.masalah_utama : null;
@@ -216,11 +239,12 @@ export function LaporForm({ formKey }: { formKey: string }) {
         </div>
       )}
 
-      {formKey === 'pic_lokasi' && profile && (
+      {formKey !== 'personal_marketing' && profile && (
         <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }} suppressHydrationWarning>
-          <p style={{ fontFamily: 'var(--display)' }}>1 · Identitas</p>
+          <p style={{ fontFamily: 'var(--display)' }}>Identitas</p>
           <p>
-            {tanggalIndonesiaWIB()} · {lokasiAktif ? namaLokasi(lokasiAktif) : '—'} · PIC: {profile.nama}
+            {tanggalIndonesiaWIB()}
+            {kombinasiAktif ? ` · ${labelKombinasi(kombinasiAktif)}` : ''} · PIC: {profile.nama}
           </p>
         </div>
       )}
@@ -275,9 +299,9 @@ export function LaporForm({ formKey }: { formKey: string }) {
         </p>
       )}
 
-      {formKey === 'pic_lokasi' && progres && invitTarget !== null && closingTarget !== null && (
+      {perluRollupMarketing && progres && invitTarget !== null && closingTarget !== null && (
         <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
-          <p style={{ fontFamily: 'var(--display)' }}>9 · Laporan Personal Marketing</p>
+          <p style={{ fontFamily: 'var(--display)' }}>Laporan Personal Marketing</p>
           <p>
             Laporan personal sudah dikirim: {laporanMarketingHariIni?.status && laporanMarketingHariIni.status !== 'draft' ? '✅' : '❌'} · Undangan
             bulan ini: {progres.undangan} / {invitTarget} · Closing bulan ini: {progres.closing} / {closingTarget}
