@@ -19,7 +19,7 @@ const TAB_TETAP: Tab[] = [
   { label: 'Papan Kontrol', href: '/papan', peran: ['ceo', 'pusat'] },
   { label: 'Keputusan', href: '/keputusan', peran: 'ceo' },
   { label: 'Marketing', href: '/marketing', peran: 'kontrol_marketing' },
-  { label: 'Terpusat', href: '/terpusat', peran: 'pusat' },
+  { label: 'Terpusat', href: '/terpusat', peran: ['pusat', 'ceo'] },
   { label: 'Admin', href: '/admin', peran: 'ceo' },
 ];
 
