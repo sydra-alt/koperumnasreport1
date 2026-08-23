@@ -417,10 +417,14 @@ $$;
    | Boleh | Tidak boleh |
    |---|---|
    | Angka dan hitungan | **Field teks bebas** — apa pun bisa ditulis di sana, termasuk keluhan konsumen atau hal pribadi |
-   | Pilihan tertutup (`jalan_status`, `air_status`) | Nama orang, nama konsumen |
+   | Pilihan tertutup (`jalan_status`, `air_status`) | **Nama konsumen** dan data pribadi pihak luar — selalu, tanpa kecuali |
    | Tabel terstruktur yang memang dibutuhkan, misal daftar material kurang (nama material, jumlah, tanggal dibutuhkan) | Isi masalah, permintaan keputusan CEO, catatan PIC |
 
    Kepala Pembangunan perlu tahu material **apa** yang kurang, bukan cuma berapa banyak jenisnya — tanpa itu dia tidak bisa memesan apa-apa. Tapi `infrastruktur_kebutuhan` dan `kiriman_kekurangan` tetap ditutup, karena keduanya teks bebas dan isinya tidak bisa dijamin.
+
+   **Nama karyawan berbeda dari nama konsumen.** Siapa PIC lokasi mana sudah terbaca semua orang lewat `assignment` dan `profile`, jadi memuatnya di view agregat tidak membocorkan apa pun. Yang dilarang mutlak adalah nama konsumen dan data pihak luar.
+
+   Kalau nama karyawan bisa didapat dari `assignment` + `profile` tanpa view khusus, tetap tempuh jalan itu — jangan melebarkan permukaan `security definer` untuk hal yang sudah terbuka.
 
    Uji setiap view baru dengan menanam field umpan berisi teks mencolok di laporan sumber, lalu pastikan tidak muncul di hasil view.
 2. Wajib memanggil `boleh_lihat_rekap()` di klausa `where`. Tanpa itu, `security_invoker = off` membuat view terbuka untuk siapa pun yang login.
