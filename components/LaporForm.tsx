@@ -9,18 +9,21 @@ import { hitungKelayakanBonus, hitungPotongan, ringkasanPteHariIni, sinkronClosi
 import { useDaftarLokasi } from '../lib/api/lokasi';
 import { useDaftarOutlet } from '../lib/api/outlet';
 import { buatKeputusanDariLaporan } from '../lib/api/decision';
-import { useKirimReport, useReportHariIni, useSimpanDraft, type ScopeOpsi } from '../lib/api/report';
+import { apakahTerlambat, useKirimReport, useReportHariIni, useSimpanDraft, type ScopeOpsi } from '../lib/api/report';
 import { useRekapPembangunanPerLokasi, type PembangunanPerLokasiRow } from '../lib/api/pembangunan';
 import { usePicLokasiBelumUpload, type LokasiBelumUpload } from '../lib/api/it';
 import { ringkasanKebutuhanBesok } from '../lib/api/manager-resto';
 import { useManagerRestoUntukIta, type ManagerRestoUntukItaRow } from '../lib/api/ita';
 import {
+  hitungCashflowHariIni,
   useKebutuhanPembangunanAccounting,
   useOmzetRestoHariIni,
   type KebutuhanPembangunanAccounting,
   type OmzetRestoRow,
 } from '../lib/api/accounting';
 import { tanggalIndonesiaWIB } from '../lib/tanggal';
+import { angkaDariTeks, tanggalDariTeks } from '../lib/teksAngka';
+import { urgensiTerburukDariKirim, warnaDipilihDari, warnaOtomatis, warnaTerburuk } from '../lib/warna';
 import { debounce } from '../lib/debounce';
 import { formRegistry } from '../forms';
 import { FormRenderer } from './FormRenderer';
@@ -32,26 +35,6 @@ interface KombinasiScope {
   lokasiId: string | null;
   outletId: string | null;
   shift: string | null;
-}
-
-/** Sel tabel berupa teks bebas -- ambil angka dari "Rp 5.000.000" / "5000000" dkk. */
-function angkaDariTeks(v: unknown): number {
-  if (typeof v === 'number') return v;
-  if (typeof v !== 'string') return 0;
-  const bersih = v.replace(/[^0-9-]/g, '');
-  const n = Number(bersih);
-  return Number.isFinite(n) ? n : 0;
-}
-
-/** Sel tabel tanggal berupa teks bebas -- CUMA diterima kalau sudah persis
- * format YYYY-MM-DD, tidak dicoba-parse format lain (mis. "01/09" atau "besok")
- * supaya tidak ada tebakan zona waktu yang bisa meleset -- lihat CLAUDE.md
- * aturan #2, jangan pernah menebak tanggal lewat konversi yang tidak pasti.
- * Kalau tidak cocok, dikosongkan daripada memasukkan tanggal yang salah. */
-function tanggalDariTeks(v: unknown): string | null {
-  if (typeof v !== 'string') return null;
-  const cocok = /^\d{4}-\d{2}-\d{2}$/.test(v.trim());
-  return cocok ? v.trim() : null;
 }
 
 export function LaporForm({ formKey }: { formKey: string }) {
@@ -212,10 +195,19 @@ export function LaporForm({ formKey }: { formKey: string }) {
     setMengirim(true);
     setPesanKirim(null);
     try {
-      const isiKirim: FieldValues =
+      let isiKirim: FieldValues =
         formKey === 'personal_marketing'
           ? { ...data, pernyataan_at: new Date().toISOString(), pernyataan_nama: profile?.nama ?? null }
           : data;
+
+      // Blok 6 "Cashflow Hari Ini" -- dihitung dari blok 2/4 di form yang sama
+      // (§3.5b, bukan diketik ulang), lalu DISUNTIKKAN ke data tersimpan supaya
+      // v_keuangan_rekap (Task 20) punya total_masuk/total_keluar untuk dibaca --
+      // lihat komentar hitungCashflowHariIni (lib/api/accounting.ts).
+      if (formKey === 'accounting') {
+        const { totalMasuk, totalKeluar, net } = hitungCashflowHariIni(isiKirim);
+        isiKirim = { ...isiKirim, total_masuk: totalMasuk, total_keluar: totalKeluar, net_cashflow: net };
+      }
 
       let idAkhir = reportId;
       if (idAkhir) {
@@ -225,10 +217,19 @@ export function LaporForm({ formKey }: { formKey: string }) {
         setReportIdBaru(idAkhir);
       }
 
+      // 03-CALC-SPEC.md §5: warna_akhir = yang paling buruk antara warna yang
+      // dipilih pengisi sendiri (field type:'status_warna', kalau ada di
+      // schema) dan warna_otomatis (decision urgensi 1 -> merah; terlambat
+      // atau decision urgensi 2/3 -> kuning) -- lihat lib/warna.ts untuk apa
+      // yang SUDAH dan BELUM ditangani di sini.
+      const terlambatKirim = apakahTerlambat(policy, formKey, kombinasiAktif?.shift ?? null);
+      const urgensi = urgensiTerburukDariKirim(schema, isiKirim);
+      const warnaAkhir = warnaTerburuk(warnaDipilihDari(schema, isiKirim), warnaOtomatis(urgensi, terlambatKirim));
+
       const status = await kirimReport.mutateAsync({
         reportId: idAkhir,
         isi: isiKirim,
-        warna: 'hijau',
+        warna: warnaAkhir,
         policy,
       });
 
@@ -293,6 +294,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
   const infoPotongan =
     formKey === 'personal_marketing' && policy && progres ? hitungPotongan(policy, progres.pte_berlaku, progres.closing) : null;
   const kebutuhanBesokResto = formKey === 'manager_resto' ? ringkasanKebutuhanBesok(nilaiUntukPratinjau) : null;
+  const cashflowAccounting = formKey === 'accounting' ? hitungCashflowHariIni(nilaiUntukPratinjau) : null;
 
   return (
     <main className="flex flex-col gap-6 p-6">
@@ -392,6 +394,8 @@ export function LaporForm({ formKey }: { formKey: string }) {
       )}
 
       {formKey === 'accounting' && omzetResto && <OmzetRestoOtomatis data={omzetResto} />}
+
+      {formKey === 'accounting' && cashflowAccounting && <CashflowOtomatis data={cashflowAccounting} />}
 
       <p className="text-sm" style={{ color: 'var(--kosong)' }}>
         {statusSimpan === 'menyimpan' && 'Menyimpan draft…'}
@@ -795,6 +799,30 @@ function OmzetRestoOtomatis({ data }: { data: OmzetRestoRow[] }) {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * 6 · Cashflow Hari Ini (accounting) -- uang masuk/keluar/net dihitung dari
+ * Blok 2/4 di form yang sama (§3.5b), pratinjau hidup lewat
+ * `hitungCashflowHariIni` (lib/api/accounting.ts) -- angka yang SAMA
+ * disuntikkan ke `report.data` saat kirim, dibaca `v_keuangan_rekap`
+ * (Task 20).
+ */
+function CashflowOtomatis({ data }: { data: ReturnType<typeof hitungCashflowHariIni> }) {
+  const rupiah = (n: number) => `Rp${n.toLocaleString('id-ID')}`;
+  return (
+    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
+      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+        6 · Cashflow Hari Ini (otomatis)
+      </p>
+      <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
+        Dihitung otomatis dari Blok 2 (Uang Masuk) dan Blok 4 (Uang Keluar) di atas. Hanya baca.
+      </p>
+      <p style={{ fontFamily: 'var(--mono)' }}>(+) Uang masuk: {rupiah(data.totalMasuk)}</p>
+      <p style={{ fontFamily: 'var(--mono)' }}>(-) Uang keluar: {rupiah(data.totalKeluar)}</p>
+      <p style={{ fontFamily: 'var(--mono)' }}>NET CASHFLOW: {rupiah(data.net)}</p>
     </div>
   );
 }

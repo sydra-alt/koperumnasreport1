@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '../supabase/client';
 import { tanggalWIB } from '../tanggal';
+import { angkaDariTeks } from '../teksAngka';
 
 /**
  * Blok 8 "Kebutuhan Pembangunan" + blok 10 "Kontraktor/Supplier/DTI" (yang
@@ -109,4 +110,40 @@ export function useOmzetRestoHariIni(enabled = true) {
     },
     enabled,
   });
+}
+
+/**
+ * Blok 6 "Cashflow Hari Ini" -- catatan blok itu sendiri (f17-accounting.ts)
+ * bilang uang masuk/keluar/net "dihitung otomatis dari blok 1, 2, dan 4",
+ * BUKAN diketik ulang (§3.5b, "satu angka, satu pengisi" berlaku di dalam
+ * satu form juga -- sama seperti manager_resto blok 12, Task 16). Angka yang
+ * sama ini WAJIB disuntikkan ke `report.data` saat kirim (lihat
+ * components/LaporForm.tsx `tanganiKirim`), karena `v_keuangan_rekap`
+ * (03-CALC-SPEC.md §4.3, dibuat Task 20) membaca `data->>'total_masuk'` dan
+ * `data->>'total_keluar'` langsung dari kolom itu -- kalau tidak pernah
+ * ditulis, Bagian 11 Laporan Terpusat Sabrina (Task 21) akan selamanya
+ * kosong tanpa error apa pun (jebakan §7 poin 3, kunci JSON tidak sinkron).
+ *
+ * Blok 2 "metode_*" (Bank/Cash/QRIS/Lainnya) SENGAJA tidak ikut dijumlah --
+ * itu rincian CARA masuknya uang yang sama, bukan pemasukan tambahan;
+ * menjumlahkannya akan menghitung dobel.
+ */
+export function hitungCashflowHariIni(data: Record<string, unknown>): { totalMasuk: number; totalKeluar: number; net: number } {
+  const uang = (k: string) => (typeof data[k] === 'number' ? (data[k] as number) : 0);
+  const penerimaanLain = (data.penerimaan_lain as Record<string, unknown>[] | undefined) ?? [];
+  const daftarKeluar = (data.daftar_uang_keluar as Record<string, unknown>[] | undefined) ?? [];
+
+  const totalMasuk =
+    uang('cicilan_konsumen') +
+    uang('booking_dp') +
+    uang('pelunasan') +
+    uang('pembayaran_lainnya_konsumen') +
+    uang('masuk_indokopi') +
+    uang('masuk_indosteak') +
+    uang('masuk_unit_usaha_lainnya') +
+    penerimaanLain.reduce((total, r) => total + angkaDariTeks(r.nominal), 0);
+
+  const totalKeluar = daftarKeluar.reduce((total, r) => total + angkaDariTeks(r.nominal), 0);
+
+  return { totalMasuk, totalKeluar, net: totalMasuk - totalKeluar };
 }
