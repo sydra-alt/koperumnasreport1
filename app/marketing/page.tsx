@@ -28,15 +28,15 @@ function KalenderKaryawan({ userId }: { userId: string }) {
   const { data: mulaiKerja } = useMulaiKerja(userId);
   const { data: pteBulanIni } = usePteBulanIniUntuk(userId);
 
-  const workdays = (policy?.workdays as number[] | undefined) ?? [1, 2, 3, 4, 5, 6];
   const pteMulaiBerlaku = (policy?.pte_mulai_berlaku as string | null | undefined) ?? null;
   const hariIni = tanggalWIB();
   const [tahun, bulan] = hariIni.split('-');
 
   const kalender = useMemo(() => {
     if (!policy) return [];
+    const workdays = (policy.workdays as number[] | undefined) ?? [1, 2, 3, 4, 5, 6];
     return kalenderPteBulanIni(`${tahun}-${bulan}`, workdays, pteMulaiBerlaku, mulaiKerja ?? null, hariIni, pteBulanIni ?? []);
-  }, [policy, tahun, bulan, workdays, pteMulaiBerlaku, mulaiKerja, hariIni, pteBulanIni]);
+  }, [policy, tahun, bulan, pteMulaiBerlaku, mulaiKerja, hariIni, pteBulanIni]);
 
   if (!policy) return <p>Memuat kalender…</p>;
 
