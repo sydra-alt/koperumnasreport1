@@ -336,10 +336,12 @@ export function LaporForm({ formKey }: { formKey: string }) {
 /**
  * Rekap baca-saja per lokasi untuk blok 1/3/5 form Pembangunan -- SATU query
  * ke `v_pembangunan_per_lokasi` (view agregat security-definer, lihat
- * lib/api/pembangunan.ts), bukan ke `report` langsung. Sengaja tidak
- * menampilkan `kiriman_kekurangan`/`infrastruktur_kebutuhan` (teks bebas)
- * atau isi baris `material_kurang` (nama material per item) -- view-nya
- * memang tidak pernah mengirim itu (§3.4b syarat #1), cuma jumlah baris.
+ * lib/api/pembangunan.ts), bukan ke `report` langsung. `material_kurang`
+ * (nama material, kebutuhan, untuk unit, tanggal) DITAMPILKAN lengkap --
+ * tabel terstruktur yang memang dibutuhkan (§3.4b syarat #1, diperbaiki
+ * user 23 Agustus 2026). `kiriman_kekurangan`/`infrastruktur_kebutuhan`
+ * (teks bebas) TETAP tidak ditampilkan -- view-nya memang tidak pernah
+ * mengirim itu.
  */
 function RekapPembangunanOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
   return (
@@ -419,7 +421,13 @@ function RekapUnitOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
   );
 }
 
-/** 3 · Rekap material per lokasi -- angka saja, bukan isi/nama material (§3.4b). */
+/**
+ * 3 · Rekap material per lokasi -- termasuk daftar material yang kurang
+ * (nama, kebutuhan, untuk unit, tanggal dibutuhkan): tabel terstruktur yang
+ * memang dibutuhkan supaya bisa dipesan (§3.4b syarat #1, diperbaiki user).
+ * Catatan bebas PIC (`kiriman_kekurangan`) TETAP tidak ditampilkan -- view-nya
+ * memang tidak pernah mengirim itu.
+ */
 function RekapMaterialOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
   const yaTidak = (v: boolean | null) => (v === null ? '—' : v ? '✅' : '❌');
 
@@ -429,8 +437,7 @@ function RekapMaterialOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
         3 · Material per Lokasi (dari PIC Lokasi)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
-        Rekap angka material per lokasi, hari ini. Hanya baca -- rincian nama material & catatan PIC tidak ditampilkan di sini, cukup PIC
-        lokasi & Accounting yang perlu tahu isinya.
+        Rekap material per lokasi, hari ini. Hanya baca.
       </p>
       {data.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--kosong)' }}>
@@ -442,9 +449,17 @@ function RekapMaterialOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
             <div key={r.lokasi} className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
               <p style={{ fontFamily: 'var(--display)' }}>{r.lokasi}</p>
               <p>
-                Material cukup: {yaTidak(r.material_cukup)} · Item kurang: {r.material_kurang_jumlah ?? 0} · Kiriman precast/perikas
-                diterima: {r.kiriman_precast_jumlah ?? 0} pcs
+                Material cukup: {yaTidak(r.material_cukup)} · Kiriman precast/perikas diterima: {r.kiriman_precast_jumlah ?? 0} pcs
               </p>
+              {r.material_kurang.length > 0 && (
+                <ul className="list-disc pl-5">
+                  {r.material_kurang.map((m, i) => (
+                    <li key={i}>
+                      {m.material ?? '—'} -- kebutuhan {m.kebutuhan ?? '—'}, untuk unit {m.untuk_unit ?? '—'}, dibutuhkan {m.dibutuhkan_tanggal ?? '—'}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           ))}
         </div>

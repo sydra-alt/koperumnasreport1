@@ -5,7 +5,11 @@
 //
 // Tiga uji diminta user, dicetak MENTAH (bukan cuma OK/SALAH):
 //   1. Profil persis Ronald (kadiv+karyawan, assignment form_key='pembangunan')
-//      -> select dari v_pembangunan_per_lokasi harus TERISI.
+//      -> select dari v_pembangunan_per_lokasi harus TERISI, TERMASUK
+//      material_kurang terstruktur (nama material, kebutuhan, untuk_unit,
+//      dibutuhkan_tanggal) -- tapi field teks bebas (infrastruktur_kebutuhan,
+//      kiriman_kekurangan) dan kunci LIAR yang disisipkan di dalam salah satu
+//      elemen material_kurang tetap tidak boleh bocor (uji umpan "RAHASIA").
 //   2. Toyib (karyawan polos, tanpa assignment apa pun) -> view 0 baris.
 //   3. Ronald -> select LANGSUNG ke report where form_key='pic_lokasi' TETAP
 //      0 baris (dia dapat angkanya lewat view, bukan baris laporannya).
@@ -45,7 +49,16 @@ try {
   const dataDikirim = {
     target_unit: 10, unit_dibangun: 4, unit_finishing: 2, unit_selesai: 1, unit_belum_mulai: 3,
     material_cukup: 'tidak',
-    material_kurang: [{ material: 'Semen', kebutuhan: '50 sak' }, { material: 'Pasir', kebutuhan: '2 truk' }],
+    material_kurang: [
+      { material: 'Semen', kebutuhan: '50 sak', untuk_unit: 'Blok A', dibutuhkan_tanggal: 'besok' },
+      {
+        material: 'Pasir',
+        kebutuhan: '2 truk',
+        untuk_unit: 'Blok B',
+        dibutuhkan_tanggal: 'lusa',
+        catatan_pic: 'RAHASIA -- kunci liar disisipkan di dalam elemen material_kurang, tidak ada di whitelist',
+      },
+    ],
     kiriman_precast_jumlah: 12,
     kiriman_kekurangan: 'RAHASIA -- catatan bebas Dadang, tidak boleh bocor ke Ronald',
     jalan_status: 'Rusak', listrik_status: 'Proses', air_status: 'Sudah',
@@ -81,7 +94,9 @@ try {
   console.log(JSON.stringify(hasil1, null, 2));
   console.log(`--> ${hasil1.length} baris.`);
   const bocor = JSON.stringify(hasil1).includes('RAHASIA');
-  console.log(bocor ? '¡¡¡ BOCOR: field RAHASIA ikut terbawa !!!' : 'Tidak ada field "RAHASIA" yang bocor lewat view.');
+  console.log(bocor ? '¡¡¡ BOCOR: field RAHASIA ikut terbawa !!!' : 'Tidak ada field "RAHASIA" yang bocor lewat view (termasuk kunci liar di dalam material_kurang).');
+  const materialTerbawa = JSON.stringify(hasil1).includes('Semen') && JSON.stringify(hasil1).includes('Pasir');
+  console.log(materialTerbawa ? 'material_kurang terstruktur (nama "Semen"/"Pasir") IKUT TERBAWA, sesuai perbaikan syarat #1.' : 'SALAH: material_kurang tidak terbawa sama sekali.');
 
   langkah('UJI 2 — sebagai Toyib (karyawan polos, TANPA assignment apa pun), SELECT * FROM v_pembangunan_per_lokasi (RAW OUTPUT)');
   await jadiSebagai(toyib);
@@ -100,6 +115,7 @@ try {
   langkah('RINGKASAN');
   console.log(`UJI 1 (Ronald lewat view)         : ${hasil1.length} baris, harap TERISI (>0)  -> ${hasil1.length > 0 ? 'LOLOS' : 'GAGAL'}`);
   console.log(`     tidak ada kebocoran RAHASIA   : ${!bocor ? 'LOLOS' : 'GAGAL'}`);
+  console.log(`     material_kurang ikut terbawa  : ${materialTerbawa ? 'LOLOS' : 'GAGAL'}`);
   console.log(`UJI 2 (Toyib lewat view)           : ${hasil2.length} baris, harap 0            -> ${hasil2.length === 0 ? 'LOLOS' : 'GAGAL'}`);
   console.log(`UJI 3 (Ronald langsung ke report)  : ${hasil3.length} baris, harap 0            -> ${hasil3.length === 0 ? 'LOLOS' : 'GAGAL'}`);
 

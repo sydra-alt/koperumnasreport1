@@ -387,7 +387,17 @@ $$;
 
 **Tiga syarat mutlak** untuk setiap view semacam ini:
 
-1. Hanya berisi **angka agregat**. Tidak boleh ada teks bebas, nama konsumen, isi masalah, atau apa pun dari `report.data` selain besaran yang dijumlahkan.
+1. **Daftar putih per field, bukan "hanya angka".** Setiap kolom view disebut satu per satu dan dipilih karena memang dibutuhkan untuk pekerjaan pembacanya. Aturannya bukan tipe datanya, melainkan apakah isinya bisa ditebak:
+
+   | Boleh | Tidak boleh |
+   |---|---|
+   | Angka dan hitungan | **Field teks bebas** — apa pun bisa ditulis di sana, termasuk keluhan konsumen atau hal pribadi |
+   | Pilihan tertutup (`jalan_status`, `air_status`) | Nama orang, nama konsumen |
+   | Tabel terstruktur yang memang dibutuhkan, misal daftar material kurang (nama material, jumlah, tanggal dibutuhkan) | Isi masalah, permintaan keputusan CEO, catatan PIC |
+
+   Kepala Pembangunan perlu tahu material **apa** yang kurang, bukan cuma berapa banyak jenisnya — tanpa itu dia tidak bisa memesan apa-apa. Tapi `infrastruktur_kebutuhan` dan `kiriman_kekurangan` tetap ditutup, karena keduanya teks bebas dan isinya tidak bisa dijamin.
+
+   Uji setiap view baru dengan menanam field umpan berisi teks mencolok di laporan sumber, lalu pastikan tidak muncul di hasil view.
 2. Wajib memanggil `boleh_lihat_rekap()` di klausa `where`. Tanpa itu, `security_invoker = off` membuat view terbuka untuk siapa pun yang login.
 3. **`form_key = 'accounting'` tidak boleh menjadi sumber view mana pun** selain `v_keuangan_rekap` yang sudah ada. Jangan pernah menambahkannya, dengan alasan apa pun.
 

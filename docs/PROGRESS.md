@@ -95,6 +95,48 @@ Data uji Dadang sengaja disisipi field bernama harfiah `"RAHASIA -- ..."` di `ki
 
 `tsc`/`build`/`lint` bersih, `grep` angka bisnis nol hasil di seluruh file yang diubah. `scripts/uji-rls-gap-pembangunan.mjs` dan `scripts/uji-rollup-pembangunan.mjs` (dari opsi yang ditolak) dibiarkan ada sebagai bukti historis kenapa opsi (a/b/c) ditolak -- keduanya menguji jalur row-level yang sekarang sudah tidak dipakai kode aplikasi, tapi tetap valid sebagai dokumentasi teknis alasan penolakan.
 
+#### Koreksi syarat #1: "hanya angka" terlalu ketat (23 Agustus 2026, lanjutan hari yang sama)
+
+User memperbaiki `04-CATATAN-TEKNIS.md` §3.4b syarat #1: patokannya bukan tipe data ("hanya angka"), tapi **apakah isinya bisa ditebak**. Tabel terstruktur yang memang dibutuhkan pekerjaannya -- termasuk `material_kurang` lengkap dengan nama material, kebutuhan, untuk unit, tanggal dibutuhkan -- BOLEH masuk view. Field teks bebas (`infrastruktur_kebutuhan`, `kiriman_kekurangan`) TETAP ditutup, apa pun alasannya. Alasan konkret: "2 material kurang di Tajur" tidak bisa dipakai memesan apa-apa; Ronald perlu tahu material APA yang kurang.
+
+**`supabase/migrations/0010_material_kurang_terstruktur.sql`**: `material_kurang_jumlah` (hitungan) diganti `material_kurang` (jsonb array) -- direkonstruksi lewat `jsonb_build_object` per elemen dengan **whitelist 4 kunci** (`material`, `kebutuhan`, `untuk_unit`, `dibutuhkan_tanggal`), bukan meneruskan array mentah -- kalau form menambah kolom baru di tabel itu suatu saat, view ini TIDAK otomatis ikut membocorkannya.
+
+**BUG ditemukan lewat uji umpan ulang, diperbaiki `0011_perbaikan_fan_out_material_kurang.sql`**: versi pertama (0010) memakai `left join lateral (jsonb_array_elements(...)) mk on true` -- ini MENGGANDAKAN baris `report` sebanyak jumlah elemen `material_kurang` SEBELUM `group by` dijalankan, jadi `sum((r.data->>'target_unit')::int)` ikut terlipat-ganda (lokasi dengan 2 baris material kurang membuat `target_unit=10` terbaca `20` di hasil uji pertama). Classic SQL fan-out trap. Diperbaiki dengan subquery berkorelasi (bukan JOIN) di dalam SELECT list -- tidak pernah menggandakan baris sumber. Postgres tidak punya agregat `max(jsonb)` bawaan (dicek langsung, error "function max(jsonb) does not exist"), jadi dibungkus `max(...::text)::jsonb` -- aman karena `report_uniq` menjamin cuma 1 baris pic_lokasi per lokasi per hari.
+
+**Uji umpan diperkuat** (bukan cuma field teks bebas top-level, sekarang juga kunci liar DI DALAM elemen `material_kurang` itu sendiri): `scripts/uji-boleh-lihat-rekap.mjs` diedit menambah elemen `material_kurang` kedua dengan kunci ekstra `catatan_pic: "RAHASIA -- kunci liar disisipkan..."` yang TIDAK ada di whitelist. Output mentah setelah kedua perbaikan:
+
+```
+════ UJI 1 — sebagai Ronald, SELECT * FROM v_pembangunan_per_lokasi (RAW OUTPUT) ════
+[
+  {
+    "lokasi": "Tajur", "target": "10", "sedang_dibangun": "4", "finishing": "2",
+    "selesai_hari_ini": "1", "belum_mulai": "3", "material_cukup": false,
+    "material_kurang": [
+      { "material": "Semen", "kebutuhan": "50 sak", "untuk_unit": "Blok A", "dibutuhkan_tanggal": "besok" },
+      { "material": "Pasir", "kebutuhan": "2 truk", "untuk_unit": "Blok B", "dibutuhkan_tanggal": "lusa" }
+    ],
+    "kiriman_precast_jumlah": "12",
+    "jalan_status": "Rusak", "listrik_status": "Proses", "air_status": "Sudah",
+    "drainase_baik": false, "penerangan_baik": true, "gerbang_baik": true
+  }
+]
+--> 1 baris.
+Tidak ada field "RAHASIA" yang bocor lewat view (termasuk kunci liar di dalam material_kurang).
+material_kurang terstruktur (nama "Semen"/"Pasir") IKUT TERBAWA, sesuai perbaikan syarat #1.
+
+════ UJI 2 — sebagai Toyib (karyawan polos, TANPA assignment apa pun) ════
+[]
+--> 0 baris.
+
+════ UJI 3 — sebagai Ronald, SELECT langsung ke report WHERE form_key='pic_lokasi' ════
+[]
+--> 0 baris.
+```
+
+`target=10` (bukan `20`) mengonfirmasi fan-out sudah beres; `catatan_pic` (kunci liar di dalam elemen kedua) tidak ikut terbawa mengonfirmasi whitelist per-elemen bekerja, bukan cuma meneruskan array. `lib/api/pembangunan.ts` dan `components/LaporForm.tsx` (blok `RekapMaterialOtomatis`) diperbarui menampilkan daftar material lengkap (nama/kebutuhan/untuk unit/tanggal), bukan cuma hitungan. `tsc`/`build`/`lint` bersih, `grep` angka bisnis nol hasil, rollback dikonfirmasi 0 sisa.
+
+**Pelajaran dicatat untuk view lintas-divisi berikutnya**: (1) uji umpan teks mencolok ("RAHASIA") adalah metode WAJIB, bukan opsional -- ini yang menemukan kunci liar di dalam array bersarang, sesuatu yang tidak akan ketahuan cuma dari membaca SQL-nya; (2) `LEFT JOIN LATERAL` ke fungsi set-returning (`jsonb_array_elements`, `unnest`, dst.) SEBELUM `GROUP BY` yang punya kolom `sum()`/`count()` lain HARUS diwaspadai fan-out -- pakai subquery berkorelasi kalau cuma butuh satu nilai per baris sumber.
+
 ---
 
 ## Migrasi stack: Vite → Next.js 15/16 (21 Agustus 2026)
