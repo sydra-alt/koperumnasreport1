@@ -10,6 +10,7 @@ import { useDaftarLokasi } from '../lib/api/lokasi';
 import { buatKeputusanDariLaporan } from '../lib/api/decision';
 import { useKirimReport, useReportHariIni, useSimpanDraft, type ScopeOpsi } from '../lib/api/report';
 import { useRekapPembangunanPerLokasi, type PembangunanPerLokasiRow } from '../lib/api/pembangunan';
+import { usePicLokasiBelumUpload, type LokasiBelumUpload } from '../lib/api/it';
 import { tanggalIndonesiaWIB } from '../lib/tanggal';
 import { debounce } from '../lib/debounce';
 import { formRegistry } from '../forms';
@@ -61,6 +62,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
   const { data: policy } = usePolicy();
   const { data: progres } = useProgresBulananSaya();
   const { data: rekapPembangunan } = useRekapPembangunanPerLokasi(formKey === 'pembangunan');
+  const { data: belumUpload } = usePicLokasiBelumUpload(formKey === 'it');
   // Blok "Laporan Personal Marketing" (rekap PTE/undangan/closing milik pengirim
   // sendiri) muncul di HAMPIR SEMUA form divisi -- lihat forms/blok-bersama.ts.
   // Query ini cuma perlu jalan utk form SELAIN personal_marketing itu sendiri.
@@ -313,6 +315,8 @@ export function LaporForm({ formKey }: { formKey: string }) {
 
       {formKey === 'pembangunan' && rekapPembangunan && <RekapPembangunanOtomatis data={rekapPembangunan} />}
 
+      {formKey === 'it' && belumUpload && <BelumUploadOtomatis data={belumUpload} />}
+
       <p className="text-sm" style={{ color: 'var(--kosong)' }}>
         {statusSimpan === 'menyimpan' && 'Menyimpan draft…'}
         {statusSimpan === 'tersimpan' && 'Draft tersimpan.'}
@@ -499,6 +503,40 @@ function RekapInfrastrukturOtomatis({ data }: { data: PembangunanPerLokasiRow[] 
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 7 · Daftar PIC lokasi yang BELUM mengirim foto/video pembangunan hari ini
+ * -- dihitung dari tabel `attachment` (D2), bukan diketik PIC IT.
+ * `usePicLokasiBelumUpload()` (lib/api/it.ts) sendiri sudah memisahkan
+ * sumbernya: lokasi dari view security-definer (tanpa nama), nama PIC dari
+ * query biasa ke assignment+profile (broadly readable) -- lihat komentar
+ * di sana.
+ */
+function BelumUploadOtomatis({ data }: { data: LokasiBelumUpload[] }) {
+  return (
+    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
+      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+        PIC Lokasi yang Belum Mengirim Foto/Video Pembangunan
+      </p>
+      <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
+        Dihitung otomatis dari lampiran laporan PIC Lokasi hari ini. Hanya baca.
+      </p>
+      {data.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+          Semua lokasi sudah mengirim foto/video hari ini.
+        </p>
+      ) : (
+        <ul className="list-disc pl-5 text-sm">
+          {data.map((l) => (
+            <li key={l.lokasiId}>
+              {l.lokasi} -- PIC: {l.picNama.join(', ') || '—'}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

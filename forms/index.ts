@@ -3,6 +3,7 @@ import { f13PicLokasi } from './f13-pic-lokasi';
 import { f14Hrd } from './f14-hrd';
 import { f14Security } from './f14-security';
 import { f14Perizinan } from './f14-perizinan';
+import { f14It } from './f14-it';
 import { f15Pembangunan } from './f15-pembangunan';
 import { f15Dti } from './f15-dti';
 import { f15Kendaraan } from './f15-kendaraan';
@@ -16,6 +17,7 @@ export const formRegistry: Record<string, FormSchema> = {
   hrd: f14Hrd,
   security: f14Security,
   perizinan: f14Perizinan,
+  it: f14It,
   pembangunan: f15Pembangunan,
   dti: f15Dti,
   kendaraan: f15Kendaraan,

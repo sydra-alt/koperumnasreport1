@@ -337,7 +337,6 @@ yang seharusnya tertutup RLS**. Karena itu setiap view di `03-CALC-SPEC.md` haru
 dengan `security_invoker`:
 
 ```sql
-alter view public.v_keuangan_rekap  set (security_invoker = on);
 alter view public.v_papan_hari_ini  set (security_invoker = on);
 alter view public.v_marketing_bulanan set (security_invoker = on);
 alter view public.v_pembangunan_hari_ini set (security_invoker = on);
@@ -346,6 +345,32 @@ alter view public.v_selisih_resto   set (security_invoker = on);
 
 Tanpa baris ini, Ibu Sabrina bisa melihat saldo bank lewat view. Ini kesalahan paling
 mudah terlewat di seluruh proyek.
+
+⚠️ **Kecuali `v_keuangan_rekap`.** View itu justru harus `security_invoker = off`, karena
+pembacanya (Ibu Sabrina) memang **tidak** punya akses baris ke laporan Accounting — itu
+seluruh maksudnya. Dengan `on`, dia akan menerima nol baris dan bagian 11 laporannya
+kosong selamanya. Pakai pola §3.4b:
+
+```sql
+create or replace view public.v_keuangan_rekap
+with (security_invoker = off) as
+select
+  tanggal,
+  (data->>'total_masuk')::bigint  as total_masuk,
+  (data->>'total_keluar')::bigint as total_keluar,
+  (data->>'total_masuk')::bigint - (data->>'total_keluar')::bigint as net,
+  warna
+from report
+where form_key = 'accounting'
+  and status <> 'draft'
+  and (public.has_role('ceo') or public.has_role('pusat') or public.has_role('accounting'));
+```
+
+Empat kolom itu batas mutlak. Saldo bank, piutang, petty cash, dan prioritas pembayaran
+tidak boleh ditambahkan, sekarang maupun nanti.
+
+Bedanya dengan view lain: `v_papan_hari_ini` dan `v_marketing_bulanan` dibaca oleh orang
+yang memang berhak atas baris dasarnya, jadi `security_invoker = on` sudah benar di sana.
 
 ### 3.4b View agregat lintas divisi
 

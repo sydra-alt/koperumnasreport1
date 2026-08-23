@@ -262,7 +262,8 @@ Kunci JSON di atas (`unit_dibangun`, dst.) **wajib** sama persis dengan `key` fi
 ### 4.3 Rekap keuangan untuk Sabrina — hanya 4 angka
 
 ```sql
-create or replace view public.v_keuangan_rekap as
+create or replace view public.v_keuangan_rekap
+with (security_invoker = off) as        -- WAJIB off, lihat 04-CATATAN-TEKNIS §3.4
 select
   tanggal,
   (data->>'total_masuk')::bigint  as total_masuk,
@@ -270,7 +271,9 @@ select
   (data->>'total_masuk')::bigint - (data->>'total_keluar')::bigint as net,
   warna
 from report
-where form_key = 'accounting' and status <> 'draft';
+where form_key = 'accounting'
+  and status <> 'draft'
+  and (public.has_role('ceo') or public.has_role('pusat') or public.has_role('accounting'));
 ```
 
 ⚠️ View ini **tidak** boleh berisi kolom lain dari laporan Accounting. Saldo bank, piutang, dan prioritas pembayaran tidak boleh bocor lewat sini. RLS pada view mengikuti tabel dasarnya, jadi tetap pasang policy khusus (lihat `04-CATATAN-TEKNIS.md` §3.4).
