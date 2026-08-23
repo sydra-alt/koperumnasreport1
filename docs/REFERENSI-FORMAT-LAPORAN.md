@@ -1,1323 +1,173 @@
-# Format Laporan Harian Divisi Baru
-### Koperumnas Group
+# REFERENSI FORMAT LAPORAN
 
-Sembilan format berikut mengikuti gaya format yang sudah berjalan (IT, Accounting, Manager Resto, Ita), dan setiap bagiannya sudah dipetakan agar mengisi bagian yang sesuai di **Laporan Terpusat Ibu Sabrina**.
+Indeks 15 form dan spesifikasi field-nya.
 
-Semua laporan ini dikirim setiap hari kepada **Ibu Sabrina – Pusat Kontrol & Pelaporan**.
-
----
----
-
-# 👥 LAPORAN HARIAN HRD
-
-📅 Tanggal: __________
-👤 PIC HRD: __________
-📲 Dikirim ke: Ibu Sabrina – Pusat Pelaporan
-
-## 1. 📊 ABSENSI HARI INI
-
-• Total pegawai: ___
-• Hadir: ___
-• Sakit: ___
-• Izin: ___
-• Cuti: ___
-• Terlambat: ___
-• Tidak hadir tanpa keterangan: ___
-
-**Tingkat kehadiran: ___%**
-
-### DAFTAR TIDAK HADIR / TERLAMBAT
-
-| Nama | Divisi/Lokasi | Status | Keterangan | Ada surat/izin |
-|---|---|---|---|---|
-| | | | | ✅/❌ |
-| | | | | ✅/❌ |
-| | | | | ✅/❌ |
-
-🔴 Tidak hadir tanpa keterangan:
-
-⸻
-
-Tindakan HRD:
-
-⸻
-
-## 2. ⏰ KEDISIPLINAN
-
-• Terlambat hari ini: ___ orang
-• Terlambat >3x bulan ini: ___ orang
-
-Nama yang terlambat berulang:
-
-⸻
-
-• Pulang lebih awal tanpa izin: ___
-• Tidak pakai seragam: ___
-• Meninggalkan lokasi tanpa izin: ___
-
-Tindakan/teguran yang diberikan:
-
-⸻
-
-## 3. 🧑‍💼 KARYAWAN & PENEMPATAN
-
-• Karyawan aktif: ___
-• Karyawan baru masuk hari ini: ___
-• Karyawan keluar/resign: ___
-• Dalam masa percobaan: ___
-• Mutasi/rotasi hari ini: ___
-
-Nama & keterangan:
-
-⸻
-
-Posisi yang masih kosong / dibutuhkan:
-
-⸻
-
-## 4. 📄 ADMINISTRASI KEPEGAWAIAN
-
-• Kontrak akan habis 30 hari ke depan: ___ orang
-• Berkas karyawan belum lengkap: ___ orang
-• Data karyawan sudah update di sistem: ✅/❌
-
-Nama & berkas yang kurang:
-
-⸻
-
-## 5. ⚠️ MASALAH KEPEGAWAIAN
-
-• Konflik antar karyawan: __________
-• Keluhan karyawan: __________
-• Pelanggaran/indisipliner: __________
-• Surat peringatan diterbitkan: ___ (SP1/SP2/SP3)
-
-Detail:
-
-⸻
-
-PIC penyelesaian: __________
-Target selesai: __________
-
-## 6. 📣 KONTROL KEPATUHAN MARKETING SELURUH KARYAWAN
-
-⚠️ HRD memastikan seluruh karyawan mengirim Laporan Personal Marketing.
-
-• Total karyawan wajib lapor: ___
-• Sudah mengirim laporan personal: ___
-• Belum mengirim: ___
-
-🔴 Karyawan belum mengirim laporan personal:
-
-    ⸻
-    ⸻
-    ⸻
-
-• Karyawan dengan PTE tidak lengkap: ___
-• Karyawan tertinggal target undangan (<20): ___ orang
-• Karyawan tertinggal target closing (<2): ___ orang
-
-Tindakan HRD (koordinasi Pak Fauzi & Pak Dea):
-
-⸻
-
-## 7. 📣 LAPORAN PERSONAL MARKETING HRD
-
-HRD tetap termasuk SEMUA KARYAWAN WAJIB MARKETING.
-
-• Laporan personal PTA/PTE sudah dikirim: ✅/❌
-• Undangan bulan ini: ___ / 20
-• Closing bulan ini: ___ / 2
-
-## 8. 🎯 TARGET HRD BESOK
-
-1. Absensi/kedisiplinan: __________
-2. Rekrutmen: __________
-3. Administrasi: __________
-4. Masalah yang harus diselesaikan: __________
-
-## 9. 📌 REKAP HRD UNTUK SABRINA
-
-👥 Total pegawai: ___
-✅ Hadir: ___ | 🤒 Sakit: ___ | 📝 Izin: ___ | 🏖️ Cuti: ___
-⏰ Terlambat: ___ | ❌ Tanpa keterangan: ___
-📣 Laporan personal marketing: ___ / ___ karyawan
-
-🔴 MASALAH UTAMA HARI INI:
-
-⸻
-
-👉 BUTUH KEPUTUSAN CEO:
-
-⸻
-
-**STATUS HRD HARI INI:**
-🟢 AMAN / 🟡 PERLU DIKAWAL / 🔴 URGENT
-
-👤 PIC HRD: __________
-
-**PRINSIP HRD:**
-HADIR HARUS TERCATAT — TIDAK HADIR HARUS ADA KETERANGAN — PELANGGARAN HARUS DITINDAK.
+⚠️ **Koreksi 22 Agustus 2026.** Versi sebelumnya file ini keliru — isinya hanya salinan `02-FORMAT-LAPORAN-DIVISI-BARU.md`. Versi ini yang benar.
 
 ---
----
 
-# 🛡️ LAPORAN HARIAN SECURITY / SATPAM
+## §1 · Indeks 15 form dan letak spesifikasinya
 
-📅 Tanggal: __________
-🕐 Shift: PAGI / SIANG / MALAM
-📍 Lokasi/Pos: __________
-👤 Petugas: __________
-📲 Dikirim ke: Ibu Sabrina – Pusat Pelaporan
+| form_key | Nama | Spesifikasi ada di |
+|---|---|---|
+| `personal_marketing` | Laporan Personal Marketing | **§2 file ini** |
+| `pusat` | Laporan Terpusat Sabrina | `FORMAT-ASLI-02-PUSAT.md` |
+| `accounting` | Laporan Accounting (rahasia) | `FORMAT-ASLI-03-ACCOUNTING.md` |
+| `it` | Laporan IT | `FORMAT-ASLI-04-IT.md` |
+| `manager_resto` | Laporan Manager Resto | `FORMAT-ASLI-05-MANAGER-RESTO.md` |
+| `ita` | Thrifting & Kontrol F&B | `FORMAT-ASLI-06-ITA.md` |
+| `hrd` | Laporan HRD | `02-FORMAT-LAPORAN-DIVISI-BARU.md` |
+| `security` | Laporan Security | `02-FORMAT-LAPORAN-DIVISI-BARU.md` |
+| `perizinan` | Laporan Perizinan | `02-FORMAT-LAPORAN-DIVISI-BARU.md` |
+| `pembangunan` | Laporan Pembangunan | `02-FORMAT-LAPORAN-DIVISI-BARU.md` |
+| `dti` | Laporan DTI / Precast | `02-FORMAT-LAPORAN-DIVISI-BARU.md` |
+| `kendaraan` | Laporan Kendaraan & Driver | `02-FORMAT-LAPORAN-DIVISI-BARU.md` |
+| `pic_lokasi` | Laporan PIC Lokasi | `02-FORMAT-LAPORAN-DIVISI-BARU.md` |
+| `cs` | Laporan Customer Service | `02-FORMAT-LAPORAN-DIVISI-BARU.md` |
+| `ga` | Operasional Kantor | `02-FORMAT-LAPORAN-DIVISI-BARU.md` |
 
-## 1. 👮 KEHADIRAN PETUGAS
-
-• Satpam terjadwal: ___
-• Satpam hadir: ___
-• Tidak hadir: ___
-• Seragam lengkap: ✅/❌
-• Serah terima shift dilakukan: ✅/❌
-
-Nama tidak hadir & keterangan:
-
-⸻
-
-## 2. 🚪 TAMU & KUNJUNGAN
-
-• Tamu datang: ___ orang
-• Konsumen datang: ___ orang
-• Tamu tercatat di buku tamu: ✅/❌
-
-### TAMU PENTING HARI INI
-
-| Nama | Keperluan | Bertemu | Jam masuk | Jam keluar |
-|---|---|---|---|---|
-| | | | | |
-| | | | | |
-
-Keperluan penting yang perlu diketahui CEO:
-
-⸻
-
-## 3. 🚨 KEJADIAN KEAMANAN
-
-Ada kejadian: YA / TIDAK
-
-Jika YA:
-
-Jenis kejadian: __________
-Jam kejadian: ___
-Lokasi: __________
-Pihak terlibat: __________
-
-Kronologi:
-
-⸻
-
-Tindakan yang sudah dilakukan:
-
-⸻
-
-Kerugian/kerusakan: __________
-Melibatkan pihak luar/polisi: ✅/❌
-Perlu tindak lanjut: __________
-
-Jika tidak ada: **NIHIL**
-
-## 4. 🔍 PATROLI & KONTROL AREA
-
-• Patroli dilakukan: ___ kali
-• Seluruh area terpantau: ✅/❌
-• Pagar/pintu/gerbang aman: ✅/❌
-• Gudang/material aman: ✅/❌
-• Kendaraan perusahaan aman: ✅/❌
-• Penerangan area normal: ✅/❌
-• CCTV berfungsi: ✅/❌
-
-Titik rawan yang ditemukan:
-
-⸻
-
-📹 Video/foto kondisi area saat patroli: ✅/❌
-
-## 5. 🏗️ KEAMANAN MATERIAL & ASET LOKASI
-
-• Material di lokasi aman: ✅/❌
-• Alat/peralatan lengkap: ✅/❌
-• Ada material hilang/berkurang: YA / TIDAK
-
-Jika YA:
-
-Barang: __________
-Jumlah: __________
-Perkiraan nilai: Rp __________
-Terakhir terlihat: __________
-
-Tindakan:
-
-⸻
-
-## 6. 🚗 KELUAR MASUK KENDARAAN
-
-• Kendaraan perusahaan keluar: ___
-• Kendaraan material masuk: ___
-• Kendaraan sudah tercatat: ✅/❌
-
-Kendaraan mengangkut barang keluar (wajib ada surat jalan):
-
-| Kendaraan | Barang | Jumlah | Surat jalan | Yang menyetujui |
-|---|---|---|---|---|
-| | | | ✅/❌ | |
-
-🔴 Barang keluar tanpa surat jalan:
-
-⸻
-
-## 7. 🧹 KEBERSIHAN & FASILITAS POS
-
-• Pos jaga bersih: ✅/❌
-• Buku tamu terisi rapi: ✅/❌
-• Alat komunikasi/HT normal: ✅/❌
-• Senter/perlengkapan lengkap: ✅/❌
-
-Kebutuhan pos:
-
-⸻
-
-## 8. 📣 LAPORAN PERSONAL MARKETING
-
-• Laporan personal PTA/PTE sudah dikirim: ✅/❌
-• Undangan bulan ini: ___ / 20
-• Closing bulan ini: ___ / 2
-
-## 9. 📌 REKAP SECURITY UNTUK SABRINA
-
-👮 Satpam hadir: ___ / ___
-🚪 Tamu: ___ orang | Konsumen: ___ orang
-🔍 Patroli: ___ kali
-📹 CCTV: 🟢 NORMAL / 🔴 MASALAH
-🚨 Kejadian keamanan: ADA / NIHIL
-📦 Material aman: ✅/❌
-
-🔴 MASALAH UTAMA:
-
-⸻
-
-👉 BUTUH KEPUTUSAN CEO:
-
-⸻
-
-**STATUS KEAMANAN HARI INI:**
-🟢 AMAN / 🟡 PERLU DIKAWAL / 🔴 URGENT
-
-👤 Petugas: __________
-🕐 Jam laporan: __________
-
-**PRINSIP SECURITY:**
-TIDAK ADA TAMU TIDAK TERCATAT — TIDAK ADA BARANG KELUAR TANPA SURAT JALAN — SETIAP KEJADIAN HARUS DILAPORKAN HARI ITU JUGA.
+Berkas `FORMAT-ASLI-*.md` adalah format yang sudah berjalan di perusahaan, disalin apa adanya dari dokumen klien. Belum semuanya masuk repo — lihat §4.
 
 ---
----
 
-# 📑 LAPORAN HARIAN PERIZINAN
+## §2 · `personal_marketing` — spesifikasi lengkap
 
-📅 Tanggal: __________
-👤 PIC Perizinan: __________
-📲 Dikirim ke: Ibu Sabrina – Pusat Pelaporan
+Wajib seluruh karyawan tanpa kecuali, setiap hari. Kontrol: Pak Fauzy & Pak Dea.
 
-## 1. 📋 DAFTAR PERIZINAN BERJALAN
+Kolom **Kunci** di bawah adalah `Field.key` di `forms/f01-personal-marketing.ts`, dan sekaligus kunci JSON di `report.data`. Harus sama persis dengan yang dipakai `sinkronPteDaily()` dan view agregasi — beda satu huruf, hasilnya diam-diam nol tanpa error.
 
-Diisi untuk **setiap lokasi** yang sedang diproses.
+### Blok 1 · Identitas
 
-📍 **Lokasi:** __________
-Jenis izin: __________
-Instansi: __________
-Nomor berkas: __________
+Terisi otomatis dari `profile`, hanya baca, tidak perlu field.
 
-Tahapan:
-☐ Persiapan dokumen
-☐ Pengajuan
-☐ Verifikasi instansi
-☐ Peninjauan lapangan
-☐ Pembayaran retribusi
-☐ Terbit
+Nama · Divisi/Jobdesk · PIC Lokasi · Tanggal (WIB)
 
-Progress: ___%
-Mulai diproses: __________
-Target terbit: __________
-Deadline: __________
+### Blok 2 · Target closing pribadi
 
-Yang dikerjakan hari ini:
+Target: minimal `policy.closing_target` konsumen closing per bulan.
 
-⸻
-
-Kendala:
-
-⸻
-
-Biaya yang sudah dikeluarkan: Rp __________
-Perkiraan biaya sisa: Rp __________
-
-*(Salin blok di atas untuk setiap lokasi)*
-
-## 2. ✅ YANG SELESAI HARI INI
-
-| Lokasi | Jenis izin | Nomor izin terbit | Masa berlaku |
+| Kunci | Label | Tipe | Catatan |
 |---|---|---|---|
-| | | | |
+| — | Closing bulan ini | *dihitung* | `___ / 2` dari view, **bukan diketik** |
+| `closing_list` | Konsumen closing | `tabel` | baris bisa ditambah |
 
-Dokumen sudah discan/diarsipkan: ✅/❌
-Sudah diserahkan ke: __________
+Kolom tabel `closing_list`: `nama_konsumen` (teks, wajib) · `lokasi` (pilih dari tabel `lokasi`) · `status` (pilih: booking / akad / batal)
 
-## 3. ⏳ YANG BELUM SELESAI
+Setiap baris menghasilkan satu baris di tabel `closing`.
 
-| Lokasi | Jenis izin | Tahap saat ini | Hambatan | Target |
+> Teks yang ditampilkan di bawah blok ini:
+> ✅ Jika target minimal 2 closing terpenuhi: Rp300.000 tidak dipotong.
+> ❌ Jika tidak terpenuhi: mengikuti ketentuan perusahaan terkait potongan Rp300.000.
+>
+> Nominal diambil dari `policy.closing_penalty`, jangan ditulis di kode. Selama `policy.pte_mulai_berlaku` masih `null`, ganti seluruh kalimat ini dengan **"Ketentuan belum berlaku."**
+
+### Blok 3 · Target undangan konsumen baru
+
+Target: minimal `policy.invite_target` orang baru per bulan.
+
+| Kunci | Label | Tipe |
+|---|---|---|
+| `undang_jumlah` | Undangan baru hari ini (orang) | `angka` |
+| — | Akumulasi bulan ini | *dihitung* `___ / 20` |
+| `undang_merespons` | Yang merespons | `angka` |
+| `undang_mau_presentasi` | Yang mau presentasi | `angka` |
+| `undang_jadi_prospek` | Yang menjadi prospek | `angka` |
+
+### Blok 4 · PTE hari ini — enam kewajiban
+
+Semua ber-`buktiWajib: true`. Dicentang tanpa lampiran → submit ditolak.
+
+| Kunci | Label | Tipe | `buktiKunci` | Bukti yang diminta |
 |---|---|---|---|---|
-| | | | | |
-| | | | | |
+| `live` | Live | `ya_tidak` | `live` | Screenshot live |
+| `live_platform` | Platform | `teks` | — | muncul kalau `live` = ya |
+| `undang_jumlah` | Undang konsumen baru | `angka` | `undang` | Bukti undangan / follow-up |
+| `kesaksian_jumlah` | Kesaksian / testimoni | `angka` | `kesaksian` | Video atau foto |
+| `review_jumlah` | Google Review | `angka` | `review` | Link atau screenshot |
+| `konten_jumlah` | VT / konten medsos | `angka` | `konten` | Link minimal 3 konten |
+| `konten_1` `konten_2` `konten_3` | Konten 1, 2, 3 | `teks` | — | judul atau tautan |
+| `mentahan_jumlah` | Video mentahan | `angka` | `mentahan` | File video |
 
-🔴 Izin yang melewati target:
+`undang_jumlah` muncul di Blok 3 dan Blok 4 — **satu field yang sama**, jangan dibuat dua. Tampilkan di salah satu blok saja, rujuk di blok lainnya.
 
-⸻
+Ambang `konten_jumlah` dari `policy.pte_konten_minimal` (nilai 3).
 
-Alasan keterlambatan:
+> Aturan yang wajib ditegakkan sistem, kutipan dari format asli:
+> **"Tidak cukup hanya menulis 'sudah'. Harus ada bukti."**
 
-⸻
+### Blok 5 · Status PTE Rp500.000
 
-## 4. 🏛️ KOORDINASI INSTANSI
+Seluruhnya dihitung sistem. Tidak ada field.
 
-• Kunjungan instansi hari ini: ___
-• Instansi yang ditemui: __________
-• Pejabat/petugas: __________
-• Hasil pertemuan:
+Tampilkan enam kewajiban dengan ✅/❌, lalu status **LENGKAP / TIDAK LENGKAP**.
 
-⸻
+Aturan bonus mengikuti `policy.pte_bonus_rule`, nominal dari `policy.pte_bonus_amount`. Selama `pte_mulai_berlaku` masih `null`, tampilkan **"Belum berlaku"** — bukan angka, bukan status hangus.
 
-• Dokumen yang diminta instansi:
+### Blok 6 · Funnel marketing pribadi
 
-⸻
-
-• Jadwal tinjau lapangan berikutnya: __________
-
-## 5. 💰 KEBUTUHAN BIAYA PERIZINAN
-
-| Untuk | Lokasi | Nominal | Dibutuhkan tanggal | Urgensi |
-|---|---|---|---|---|
-| | | Rp | | 🟢/🟡/🔴 |
-| | | Rp | | 🟢/🟡/🔴 |
-
-**TOTAL KEBUTUHAN: Rp __________**
-
-Sudah diajukan ke Accounting: ✅/❌
-Status: MENUNGGU / DISETUJUI / DIBAYAR
-
-## 6. ⚠️ RISIKO PERIZINAN
-
-• Izin yang bisa menghambat pembangunan: __________
-• Lokasi yang belum boleh dibangun: __________
-• Izin akan kedaluwarsa 90 hari ke depan: __________
-
-Dampak jika tidak selesai:
-
-⸻
-
-## 7. 📣 LAPORAN PERSONAL MARKETING
-
-• Laporan personal PTA/PTE sudah dikirim: ✅/❌
-• Undangan bulan ini: ___ / 20
-• Closing bulan ini: ___ / 2
-
-## 8. 🎯 TARGET PERIZINAN BESOK
-
-1. Lokasi yang dikejar: __________
-2. Dokumen yang disiapkan: __________
-3. Instansi yang didatangi: __________
-4. Yang harus terbit: __________
-
-## 9. 📌 REKAP PERIZINAN UNTUK SABRINA
-
-📑 Lokasi diproses hari ini: ___
-✅ Izin terbit hari ini: ___
-⏳ Masih proses: ___
-🔴 Lewat target: ___
-💰 Kebutuhan biaya: Rp ___
-
-🔴 MASALAH UTAMA:
-
-⸻
-
-👉 BUTUH KEPUTUSAN CEO:
-
-⸻
-
-**STATUS PERIZINAN HARI INI:**
-🟢 AMAN / 🟡 PERLU DIKAWAL / 🔴 URGENT
-
-👤 PIC Perizinan: __________
-
-**PRINSIP PERIZINAN:**
-SETIAP IZIN ADA PIC — SETIAP IZIN ADA DEADLINE — TIDAK ADA IZIN YANG DIAM TANPA KABAR.
-
----
----
-
-# 🏗️ LAPORAN HARIAN PEMBANGUNAN
-
-📅 Tanggal: __________
-👤 Kepala Pembangunan: __________
-📲 Dikirim ke: Ibu Sabrina – Pusat Pelaporan
-
-⚠️ Laporan ini adalah rekap seluruh lokasi. Detail per lokasi ada di Laporan PIC Lokasi.
-
-## 1. 📊 REKAP UNIT SELURUH LOKASI
-
-• Target pembangunan: ___ unit
-• Sedang dibangun: ___ unit
-• Finishing: ___ unit
-• Selesai hari ini: ___ unit
-• Selesai bulan ini: ___ unit
-• Belum mulai: ___ unit
-
-**Pencapaian terhadap target: ___%**
-
-### RINCIAN PER LOKASI
-
-| Lokasi | Target | Dibangun | Finishing | Selesai hari ini | Belum mulai | Status |
-|---|---|---|---|---|---|---|
-| | | | | | | 🟢/🟡/🔴 |
-| | | | | | | 🟢/🟡/🔴 |
-| | | | | | | 🟢/🟡/🔴 |
-
-🔴 Lokasi tertinggal target:
-
-⸻
-
-Penyebab:
-
-⸻
-
-## 2. 👷 KONTRAKTOR
-
-| Kontraktor | Lokasi | Unit dikerjakan | Progress | Tenaga kerja | Status |
-|---|---|---|---|---|---|
-| | | | ___% | ___ orang | 🟢/🟡/🔴 |
-| | | | ___% | ___ orang | 🟢/🟡/🔴 |
-
-🔴 Kontraktor bermasalah:
-
-Nama: __________
-Lokasi: __________
-Masalah: __________
-Sudah berapa lama: __________
-Tindakan yang sudah dilakukan: __________
-Rekomendasi: LANJUT / PERINGATAN / GANTI
-
-⸻
-
-## 3. 🧱 MATERIAL
-
-• Material cukup di seluruh lokasi: ✅/❌
-
-### MATERIAL HABIS / KURANG
-
-| Material | Lokasi | Kebutuhan | Dibutuhkan tanggal | Estimasi biaya |
-|---|---|---|---|---|
-| | | | | Rp |
-| | | | | Rp |
-
-**TOTAL KEBUTUHAN MATERIAL: Rp __________**
-
-• Material dari DTI/precast: __________
-• Material dari supplier luar: __________
-• Sudah diajukan ke Accounting: ✅/❌
-
-🔴 Pekerjaan berhenti karena material:
-
-⸻
-
-## 4. 🛠️ INFRASTRUKTUR
-
-| Lokasi | Jalan | Listrik | Air | Drainase | Keterangan |
-|---|---|---|---|---|---|
-| | ✅/❌ | ✅/❌ | ✅/❌ | ✅/❌ | |
-| | ✅/❌ | ✅/❌ | ✅/❌ | ✅/❌ | |
-
-Infrastruktur yang harus dikerjakan:
-
-⸻
-
-Estimasi biaya: Rp __________
-
-## 5. 🔍 KUALITAS & PENGAWASAN
-
-• Lokasi dikunjungi hari ini: __________
-• Pekerjaan sesuai spesifikasi: ✅/❌
-• Temuan kualitas/cacat: __________
-• Pekerjaan yang harus diulang: __________
-• Kecelakaan kerja: ADA / NIHIL
-
-Jika ada kecelakaan:
-
-⸻
-
-📹 Foto/video progress pembangunan sudah dikirim ke IT: ✅/❌
-Jumlah foto: ___ | Video: ___
-
-## 6. 📣 LAPORAN PERSONAL MARKETING
-
-• Laporan personal PTA/PTE sudah dikirim: ✅/❌
-• Undangan bulan ini: ___ / 20
-• Closing bulan ini: ___ / 2
-
-## 7. 🎯 TARGET PEMBANGUNAN BESOK
-
-1. Unit yang dikejar selesai: ___ unit
-2. Lokasi prioritas: __________
-3. Material yang harus datang: __________
-4. Kontraktor yang harus dikawal: __________
-5. Infrastruktur: __________
-
-## 8. 📌 REKAP PEMBANGUNAN UNTUK SABRINA
-
-🏗️ Target: ___ unit | Dibangun: ___ | Finishing: ___
-✅ Selesai hari ini: ___ unit | Bulan ini: ___ unit
-🧱 Material: 🟢 CUKUP / 🔴 KURANG — Rp ___
-👷 Kontraktor bermasalah: ___
-🔴 Lokasi tertinggal: ___
-
-🔴 MASALAH UTAMA:
-
-⸻
-
-👉 BUTUH KEPUTUSAN CEO:
-
-⸻
-
-**STATUS PEMBANGUNAN HARI INI:**
-🟢 AMAN / 🟡 PERLU DIKAWAL / 🔴 URGENT
-
-👤 Kepala Pembangunan: __________
-
-**PRINSIP PEMBANGUNAN:**
-TARGET HARUS TERUKUR — MATERIAL TIDAK BOLEH TELAT — KONTRAKTOR HARUS DIKAWAL — PROGRESS HARUS ADA FOTO.
-
----
----
-
-# 🏭 LAPORAN HARIAN DTI / PRECAST / PERIKAS
-
-📅 Tanggal: __________
-👤 PIC DTI: __________
-📲 Dikirim ke: Ibu Sabrina – Pusat Pelaporan
-
-## 1. 🏭 PRODUKSI HARI INI
-
-• Target produksi: ___
-• Realisasi: ___
-• Pencapaian: ___%
-
-**PRECAST**
-• Target: ___ pcs
-• Dibuat hari ini: ___ pcs
-• Kualitas lolos QC: ___ pcs
-• Reject: ___ pcs
-
-**PERIKAS**
-• Target: ___
-• Dibuat hari ini: ___
-• Lolos QC: ___
-• Reject: ___
-
-🔴 Jika tidak mencapai target, penyebab:
-
-⸻
-
-## 2. 📦 STOK HASIL PRODUKSI
-
-• Stok precast siap kirim: ___ pcs
-• Stok perikas siap kirim: ___
-• Dikirim ke lokasi hari ini: ___ pcs
-
-| Lokasi tujuan | Barang | Jumlah | Surat jalan | Diterima |
-|---|---|---|---|---|
-| | | | ✅/❌ | ✅/❌ |
-| | | | ✅/❌ | ✅/❌ |
-
-Permintaan lokasi yang belum bisa dipenuhi:
-
-⸻
-
-## 3. 🧱 STOK MATERIAL PRODUKSI
-
-| Material | Stok awal | Terpakai | Sisa | Cukup untuk ___ hari |
-|---|---|---|---|---|
-| Semen | | | | |
-| Pasir | | | | |
-| Besi | | | | |
-| Split/kerikil | | | | |
-| | | | | |
-
-🔴 Material habis:
-
-⸻
-
-🟡 Material akan habis (<3 hari):
-
-⸻
-
-**KEBUTUHAN BELANJA MATERIAL**
-Barang: __________
-Jumlah: __________
-RAB: Rp __________
-Dibutuhkan tanggal: __________
-Sudah diajukan ke Accounting: ✅/❌
-
-## 4. 🏗️ PEMBANGUNAN AREA DTI
-
-• Pekerjaan yang sedang berjalan: __________
-• Progress: ___%
-• Target selesai: __________
-• Kendala: __________
-
-## 5. ⚙️ MESIN & PERALATAN
-
-• Mesin berfungsi normal: ✅/❌
-• Cetakan/molding cukup: ✅/❌
-• Alat berat normal: ✅/❌
-
-Kerusakan:
-
-⸻
-
-Perlu servis/perbaikan: __________
-Estimasi biaya: Rp __________
-Dampak ke produksi: __________
-
-## 6. 👷 TENAGA KERJA DTI
-
-• Total pekerja: ___
-• Hadir: ___
-• Tidak hadir: ___
-• Kecelakaan kerja: ADA / NIHIL
-• APD dipakai lengkap: ✅/❌
-
-Keterangan:
-
-⸻
-
-## 7. 🧹 KEBERSIHAN & KEAMANAN AREA
-
-• Kebersihan area produksi: ✅/❌
-• Area penyimpanan rapi: ✅/❌
-• Keamanan area: ✅/❌
-• Material aman dari pencurian: ✅/❌
-
-📹 Video kondisi DTI hari ini: ✅/❌
-
-Masalah:
-
-⸻
-
-## 8. 📣 LAPORAN PERSONAL MARKETING
-
-• Laporan personal PTA/PTE sudah dikirim: ✅/❌
-• Undangan bulan ini: ___ / 20
-• Closing bulan ini: ___ / 2
-
-## 9. 🎯 TARGET DTI BESOK
-
-1. Produksi precast: ___ pcs
-2. Produksi perikas: ___
-3. Pengiriman ke lokasi: __________
-4. Material yang harus datang: __________
-5. Perbaikan mesin: __________
-
-## 10. 📌 REKAP DTI UNTUK SABRINA
-
-🏭 Target produksi: ___ | Realisasi: ___ (___%)
-🧱 Precast dibuat: ___ pcs | Perikas: ___
-📦 Stok material: 🟢 AMAN / 🔴 KURANG
-⚙️ Mesin: 🟢 NORMAL / 🔴 RUSAK
-🧹 Kebersihan: ✅/❌ | 🛡️ Keamanan: ✅/❌
-👷 Pekerja hadir: ___ / ___
-
-🔴 MASALAH UTAMA:
-
-⸻
-
-👉 BUTUH KEPUTUSAN CEO:
-
-⸻
-
-**STATUS DTI HARI INI:**
-🟢 AMAN / 🟡 PERLU DIKAWAL / 🔴 URGENT
-
-👤 PIC DTI: __________
-
-**PRINSIP DTI:**
-PRODUKSI HARUS SESUAI TARGET — KUALITAS HARUS LOLOS QC — MATERIAL TIDAK BOLEH HABIS — PENGIRIMAN HARUS ADA SURAT JALAN.
-
----
----
-
-# 🚗 LAPORAN HARIAN KENDARAAN & DRIVER
-
-📅 Tanggal: __________
-👤 Koordinator Driver: __________
-📲 Dikirim ke: Ibu Sabrina – Pusat Pelaporan
-
-## 1. 🚙 CEK KONDISI KENDARAAN
-
-### MOBIL
-
-| No. Polisi | Driver | Dicek | BBM | Ban | Oli | Mesin | Kondisi |
-|---|---|---|---|---|---|---|---|
-| | | ✅/❌ | ___% | ✅/❌ | ✅/❌ | ✅/❌ | 🟢/🟡/🔴 |
-| | | ✅/❌ | ___% | ✅/❌ | ✅/❌ | ✅/❌ | 🟢/🟡/🔴 |
-
-**Mobil dicek: ___ / ___**
-
-### TRUK
-
-| No. Polisi | Driver | Dicek | BBM | Ban | Oli | Mesin | Kondisi |
-|---|---|---|---|---|---|---|---|
-| | | ✅/❌ | ___% | ✅/❌ | ✅/❌ | ✅/❌ | 🟢/🟡/🔴 |
-
-**Truk dicek: ___ / ___**
-
-### KENDARAAN DTI / ALAT BERAT
-
-| Unit | Operator | Dicek | Kondisi | Keterangan |
-|---|---|---|---|---|
-| | | ✅/❌ | 🟢/🟡/🔴 | |
-
-**Kendaraan DTI dicek: ___ / ___**
-
-📹 Foto kondisi kendaraan hari ini: ✅/❌
-
-## 2. ⛽ BBM
-
-• Pengisian hari ini: ___ kali
-• Total liter: ___ L
-• Total biaya: Rp __________
-• Bukti/struk lengkap: ✅/❌
-
-| Kendaraan | Liter | Biaya | Km terakhir | Struk |
-|---|---|---|---|---|
-| | | Rp | | ✅/❌ |
-| | | Rp | | ✅/❌ |
-
-🔴 Pemakaian BBM tidak wajar:
-
-⸻
-
-## 3. 🔧 KERUSAKAN & SERVIS
-
-🔴 **KENDARAAN RUSAK**
-
-| Kendaraan | Kerusakan | Sejak kapan | Bisa dipakai | Estimasi biaya |
-|---|---|---|---|---|
-| | | | ✅/❌ | Rp |
-
-🟡 **PERLU SERVIS**
-
-| Kendaraan | Jenis servis | Km/jadwal | Estimasi biaya | Urgensi |
-|---|---|---|---|---|
-| | | | Rp | 🟢/🟡/🔴 |
-
-**TOTAL ESTIMASI BIAYA: Rp __________**
-
-Sudah diajukan ke Accounting: ✅/❌
-Status: MENUNGGU / DISETUJUI / DIKERJAKAN / SELESAI
-
-Dampak ke operasional jika tidak diperbaiki:
-
-⸻
-
-## 4. 🧭 PENGGUNAAN KENDARAAN HARI INI
-
-| Kendaraan | Driver | Tujuan | Keperluan | Berangkat | Kembali | Km |
-|---|---|---|---|---|---|---|
-| | | | | | | |
-| | | | | | | |
-
-• Total perjalanan: ___
-• Pengiriman material: ___
-• Antar-jemput konsumen: ___
-• Keperluan kantor: ___
-
-Perjalanan tanpa surat tugas:
-
-⸻
-
-## 5. 👤 DRIVER
-
-• Total driver: ___
-• Hadir: ___
-• Tidak hadir: ___
-• SIM masih berlaku semua: ✅/❌
-• Pelanggaran lalu lintas/tilang: ADA / NIHIL
-
-Keterangan:
-
-⸻
-
-SIM/STNK akan habis 60 hari ke depan:
-
-⸻
-
-## 6. 📄 DOKUMEN KENDARAAN
-
-• STNK lengkap semua: ✅/❌
-• Pajak kendaraan aman: ✅/❌
-• Asuransi aktif: ✅/❌
-
-Yang akan jatuh tempo:
-
-| Kendaraan | Dokumen | Jatuh tempo | Biaya |
+| Kunci | Label | Tipe | Catatan |
 |---|---|---|---|
-| | | | Rp |
+| — | Undangan bulan ini | *dihitung* | `___ / 20` |
+| `funnel_prospek_aktif` | Prospek aktif | `angka` | |
+| `funnel_presentasi` | Presentasi | `angka` | |
+| `funnel_survey` | Survey lokasi | `angka` | |
+| `funnel_booking` | Booking | `angka` | |
+| — | Closing | *dihitung* | `___ / 2` |
 
-## 7. 📣 LAPORAN PERSONAL MARKETING
+### Blok 7 · Target besok
 
-• Laporan personal PTA/PTE sudah dikirim: ✅/❌
-• Undangan bulan ini: ___ / 20
-• Closing bulan ini: ___ / 2
+| Kunci | Label | Tipe |
+|---|---|---|
+| `besok_undangan` | Undangan baru (orang) | `angka` |
+| `besok_followup` | Follow-up (orang) | `angka` |
+| `besok_live` | Live | `teks` |
+| `besok_konten` | 3 konten | `teks` |
+| `besok_prospek` | Prospek yang dikejar | `teks` |
+| `besok_closing` | Target closing | `teks` |
 
-## 8. 🎯 TARGET BESOK
+### Blok 8 · Status personal marketing
 
-1. Kendaraan yang dipakai: __________
-2. Pengiriman yang harus jalan: __________
-3. Servis/perbaikan: __________
-4. Dokumen yang harus diurus: __________
+Dihitung sistem, tidak ada field. Tiga baris status:
 
-## 9. 📌 REKAP KENDARAAN UNTUK SABRINA
+- **Closing** — 🟢 tercapai / 🟡 proses / 🔴 belum ada
+- **Undangan 20 orang** — 🟢 tercapai / 🟡 proses / 🔴 tertinggal
+- **PTE** — 🟢 lengkap / 🔴 tidak lengkap
 
-🚙 Mobil dicek: ___ / ___
-🚛 Truk dicek: ___ / ___
-🏭 Kendaraan DTI dicek: ___ / ___
-⛽ BBM hari ini: Rp ___
-🔴 Kendaraan rusak: ___ unit
-🔧 Perlu servis: ___ unit
-💰 Estimasi biaya: Rp ___
-👤 Driver hadir: ___ / ___
+Ambang di `03-CALC-SPEC.md` §3.
 
-🔴 MASALAH UTAMA:
+### Blok 9 · Pernyataan karyawan
 
-⸻
-
-👉 BUTUH KEPUTUSAN CEO:
-
-⸻
-
-**STATUS KENDARAAN HARI INI:**
-🟢 AMAN / 🟡 PERLU DIKAWAL / 🔴 URGENT
-
-👤 Koordinator Driver: __________
-
-**PRINSIP KENDARAAN:**
-CEK SEBELUM JALAN — BBM ADA STRUK — KERUSAKAN LAPOR HARI ITU — DOKUMEN TIDAK BOLEH MATI.
-
----
----
-
-# 📍 LAPORAN HARIAN PIC LOKASI
-
-📅 Tanggal: __________
-📍 Lokasi: __________
-👤 PIC: __________
-📲 Dikirim ke: Ibu Sabrina – Pusat Pelaporan
-
-⚠️ Setiap lokasi wajib mengirim laporan ini setiap hari. Laporan ini mengisi bagian 8 Laporan Terpusat Sabrina.
-
-## 1. 👥 KONSUMEN DI LOKASI
-
-• Konsumen di lokasi ini: ___
-• Konsumen datang hari ini: ___ orang
-• Konsumen baru: ___
-• Keluhan konsumen: ___
-
-Keperluan konsumen yang datang:
-
-⸻
-
-Keluhan & tindak lanjut:
-
-⸻
-
-## 2. 🏞️ KAVLING
-
-• Total kavling: ___
-• Kavling terjual: ___
-• Kavling tersedia: ___
-• Kavling belum laku: ___
-• Kebutuhan kavling tambahan: ___
-
-Kavling bermasalah (sengketa/akses/kondisi):
-
-⸻
-
-## 3. 🏗️ PEMBANGUNAN DI LOKASI INI
-
-• Target: ___ unit
-• Sedang dibangun: ___ unit
-• Finishing: ___ unit
-• Selesai hari ini: ___ unit
-• Belum mulai: ___ unit
-
-Progress pekerjaan hari ini:
-
-⸻
-
-Kontraktor yang bekerja: __________
-Jumlah tukang hari ini: ___ orang
-
-🔴 Pekerjaan yang berhenti:
-
-⸻
-
-Penyebab:
-
-⸻
-
-📹 **WAJIB kirim foto/video progress hari ini**
-Foto: ___ | Video: ___
-Sudah dikirim ke IT: ✅/❌
-
-## 4. 🛣️ INFRASTRUKTUR LOKASI
-
-• **Jalan:** BAIK / PERLU PERBAIKAN / RUSAK
-Keterangan: __________
-
-• **Listrik:** SUDAH / PROSES / BELUM
-Keterangan: __________
-
-• **Air:** SUDAH / PROSES / BELUM
-Keterangan: __________
-
-• **Drainase/saluran:** ✅/❌
-• **Penerangan jalan:** ✅/❌
-• **Gerbang/pagar:** ✅/❌
-
-Kebutuhan infrastruktur:
-
-⸻
-
-Estimasi biaya: Rp __________
-
-## 5. 📑 PERIZINAN LOKASI
-
-• Status izin: __________
-• Sudah boleh dibangun: ✅/❌
-• Izin yang masih ditunggu: __________
-• Kendala: __________
-
-## 6. 🔑 STK & RUMAH TIDAK DITEMPATI
-
-• Rumah STK di lokasi ini: ___
-• Sudah ditempati: ___
-• Belum ditempati: ___
-• Rumah kosong: ___
-• Perlu maintenance: ___
-
-Rumah kosong yang bermasalah:
-
-| No. unit | Nama konsumen | Sudah berapa lama kosong | Kondisi | Tindakan |
-|---|---|---|---|---|
-| | | | | |
-| | | | | |
-
-Rumah rusak/perlu perbaikan:
-
-⸻
-
-Estimasi biaya maintenance: Rp __________
-
-## 7. 🧹 KEBERSIHAN & KEAMANAN LOKASI
-
-• Kebersihan lokasi: ✅/❌
-• Rumput/semak terkendali: ✅/❌
-• Sampah terangkut: ✅/❌
-• Keamanan lokasi: ✅/❌
-• Material aman: ✅/❌
-• Ada satpam bertugas: ✅/❌
-
-📹 Video kondisi lokasi hari ini: ✅/❌
-
-Masalah:
-
-⸻
-
-## 8. 🧱 MATERIAL DI LOKASI
-
-• Material cukup: ✅/❌
-
-Material habis/kurang:
-
-| Material | Kebutuhan | Untuk unit | Dibutuhkan tanggal |
+| Kunci | Label | Tipe | Catatan |
 |---|---|---|---|
-| | | | |
+| `pernyataan` | Pernyataan | `ya_tidak` | **wajib**, tidak bisa submit tanpa dicentang |
 
-Kiriman precast/perikas dari DTI diterima: ___ pcs
-Kekurangan kiriman: __________
+Teks yang ditampilkan di sebelah centang:
 
-## 9. 📣 LAPORAN PERSONAL MARKETING
+> Saya memastikan laporan di atas sesuai aktivitas yang benar-benar saya kerjakan dan bukti telah saya lampirkan.
 
-• Laporan personal PTA/PTE sudah dikirim: ✅/❌
-• Undangan bulan ini: ___ / 20
-• Closing bulan ini: ___ / 2
-
-## 10. 🎯 TARGET LOKASI BESOK
-
-1. Pembangunan: __________
-2. Infrastruktur: __________
-3. Konsumen/penagihan: __________
-4. Kebersihan/keamanan: __________
-5. Yang harus dikirim pusat: __________
-
-## 11. 📌 REKAP LOKASI UNTUK SABRINA
-
-📍 Lokasi: __________
-👥 Konsumen datang: ___
-🏞️ Kavling tersedia: ___ | Belum laku: ___
-🏗️ Dibangun: ___ unit | Finishing: ___ unit | Selesai hari ini: ___
-🛣️ Jalan: ___ | ⚡ Listrik: ___ | 💧 Air: ___
-📑 Perizinan: __________
-🧹 Kebersihan: ✅/❌ | 🛡️ Keamanan: ✅/❌
-🔑 Rumah kosong: ___
-📹 Foto/video terkirim: ✅/❌
-
-🔴 MASALAH UTAMA:
-
-⸻
-
-👉 **BUTUH KEPUTUSAN CEO:**
-
-⸻
-
-**STATUS LOKASI HARI INI:**
-🟢 AMAN / 🟡 PERLU DIKAWAL / 🔴 URGENT
-
-👤 PIC Lokasi: __________
-
-**PRINSIP PIC LOKASI:**
-LOKASI HARUS DILIHAT SENDIRI — PROGRESS HARUS ADA FOTO — MASALAH LAPOR HARI ITU — TIDAK ADA LOKASI TANPA KABAR.
+Simpan `pernyataan_at` (timestamp) dan nama pengisi bersama laporan.
 
 ---
----
 
-# ☎️ LAPORAN HARIAN CUSTOMER SERVICE
+## §3 · Prinsip yang ditampilkan di kaki form
 
-📅 Tanggal: __________
-👤 PIC CS: __________
-📲 Dikirim ke: Ibu Sabrina – Pusat Pelaporan
-
-## 1. 📞 TIKET & KOMUNIKASI MASUK
-
-• Konsumen/tiket masuk hari ini: ___
-• Telepon: ___
-• WhatsApp: ___
-• Datang langsung: ___
-• Dari medsos (diteruskan IT): ___
-• Video call: ___
-
-## 2. 🔧 KELUHAN KONSUMEN
-
-• Keluhan baru: ___
-• Selesai hari ini: ___
-• Belum selesai: ___
-• Tunggakan keluhan dari hari sebelumnya: ___
-
-### DAFTAR KELUHAN
-
-| Nama konsumen | Lokasi | Jenis keluhan | PIC | Target selesai | Status |
-|---|---|---|---|---|---|
-| | | | | | 🟢/🟡/🔴 |
-| | | | | | 🟢/🟡/🔴 |
-| | | | | | 🟢/🟡/🔴 |
-
-🔴 **KELUHAN URGENT**
-
-Konsumen: __________
-Lokasi: __________
-Masalah: __________
-Sudah berapa lama: __________
-PIC: __________
-Target selesai: __________
-Butuh bantuan: __________
-
-## 3. 💳 PENAGIHAN & TUNGGAKAN
-
-• Konsumen ditagih hari ini: ___
-• Yang membayar: ___
-• Janji bayar: ___
-• Tidak bisa dihubungi: ___
-
-🔴 Konsumen menunggak >3 bulan: ___ orang
-
-| Nama | Lokasi | Tunggakan | Bulan | Terakhir dihubungi | Tindakan |
-|---|---|---|---|---|---|
-| | | Rp | ___ bln | | |
-
-Rekomendasi CS: TAGIH LAGI / SURAT PERINGATAN / SUSPEND / TAKE OVER
-
-## 4. 🔄 PERUBAHAN STATUS KONSUMEN
-
-• Refund diajukan: ___
-• Take over diajukan: ___
-• Suspend: ___
-• Pindah lokasi/kavling: ___
-
-Detail & alasan:
-
-⸻
-
-Sudah diinfokan ke IT untuk update sistem: ✅/❌
-Sudah diinfokan ke Accounting: ✅/❌
-
-## 5. 🏠 SERAH TERIMA & STK
-
-• Serah terima unit hari ini: ___
-• Konsumen menunggu serah terima: ___
-• Kendala serah terima: __________
-
-## 6. 📣 LAPORAN PERSONAL MARKETING
-
-• Laporan personal PTA/PTE sudah dikirim: ✅/❌
-• Undangan bulan ini: ___ / 20
-• Closing bulan ini: ___ / 2
-
-## 7. 🎯 TARGET CS BESOK
-
-1. Keluhan yang harus selesai: __________
-2. Konsumen yang harus ditagih: __________
-3. Follow-up: __________
-
-## 8. 📌 REKAP CS UNTUK SABRINA
-
-☎️ Tiket masuk: ___
-🆕 Keluhan baru: ___ | ✅ Selesai: ___ | ⏳ Belum: ___
-📹 Video call: ___
-💳 Ditagih: ___ | Bayar: ___
-🔴 Menunggak >3 bulan: ___ orang
-
-🔴 MASALAH URGENT:
-
-⸻
-
-PIC: __________
-Target selesai: __________
-
-👉 BUTUH KEPUTUSAN CEO:
-
-⸻
-
-**STATUS CS HARI INI:**
-🟢 AMAN / 🟡 PERLU DIKAWAL / 🔴 URGENT
-
-👤 PIC CS: __________
-
-**PRINSIP CS:**
-SETIAP KELUHAN ADA PIC — SETIAP KELUHAN ADA TARGET — TIDAK ADA KONSUMEN YANG DIDIAMKAN.
+> **SEMUA KARYAWAN = MARKETING.**
+> Jobdesk utama wajib selesai. PIC lokasi wajib dikontrol. Marketing pribadi wajib berjalan. PTE wajib dilakukan setiap hari.
+>
+> Target bulanan: minimal 20 undangan konsumen baru, minimal 2 konsumen closing.
 
 ---
----
 
-# 🏢 LAPORAN HARIAN OPERASIONAL KANTOR (GA)
+## §4 · Yang belum masuk repo
 
-📅 Tanggal: __________
-👤 PIC GA/Umum: __________
-📲 Dikirim ke: Ibu Sabrina – Pusat Pelaporan
+Lima format berikut ada di dokumen asli klien tapi belum tersalin ke `docs/`:
 
-## 1. 🧹 KEBERSIHAN KANTOR
+- `FORMAT-ASLI-02-PUSAT.md` — Laporan Harian Terpusat, 17 bagian
+- `FORMAT-ASLI-03-ACCOUNTING.md` — 18 bagian, rahasia
+- `FORMAT-ASLI-04-IT.md` — 15 bagian
+- `FORMAT-ASLI-05-MANAGER-RESTO.md` — 14 bagian, termasuk 10 video kontrol wajib
+- `FORMAT-ASLI-06-ITA.md` — 12 bagian + blok stock opname khusus Senin
 
-• Ruang kerja: ✅/❌
-• Ruang tamu/lobi: ✅/❌
-• Ruang meeting: ✅/❌
-• Pantry/dapur: ✅/❌
-• Toilet: ✅/❌
-• Musala: ✅/❌
-• Halaman/parkir: ✅/❌
-• Tempat sampah terangkut: ✅/❌
+**Dibutuhkan sebelum:** Task 14 (`it`), Task 16 (`manager_resto`, `ita`), Task 17 (`accounting`), Task 21 (`pusat`).
 
-📹 Foto kondisi kantor hari ini: ✅/❌
-
-Masalah kebersihan:
-
-⸻
-
-PIC yang harus memperbaiki: __________
-
-## 2. 🔌 FASILITAS & UTILITAS
-
-• Listrik normal: ✅/❌
-• Air normal: ✅/❌
-• AC berfungsi: ✅/❌
-• Internet/WiFi normal: ✅/❌
-• Genset siap: ✅/❌
-
-Kerusakan fasilitas:
-
-| Fasilitas | Kerusakan | Sejak | Estimasi biaya | Urgensi |
-|---|---|---|---|---|
-| | | | Rp | 🟢/🟡/🔴 |
-
-Sudah ditangani: ✅/❌
-Target selesai: __________
-
-## 3. 📦 PERLENGKAPAN & ATK
-
-• Stok ATK cukup: ✅/❌
-• Air minum cukup: ✅/❌
-• Perlengkapan kebersihan cukup: ✅/❌
-
-Kebutuhan belanja:
-
-| Barang | Jumlah | Estimasi biaya | Dibutuhkan tanggal |
-|---|---|---|---|
-| | | Rp | |
-
-**TOTAL: Rp __________**
-Sudah diajukan ke Accounting: ✅/❌
-
-## 4. 📅 KEGIATAN KANTOR HARI INI
-
-• Meeting: ___
-• Tamu perusahaan: ___
-• Kegiatan khusus: __________
-
-Persiapan untuk besok:
-
-⸻
-
-## 5. 📣 LAPORAN PERSONAL MARKETING
-
-• Laporan personal PTA/PTE sudah dikirim: ✅/❌
-• Undangan bulan ini: ___ / 20
-• Closing bulan ini: ___ / 2
-
-## 6. 📌 REKAP OPERASIONAL KANTOR UNTUK SABRINA
-
-🧹 Kebersihan: ✅/❌
-🔌 Fasilitas: 🟢 NORMAL / 🔴 ADA KERUSAKAN
-📦 Perlengkapan: 🟢 CUKUP / 🔴 PERLU BELANJA — Rp ___
-
-🔴 KENDALA HARI INI:
-
-⸻
-
-📦 KEBUTUHAN:
-
-⸻
-
-👉 BUTUH KEPUTUSAN CEO:
-
-⸻
-
-**STATUS OPERASIONAL KANTOR:**
-🟢 AMAN / 🟡 PERLU DIKAWAL / 🔴 URGENT
-
-👤 PIC GA: __________
-
-**PRINSIP GA:**
-KANTOR HARUS LAYAK — KERUSAKAN LAPOR HARI ITU — KEBUTUHAN DIAJUKAN SEBELUM HABIS.
+Tidak menghambat Task 12 maupun Task 13.

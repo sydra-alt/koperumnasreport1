@@ -158,46 +158,53 @@ potongan = (closing < policy.closing_target) ? policy.closing_penalty : 0
 create or replace view public.v_marketing_bulanan as
 with p as (
   select
-    (select value::int   from policy where key = 'invite_target')  as target_undangan,
-    (select value::int   from policy where key = 'closing_target') as target_closing,
-    (select value        from policy where key = 'workdays')       as workdays
+    (select value from policy where key = 'workdays')                       as workdays,
+    (select nullif(value #>> '{}', '')::date
+       from policy where key = 'pte_mulai_berlaku')                         as mulai_berlaku
 ),
-hari as (
-  select count(*)::int as hari_wajib
-  from generate_series(
-         date_trunc('month', (now() at time zone 'Asia/Jakarta')::date)::date,
-         (now() at time zone 'Asia/Jakarta')::date,
-         interval '1 day') g
-  where (extract(isodow from g)::int)::text::jsonb <@ (select workdays from p)
-)
+hi as (select (now() at time zone 'Asia/Jakarta')::date as d)
 select
-  pr.id                                   as user_id,
+  pr.id                                as user_id,
   pr.nama,
   pr.divisi,
-  date_trunc('month', (now() at time zone 'Asia/Jakarta')::date)::date as bulan,
-  (select hari_wajib from hari)           as hari_wajib,
-  coalesce(pd.hari_lengkap, 0)            as hari_lengkap,
-  (select hari_wajib from hari) - coalesce(pd.hari_lengkap, 0) as hari_bolong,
-  coalesce(pd.undangan, 0)                as undangan,
-  coalesce(cl.closing, 0)                 as closing
+  date_trunc('month', hi.d)::date      as bulan,
+  (p.mulai_berlaku is not null)        as pte_berlaku,
+  hw.hari_wajib,
+  coalesce(pd.hari_lengkap, 0)         as hari_lengkap,
+  greatest(hw.hari_wajib - coalesce(pd.hari_lengkap, 0), 0) as hari_bolong,
+  coalesce(pd.undangan, 0)             as undangan,
+  coalesce(cl.closing, 0)              as closing
 from profile pr
-left join (
-  select user_id,
-         count(*) filter (where lengkap) as hari_lengkap,
+cross join p
+cross join hi
+-- hari_wajib dihitung PER KARYAWAN, karena mulai_kerja bisa berbeda-beda
+left join lateral (
+  select count(*)::int as hari_wajib
+  from generate_series(
+         greatest(date_trunc('month', hi.d)::date, p.mulai_berlaku, pr.mulai_kerja),
+         hi.d,
+         interval '1 day') g
+  where p.mulai_berlaku is not null                     -- null = kewajiban belum berjalan
+    and to_jsonb(extract(isodow from g)::int) <@ p.workdays
+) hw on true
+left join lateral (
+  select count(*) filter (where lengkap) as hari_lengkap,
          sum(undang_jumlah)              as undangan
   from pte_daily
-  where tanggal >= date_trunc('month', (now() at time zone 'Asia/Jakarta')::date)
-  group by user_id
-) pd on pd.user_id = pr.id
-left join (
-  select user_id, count(*) as closing
+  where user_id = pr.id
+    and tanggal >= date_trunc('month', hi.d)::date
+) pd on true
+left join lateral (
+  select count(*) as closing
   from closing
-  where status <> 'batal'
-    and tanggal >= date_trunc('month', (now() at time zone 'Asia/Jakarta')::date)
-  group by user_id
-) cl on cl.user_id = pr.id
+  where user_id = pr.id
+    and status <> 'batal'
+    and tanggal >= date_trunc('month', hi.d)::date
+) cl on true
 where pr.aktif;
 ```
+
+`greatest()` di Postgres mengabaikan NULL, jadi karyawan tanpa `mulai_kerja` otomatis memakai tanggal 1 bulan berjalan atau `pte_mulai_berlaku`, mana pun yang lebih akhir. Saat `pte_mulai_berlaku` masih `null`, `hari_wajib` bernilai 0 untuk semua orang — itu memang yang diinginkan sebelum aturan diumumkan.
 
 Perhitungan `layak` dan `potongan` dilakukan di frontend dari view ini plus `policy`, karena aturannya bisa berganti.
 

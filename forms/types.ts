@@ -7,6 +7,8 @@ export interface Field {
   label: string;
   type: FieldType;
   wajib?: boolean;
+  wajibYa?: boolean;              // khusus 'ya_tidak': harus PERSIS "ya", bukan cuma "sudah dijawab"
+                                  // -- dipakai untuk pernyataan/persetujuan wajib dicentang.
   buktiWajib?: boolean;          // centang tanpa lampiran → ditolak
   buktiKunci?: string;           // field_key di tabel attachment untuk bukti field ini;
                                   // default ke `key`. Perlu beda kalau nama field data

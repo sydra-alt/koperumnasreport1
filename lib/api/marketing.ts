@@ -8,6 +8,8 @@ export interface ProgresBulanan {
   nama: string;
   divisi: string | null;
   bulan: string;
+  /** false = policy.pte_mulai_berlaku masih null -- kewajiban PTE belum berjalan sama sekali. */
+  pte_berlaku: boolean;
   hari_wajib: number;
   hari_lengkap: number;
   hari_bolong: number;
@@ -39,4 +41,20 @@ export function useProgresBulananSaya() {
       return data;
     },
   });
+}
+
+export type StatusWarna = 'hijau' | 'kuning' | 'merah';
+
+/** Persis 03-CALC-SPEC.md §3. */
+export function statusUndangan(undangan: number, target: number): StatusWarna {
+  if (undangan >= target) return 'hijau';
+  if (undangan >= target * 0.6) return 'kuning';
+  return 'merah';
+}
+
+/** Persis 03-CALC-SPEC.md §3. */
+export function statusClosing(closing: number, target: number): StatusWarna {
+  if (closing >= target) return 'hijau';
+  if (closing >= 1) return 'kuning';
+  return 'merah';
 }

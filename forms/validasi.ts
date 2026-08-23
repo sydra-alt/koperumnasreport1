@@ -11,8 +11,10 @@ function skemaPerField(f: Field): z.ZodTypeAny {
     case 'teks':
     case 'teks_panjang':
       return f.wajib ? z.string().min(1, `${f.label} wajib diisi`) : z.string().optional();
-    case 'pilih':
     case 'ya_tidak':
+      if (f.wajibYa) return z.literal('ya', { error: `${f.label} wajib dicentang` });
+      return f.wajib ? z.string().min(1, `${f.label} wajib dipilih`) : z.string().optional();
+    case 'pilih':
     case 'status_warna':
       return f.wajib ? z.string().min(1, `${f.label} wajib dipilih`) : z.string().optional();
     case 'centang':
@@ -29,6 +31,9 @@ function terisi(type: FieldType, nilai: unknown): boolean {
     case 'centang':
       return nilai === true;
     case 'ya_tidak':
+      // "terisi" berarti jawabannya YA -- kalau user jawab "tidak", tidak masuk akal
+      // menuntut bukti untuk sesuatu yang dia bilang tidak dikerjakan.
+      return nilai === 'ya';
     case 'pilih':
     case 'status_warna':
       return typeof nilai === 'string' && nilai.length > 0;
