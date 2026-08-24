@@ -1,6 +1,14 @@
 'use client';
 
+import Link from 'next/link';
 import { useAuth } from '../lib/auth/AuthProvider';
+import { usePolicy } from '../lib/api/policy';
+import { useDaftarLokasi } from '../lib/api/lokasi';
+import { useDaftarOutlet } from '../lib/api/outlet';
+import { useLaporanHariIniSaya } from '../lib/api/beranda';
+import { useProgresBulananSaya } from '../lib/api/marketing';
+import { hitungTugasHariIni, sapaanWaktu } from '../lib/tugasHariIni';
+import { hariISOWIB, jamWIB } from '../lib/tanggal';
 import { AngkaGrid } from '../components/AngkaGrid';
 import { usePembangunanUntukTanggal, useKeuanganRekapUntukTanggal, useSelisihRestoUntukTanggal } from '../lib/api/dashboard';
 import { useLaporanAccountingHariIni, hitungRingkasanKeuanganCeo } from '../lib/api/accounting';
@@ -81,20 +89,109 @@ function DashboardCeo() {
   );
 }
 
+const WARNA_LABEL: Record<'belum' | 'draft' | 'selesai', string> = {
+  belum: 'var(--biru-3)',
+  draft: 'var(--kuning)',
+  selesai: 'var(--hijau)',
+};
+
+function DaftarTugas() {
+  const { assignments, roles } = useAuth();
+  const { data: policy } = usePolicy();
+  const { data: lokasi } = useDaftarLokasi();
+  const { data: outlet } = useDaftarOutlet();
+  const { data: laporanHariIni, isLoading } = useLaporanHariIniSaya();
+  const { data: progres } = useProgresBulananSaya();
+
+  if (!policy || isLoading) {
+    return <p>Memuat…</p>;
+  }
+
+  const namaLokasi = (id: string) => lokasi?.find((l) => l.id === id)?.nama ?? id;
+  const namaOutlet = (id: string) => outlet?.find((o) => o.id === id)?.nama ?? id;
+  const workdays = (policy.workdays as number[] | undefined) ?? [1, 2, 3, 4, 5, 6];
+  const hariLibur = !workdays.includes(hariISOWIB());
+
+  if (hariLibur) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p style={{ color: 'var(--kosong)' }}>Hari ini hari libur -- tidak ada laporan yang wajib dikirim.</p>
+        <Link href="/riwayat" style={{ color: 'var(--biru-3)' }}>
+          Lihat laporan yang sudah dikirim → Laporan Saya
+        </Link>
+      </div>
+    );
+  }
+
+  const tugas = hitungTugasHariIni(assignments, roles, laporanHariIni ?? [], policy, jamWIB(), namaLokasi, namaOutlet);
+  const tugasBelum = tugas.filter((t) => t.status !== 'selesai');
+  const invitTarget = Number(policy.invite_target);
+  const closingTarget = Number(policy.closing_target);
+
+  if (tugasBelum.length === 0) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p>✅ Laporan hari ini sudah lengkap.</p>
+        <Link href="/riwayat" style={{ color: 'var(--biru-3)' }}>
+          Lihat laporan yang sudah dikirim → Laporan Saya
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
+        Yang perlu dikerjakan hari ini
+      </p>
+      {tugasBelum.map((t) => (
+        <div
+          key={`${t.formKey}-${t.scopeLabel ?? ''}`}
+          className="flex flex-wrap items-center justify-between gap-3 border p-3"
+          style={{ borderColor: 'var(--garis)', minHeight: 44 }}
+        >
+          <div>
+            <p style={{ fontFamily: 'var(--display)' }}>
+              {t.namaForm}
+              {t.scopeLabel ? ` (${t.scopeLabel})` : ''}
+            </p>
+            <p className="text-sm" style={{ fontFamily: 'var(--mono)', color: t.lewatDeadline ? 'var(--merah)' : WARNA_LABEL[t.status] }}>
+              {t.label}
+            </p>
+          </div>
+          <Link
+            href={`/lapor/${t.formKey}`}
+            className="border px-4 py-2"
+            style={{ borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 44 }}
+          >
+            {t.tombol}
+          </Link>
+        </div>
+      ))}
+      {progres?.pte_berlaku && (
+        <p style={{ fontFamily: 'var(--mono)' }}>
+          Undangan bulan ini: {progres.undangan} / {invitTarget} · Closing bulan ini: {progres.closing} / {closingTarget}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function Home() {
   const { profile, roles, loading } = useAuth();
 
   return (
     <main className="flex min-h-svh flex-col gap-6 p-6">
-      <h1 className="text-2xl" style={{ color: 'var(--biru)' }}>
-        Beranda
-      </h1>
       {loading ? (
         <p>Memuat…</p>
       ) : (
         <>
-          <p>Masuk sebagai: {profile?.nama ?? '(profil belum termuat)'}</p>
-          <p>Peran: {roles.length > 0 ? roles.join(', ') : '(belum ada peran)'}</p>
+          <h1 className="text-2xl" style={{ color: 'var(--biru)' }}>
+            {sapaanWaktu(jamWIB())}, {profile?.nama ?? '—'}.
+          </h1>
+
+          <DaftarTugas />
+
           {roles.includes('ceo') && <DashboardCeo />}
         </>
       )}

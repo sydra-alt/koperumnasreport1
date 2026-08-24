@@ -9,7 +9,7 @@ Menggantikan data contoh (Ciwidey/Pangalengan/Soreang) di `docs/00-SETUP-MANUAL.
 
 | Nama | Divisi | Form yang diisi | Role sistem |
 |---|---|---|---|
-| **Putri** | Direksi | — (dashboard) | `ceo`, `karyawan` |
+| **Putri** | Direksi | — (dashboard) | `ceo` |
 | **Sabrina** | HRD + Pusat Pelaporan | `pusat`, `hrd` | `pusat`, `kadiv`, `karyawan` |
 | Didik | HRD | `hrd` | `kadiv`, `karyawan` |
 | Avril | CS | `cs` | `kadiv`, `karyawan` |
@@ -42,6 +42,8 @@ Menggantikan data contoh (Ciwidey/Pangalengan/Soreang) di `docs/00-SETUP-MANUAL.
 | Fikri, Fadil | Indokopi | — | `karyawan` |
 
 Total: **36 orang**.
+
+⚠️ **Putri (CEO) SENGAJA tidak diberi role `karyawan`** (diperbaiki 24 Agustus 2026, ditemukan lewat pemakaian Beranda sungguhan). `BLUEPRINT.md` §4 ("semua user punya role `karyawan` tanpa kecuali") dimaksudkan untuk seluruh STAF, bukan pemilik perusahaan -- kewajiban laporan `personal_marketing` melekat ke role `karyawan`, dan Putri tidak seharusnya diminta mengisi laporan PTE marketing pribadinya sendiri. **35 orang lain tetap wajib role `karyawan` seperti biasa** -- ini pengecualian untuk SATU orang, bukan perubahan aturan umum.
 
 ---
 
@@ -89,7 +91,7 @@ Jangan buat 36 akun sekarang. Pembuatan massal ada di Task 23 lewat Edge Functio
 
 | Email | Nama | Role | Untuk uji nomor |
 |---|---|---|---|
-| `putri@koperumnas.local` | Putri | `ceo`, `karyawan` | 2, 9 |
+| `putri@koperumnas.local` | Putri | `ceo` | 2, 9 |
 | `sabrina@koperumnas.local` | Sabrina | `pusat`, `kadiv`, `karyawan` | 1, 3, 8 |
 | `accounting@koperumnas.local` | ❓ (isi nama asli) | `accounting`, `karyawan` | 1, 2, 3 |
 | `dadang@koperumnas.local` | Dadang | `pic_lokasi`, `karyawan` | 6, 7 |
@@ -128,7 +130,6 @@ insert into public.role (user_id, role)
 select u.id, v.role
 from (values
   ('putri@koperumnas.local',      'ceo'),
-  ('putri@koperumnas.local',      'karyawan'),
   ('sabrina@koperumnas.local',    'pusat'),
   ('sabrina@koperumnas.local',    'kadiv'),
   ('sabrina@koperumnas.local',    'karyawan'),
