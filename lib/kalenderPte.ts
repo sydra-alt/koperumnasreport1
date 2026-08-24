@@ -1,3 +1,5 @@
+import { hariIsoDariTanggal } from './tanggal';
+
 export interface HariKalenderPte {
   tanggal: string; // YYYY-MM-DD
   hariIso: number; // 1=Senin..7=Minggu
@@ -53,11 +55,4 @@ export function kalenderPteBulanIni(
     hasil.push({ tanggal, hariIso, status });
   }
   return hasil;
-}
-
-/** Hari-ISO dari tanggal kalender YANG SUDAH DIKETAHUI (bukan dari instant) -- matematika kalender murni, bukan tebakan zona waktu. */
-function hariIsoDariTanggal(tanggalYmd: string): number {
-  const [t, b, h] = tanggalYmd.split('-').map(Number);
-  const dow = new Date(Date.UTC(t, b - 1, h)).getUTCDay();
-  return dow === 0 ? 7 : dow;
 }

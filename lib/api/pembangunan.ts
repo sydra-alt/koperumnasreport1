@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '../supabase/client';
+import { tanggalWIB } from '../tanggal';
 
 /**
  * Satu baris rekap per lokasi untuk form Pembangunan (blok 1/3/5, read-only
@@ -51,16 +52,20 @@ export interface PembangunanPerLokasiRow {
   gerbang_baik: boolean | null;
 }
 
-export function useRekapPembangunanPerLokasi(enabled = true) {
+/**
+ * `tanggal` opsional (default hari ini) -- RPC `pembangunan_per_lokasi_untuk_tanggal`
+ * (migrasi 0020, dulu view `v_pembangunan_per_lokasi`) diubah jadi fungsi
+ * bertanggal supaya Laporan Terpusat bisa memilih tanggal mundur. Rollup
+ * baca-saja form `pembangunan` sendiri TIDAK mengirim `tanggal` sama sekali
+ * (selalu hari ini), jadi perilakunya tidak berubah dari sebelumnya.
+ */
+export function useRekapPembangunanPerLokasi(enabled = true, tanggal: string = tanggalWIB()) {
   return useQuery({
-    queryKey: ['rekap-pembangunan-per-lokasi'],
+    queryKey: ['rekap-pembangunan-per-lokasi', tanggal],
     queryFn: async (): Promise<PembangunanPerLokasiRow[]> => {
       const supabase = createClient();
       const { data, error } = await supabase
-        .from('v_pembangunan_per_lokasi')
-        .select(
-          'lokasi, target, sedang_dibangun, finishing, selesai_hari_ini, belum_mulai, material_cukup, material_kurang, kiriman_precast_jumlah, jalan_status, listrik_status, air_status, drainase_baik, penerangan_baik, gerbang_baik',
-        )
+        .rpc('pembangunan_per_lokasi_untuk_tanggal', { p_tanggal: tanggal })
         .order('lokasi');
       if (error) throw error;
       return data;

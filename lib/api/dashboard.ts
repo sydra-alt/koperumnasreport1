@@ -5,10 +5,13 @@ import { createClient } from '../supabase/client';
 import { tanggalWIB } from '../tanggal';
 
 /**
- * Task 20 -- 03-CALC-SPEC.md §4.2, dijumlahkan dari `pic_lokasi` hari ini.
- * `v_pembangunan_hari_ini` (migrasi 0018) SELALU tepat 1 baris (sum tanpa
- * GROUP BY) walau 0 laporan hari ini -- kolomnya NULL, di-coalesce ke 0 di
- * sini supaya dashboard tampil "0", bukan `NaN`, saat belum ada laporan.
+ * Task 20 -- 03-CALC-SPEC.md §4.2, dijumlahkan dari `pic_lokasi` utk TANGGAL
+ * yang diminta. RPC `pembangunan_untuk_tanggal` (migrasi 0020 -- dulu view
+ * `v_pembangunan_hari_ini`, diubah jadi fungsi supaya Laporan Terpusat bisa
+ * memilih tanggal mundur; default tetap hari ini utk pemanggil lama seperti
+ * dashboard CEO di Beranda). SELALU tepat 1 baris (sum tanpa GROUP BY) walau
+ * 0 laporan pada tanggal itu -- kolomnya NULL, di-coalesce ke 0 di sini
+ * supaya dashboard tampil "0", bukan `NaN`.
  */
 export interface PembangunanHariIni {
   sedangDibangun: number;
@@ -17,28 +20,26 @@ export interface PembangunanHariIni {
   belumMulai: number;
 }
 
-export function usePembangunanHariIni(enabled = true) {
+export function usePembangunanUntukTanggal(tanggal: string = tanggalWIB(), enabled = true) {
   return useQuery({
-    queryKey: ['pembangunan-hari-ini'],
+    queryKey: ['pembangunan-untuk-tanggal', tanggal],
     queryFn: async (): Promise<PembangunanHariIni> => {
       const supabase = createClient();
-      const { data, error } = await supabase
-        .from('v_pembangunan_hari_ini')
-        .select('sedang_dibangun, finishing, selesai_hari_ini, belum_mulai')
-        .single();
+      const { data, error } = await supabase.rpc('pembangunan_untuk_tanggal', { p_tanggal: tanggal }).single();
       if (error) throw error;
+      const baris = data as Record<string, unknown> | null;
       return {
-        sedangDibangun: Number(data?.sedang_dibangun ?? 0),
-        finishing: Number(data?.finishing ?? 0),
-        selesaiHariIni: Number(data?.selesai_hari_ini ?? 0),
-        belumMulai: Number(data?.belum_mulai ?? 0),
+        sedangDibangun: Number(baris?.sedang_dibangun ?? 0),
+        finishing: Number(baris?.finishing ?? 0),
+        selesaiHariIni: Number(baris?.selesai_hari_ini ?? 0),
+        belumMulai: Number(baris?.belum_mulai ?? 0),
       };
     },
     enabled,
   });
 }
 
-/** 03-CALC-SPEC.md §4.3 -- empat angka mutlak, sama yang dilihat Sabrina (Task 21 Bagian 11). */
+/** 03-CALC-SPEC.md §4.3 -- empat angka mutlak utk TANGGAL yang diminta, sama yang dilihat Sabrina (Task 21 Bagian 11). */
 export interface KeuanganRekap {
   tanggal: string;
   totalMasuk: number;
@@ -47,12 +48,12 @@ export interface KeuanganRekap {
   warna: 'hijau' | 'kuning' | 'merah' | null;
 }
 
-export function useKeuanganRekapHariIni(enabled = true) {
+export function useKeuanganRekapUntukTanggal(tanggal: string = tanggalWIB(), enabled = true) {
   return useQuery({
-    queryKey: ['keuangan-rekap-hari-ini'],
+    queryKey: ['keuangan-rekap-untuk-tanggal', tanggal],
     queryFn: async (): Promise<KeuanganRekap | null> => {
       const supabase = createClient();
-      const { data, error } = await supabase.from('v_keuangan_rekap').select('*').eq('tanggal', tanggalWIB()).maybeSingle();
+      const { data, error } = await supabase.from('v_keuangan_rekap').select('*').eq('tanggal', tanggal).maybeSingle();
       if (error) throw error;
       if (!data) return null;
       return {
@@ -67,7 +68,7 @@ export function useKeuanganRekapHariIni(enabled = true) {
   });
 }
 
-/** 03-CALC-SPEC.md §4.4 -- silang-cek omzet resto hari ini, per outlet. */
+/** 03-CALC-SPEC.md §4.4 -- silang-cek omzet resto utk TANGGAL yang diminta, per outlet. */
 export interface SelisihRestoRow {
   outlet: string;
   versiManager: number | null;
@@ -75,18 +76,18 @@ export interface SelisihRestoRow {
   selisih: number | null;
 }
 
-export function useSelisihResto(enabled = true) {
+export function useSelisihRestoUntukTanggal(tanggal: string = tanggalWIB(), enabled = true) {
   return useQuery({
-    queryKey: ['selisih-resto'],
+    queryKey: ['selisih-resto-untuk-tanggal', tanggal],
     queryFn: async (): Promise<SelisihRestoRow[]> => {
       const supabase = createClient();
-      const { data, error } = await supabase.from('v_selisih_resto').select('*').order('outlet');
+      const { data, error } = await supabase.rpc('selisih_resto_untuk_tanggal', { p_tanggal: tanggal }).order('outlet');
       if (error) throw error;
-      return (data ?? []).map((r) => ({
-        outlet: r.outlet,
-        versiManager: r.versi_manager,
-        versiIta: r.versi_ita,
-        selisih: r.selisih,
+      return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+        outlet: r.outlet as string,
+        versiManager: r.versi_manager as number | null,
+        versiIta: r.versi_ita as number | null,
+        selisih: r.selisih as number | null,
       }));
     },
     enabled,

@@ -15,6 +15,7 @@ interface Tab {
 
 const TAB_TETAP: Tab[] = [
   { label: 'Beranda', href: '/', peran: null },
+  { label: 'Laporan Saya', href: '/riwayat', peran: null },
   { label: 'Lapor', href: '/lapor/personal_marketing', peran: 'karyawan' },
   { label: 'Papan Kontrol', href: '/papan', peran: ['ceo', 'pusat'] },
   { label: 'Keputusan', href: '/keputusan', peran: 'ceo' },

@@ -2,12 +2,15 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '../supabase/client';
+import { tanggalWIB } from '../tanggal';
 
 /**
- * Satu baris = satu penugasan (`assignment`) hari ini, dari `v_papan_hari_ini`
- * (migrasi 0015, persis 03-CALC-SPEC.md §4.1 + kolom `nudged_at` tambahan).
- * `reportId === null` berarti BELUM LAPOR -- itulah kontrak view ini, bukan
- * dihitung ulang di sini.
+ * Satu baris = satu penugasan (`assignment`) untuk TANGGAL yang diminta, dari
+ * RPC `papan_untuk_tanggal` (migrasi 0020 -- dulu view `v_papan_hari_ini`
+ * yang cuma bisa "hari ini", diubah jadi fungsi supaya Papan Kontrol dan
+ * Laporan Terpusat bisa memilih tanggal mundur). `reportId === null` berarti
+ * BELUM LAPOR pada tanggal itu -- itulah kontrak fungsi ini, bukan dihitung
+ * ulang di sini.
  */
 export interface PapanRow {
   assignmentId: string;
@@ -21,26 +24,23 @@ export interface PapanRow {
   nudgedAt: string | null;
 }
 
-export function usePapanHariIni() {
+export function usePapanUntukTanggal(tanggal: string = tanggalWIB()) {
   return useQuery({
-    queryKey: ['papan-hari-ini'],
+    queryKey: ['papan-untuk-tanggal', tanggal],
     queryFn: async (): Promise<PapanRow[]> => {
       const supabase = createClient();
-      const { data, error } = await supabase
-        .from('v_papan_hari_ini')
-        .select('assignment_id, form_key, scope_nama, pic_nama, report_id, status, warna, submitted_at, nudged_at')
-        .order('form_key');
+      const { data, error } = await supabase.rpc('papan_untuk_tanggal', { p_tanggal: tanggal }).order('form_key');
       if (error) throw error;
-      return (data ?? []).map((r) => ({
-        assignmentId: r.assignment_id,
-        formKey: r.form_key,
-        scopeNama: r.scope_nama,
-        picNama: r.pic_nama,
-        reportId: r.report_id,
-        status: r.status,
-        warna: r.warna,
-        submittedAt: r.submitted_at,
-        nudgedAt: r.nudged_at,
+      return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+        assignmentId: r.assignment_id as string,
+        formKey: r.form_key as string,
+        scopeNama: r.scope_nama as string,
+        picNama: r.pic_nama as string,
+        reportId: r.report_id as string | null,
+        status: r.status as PapanRow['status'],
+        warna: r.warna as PapanRow['warna'],
+        submittedAt: r.submitted_at as string | null,
+        nudgedAt: r.nudged_at as string | null,
       }));
     },
   });
@@ -56,7 +56,7 @@ export function useTagihLaporan() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['papan-hari-ini'] });
+      queryClient.invalidateQueries({ queryKey: ['papan-untuk-tanggal'] });
     },
   });
 }

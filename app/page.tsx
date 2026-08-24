@@ -2,14 +2,14 @@
 
 import { useAuth } from '../lib/auth/AuthProvider';
 import { AngkaGrid } from '../components/AngkaGrid';
-import { usePembangunanHariIni, useKeuanganRekapHariIni, useSelisihResto } from '../lib/api/dashboard';
+import { usePembangunanUntukTanggal, useKeuanganRekapUntukTanggal, useSelisihRestoUntukTanggal } from '../lib/api/dashboard';
 import { useLaporanAccountingHariIni, hitungRingkasanKeuanganCeo } from '../lib/api/accounting';
 import { formatRupiah } from '../lib/rupiah';
 
 function DashboardCeo() {
-  const { data: pembangunan } = usePembangunanHariIni();
-  const { data: keuangan } = useKeuanganRekapHariIni();
-  const { data: selisihResto } = useSelisihResto();
+  const { data: pembangunan } = usePembangunanUntukTanggal();
+  const { data: keuangan } = useKeuanganRekapUntukTanggal();
+  const { data: selisihResto } = useSelisihRestoUntukTanggal();
   const { data: laporanAccounting } = useLaporanAccountingHariIni();
   const ringkasanKeuangan = laporanAccounting ? hitungRingkasanKeuanganCeo(laporanAccounting) : null;
 

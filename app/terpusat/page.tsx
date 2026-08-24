@@ -1,24 +1,25 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Terlindungi } from '../../components/Terlindungi';
 import { LaporForm } from '../../components/LaporForm';
 import { AngkaGrid } from '../../components/AngkaGrid';
+import { PemilihTanggal } from '../../components/PemilihTanggal';
 import { useAuth } from '../../lib/auth/AuthProvider';
-import { jamWIB } from '../../lib/tanggal';
+import { jamWIB, tanggalWIB } from '../../lib/tanggal';
 import { formRegistry } from '../../forms';
 import {
   useLaporanHariIni,
-  useSecurityHariIni,
-  useStkHariIni,
-  useMarketingHariIni,
+  useSecurityUntukTanggal,
+  useStkUntukTanggal,
+  useMarketingUntukTanggal,
   useKaryawanTertinggal,
-  usePicLokasiHariIni,
+  usePicLokasiUntukTanggal,
 } from '../../lib/api/terpusat';
-import { usePembangunanHariIni, useKeuanganRekapHariIni, useSelisihResto } from '../../lib/api/dashboard';
+import { usePembangunanUntukTanggal, useKeuanganRekapUntukTanggal, useSelisihRestoUntukTanggal } from '../../lib/api/dashboard';
 import { useLaporanAccountingHariIni, hitungRingkasanKeuanganCeo } from '../../lib/api/accounting';
 import { useRekapPembangunanPerLokasi } from '../../lib/api/pembangunan';
-import { usePapanHariIni } from '../../lib/api/papan';
+import { usePapanUntukTanggal } from '../../lib/api/papan';
 import { useAntreanKeputusan } from '../../lib/api/decision';
 import { formatRupiah } from '../../lib/rupiah';
 
@@ -43,7 +44,7 @@ function Seksi({ nomor, judul, sumber, children }: { nomor: string; judul: strin
 function Kosong({ nama }: { nama: string }) {
   return (
     <p style={{ color: 'var(--kosong)' }}>
-      Belum ada laporan {nama} hari ini.
+      Belum ada laporan {nama} pada tanggal ini.
     </p>
   );
 }
@@ -66,28 +67,30 @@ function teks(data: Record<string, unknown>, key: string): string | null {
 function Isi() {
   const { roles } = useAuth();
   const isCeo = roles.includes('ceo');
+  const [tanggal, setTanggal] = useState(tanggalWIB());
+  const tanggalHariIni = tanggal === tanggalWIB();
 
-  const { data: it } = useLaporanHariIni('it');
-  const { data: cs } = useLaporanHariIni('cs');
-  const { data: ga } = useLaporanHariIni('ga');
-  const { data: hrd } = useLaporanHariIni('hrd');
-  const { data: perizinan } = useLaporanHariIni('perizinan');
-  const { data: pembangunanLaporan } = useLaporanHariIni('pembangunan');
-  const { data: dti } = useLaporanHariIni('dti');
-  const { data: kendaraan } = useLaporanHariIni('kendaraan');
+  const { data: it } = useLaporanHariIni('it', tanggal);
+  const { data: cs } = useLaporanHariIni('cs', tanggal);
+  const { data: ga } = useLaporanHariIni('ga', tanggal);
+  const { data: hrd } = useLaporanHariIni('hrd', tanggal);
+  const { data: perizinan } = useLaporanHariIni('perizinan', tanggal);
+  const { data: pembangunanLaporan } = useLaporanHariIni('pembangunan', tanggal);
+  const { data: dti } = useLaporanHariIni('dti', tanggal);
+  const { data: kendaraan } = useLaporanHariIni('kendaraan', tanggal);
 
-  const { data: security } = useSecurityHariIni();
-  const { data: stk } = useStkHariIni();
-  const { data: marketing } = useMarketingHariIni();
+  const { data: security } = useSecurityUntukTanggal(tanggal);
+  const { data: stk } = useStkUntukTanggal(tanggal);
+  const { data: marketing } = useMarketingUntukTanggal(tanggal);
   const { data: tertinggal } = useKaryawanTertinggal();
-  const { data: picLokasi } = usePicLokasiHariIni();
-  const { data: pembangunanTotal } = usePembangunanHariIni();
-  const { data: rekapPerLokasi } = useRekapPembangunanPerLokasi();
-  const { data: keuangan } = useKeuanganRekapHariIni();
-  const { data: laporanAccounting } = useLaporanAccountingHariIni(isCeo);
+  const { data: picLokasi } = usePicLokasiUntukTanggal(tanggal);
+  const { data: pembangunanTotal } = usePembangunanUntukTanggal(tanggal);
+  const { data: rekapPerLokasi } = useRekapPembangunanPerLokasi(true, tanggal);
+  const { data: keuangan } = useKeuanganRekapUntukTanggal(tanggal);
+  const { data: laporanAccounting } = useLaporanAccountingHariIni(isCeo, tanggal);
   const ringkasanKeuanganCeo = laporanAccounting ? hitungRingkasanKeuanganCeo(laporanAccounting) : null;
-  const { data: selisihResto } = useSelisihResto();
-  const { data: papan } = usePapanHariIni();
+  const { data: selisihResto } = useSelisihRestoUntukTanggal(tanggal);
+  const { data: papan } = usePapanUntukTanggal(tanggal);
   const { data: antrean } = useAntreanKeputusan();
 
   const targetTotal = (rekapPerLokasi ?? []).reduce((total, r) => total + (r.target ?? 0), 0);
@@ -101,6 +104,8 @@ function Isi() {
 
   return (
     <div className="flex flex-col gap-4">
+      <PemilihTanggal tanggal={tanggal} onUbah={setTanggal} />
+
       <p className="text-sm" style={{ color: 'var(--kosong)' }}>
         Bagian 1-15 hanya baca -- terisi otomatis dari laporan divisi lain. Tidak ada satu pun angka di bagian ini yang bisa diketik manual.
       </p>
@@ -169,7 +174,7 @@ function Isi() {
         )}
       </Seksi>
 
-      <Seksi nomor="4" judul="Security / Satpam" sumber="dari Laporan Security · seluruh lokasi &amp; shift hari ini">
+      <Seksi nomor="4" judul="Security / Satpam" sumber="dari Laporan Security · seluruh lokasi &amp; shift">
         <AngkaGrid
           butir={[
             { label: 'Satpam hadir', nilai: String(security?.satpamHadir ?? 0) },
@@ -223,7 +228,7 @@ function Isi() {
         )}
       </Seksi>
 
-      <Seksi nomor="7" judul="Pembangunan Seluruh Lokasi" sumber="dari v_pembangunan_hari_ini + Laporan Kepala Pembangunan">
+      <Seksi nomor="7" judul="Pembangunan Seluruh Lokasi" sumber="dari rekap Laporan PIC Lokasi + Laporan Kepala Pembangunan">
         <AngkaGrid
           butir={[
             { label: 'Target', nilai: String(targetTotal) },
@@ -276,7 +281,7 @@ function Isi() {
         )}
       </Seksi>
 
-      <Seksi nomor="9" judul="STK & Rumah Tidak Ditempati" sumber="dari v_stk_hari_ini · Laporan PIC Lokasi">
+      <Seksi nomor="9" judul="STK & Rumah Tidak Ditempati" sumber="dari rekap Laporan PIC Lokasi">
         <AngkaGrid
           butir={[
             { label: 'Rumah STK', nilai: String(stk?.total ?? 0) },
@@ -311,7 +316,7 @@ function Isi() {
         )}
       </Seksi>
 
-      <Seksi nomor="11" judul="Keuangan Umum" sumber="dari v_keuangan_rekap (Accounting)">
+      <Seksi nomor="11" judul="Keuangan Umum" sumber="dari Laporan Accounting (rekap 4 angka)">
         {!keuangan ? (
           <Kosong nama="Accounting" />
         ) : (
@@ -362,7 +367,7 @@ function Isi() {
         )}
       </Seksi>
 
-      <Seksi nomor="13" judul="Marketing -- Kontrol Pak Fauzi &amp; Pak Dea" sumber="dari v_marketing_hari_ini + v_marketing_bulanan">
+      <Seksi nomor="13" judul="Marketing -- Kontrol Pak Fauzi &amp; Pak Dea" sumber="dari rekap laporan marketing harian &amp; bulanan">
         <AngkaGrid
           butir={[
             { label: 'Melakukan marketing hari ini', nilai: String(marketing?.sudahLaporHariIni ?? 0) },
@@ -401,7 +406,7 @@ function Isi() {
         )}
       </Seksi>
 
-      <Seksi nomor="15" judul="Rekap Status PIC Lokasi" sumber="dari v_papan_hari_ini (Papan Kontrol)">
+      <Seksi nomor="15" judul="Rekap Status PIC Lokasi" sumber="dari Papan Kontrol">
         <AngkaGrid
           butir={[
             { label: '🟢 Aman', nilai: String(picHijau) },
@@ -426,7 +431,7 @@ function Isi() {
         )}
       </Seksi>
 
-      <Seksi nomor="17 (dari divisi lain)" judul="Keputusan yang Sudah Diajukan" sumber="dari Antrean Keputusan CEO (Task 19)">
+      <Seksi nomor="17 (dari divisi lain)" judul="Keputusan yang Sudah Diajukan" sumber="dari Antrean Keputusan CEO">
         {(antrean ?? []).length === 0 ? (
           <p style={{ color: 'var(--kosong)' }}>Tidak ada keputusan yang sedang menunggu.</p>
         ) : (
@@ -451,10 +456,18 @@ function Isi() {
         </button>
       </div>
 
-      <p className="text-sm" style={{ color: 'var(--kosong)' }}>
-        Bagian 16 (Target Besok), 17 (Keputusan Tambahan dari Pusat), dan Kesimpulan bisa Anda isi di bawah.
-      </p>
-      <LaporForm formKey="pusat" />
+      {tanggalHariIni ? (
+        <>
+          <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+            Bagian 16 (Target Besok), 17 (Keputusan Tambahan dari Pusat), dan Kesimpulan bisa Anda isi di bawah.
+          </p>
+          <LaporForm formKey="pusat" />
+        </>
+      ) : (
+        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+          Target Besok dan Kesimpulan cuma bisa diisi untuk hari ini -- kembali ke &quot;Hari ini&quot; di atas untuk mengisinya.
+        </p>
+      )}
     </div>
   );
 }
