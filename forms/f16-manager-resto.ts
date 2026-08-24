@@ -39,7 +39,7 @@ export const f16ManagerResto: FormSchema = {
   blocks: [
     {
       id: 'karyawan',
-      judul: '1 · Karyawan',
+      judul: 'Karyawan',
       fields: [
         { key: 'total_karyawan', label: 'Total karyawan', type: 'angka' },
         { key: 'karyawan_hadir', label: 'Hadir', type: 'angka' },
@@ -53,7 +53,7 @@ export const f16ManagerResto: FormSchema = {
     },
     {
       id: 'penjualan',
-      judul: '2 · Rekap Penjualan Hari Ini',
+      judul: 'Rekap Penjualan Hari Ini',
       fields: [
         { key: 'total_omzet', label: 'Total omzet', type: 'uang' },
         { key: 'penjualan_makanan', label: 'Penjualan makanan', type: 'uang' },
@@ -79,7 +79,7 @@ export const f16ManagerResto: FormSchema = {
     },
     {
       id: 'kontrol_stok',
-      judul: '3 · Kontrol Stok Sistem vs Stok Aktual',
+      judul: 'Kontrol Stok Sistem vs Stok Aktual',
       fields: [
         { key: 'stock_opname_dilakukan', label: 'Stock opname dilakukan', type: 'ya_tidak' },
         { key: 'ada_selisih_stok', label: 'Ada selisih stok', type: 'ya_tidak' },
@@ -102,7 +102,7 @@ export const f16ManagerResto: FormSchema = {
     },
     {
       id: 'stok_habis',
-      judul: '4 · Stok Habis / Kebutuhan Kiriman Pusat',
+      judul: 'Stok Habis / Kebutuhan Kiriman Pusat',
       catatan: 'Manager tidak melakukan pembelanjaan stok. Seluruh kebutuhan stok dilaporkan untuk dikirim dari pusat.',
       fields: [
         {
@@ -130,7 +130,7 @@ export const f16ManagerResto: FormSchema = {
     },
     {
       id: 'utilitas',
-      judul: '5 · Utilitas',
+      judul: 'Utilitas',
       catatan: 'Manager wajib kontrol setiap hari.',
       fields: [
         { key: 'es_batu_stok_awal', label: 'Es batu -- stok awal', type: 'angka' },
@@ -151,7 +151,7 @@ export const f16ManagerResto: FormSchema = {
     },
     {
       id: 'dapur',
-      judul: '6 · Kesiapan Dapur',
+      judul: 'Kesiapan Dapur',
       catatan: 'Sebelum operasional, Manager memastikan hal-hal berikut.',
       fields: [
         { key: 'soto_siap', label: 'Soto siap', type: 'ya_tidak' },
@@ -174,7 +174,7 @@ export const f16ManagerResto: FormSchema = {
     },
     {
       id: 'area_customer',
-      judul: '7 · Kesiapan Area Customer',
+      judul: 'Kesiapan Area Customer',
       fields: [
         { key: 'meja_bersih', label: 'Meja bersih', type: 'ya_tidak' },
         { key: 'kursi_rapi', label: 'Kursi rapi', type: 'ya_tidak' },
@@ -189,7 +189,7 @@ export const f16ManagerResto: FormSchema = {
     },
     {
       id: 'kebersihan_outlet',
-      judul: '8 · Kebersihan Outlet',
+      judul: 'Kebersihan Outlet',
       fields: [
         { key: 'depan_resto', label: 'Depan resto', type: 'ya_tidak' },
         { key: 'area_makan', label: 'Area makan', type: 'ya_tidak' },
@@ -205,7 +205,7 @@ export const f16ManagerResto: FormSchema = {
     },
     {
       id: 'video_wajib',
-      judul: '9 · Video Kontrol Wajib',
+      judul: 'Video Kontrol Wajib',
       catatan: 'Video harus kondisi hari tersebut, bukan video lama.',
       fields: [
         { key: 'video_depan_resto', label: 'Video tampak depan resto', type: 'centang', wajib: true, buktiWajib: true, buktiKunci: 'video_depan' },
@@ -222,7 +222,7 @@ export const f16ManagerResto: FormSchema = {
     },
     {
       id: 'customer_masalah',
-      judul: '10 · Customer & Masalah Resto',
+      judul: 'Customer & Masalah Resto',
       fields: [
         { key: 'customer_hari_ini', label: 'Customer hari ini', type: 'angka' },
         { key: 'komplain', label: 'Komplain', type: 'angka' },
@@ -237,7 +237,7 @@ export const f16ManagerResto: FormSchema = {
     },
     {
       id: 'kontrol_pte',
-      judul: '11 · Kontrol PTA/PTE Seluruh Karyawan',
+      judul: 'Kontrol PTA/PTE Seluruh Karyawan',
       catatan: 'Manager tidak perlu membuat laporan PTA personal karyawan. Manager hanya memastikan kewajiban PTE tiap karyawan terpenuhi.',
       fields: [
         { key: 'total_wajib_pte', label: 'Total karyawan wajib PTA/PTE', type: 'angka' },
@@ -260,6 +260,6 @@ export const f16ManagerResto: FormSchema = {
         { key: 'tindakan_manager_pte', label: 'Tindakan Manager', type: 'teks_panjang' },
       ],
     },
-    blokKeputusanCeo(14, 'Rekap Manager Hari Ini', 'Status resto hari ini'),
+    blokKeputusanCeo('Rekap Manager Hari Ini', 'Status resto hari ini'),
   ],
 };

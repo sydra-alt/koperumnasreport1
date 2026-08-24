@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PolicyMap } from './policy';
 import { createClient } from '../supabase/client';
-import { jamWIB, tanggalWIB } from '../tanggal';
+import { hariISOWIB, jamWIB, tanggalWIB } from '../tanggal';
 
 export interface ScopeOpsi {
   lokasiId?: string;
@@ -120,8 +120,18 @@ export function batasJamKirim(policy: PolicyMap, formKey: string, shift?: string
   return batas;
 }
 
-/** true kalau jam kirim WIB sekarang sudah lewat batas. */
+/**
+ * true kalau jam kirim WIB sekarang sudah lewat batas -- TAPI cuma kalau
+ * hari ini memang hari wajib lapor (`policy.workdays`). Kalau tidak ada
+ * kewajiban (mis. Minggu, kalau Minggu bukan hari kerja), tidak ada
+ * keterlambatan sama sekali -- ditemukan lewat laporan sungguhan (24 Agustus
+ * 2026): laporan yang dikirim hari Minggu tetap ditandai TERLAMBAT walau
+ * Minggu bukan hari wajib, padahal "tidak ada kewajiban" seharusnya berarti
+ * "tidak ada keterlambatan".
+ */
 export function apakahTerlambat(policy: PolicyMap, formKey: string, shift?: string | null): boolean {
+  const workdays = (policy.workdays as number[] | undefined) ?? [1, 2, 3, 4, 5, 6];
+  if (!workdays.includes(hariISOWIB())) return false;
   return jamWIB() > batasJamKirim(policy, formKey, shift);
 }
 

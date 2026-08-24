@@ -23,7 +23,7 @@ export const f14Security: FormSchema = {
   blocks: [
     {
       id: 'kehadiran',
-      judul: '1 · Kehadiran Petugas',
+      judul: 'Kehadiran Petugas',
       fields: [
         { key: 'satpam_terjadwal', label: 'Satpam terjadwal', type: 'angka' },
         { key: 'satpam_hadir', label: 'Satpam hadir', type: 'angka' },
@@ -35,7 +35,7 @@ export const f14Security: FormSchema = {
     },
     {
       id: 'tamu',
-      judul: '2 · Tamu & Kunjungan',
+      judul: 'Tamu & Kunjungan',
       fields: [
         { key: 'tamu_datang', label: 'Tamu datang (orang)', type: 'angka' },
         { key: 'konsumen_datang', label: 'Konsumen datang (orang)', type: 'angka' },
@@ -57,7 +57,7 @@ export const f14Security: FormSchema = {
     },
     {
       id: 'kejadian',
-      judul: '3 · Kejadian Keamanan',
+      judul: 'Kejadian Keamanan',
       fields: [
         { key: 'ada_kejadian', label: 'Ada kejadian', type: 'ya_tidak' },
         { key: 'jenis_kejadian', label: 'Jenis kejadian (kalau ada)', type: 'teks' },
@@ -73,7 +73,7 @@ export const f14Security: FormSchema = {
     },
     {
       id: 'patroli',
-      judul: '4 · Patroli & Kontrol Area',
+      judul: 'Patroli & Kontrol Area',
       fields: [
         { key: 'patroli_jumlah', label: 'Patroli dilakukan (kali)', type: 'angka' },
         { key: 'area_terpantau', label: 'Seluruh area terpantau', type: 'ya_tidak' },
@@ -94,7 +94,7 @@ export const f14Security: FormSchema = {
     },
     {
       id: 'keamanan_material',
-      judul: '5 · Keamanan Material & Aset Lokasi',
+      judul: 'Keamanan Material & Aset Lokasi',
       fields: [
         { key: 'material_aman', label: 'Material di lokasi aman', type: 'ya_tidak' },
         { key: 'alat_lengkap', label: 'Alat/peralatan lengkap', type: 'ya_tidak' },
@@ -108,7 +108,7 @@ export const f14Security: FormSchema = {
     },
     {
       id: 'kendaraan_keluar_masuk',
-      judul: '6 · Keluar Masuk Kendaraan',
+      judul: 'Keluar Masuk Kendaraan',
       fields: [
         { key: 'kendaraan_keluar', label: 'Kendaraan perusahaan keluar', type: 'angka' },
         { key: 'kendaraan_material_masuk', label: 'Kendaraan material masuk', type: 'angka' },
@@ -130,7 +130,7 @@ export const f14Security: FormSchema = {
     },
     {
       id: 'kebersihan_pos',
-      judul: '7 · Kebersihan & Fasilitas Pos',
+      judul: 'Kebersihan & Fasilitas Pos',
       fields: [
         { key: 'pos_bersih', label: 'Pos jaga bersih', type: 'ya_tidak' },
         { key: 'buku_tamu_rapi', label: 'Buku tamu terisi rapi', type: 'ya_tidak' },
@@ -139,6 +139,6 @@ export const f14Security: FormSchema = {
         { key: 'kebutuhan_pos', label: 'Kebutuhan pos', type: 'teks_panjang' },
       ],
     },
-    blokKeputusanCeo(9, 'Rekap Security untuk Sabrina', 'Status keamanan hari ini'),
+    blokKeputusanCeo('Rekap Security untuk Sabrina', 'Status keamanan hari ini'),
   ],
 };

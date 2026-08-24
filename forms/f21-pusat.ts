@@ -26,7 +26,7 @@ export const f21Pusat: FormSchema = {
   blocks: [
     {
       id: 'target_besok',
-      judul: '16 · Target Besok',
+      judul: 'Target Besok',
       fields: [
         { key: 'besok_pembangunan', label: 'Pembangunan', type: 'teks' },
         { key: 'besok_stk', label: 'STK', type: 'teks' },
@@ -39,7 +39,7 @@ export const f21Pusat: FormSchema = {
     },
     {
       id: 'keputusan_tambahan',
-      judul: '17 · Keputusan Tambahan dari Pusat (kalau ada, di luar yang sudah diajukan divisi lain)',
+      judul: 'Keputusan Tambahan dari Pusat (kalau ada, di luar yang sudah diajukan divisi lain)',
       catatan: 'Keputusan yang sudah diajukan divisi lain lewat laporan mereka sendiri tampil otomatis di atas -- tidak diketik ulang di sini.',
       fields: [
         {

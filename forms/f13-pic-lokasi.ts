@@ -55,7 +55,7 @@ export const f13PicLokasi: FormSchema = {
   blocks: [
     {
       id: 'konsumen',
-      judul: '1 · Konsumen di Lokasi',
+      judul: 'Konsumen di Lokasi',
       fields: [
         { key: 'konsumen_di_lokasi', label: 'Konsumen di lokasi ini', type: 'angka' },
         { key: 'konsumen_datang', label: 'Konsumen datang hari ini (orang)', type: 'angka' },
@@ -67,7 +67,7 @@ export const f13PicLokasi: FormSchema = {
     },
     {
       id: 'kavling',
-      judul: '2 · Kavling',
+      judul: 'Kavling',
       fields: [
         { key: 'kavling_total', label: 'Total kavling', type: 'angka' },
         { key: 'kavling_terjual', label: 'Kavling terjual', type: 'angka' },
@@ -79,7 +79,7 @@ export const f13PicLokasi: FormSchema = {
     },
     {
       id: 'pembangunan',
-      judul: '3 · Pembangunan di Lokasi Ini',
+      judul: 'Pembangunan di Lokasi Ini',
       catatan: 'Foto/video progress wajib dilampirkan setiap hari -- kirim tanpa itu ditolak.',
       fields: [
         { key: 'target_unit', label: 'Target (unit)', type: 'angka' },
@@ -104,7 +104,7 @@ export const f13PicLokasi: FormSchema = {
     },
     {
       id: 'infrastruktur',
-      judul: '4 · Infrastruktur Lokasi',
+      judul: 'Infrastruktur Lokasi',
       fields: [
         { key: 'jalan_status', label: 'Jalan', type: 'pilih', pilihan: ['Baik', 'Perlu perbaikan', 'Rusak'] },
         { key: 'jalan_keterangan', label: 'Keterangan jalan', type: 'teks' },
@@ -120,7 +120,7 @@ export const f13PicLokasi: FormSchema = {
     },
     {
       id: 'perizinan',
-      judul: '5 · Perizinan Lokasi',
+      judul: 'Perizinan Lokasi',
       fields: [
         { key: 'izin_status', label: 'Status izin', type: 'teks' },
         { key: 'izin_boleh_bangun', label: 'Sudah boleh dibangun', type: 'ya_tidak' },
@@ -130,7 +130,7 @@ export const f13PicLokasi: FormSchema = {
     },
     {
       id: 'stk',
-      judul: '6 · STK & Rumah Tidak Ditempati',
+      judul: 'STK & Rumah Tidak Ditempati',
       fields: [
         { key: 'stk_total', label: 'Rumah STK di lokasi ini', type: 'angka' },
         { key: 'stk_sudah_ditempati', label: 'Sudah ditempati', type: 'angka' },
@@ -155,7 +155,7 @@ export const f13PicLokasi: FormSchema = {
     },
     {
       id: 'kebersihan_keamanan',
-      judul: '7 · Kebersihan & Keamanan Lokasi',
+      judul: 'Kebersihan & Keamanan Lokasi',
       fields: [
         { key: 'kebersihan_baik', label: 'Kebersihan lokasi baik', type: 'ya_tidak' },
         { key: 'rumput_terkendali', label: 'Rumput/semak terkendali', type: 'ya_tidak' },
@@ -175,7 +175,7 @@ export const f13PicLokasi: FormSchema = {
     },
     {
       id: 'material',
-      judul: '8 · Material di Lokasi',
+      judul: 'Material di Lokasi',
       fields: [
         { key: 'material_cukup', label: 'Material cukup', type: 'ya_tidak' },
         {
@@ -195,7 +195,7 @@ export const f13PicLokasi: FormSchema = {
     },
     {
       id: 'besok',
-      judul: '10 · Target Lokasi Besok',
+      judul: 'Target Lokasi Besok',
       fields: [
         { key: 'besok_pembangunan', label: 'Pembangunan', type: 'teks' },
         { key: 'besok_infrastruktur', label: 'Infrastruktur', type: 'teks' },
@@ -204,6 +204,6 @@ export const f13PicLokasi: FormSchema = {
         { key: 'besok_kirim_pusat', label: 'Yang harus dikirim pusat', type: 'teks' },
       ],
     },
-    blokKeputusanCeo(11, 'Rekap Lokasi untuk Sabrina', 'Status lokasi hari ini'),
+    blokKeputusanCeo('Rekap Lokasi untuk Sabrina', 'Status lokasi hari ini'),
   ],
 };

@@ -40,7 +40,7 @@ export const f16Ita: FormSchema = {
   blocks: [
     {
       id: 'thrifting',
-      judul: '1 · Penjualan Thrifting Hari Ini',
+      judul: 'Penjualan Thrifting Hari Ini',
       fields: [
         { key: 'omzet_thrifting', label: 'Omzet hari ini', type: 'uang' },
         { key: 'barang_terjual', label: 'Jumlah barang terjual', type: 'angka' },
@@ -66,7 +66,7 @@ export const f16Ita: FormSchema = {
     },
     {
       id: 'barang_masuk',
-      judul: '2 · Barang Thrifting Masuk',
+      judul: 'Barang Thrifting Masuk',
       catatan: 'Tidak boleh ada barang masuk yang dijual sebelum didata dan masuk sistem.',
       fields: [
         { key: 'barang_masuk', label: 'Barang masuk hari ini (pcs)', type: 'angka' },
@@ -83,7 +83,7 @@ export const f16Ita: FormSchema = {
     },
     {
       id: 'kontrol_stok_thrifting',
-      judul: '3 · Kontrol Stok Thrifting',
+      judul: 'Kontrol Stok Thrifting',
       fields: [
         { key: 'stok_sistem_thrifting', label: 'Stok sistem (pcs)', type: 'angka' },
         { key: 'stok_aktual_thrifting', label: 'Stok aktual (pcs)', type: 'angka' },
@@ -100,7 +100,7 @@ export const f16Ita: FormSchema = {
     },
     {
       id: 'kebersihan_thrifting',
-      judul: '4 · Kebersihan Area Thrifting',
+      judul: 'Kebersihan Area Thrifting',
       fields: [
         { key: 'lantai_thrifting', label: 'Lantai', type: 'ya_tidak' },
         { key: 'rak_display', label: 'Rak/display', type: 'ya_tidak' },
@@ -122,7 +122,7 @@ export const f16Ita: FormSchema = {
     },
     {
       id: 'pembukuan_indosteak',
-      judul: '5 · Cek Pembukuan Indosteak',
+      judul: 'Cek Pembukuan Indosteak',
       fields: [
         { key: 'omzet_indosteak', label: 'Omzet sistem hari ini', type: 'uang' },
         { key: 'cash_indosteak', label: 'Cash', type: 'uang' },
@@ -146,7 +146,7 @@ export const f16Ita: FormSchema = {
     },
     {
       id: 'pembukuan_indokopi',
-      judul: '6 · Cek Pembukuan Indokopi',
+      judul: 'Cek Pembukuan Indokopi',
       fields: [
         { key: 'omzet_indokopi', label: 'Omzet sistem hari ini', type: 'uang' },
         { key: 'cash_indokopi', label: 'Cash', type: 'uang' },
@@ -171,7 +171,7 @@ export const f16Ita: FormSchema = {
     },
     {
       id: 'verifikasi_sabita',
-      judul: '7 · Verifikasi dengan Bu Sabita',
+      judul: 'Verifikasi dengan Bu Sabita',
       fields: [
         { key: 'mutasi_bank_dicek', label: 'Mutasi bank sudah dicek Accounting', type: 'ya_tidak' },
         { key: 'cash_sudah_disetor_verifikasi', label: 'Cash sudah disetor', type: 'ya_tidak' },
@@ -182,7 +182,7 @@ export const f16Ita: FormSchema = {
     },
     {
       id: 'kontrol_stok_resto',
-      judul: '8 · Kontrol Stok Restoran',
+      judul: 'Kontrol Stok Restoran',
       catatan: 'Angka pengecekan Manager Resto ditampilkan otomatis di atas sebagai pembanding -- Anda tetap mengisi hasil pengecekan sendiri.',
       fields: [
         { key: 'stok_sesuai_indosteak', label: 'Indosteak -- stok sistem = stok aktual (versi Ita)', type: 'ya_tidak' },
@@ -197,7 +197,7 @@ export const f16Ita: FormSchema = {
     },
     {
       id: 'rab_stok',
-      judul: '9 · Kebutuhan Stok / RAB',
+      judul: 'Kebutuhan Stok / RAB',
       catatan: 'Daftar stok habis/kebutuhan kiriman pusat ditampilkan otomatis di atas, dari laporan Manager Resto hari ini -- tidak diketik ulang.',
       fields: [
         { key: 'rab_kebutuhan_stok', label: 'RAB', type: 'uang' },
@@ -213,7 +213,7 @@ export const f16Ita: FormSchema = {
     },
     {
       id: 'stock_opname',
-      judul: '13 · Stock Opname Mingguan (khusus Senin)',
+      judul: 'Stock Opname Mingguan (khusus Senin)',
       hanyaHari: [1],
       catatan: 'Blok ini cuma tampil hari Senin.',
       fields: [
@@ -238,6 +238,6 @@ export const f16Ita: FormSchema = {
         { key: 'so_diajukan_eri_rika', label: 'Diajukan ke Pak Eri/Bu Rika', type: 'ya_tidak' },
       ],
     },
-    blokKeputusanCeo(12, 'Rekap Ita Hari Ini', 'Status hari ini'),
+    blokKeputusanCeo('Rekap Ita Hari Ini', 'Status hari ini'),
   ],
 };

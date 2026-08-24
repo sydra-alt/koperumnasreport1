@@ -14,7 +14,7 @@ export const f15Dti: FormSchema = {
   blocks: [
     {
       id: 'produksi',
-      judul: '1 · Produksi Hari Ini',
+      judul: 'Produksi Hari Ini',
       fields: [
         { key: 'target_produksi', label: 'Target produksi', type: 'angka' },
         { key: 'realisasi_produksi', label: 'Realisasi', type: 'angka' },
@@ -32,7 +32,7 @@ export const f15Dti: FormSchema = {
     },
     {
       id: 'stok_produksi',
-      judul: '2 · Stok Hasil Produksi',
+      judul: 'Stok Hasil Produksi',
       fields: [
         { key: 'stok_precast_siap_kirim', label: 'Stok precast siap kirim (pcs)', type: 'angka' },
         { key: 'stok_perikas_siap_kirim', label: 'Stok perikas siap kirim', type: 'angka' },
@@ -54,7 +54,7 @@ export const f15Dti: FormSchema = {
     },
     {
       id: 'stok_material',
-      judul: '3 · Stok Material Produksi',
+      judul: 'Stok Material Produksi',
       fields: [
         {
           key: 'stok_material',
@@ -79,7 +79,7 @@ export const f15Dti: FormSchema = {
     },
     {
       id: 'pembangunan_area',
-      judul: '4 · Pembangunan Area DTI',
+      judul: 'Pembangunan Area DTI',
       fields: [
         { key: 'pekerjaan_berjalan_dti', label: 'Pekerjaan yang sedang berjalan', type: 'teks' },
         { key: 'progress_dti_persen', label: 'Progress (%)', type: 'angka' },
@@ -89,7 +89,7 @@ export const f15Dti: FormSchema = {
     },
     {
       id: 'mesin',
-      judul: '5 · Mesin & Peralatan',
+      judul: 'Mesin & Peralatan',
       fields: [
         { key: 'mesin_normal', label: 'Mesin berfungsi normal', type: 'ya_tidak' },
         { key: 'cetakan_cukup', label: 'Cetakan/molding cukup', type: 'ya_tidak' },
@@ -102,7 +102,7 @@ export const f15Dti: FormSchema = {
     },
     {
       id: 'tenaga_kerja',
-      judul: '6 · Tenaga Kerja DTI',
+      judul: 'Tenaga Kerja DTI',
       fields: [
         { key: 'pekerja_total', label: 'Total pekerja', type: 'angka' },
         { key: 'pekerja_hadir', label: 'Hadir', type: 'angka' },
@@ -114,7 +114,7 @@ export const f15Dti: FormSchema = {
     },
     {
       id: 'kebersihan_dti',
-      judul: '7 · Kebersihan & Keamanan Area',
+      judul: 'Kebersihan & Keamanan Area',
       fields: [
         { key: 'kebersihan_area_produksi', label: 'Kebersihan area produksi', type: 'ya_tidak' },
         { key: 'area_penyimpanan_rapi', label: 'Area penyimpanan rapi', type: 'ya_tidak' },
@@ -132,7 +132,7 @@ export const f15Dti: FormSchema = {
     },
     {
       id: 'besok',
-      judul: '9 · Target DTI Besok',
+      judul: 'Target DTI Besok',
       fields: [
         { key: 'besok_produksi_precast', label: 'Produksi precast (pcs)', type: 'angka' },
         { key: 'besok_produksi_perikas', label: 'Produksi perikas', type: 'angka' },
@@ -141,6 +141,6 @@ export const f15Dti: FormSchema = {
         { key: 'besok_perbaikan_mesin', label: 'Perbaikan mesin', type: 'teks' },
       ],
     },
-    blokKeputusanCeo(10, 'Rekap DTI untuk Sabrina', 'Status DTI hari ini'),
+    blokKeputusanCeo('Rekap DTI untuk Sabrina', 'Status DTI hari ini'),
   ],
 };

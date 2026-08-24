@@ -138,16 +138,16 @@ export function useOmzetRestoHariIni(enabled = true) {
  * baris yang sudah dipunya CEO, pola yang sama dengan `hitungCashflowHariIni`
  * di atas dan `ringkasanKebutuhanBesok`/`ringkasanPteHariIni` di modul lain.
  */
-export function useLaporanAccountingHariIni(enabled = true) {
+export function useLaporanAccountingHariIni(enabled = true, tanggal: string = tanggalWIB()) {
   return useQuery({
-    queryKey: ['laporan-accounting-hari-ini'],
+    queryKey: ['laporan-accounting-untuk-tanggal', tanggal],
     queryFn: async (): Promise<Record<string, unknown> | null> => {
       const supabase = createClient();
       const { data, error } = await supabase
         .from('report')
         .select('data')
         .eq('form_key', 'accounting')
-        .eq('tanggal', tanggalWIB())
+        .eq('tanggal', tanggal)
         .neq('status', 'draft')
         .maybeSingle();
       if (error) throw error;

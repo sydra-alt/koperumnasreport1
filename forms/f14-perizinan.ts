@@ -22,7 +22,7 @@ export const f14Perizinan: FormSchema = {
   blocks: [
     {
       id: 'perizinan_berjalan',
-      judul: '1 · Daftar Perizinan Berjalan',
+      judul: 'Daftar Perizinan Berjalan',
       catatan: 'Satu baris per lokasi yang sedang diproses.',
       fields: [
         {
@@ -49,7 +49,7 @@ export const f14Perizinan: FormSchema = {
     },
     {
       id: 'selesai',
-      judul: '2 · Yang Selesai Hari Ini',
+      judul: 'Yang Selesai Hari Ini',
       fields: [
         {
           key: 'izin_selesai_hari_ini',
@@ -68,7 +68,7 @@ export const f14Perizinan: FormSchema = {
     },
     {
       id: 'belum_selesai',
-      judul: '3 · Yang Belum Selesai',
+      judul: 'Yang Belum Selesai',
       fields: [
         {
           key: 'izin_belum_selesai',
@@ -88,7 +88,7 @@ export const f14Perizinan: FormSchema = {
     },
     {
       id: 'koordinasi',
-      judul: '4 · Koordinasi Instansi',
+      judul: 'Koordinasi Instansi',
       fields: [
         { key: 'kunjungan_instansi', label: 'Kunjungan instansi hari ini', type: 'angka' },
         { key: 'instansi_ditemui', label: 'Instansi yang ditemui', type: 'teks' },
@@ -100,7 +100,7 @@ export const f14Perizinan: FormSchema = {
     },
     {
       id: 'kebutuhan_biaya',
-      judul: '5 · Kebutuhan Biaya Perizinan',
+      judul: 'Kebutuhan Biaya Perizinan',
       fields: [
         {
           key: 'kebutuhan_biaya',
@@ -121,7 +121,7 @@ export const f14Perizinan: FormSchema = {
     },
     {
       id: 'risiko',
-      judul: '6 · Risiko Perizinan',
+      judul: 'Risiko Perizinan',
       fields: [
         { key: 'izin_hambat_pembangunan', label: 'Izin yang bisa menghambat pembangunan', type: 'teks' },
         { key: 'lokasi_belum_boleh_dibangun', label: 'Lokasi yang belum boleh dibangun', type: 'teks' },
@@ -131,7 +131,7 @@ export const f14Perizinan: FormSchema = {
     },
     {
       id: 'besok',
-      judul: '8 · Target Perizinan Besok',
+      judul: 'Target Perizinan Besok',
       fields: [
         { key: 'besok_lokasi_dikejar', label: 'Lokasi yang dikejar', type: 'teks' },
         { key: 'besok_dokumen_disiapkan', label: 'Dokumen yang disiapkan', type: 'teks' },
@@ -139,6 +139,6 @@ export const f14Perizinan: FormSchema = {
         { key: 'besok_izin_terbit', label: 'Yang harus terbit', type: 'teks' },
       ],
     },
-    blokKeputusanCeo(9, 'Rekap Perizinan untuk Sabrina', 'Status perizinan hari ini'),
+    blokKeputusanCeo('Rekap Perizinan untuk Sabrina', 'Status perizinan hari ini'),
   ],
 };

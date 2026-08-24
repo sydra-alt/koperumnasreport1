@@ -15,14 +15,13 @@ import type { Block, Field } from './types';
  * pakai blok ini, bukan diperiksa satu-satu per formKey.
  */
 export function blokKeputusanCeo(
-  nomor: number | string,
   judulRekap: string,
   labelStatus: string,
   fieldTambahan: Field[] = [],
 ): Block {
   return {
     id: 'keputusan_ceo',
-    judul: `${nomor} · ${judulRekap}`,
+    judul: judulRekap,
     fields: [
       { key: 'masalah_utama', label: 'Masalah utama', type: 'teks_panjang' },
       ...fieldTambahan,

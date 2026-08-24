@@ -46,7 +46,7 @@ export const f15Pembangunan: FormSchema = {
     // ── 2. Catatan Selisih (input) ─────────────────────────────────────
     {
       id: 'catatan_selisih',
-      judul: '2 · Catatan Selisih',
+      judul: 'Catatan Selisih',
       catatan: 'Isi kalau angka dari PIC Lokasi tidak sesuai kenyataan lapangan. Kosongkan kalau tidak ada selisih.',
       fields: [
         {
@@ -68,7 +68,7 @@ export const f15Pembangunan: FormSchema = {
     // ── 4. Material Perusahaan (input — cuma Kepala Pembangunan) ───────
     {
       id: 'material_perusahaan',
-      judul: '4 · Material Tingkat Perusahaan',
+      judul: 'Material Tingkat Perusahaan',
       catatan: 'Kebutuhan material yang tidak terikat lokasi tertentu: pembelian borongan, masalah supplier, pasokan dari DTI.',
       fields: [
         { key: 'material_dari_dti', label: 'Material dari DTI/precast', type: 'teks' },
@@ -95,7 +95,7 @@ export const f15Pembangunan: FormSchema = {
     // ── 6. Rencana Infrastruktur (input — cuma Kepala Pembangunan) ─────
     {
       id: 'infrastruktur_rencana',
-      judul: '6 · Rencana & Biaya Infrastruktur',
+      judul: 'Rencana & Biaya Infrastruktur',
       catatan: 'Pekerjaan infrastruktur yang dijadwalkan, kontraktor, anggaran, target selesai. Ini yang hanya Kepala Pembangunan yang tahu.',
       fields: [
         {
@@ -118,7 +118,7 @@ export const f15Pembangunan: FormSchema = {
     // ── 7. Kontraktor (input) ──────────────────────────────────────────
     {
       id: 'kontraktor',
-      judul: '7 · Kontraktor',
+      judul: 'Kontraktor',
       fields: [
         {
           key: 'kontraktor_progress',
@@ -144,7 +144,7 @@ export const f15Pembangunan: FormSchema = {
     // ── 8. Kualitas & Pengawasan (input — D2: foto/video hapus) ────────
     {
       id: 'kualitas',
-      judul: '8 · Kualitas & Pengawasan',
+      judul: 'Kualitas & Pengawasan',
       fields: [
         { key: 'lokasi_dikunjungi', label: 'Lokasi dikunjungi hari ini', type: 'teks' },
         { key: 'sesuai_spesifikasi', label: 'Pekerjaan sesuai spesifikasi', type: 'ya_tidak' },
@@ -157,7 +157,7 @@ export const f15Pembangunan: FormSchema = {
     // ── 9. Target Besok (input) ────────────────────────────────────────
     {
       id: 'besok',
-      judul: '9 · Target Pembangunan Besok',
+      judul: 'Target Pembangunan Besok',
       fields: [
         { key: 'besok_unit_dikejar', label: 'Unit yang dikejar selesai', type: 'angka' },
         { key: 'besok_lokasi_prioritas', label: 'Lokasi prioritas', type: 'teks' },
@@ -166,6 +166,6 @@ export const f15Pembangunan: FormSchema = {
         { key: 'besok_infrastruktur', label: 'Infrastruktur', type: 'teks' },
       ],
     },
-    blokKeputusanCeo(10, 'Rekap Pembangunan untuk Sabrina', 'Status pembangunan hari ini'),
+    blokKeputusanCeo('Rekap Pembangunan untuk Sabrina', 'Status pembangunan hari ini'),
   ],
 };

@@ -28,7 +28,7 @@ export const f14Hrd: FormSchema = {
   blocks: [
     {
       id: 'absensi',
-      judul: '1 · Absensi Hari Ini',
+      judul: 'Absensi Hari Ini',
       fields: [
         { key: 'pegawai_total', label: 'Total pegawai', type: 'angka' },
         { key: 'pegawai_hadir', label: 'Hadir', type: 'angka' },
@@ -56,7 +56,7 @@ export const f14Hrd: FormSchema = {
     },
     {
       id: 'kedisiplinan',
-      judul: '2 · Kedisiplinan',
+      judul: 'Kedisiplinan',
       fields: [
         { key: 'terlambat_hari_ini', label: 'Terlambat hari ini (orang)', type: 'angka' },
         { key: 'terlambat_lebih_3x', label: 'Terlambat >3x bulan ini (orang)', type: 'angka' },
@@ -69,7 +69,7 @@ export const f14Hrd: FormSchema = {
     },
     {
       id: 'penempatan',
-      judul: '3 · Karyawan & Penempatan',
+      judul: 'Karyawan & Penempatan',
       fields: [
         { key: 'karyawan_aktif', label: 'Karyawan aktif', type: 'angka' },
         { key: 'karyawan_baru_masuk', label: 'Karyawan baru masuk hari ini', type: 'angka' },
@@ -82,7 +82,7 @@ export const f14Hrd: FormSchema = {
     },
     {
       id: 'administrasi',
-      judul: '4 · Administrasi Kepegawaian',
+      judul: 'Administrasi Kepegawaian',
       fields: [
         { key: 'kontrak_habis_30_hari', label: 'Kontrak akan habis 30 hari ke depan (orang)', type: 'angka' },
         { key: 'berkas_belum_lengkap', label: 'Berkas karyawan belum lengkap (orang)', type: 'angka' },
@@ -92,7 +92,7 @@ export const f14Hrd: FormSchema = {
     },
     {
       id: 'masalah_kepegawaian',
-      judul: '5 · Masalah Kepegawaian',
+      judul: 'Masalah Kepegawaian',
       fields: [
         { key: 'konflik_karyawan', label: 'Konflik antar karyawan', type: 'teks' },
         { key: 'keluhan_karyawan', label: 'Keluhan karyawan', type: 'teks' },
@@ -105,7 +105,7 @@ export const f14Hrd: FormSchema = {
     },
     {
       id: 'kontrol_marketing',
-      judul: '6 · Kontrol Kepatuhan Marketing Seluruh Karyawan',
+      judul: 'Kontrol Kepatuhan Marketing Seluruh Karyawan',
       catatan: 'HRD memastikan seluruh karyawan mengirim Laporan Personal Marketing -- angka di blok ini diperiksa & diketik HRD, bukan dihitung otomatis.',
       fields: [
         { key: 'total_wajib_lapor', label: 'Total karyawan wajib lapor', type: 'angka' },
@@ -120,7 +120,7 @@ export const f14Hrd: FormSchema = {
     },
     {
       id: 'besok',
-      judul: '8 · Target HRD Besok',
+      judul: 'Target HRD Besok',
       fields: [
         { key: 'besok_absensi', label: 'Absensi/kedisiplinan', type: 'teks' },
         { key: 'besok_rekrutmen', label: 'Rekrutmen', type: 'teks' },
@@ -128,6 +128,6 @@ export const f14Hrd: FormSchema = {
         { key: 'besok_masalah', label: 'Masalah yang harus diselesaikan', type: 'teks' },
       ],
     },
-    blokKeputusanCeo(9, 'Rekap HRD untuk Sabrina', 'Status HRD hari ini'),
+    blokKeputusanCeo('Rekap HRD untuk Sabrina', 'Status HRD hari ini'),
   ],
 };

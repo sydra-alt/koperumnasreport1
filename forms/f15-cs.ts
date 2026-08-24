@@ -18,7 +18,7 @@ export const f15Cs: FormSchema = {
   blocks: [
     {
       id: 'tiket',
-      judul: '1 · Tiket & Komunikasi Masuk',
+      judul: 'Tiket & Komunikasi Masuk',
       fields: [
         { key: 'tiket_masuk_total', label: 'Konsumen/tiket masuk hari ini', type: 'angka' },
         { key: 'tiket_telepon', label: 'Telepon', type: 'angka' },
@@ -30,7 +30,7 @@ export const f15Cs: FormSchema = {
     },
     {
       id: 'keluhan',
-      judul: '2 · Keluhan Konsumen',
+      judul: 'Keluhan Konsumen',
       fields: [
         { key: 'keluhan_baru', label: 'Keluhan baru', type: 'angka' },
         { key: 'keluhan_selesai_hari_ini', label: 'Selesai hari ini', type: 'angka' },
@@ -60,7 +60,7 @@ export const f15Cs: FormSchema = {
     },
     {
       id: 'penagihan',
-      judul: '3 · Penagihan & Tunggakan',
+      judul: 'Penagihan & Tunggakan',
       fields: [
         { key: 'ditagih_hari_ini', label: 'Konsumen ditagih hari ini', type: 'angka' },
         { key: 'yang_membayar', label: 'Yang membayar', type: 'angka' },
@@ -90,7 +90,7 @@ export const f15Cs: FormSchema = {
     },
     {
       id: 'perubahan_status',
-      judul: '4 · Perubahan Status Konsumen',
+      judul: 'Perubahan Status Konsumen',
       fields: [
         { key: 'refund_diajukan', label: 'Refund diajukan', type: 'angka' },
         { key: 'take_over_diajukan', label: 'Take over diajukan', type: 'angka' },
@@ -103,7 +103,7 @@ export const f15Cs: FormSchema = {
     },
     {
       id: 'serah_terima',
-      judul: '5 · Serah Terima & STK',
+      judul: 'Serah Terima & STK',
       fields: [
         { key: 'serah_terima_hari_ini', label: 'Serah terima unit hari ini', type: 'angka' },
         { key: 'menunggu_serah_terima', label: 'Konsumen menunggu serah terima', type: 'angka' },
@@ -112,13 +112,13 @@ export const f15Cs: FormSchema = {
     },
     {
       id: 'besok',
-      judul: '7 · Target CS Besok',
+      judul: 'Target CS Besok',
       fields: [
         { key: 'besok_keluhan_selesai', label: 'Keluhan yang harus selesai', type: 'teks' },
         { key: 'besok_konsumen_ditagih', label: 'Konsumen yang harus ditagih', type: 'teks' },
         { key: 'besok_follow_up', label: 'Follow-up', type: 'teks' },
       ],
     },
-    blokKeputusanCeo(8, 'Rekap CS untuk Sabrina', 'Status CS hari ini'),
+    blokKeputusanCeo('Rekap CS untuk Sabrina', 'Status CS hari ini'),
   ],
 };

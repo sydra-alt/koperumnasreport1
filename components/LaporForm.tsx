@@ -21,7 +21,7 @@ import {
   type KebutuhanPembangunanAccounting,
   type OmzetRestoRow,
 } from '../lib/api/accounting';
-import { tanggalIndonesiaWIB } from '../lib/tanggal';
+import { hariISOWIB, tanggalIndonesiaWIB } from '../lib/tanggal';
 import { angkaDariTeks, tanggalDariTeks } from '../lib/teksAngka';
 import { urgensiTerburukDariKirim, warnaDipilihDari, warnaOtomatis, warnaTerburuk } from '../lib/warna';
 import { debounce } from '../lib/debounce';
@@ -275,7 +275,15 @@ export function LaporForm({ formKey }: { formKey: string }) {
         }
       }
 
-      setPesanKirim(status === 'terlambat' ? 'Terkirim, tapi tercatat TERLAMBAT.' : 'Terkirim tepat waktu.');
+      const workdaysKirim = (policy.workdays as number[] | undefined) ?? [1, 2, 3, 4, 5, 6];
+      const diLuarHariWajib = !workdaysKirim.includes(hariISOWIB());
+      setPesanKirim(
+        status === 'terlambat'
+          ? 'Terkirim, tapi tercatat TERLAMBAT.'
+          : diLuarHariWajib
+            ? 'Terkirim -- hari ini di luar hari wajib lapor, jadi tidak dihitung terlambat.'
+            : 'Terkirim tepat waktu.',
+      );
     } catch (err) {
       setPesanKirim(err instanceof Error ? err.message : 'Gagal mengirim laporan.');
     } finally {
@@ -304,7 +312,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
 
       {formKey === 'personal_marketing' && profile && (
         <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
-          <p style={{ fontFamily: 'var(--display)' }}>Blok 1 · Identitas</p>
+          <p style={{ fontFamily: 'var(--display)' }}>Identitas</p>
           <p>
             {profile.nama} · {profile.divisi ?? '—'} · {profile.jabatan ?? '—'}
           </p>
@@ -334,7 +342,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
 
       {formKey === 'personal_marketing' && progres && invitTarget !== null && closingTarget !== null && (
         <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
-          <p style={{ fontFamily: 'var(--display)' }}>Blok 8 · Status Personal Marketing</p>
+          <p style={{ fontFamily: 'var(--display)' }}>Status Personal Marketing</p>
           <p>
             {IKON[statusClosing(progres.closing, closingTarget)]} Closing · {IKON[statusUndangan(progres.undangan, invitTarget)]}{' '}
             Undangan {invitTarget} orang · {ringkasanPte ? (ringkasanPte.lengkap ? '🟢 PTE lengkap' : '🔴 PTE tidak lengkap') : '— PTE'}
@@ -344,7 +352,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
 
       {formKey === 'personal_marketing' && ringkasanPte && (
         <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
-          <p style={{ fontFamily: 'var(--display)' }}>Blok 5 · Status PTE Rp500.000 (pratinjau hari ini)</p>
+          <p style={{ fontFamily: 'var(--display)' }}>Status PTE Rp500.000 (pratinjau hari ini)</p>
           <p>
             {ringkasanPte.live ? '✅' : '❌'} Live · {ringkasanPte.undang ? '✅' : '❌'} Undang ·{' '}
             {ringkasanPte.kesaksian ? '✅' : '❌'} Kesaksian · {ringkasanPte.review ? '✅' : '❌'} Review ·{' '}
@@ -457,7 +465,7 @@ function RekapUnitOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
       <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
-        1 · Rekap Unit Seluruh Lokasi (dari PIC Lokasi)
+        Rekap Unit Seluruh Lokasi (dari PIC Lokasi)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
         Angka di bawah berasal dari Laporan PIC Lokasi hari ini. Hanya baca — tidak bisa diedit di sini.
@@ -518,7 +526,7 @@ function RekapMaterialOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
       <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
-        3 · Material per Lokasi (dari PIC Lokasi)
+        Material per Lokasi (dari PIC Lokasi)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
         Rekap material per lokasi, hari ini. Hanya baca.
@@ -559,7 +567,7 @@ function RekapInfrastrukturOtomatis({ data }: { data: PembangunanPerLokasiRow[] 
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
       <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
-        5 · Kondisi Infrastruktur per Lokasi (dari PIC Lokasi)
+        Kondisi Infrastruktur per Lokasi (dari PIC Lokasi)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
         Kondisi infrastruktur (jalan, listrik, air, drainase) berasal dari Laporan PIC Lokasi hari ini. Hanya baca -- rencana &amp; biaya
@@ -632,14 +640,14 @@ function KebutuhanBesokRestoOtomatis({ data }: { data: ReturnType<typeof ringkas
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
       <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
-        12 · Kebutuhan untuk Besok
+        Kebutuhan untuk Besok
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
-        Ringkasan otomatis dari Blok 4 (Stok Habis) dan Blok 5 (Utilitas) di atas. Hanya baca.
+        Ringkasan otomatis dari &quot;Stok Habis / Kebutuhan Kiriman Pusat&quot; dan &quot;Utilitas&quot; di atas. Hanya baca.
       </p>
       {!adaKebutuhan ? (
         <p className="text-sm" style={{ color: 'var(--kosong)' }}>
-          Belum ada kebutuhan tercatat di Blok 4/5.
+          Belum ada kebutuhan tercatat di atas.
         </p>
       ) : (
         <div className="flex flex-col gap-2 text-sm">
@@ -675,7 +683,7 @@ function StokManagerUntukItaOtomatis({ data }: { data: ManagerRestoUntukItaRow[]
         Angka Manager Resto (pembanding &amp; kebutuhan stok)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
-        Dari laporan Manager Resto hari ini, per outlet. Hanya baca -- dipakai sebagai pembanding di Blok 8 dan sumber daftar di Blok 9.
+        Dari laporan Manager Resto hari ini, per outlet. Hanya baca -- dipakai sebagai pembanding di &quot;Kontrol Stok Restoran&quot; dan sumber daftar di &quot;Kebutuhan Stok / RAB&quot;.
       </p>
       {data.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--kosong)' }}>
@@ -727,11 +735,11 @@ function KebutuhanPembangunanAccountingOtomatis({ data }: { data: KebutuhanPemba
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
       <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
-        8 · Kebutuhan Pembangunan
+        Kebutuhan Pembangunan
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
-        Pengajuan Kepala Pembangunan &amp; DTI hari ini. Hanya baca -- dipakai juga sebagai angka otomatis di Blok 10 (Precast/DTI,
-        Material, Infrastruktur/jalan).
+        Pengajuan Kepala Pembangunan &amp; DTI hari ini. Hanya baca -- dipakai juga sebagai angka otomatis di &quot;Kontraktor / Supplier / DTI&quot;
+        (Precast/DTI, Material, Infrastruktur/jalan).
       </p>
       <div className="flex flex-col gap-2 text-sm">
         <p>Precast/DTI: {rupiah(data.precastDti)}</p>
@@ -780,7 +788,7 @@ function OmzetRestoOtomatis({ data }: { data: OmzetRestoRow[] }) {
         Omzet Resto -- Tiga Pengukuran
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
-        Omzet versi Manager Resto dan versi Ita, hari ini. Hanya baca -- lengkapi angka sisi bank di Blok 13, selisih dihitung otomatis.
+        Omzet versi Manager Resto dan versi Ita, hari ini. Hanya baca -- lengkapi angka sisi bank di &quot;Rekonsiliasi Resto&quot;, selisih dihitung otomatis.
       </p>
       {data.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--kosong)' }}>
@@ -815,10 +823,10 @@ function CashflowOtomatis({ data }: { data: ReturnType<typeof hitungCashflowHari
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
       <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
-        6 · Cashflow Hari Ini (otomatis)
+        Cashflow Hari Ini (dihitung otomatis)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
-        Dihitung otomatis dari Blok 2 (Uang Masuk) dan Blok 4 (Uang Keluar) di atas. Hanya baca.
+        Dihitung otomatis dari &quot;Uang Masuk Hari Ini&quot; dan &quot;Uang Keluar Hari Ini&quot; di atas. Hanya baca.
       </p>
       <p style={{ fontFamily: 'var(--mono)' }}>(+) Uang masuk: {rupiah(data.totalMasuk)}</p>
       <p style={{ fontFamily: 'var(--mono)' }}>(-) Uang keluar: {rupiah(data.totalKeluar)}</p>

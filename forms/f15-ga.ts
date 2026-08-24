@@ -20,7 +20,7 @@ export const f15Ga: FormSchema = {
   blocks: [
     {
       id: 'kebersihan',
-      judul: '1 · Kebersihan Kantor',
+      judul: 'Kebersihan Kantor',
       fields: [
         { key: 'kebersihan_ruang_kerja', label: 'Ruang kerja', type: 'ya_tidak' },
         { key: 'kebersihan_ruang_tamu', label: 'Ruang tamu/lobi', type: 'ya_tidak' },
@@ -43,7 +43,7 @@ export const f15Ga: FormSchema = {
     },
     {
       id: 'fasilitas',
-      judul: '2 · Fasilitas & Utilitas',
+      judul: 'Fasilitas & Utilitas',
       fields: [
         { key: 'listrik_normal_ga', label: 'Listrik normal', type: 'ya_tidak' },
         { key: 'air_normal_ga', label: 'Air normal', type: 'ya_tidak' },
@@ -68,7 +68,7 @@ export const f15Ga: FormSchema = {
     },
     {
       id: 'perlengkapan',
-      judul: '3 · Perlengkapan & ATK',
+      judul: 'Perlengkapan & ATK',
       fields: [
         { key: 'stok_atk_cukup', label: 'Stok ATK cukup', type: 'ya_tidak' },
         { key: 'air_minum_cukup', label: 'Air minum cukup', type: 'ya_tidak' },
@@ -90,7 +90,7 @@ export const f15Ga: FormSchema = {
     },
     {
       id: 'kegiatan',
-      judul: '4 · Kegiatan Kantor Hari Ini',
+      judul: 'Kegiatan Kantor Hari Ini',
       fields: [
         { key: 'meeting_jumlah', label: 'Meeting', type: 'angka' },
         { key: 'tamu_perusahaan', label: 'Tamu perusahaan', type: 'angka' },
@@ -98,7 +98,7 @@ export const f15Ga: FormSchema = {
         { key: 'persiapan_besok', label: 'Persiapan untuk besok', type: 'teks_panjang' },
       ],
     },
-    blokKeputusanCeo(6, 'Rekap Operasional Kantor untuk Sabrina', 'Status operasional kantor', [
+    blokKeputusanCeo('Rekap Operasional Kantor untuk Sabrina', 'Status operasional kantor', [
       { key: 'kebutuhan_ga', label: 'Kebutuhan', type: 'teks_panjang' },
     ]),
   ],

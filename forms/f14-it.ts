@@ -39,7 +39,7 @@ export const f14It: FormSchema = {
   blocks: [
     {
       id: 'sistem',
-      judul: '1 · Sistem / Aplikasi Koperumnas',
+      judul: 'Sistem / Aplikasi Koperumnas',
       fields: [
         { key: 'aplikasi_normal', label: 'Aplikasi berjalan normal', type: 'ya_tidak' },
         { key: 'website_sistem_normal', label: 'Website berjalan normal', type: 'ya_tidak' },
@@ -56,7 +56,7 @@ export const f14It: FormSchema = {
     },
     {
       id: 'data_konsumen',
-      judul: '2 · Update Data Konsumen di Sistem',
+      judul: 'Update Data Konsumen di Sistem',
       catatan: 'Angka di blok ini menjadi sumber laporan konsumen harian Sabrina ke CEO.',
       fields: [
         { key: 'konsumen_total', label: 'Total konsumen', type: 'angka' },
@@ -81,7 +81,7 @@ export const f14It: FormSchema = {
     },
     {
       id: 'pembayaran',
-      judul: '3 · Sistem Pembayaran / Tagihan',
+      judul: 'Sistem Pembayaran / Tagihan',
       catatan: 'IT memastikan sistem/data. Verifikasi keuangan tetap Accounting.',
       fields: [
         { key: 'pembayaran_masuk_sistem', label: 'Pembayaran masuk sistem (transaksi)', type: 'angka' },
@@ -94,7 +94,7 @@ export const f14It: FormSchema = {
     },
     {
       id: 'website',
-      judul: '4 · Website Koperumnas',
+      judul: 'Website Koperumnas',
       fields: [
         { key: 'website_aktif', label: 'Website aktif', type: 'ya_tidak' },
         { key: 'website_info_program', label: 'Informasi program terbaru', type: 'ya_tidak' },
@@ -109,7 +109,7 @@ export const f14It: FormSchema = {
     },
     {
       id: 'medsos',
-      judul: '5 · Update Official Media Sosial',
+      judul: 'Update Official Media Sosial',
       catatan: 'IT wajib memastikan seluruh official aktif dan ter-update.',
       fields: [
         { key: 'ig_koperumnas', label: 'Koperumnas -- Instagram', type: 'ya_tidak' },
@@ -136,7 +136,7 @@ export const f14It: FormSchema = {
     },
     {
       id: 'konten',
-      judul: '6 · Konten & Video Mentahan',
+      judul: 'Konten & Video Mentahan',
       fields: [
         { key: 'video_mentahan_masuk', label: 'Video mentahan masuk hari ini', type: 'angka' },
         { key: 'video_pembangunan', label: 'Video pembangunan', type: 'angka' },
@@ -152,7 +152,7 @@ export const f14It: FormSchema = {
     },
     {
       id: 'pembangunan_digital',
-      judul: '7 · Update Pembangunan Digital',
+      judul: 'Update Pembangunan Digital',
       catatan: 'Daftar PIC lokasi yang belum mengirim foto/video ditampilkan otomatis di atas -- dihitung dari lampiran, bukan diketik.',
       fields: [
         { key: 'lokasi_update_hari_ini', label: 'Lokasi yang menerima update hari ini', type: 'teks_panjang' },
@@ -164,7 +164,7 @@ export const f14It: FormSchema = {
     },
     {
       id: 'google_review',
-      judul: '8 · Google Review',
+      judul: 'Google Review',
       fields: [
         { key: 'review_baru', label: 'Review baru hari ini', type: 'angka' },
         { key: 'review_dibalas', label: 'Review sudah dibalas', type: 'angka' },
@@ -176,7 +176,7 @@ export const f14It: FormSchema = {
     },
     {
       id: 'testimoni',
-      judul: '9 · Kesaksian / Testimoni Konsumen',
+      judul: 'Kesaksian / Testimoni Konsumen',
       fields: [
         { key: 'kesaksian_masuk', label: 'Kesaksian masuk', type: 'angka' },
         { key: 'video_testimoni', label: 'Video testimoni', type: 'angka' },
@@ -188,7 +188,7 @@ export const f14It: FormSchema = {
     },
     {
       id: 'leads',
-      judul: '10 · Komentar / DM / Leads Medsos',
+      judul: 'Komentar / DM / Leads Medsos',
       fields: [
         { key: 'dm_masuk', label: 'DM masuk', type: 'angka' },
         { key: 'komentar_masuk', label: 'Komentar masuk', type: 'angka' },
@@ -202,7 +202,7 @@ export const f14It: FormSchema = {
     },
     {
       id: 'backup',
-      judul: '11 · Backup & Keamanan Data',
+      judul: 'Backup & Keamanan Data',
       fields: [
         { key: 'backup_database', label: 'Backup database', type: 'ya_tidak' },
         { key: 'backup_dokumen', label: 'Backup dokumen penting', type: 'ya_tidak' },
@@ -215,7 +215,7 @@ export const f14It: FormSchema = {
     },
     {
       id: 'perangkat',
-      judul: '12 · Perangkat & Jaringan',
+      judul: 'Perangkat & Jaringan',
       fields: [
         { key: 'komputer_kantor', label: 'Komputer kantor', type: 'ya_tidak' },
         { key: 'printer', label: 'Printer', type: 'ya_tidak' },
@@ -230,7 +230,7 @@ export const f14It: FormSchema = {
     },
     {
       id: 'besok',
-      judul: '14 · Target IT Besok',
+      judul: 'Target IT Besok',
       fields: [
         { key: 'besok_sistem', label: 'Sistem/aplikasi', type: 'teks' },
         { key: 'besok_data_konsumen', label: 'Data konsumen', type: 'teks' },
@@ -241,7 +241,7 @@ export const f14It: FormSchema = {
         { key: 'besok_masalah', label: 'Masalah IT yang harus diselesaikan', type: 'teks' },
       ],
     },
-    blokKeputusanCeo(15, 'Rekap IT untuk Sabrina', 'Status IT hari ini', [
+    blokKeputusanCeo('Rekap IT untuk Sabrina', 'Status IT hari ini', [
       { key: 'tindakan_sudah_dilakukan', label: 'Tindakan yang sudah dilakukan', type: 'teks_panjang' },
       { key: 'belum_selesai', label: 'Belum selesai', type: 'teks_panjang' },
     ]),

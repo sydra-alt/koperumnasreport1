@@ -14,7 +14,7 @@ export const f15Kendaraan: FormSchema = {
   blocks: [
     {
       id: 'cek_kondisi',
-      judul: '1 · Cek Kondisi Kendaraan',
+      judul: 'Cek Kondisi Kendaraan',
       fields: [
         { key: 'mobil_dicek_jumlah', label: 'Mobil dicek', type: 'angka' },
         { key: 'mobil_total', label: 'Dari total mobil', type: 'angka' },
@@ -75,7 +75,7 @@ export const f15Kendaraan: FormSchema = {
     },
     {
       id: 'bbm',
-      judul: '2 · BBM',
+      judul: 'BBM',
       fields: [
         { key: 'pengisian_bbm_kali', label: 'Pengisian hari ini (kali)', type: 'angka' },
         { key: 'total_liter_bbm', label: 'Total liter', type: 'angka' },
@@ -98,7 +98,7 @@ export const f15Kendaraan: FormSchema = {
     },
     {
       id: 'kerusakan_servis',
-      judul: '3 · Kerusakan & Servis',
+      judul: 'Kerusakan & Servis',
       fields: [
         {
           key: 'kendaraan_rusak',
@@ -137,7 +137,7 @@ export const f15Kendaraan: FormSchema = {
     },
     {
       id: 'penggunaan',
-      judul: '4 · Penggunaan Kendaraan Hari Ini',
+      judul: 'Penggunaan Kendaraan Hari Ini',
       fields: [
         {
           key: 'penggunaan_kendaraan',
@@ -162,7 +162,7 @@ export const f15Kendaraan: FormSchema = {
     },
     {
       id: 'driver',
-      judul: '5 · Driver',
+      judul: 'Driver',
       fields: [
         { key: 'driver_total', label: 'Total driver', type: 'angka' },
         { key: 'driver_hadir', label: 'Hadir', type: 'angka' },
@@ -175,7 +175,7 @@ export const f15Kendaraan: FormSchema = {
     },
     {
       id: 'dokumen',
-      judul: '6 · Dokumen Kendaraan',
+      judul: 'Dokumen Kendaraan',
       fields: [
         { key: 'stnk_lengkap_semua', label: 'STNK lengkap semua', type: 'ya_tidak' },
         { key: 'pajak_aman', label: 'Pajak kendaraan aman', type: 'ya_tidak' },
@@ -195,7 +195,7 @@ export const f15Kendaraan: FormSchema = {
     },
     {
       id: 'besok',
-      judul: '8 · Target Besok',
+      judul: 'Target Besok',
       fields: [
         { key: 'besok_kendaraan_dipakai', label: 'Kendaraan yang dipakai', type: 'teks' },
         { key: 'besok_pengiriman_jalan', label: 'Pengiriman yang harus jalan', type: 'teks' },
@@ -203,6 +203,6 @@ export const f15Kendaraan: FormSchema = {
         { key: 'besok_dokumen_diurus', label: 'Dokumen yang harus diurus', type: 'teks' },
       ],
     },
-    blokKeputusanCeo(9, 'Rekap Kendaraan untuk Sabrina', 'Status kendaraan hari ini'),
+    blokKeputusanCeo('Rekap Kendaraan untuk Sabrina', 'Status kendaraan hari ini'),
   ],
 };

@@ -25,7 +25,7 @@ export const f01PersonalMarketing: FormSchema = {
   blocks: [
     {
       id: 'closing',
-      judul: 'Blok 2 · Target Closing Pribadi',
+      judul: 'Target Closing Pribadi',
       catatan: 'Target minimal policy.closing_target closing/bulan. Progres "___/2" ditampilkan di atas, dihitung sistem.',
       fields: [
         {
@@ -42,7 +42,7 @@ export const f01PersonalMarketing: FormSchema = {
     },
     {
       id: 'undangan',
-      judul: 'Blok 3 · Target Undangan Konsumen Baru',
+      judul: 'Target Undangan Konsumen Baru',
       catatan: 'Target minimal policy.invite_target orang baru/bulan. "Undangan hari ini" diisi di Blok 4 (PTE) -- satu field yang sama, tidak diulang di sini. Progres "___/20" ditampilkan di atas.',
       fields: [
         { key: 'undang_merespons', label: 'Yang Merespons', type: 'angka' },
@@ -52,7 +52,7 @@ export const f01PersonalMarketing: FormSchema = {
     },
     {
       id: 'pte',
-      judul: 'Blok 4 · PTE Hari Ini — Enam Kewajiban',
+      judul: 'PTE Hari Ini — Enam Kewajiban',
       catatan: 'Tidak cukup hanya menulis "sudah". Harus ada bukti. Tanpa bukti, jumlahnya dianggap nol.',
       fields: [
         { key: 'live', label: 'Live', type: 'ya_tidak', buktiWajib: true, buktiKunci: 'live' },
@@ -83,7 +83,7 @@ export const f01PersonalMarketing: FormSchema = {
     },
     {
       id: 'funnel',
-      judul: 'Blok 6 · Funnel Marketing Pribadi',
+      judul: 'Funnel Marketing Pribadi',
       catatan: 'Undangan & closing bulan ini (dihitung sistem) ditampilkan di atas.',
       fields: [
         { key: 'funnel_prospek_aktif', label: 'Prospek Aktif', type: 'angka' },
@@ -94,7 +94,7 @@ export const f01PersonalMarketing: FormSchema = {
     },
     {
       id: 'besok',
-      judul: 'Blok 7 · Target Besok',
+      judul: 'Target Besok',
       fields: [
         { key: 'besok_undangan', label: 'Undangan Baru (orang)', type: 'angka' },
         { key: 'besok_followup', label: 'Follow-up (orang)', type: 'angka' },
@@ -106,7 +106,7 @@ export const f01PersonalMarketing: FormSchema = {
     },
     {
       id: 'pernyataan',
-      judul: 'Blok 9 · Pernyataan Karyawan',
+      judul: 'Pernyataan Karyawan',
       fields: [
         {
           key: 'pernyataan',

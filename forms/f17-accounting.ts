@@ -50,7 +50,7 @@ export const f17Accounting: FormSchema = {
   blocks: [
     {
       id: 'saldo',
-      judul: '1 · Posisi Saldo Hari Ini',
+      judul: 'Posisi Saldo Hari Ini',
       fields: [
         {
           key: 'daftar_saldo_bank',
@@ -68,7 +68,7 @@ export const f17Accounting: FormSchema = {
     },
     {
       id: 'uang_masuk',
-      judul: '2 · Uang Masuk Hari Ini',
+      judul: 'Uang Masuk Hari Ini',
       fields: [
         { key: 'cicilan_konsumen', label: 'Cicilan konsumen', type: 'uang' },
         { key: 'booking_dp', label: 'Booking/DP', type: 'uang' },
@@ -94,7 +94,7 @@ export const f17Accounting: FormSchema = {
     },
     {
       id: 'detail_penerimaan',
-      judul: '3 · Detail Penerimaan Konsumen',
+      judul: 'Detail Penerimaan Konsumen',
       fields: [
         {
           key: 'detail_penerimaan',
@@ -116,7 +116,7 @@ export const f17Accounting: FormSchema = {
     },
     {
       id: 'uang_keluar',
-      judul: '4 · Uang Keluar Hari Ini',
+      judul: 'Uang Keluar Hari Ini',
       fields: [
         {
           key: 'daftar_uang_keluar',
@@ -136,7 +136,7 @@ export const f17Accounting: FormSchema = {
     },
     {
       id: 'petty_cash',
-      judul: '5 · Petty Cash',
+      judul: 'Petty Cash',
       fields: [
         { key: 'saldo_awal_petty', label: 'Saldo awal petty cash', type: 'uang' },
         { key: 'pengisian_petty', label: 'Pengisian', type: 'uang' },
@@ -148,13 +148,13 @@ export const f17Accounting: FormSchema = {
     },
     {
       id: 'cashflow',
-      judul: '6 · Cashflow Hari Ini',
+      judul: 'Cashflow Hari Ini',
       catatan: 'Saldo awal, uang masuk, uang keluar, net cashflow, dan saldo akhir dihitung otomatis dari blok 1, 2, dan 4.',
       fields: [{ key: 'status_cashflow', label: 'Status', type: 'status_warna' }],
     },
     {
       id: 'tagihan',
-      judul: '7 · Tagihan / Kewajiban Jatuh Tempo',
+      judul: 'Tagihan / Kewajiban Jatuh Tempo',
       fields: [
         {
           key: 'jatuh_tempo_hari_ini',
@@ -181,7 +181,7 @@ export const f17Accounting: FormSchema = {
     },
     {
       id: 'lahan',
-      judul: '9 · Tanah / Lahan',
+      judul: 'Tanah / Lahan',
       fields: [
         { key: 'pembayaran_lahan_jatuh_tempo', label: 'Pembayaran lahan jatuh tempo', type: 'teks_panjang' },
         {
@@ -201,7 +201,7 @@ export const f17Accounting: FormSchema = {
     },
     {
       id: 'kontraktor_supplier',
-      judul: '10 · Kontraktor / Supplier / DTI',
+      judul: 'Kontraktor / Supplier / DTI',
       catatan: 'Precast/DTI, Material, dan Infrastruktur/jalan ditampilkan otomatis di atas dari pengajuan DTI & Kepala Pembangunan -- tidak diketik ulang.',
       fields: [
         { key: 'kontraktor_jatuh_tempo', label: 'Kontraktor jatuh tempo', type: 'uang' },
@@ -212,7 +212,7 @@ export const f17Accounting: FormSchema = {
     },
     {
       id: 'piutang',
-      judul: '11 · Piutang / Uang yang Harus Ditagih',
+      judul: 'Piutang / Uang yang Harus Ditagih',
       fields: [
         { key: 'piutang_konsumen', label: 'Piutang konsumen', type: 'uang' },
         { key: 'tunggakan_konsumen', label: 'Tunggakan konsumen', type: 'uang' },
@@ -235,7 +235,7 @@ export const f17Accounting: FormSchema = {
     },
     {
       id: 'rekonsiliasi_bank',
-      judul: '12 · Rekonsiliasi Bank',
+      judul: 'Rekonsiliasi Bank',
       fields: [
         { key: 'mutasi_dicek', label: 'Semua mutasi bank dicek', type: 'ya_tidak' },
         { key: 'uang_masuk_teridentifikasi', label: 'Semua uang masuk teridentifikasi', type: 'ya_tidak' },
@@ -247,7 +247,7 @@ export const f17Accounting: FormSchema = {
     },
     {
       id: 'rekonsiliasi_resto',
-      judul: '13 · Rekonsiliasi Resto',
+      judul: 'Rekonsiliasi Resto',
       catatan: 'Omzet versi Manager Resto dan versi Ita ditampilkan otomatis di atas untuk tiap outlet -- Anda mengisi angka sisi bank, selisih dihitung sistem.',
       fields: [
         { key: 'cash_bank_indosteak', label: 'Indosteak -- Cash (versi bank)', type: 'uang' },
@@ -258,7 +258,7 @@ export const f17Accounting: FormSchema = {
     },
     {
       id: 'transaksi_bermasalah',
-      judul: '14 · Transaksi Bermasalah',
+      judul: 'Transaksi Bermasalah',
       fields: [
         { key: 'pembayaran_tanpa_bukti_masalah', label: 'Pembayaran tanpa bukti', type: 'teks_panjang' },
         { key: 'transfer_belum_teridentifikasi_masalah', label: 'Transfer belum teridentifikasi', type: 'teks_panjang' },
@@ -271,7 +271,7 @@ export const f17Accounting: FormSchema = {
     },
     {
       id: 'kebutuhan_dana_ceo',
-      judul: '15 · Kebutuhan Dana CEO',
+      judul: 'Kebutuhan Dana CEO',
       catatan: 'Dana tersedia, kebutuhan pembangunan, dan kebutuhan lahan diambil otomatis dari blok 1, 8, dan 9.',
       fields: [
         { key: 'kewajiban_urgent', label: 'Kewajiban urgent', type: 'uang' },
@@ -280,7 +280,7 @@ export const f17Accounting: FormSchema = {
     },
     {
       id: 'prioritas_pembayaran',
-      judul: '16 · Prioritas Pembayaran -- Minta ACC CEO',
+      judul: 'Prioritas Pembayaran -- Minta ACC CEO',
       catatan: 'Tiap baris jadi satu permintaan keputusan CEO terpisah (urutan baris = tingkat prioritas 1, 2, 3). Maksimal 3 baris yang diproses jadi keputusan.',
       fields: [
         {
@@ -299,7 +299,7 @@ export const f17Accounting: FormSchema = {
     },
     {
       id: 'proyeksi_besok',
-      judul: '17 · Proyeksi Cashflow Besok',
+      judul: 'Proyeksi Cashflow Besok',
       fields: [
         { key: 'perkiraan_masuk_besok', label: 'Perkiraan uang masuk', type: 'uang' },
         { key: 'perkiraan_keluar_besok', label: 'Perkiraan uang keluar', type: 'uang' },
@@ -310,7 +310,7 @@ export const f17Accounting: FormSchema = {
     },
     {
       id: 'executive_summary',
-      judul: '18 · Executive Summary untuk CEO',
+      judul: 'Executive Summary untuk CEO',
       catatan: 'Kedelapan angka ringkasan dihitung otomatis dari blok-blok di atas.',
       fields: [{ key: 'catatan_accounting', label: 'Catatan Accounting', type: 'teks_panjang' }],
     },
