@@ -104,15 +104,20 @@ kebetulan tahu alamat surel seseorang.
    tombol itu untuk siapa. Perlu disepakati sebelum hari pertama, bukan
    ditentukan reaktif saat orang pertama benar-benar lupa.
 
-**Usul yang belum diputuskan, sengaja tidak saya putuskan sendiri:** kalau
-CEO sering tidak sempat pegang HP/laptop untuk klik tombol ini (bepergian,
-dst.), bisa dipertimbangkan role baru `admin_akun` yang diberikan KHUSUS ke
-satu orang tepercaya (misalnya Sabrina) — **tapi dengan batasan tegas: tidak
-boleh mengatur ulang kata sandi akun `ceo` atau `accounting` sendiri**, dua
-akun paling sensitif di sistem ini. Ini bukan perpanjangan otomatis dari
-`pusat`/`kadiv` yang sudah dipegang Sabrina — perlu peran baru yang sengaja
-sempit, kalau memang diperlukan. Saat ini fitur digerbangi `ceo` saja,
-sesuai literal instruksi — beri tahu kalau mau diperluas.
+**Usul role `admin_akun` — DISETUJUI isinya, DITUNDA pelaksanaannya (29 Agustus 2026):**
+usul kalau CEO sering tidak sempat pegang HP/laptop untuk klik tombol ini —
+role baru `admin_akun` untuk satu orang tepercaya (misalnya Sabrina), dengan
+**pengecualian wajib: tidak boleh mengatur ulang kata sandi akun `ceo`
+maupun `accounting`** (kalau tidak, siapa pun yang pegang role ini bisa
+masuk ke laporan keuangan lewat jalur auth, bukan lewat query — membuat
+seluruh matriks RLS yang sudah teruji jadi tidak berarti). User setuju isi
+usulan ini, tapi sengaja menunda pelaksanaannya — belum ada data seberapa
+sering tombol reset benar-benar dipakai, dan privilege baru jauh lebih
+gampang ditambah daripada dicabut setelah orang terbiasa. Fitur ini
+digerbangi `ceo` saja untuk sekarang. **Ditinjau ulang setelah sistem
+berjalan ~1 bulan dengan 36 pengguna asli** — cek `reset_password_log`,
+kalau seringnya tinggi baru dibangun. Detail lengkap ada di
+`docs/PROGRESS.md`, bagian "Keputusan ditunda: role `admin_akun`".
 
 Saya tidak memutuskan ini sepihak karena menyangkut cara kerja tim, bukan
 soal teknis — tapi kalau dibiarkan tidak diputuskan, ini akan jadi masalah
