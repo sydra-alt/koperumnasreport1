@@ -290,3 +290,17 @@ export function useBuatPengguna() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-profil-role'] }),
   });
 }
+
+// ─── Atur ulang kata sandi -- juga lewat Route Handler + service_role ─
+// Satu-satunya jalan reset password di sistem ini (docs/07-CATATAN-
+// PELUNCURAN.md) -- tidak ada alur "lupa password" mandiri lewat email.
+export function useAturUlangKataSandi() {
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await fetch(`/api/admin/user/${userId}/reset-password`, { method: 'POST' });
+      const hasil = await res.json();
+      if (!res.ok) throw new Error(hasil.error ?? 'Gagal mengatur ulang kata sandi.');
+      return hasil as { password: string };
+    },
+  });
+}

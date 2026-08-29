@@ -71,30 +71,48 @@ proses onboarding untuk orang yang salah dapat akun.
 
 ---
 
-## Keputusan yang perlu diambil: distribusi password
+## Keputusan distribusi password — SEBAGIAN SELESAI (29 Agustus 2026)
 
-Sistem ini **belum punya halaman "Lupa Password"** — dicek eksplisit saat
-menulis catatan ini, tidak ada di `app/`. Satu-satunya jalan reset adalah
-`scripts/set-password.mjs`, yang butuh akses terminal + kunci service role
-— dalam praktik, berarti **cuma bisa dilakukan lewat saya (developer)**,
-tidak bisa dilakukan CEO/Sabrina sendiri lewat browser.
+**Ditutup hari ini:** halaman Admin → tab Pengguna sekarang punya tombol
+**"Atur ulang kata sandi"** per orang. CEO login lewat browser biasa, klik
+tombol di baris nama orangnya, kata sandi baru (16 karakter acak, pola sama
+`scripts/set-password.mjs`) tampil SEKALI di layar untuk disalin & diberikan
+langsung — tidak pernah tersimpan di mana pun selain layar itu. Tidak lagi
+butuh saya/terminal/kunci service role untuk reset rutin. Setiap reset
+tercatat (siapa mengatur ulang siapa, kapan) di tabel `reset_password_log`,
+cuma bisa dibaca role `ceo`.
 
-Untuk 36 orang, ini dua pertanyaan yang perlu dijawab sebelum langkah 4 di
-atas dijalankan, bukan didiamkan sampai ada yang benar-benar lupa:
+Sengaja **tidak** dibangun alur "Lupa Password" mandiri lewat email —
+email `@koperumnas.local` tidak nyata, tombol reset bawaan Supabase akan
+mengirim ke alamat yang tidak pernah ada. Minta ke admin (CEO) memang jalur
+yang benar untuk perusahaan sebesar ini: admin tahu persis siapa yang
+meminta, bukan percaya link email yang bisa disalahgunakan siapa saja yang
+kebetulan tahu alamat surel seseorang.
 
-1. **Password awal:** dibuatkan unik per orang (seperti pola
-   `set-password.mjs` — 16 karakter acak, dicatat SEKALI, tidak disimpan di
-   file), lalu diberikan satu-satu (kertas, WhatsApp pribadi — bukan grup),
-   ATAU satu password awal yang sama untuk semua dengan syarat keras "wajib
-   diganti sendiri di login pertama"? **Sistem saat ini tidak punya paksaan
-   ganti-password-di-login-pertama** — kalau opsi kedua dipilih, itu perlu
-   dibangun dulu, atau diterima risikonya (persis pelajaran `123456` yang
-   sempat jadi debt WAJIB untuk 7 akun uji, dan itu baru 7 orang, bukan 36).
-2. **Kalau ada yang lupa password di minggu pertama** (hampir pasti akan
-   ada, dari 36 orang) — siapa yang jadi kontak, dan lewat jalur apa
-   (WhatsApp ke Sabrina/CEO, yang lalu minta saya jalankan
-   `set-password.mjs`)? Ini bukan otomatis — perlu proses manual yang
-   disepakati dulu, supaya minggu pertama tidak macet di hal sekecil ini.
+**Masih perlu diputuskan** (dua pertanyaan lama menyempit jadi ini):
+
+1. **Password awal 36 akun:** dibuatkan unik per orang lalu diberikan
+   satu-satu (kertas, WhatsApp pribadi — bukan grup), ATAU satu password
+   awal sama untuk semua dengan syarat "wajib diganti di login pertama"?
+   **Sistem belum punya paksaan ganti-password-di-login-pertama** — kalau
+   opsi kedua dipilih, itu risiko yang diterima sadar, bukan dibangun dulu
+   (persis pelajaran `123456` yang jadi debt WAJIB untuk 7 akun uji, dan itu
+   baru 7 orang).
+2. **Siapa titik kontak kalau ada yang lupa password.** Mekanismenya sudah
+   ada (poin di atas) — pertanyaan yang tersisa murni proses: karyawan
+   menghubungi siapa (Sabrina? Langsung CEO?) supaya CEO tahu harus klik
+   tombol itu untuk siapa. Perlu disepakati sebelum hari pertama, bukan
+   ditentukan reaktif saat orang pertama benar-benar lupa.
+
+**Usul yang belum diputuskan, sengaja tidak saya putuskan sendiri:** kalau
+CEO sering tidak sempat pegang HP/laptop untuk klik tombol ini (bepergian,
+dst.), bisa dipertimbangkan role baru `admin_akun` yang diberikan KHUSUS ke
+satu orang tepercaya (misalnya Sabrina) — **tapi dengan batasan tegas: tidak
+boleh mengatur ulang kata sandi akun `ceo` atau `accounting` sendiri**, dua
+akun paling sensitif di sistem ini. Ini bukan perpanjangan otomatis dari
+`pusat`/`kadiv` yang sudah dipegang Sabrina — perlu peran baru yang sengaja
+sempit, kalau memang diperlukan. Saat ini fitur digerbangi `ceo` saja,
+sesuai literal instruksi — beri tahu kalau mau diperluas.
 
 Saya tidak memutuskan ini sepihak karena menyangkut cara kerja tim, bukan
 soal teknis — tapi kalau dibiarkan tidak diputuskan, ini akan jadi masalah
@@ -203,10 +221,12 @@ bug, dan tidak perlu "diperbaiki" supaya angka muncul lebih cepat.**
 ## Ringkasan satu paragraf
 
 Sistemnya sudah siap secara teknis — RLS teruji penuh, dibangun & terbukti
-jalan sungguhan di HP. Yang menahan peluncuran ke 36 orang bukan kode,
-tapi dua hal manusia: **data karyawan yang masih punya 6 pertanyaan
-terbuka ke CEO** (termasuk siapa Accounting, akun paling sensitif di
-sistem ini), dan **cara distribusi/reset password** yang belum diputuskan.
-`pte_mulai_berlaku` sengaja tetap `null` sampai presensi + pengecualian
-cuti/sakit/izin selesai — mengisinya lebih cepat dari itu akan merugikan
-orang yang cuti resmi secara nyata, bukan cuma melanggar catatan ini.
+jalan sungguhan di HP, dan mekanisme reset password (tombol Admin, tanpa
+email fiktif) sudah ada. Yang menahan peluncuran ke 36 orang sekarang murni
+dua hal manusia, bukan kode: **data karyawan yang masih punya 6 pertanyaan
+terbuka ke CEO** (termasuk siapa Accounting, akun paling sensitif di sistem
+ini), dan **dua keputusan kecil soal password** (password awal seragam atau
+unik per orang, dan siapa titik kontak minggu pertama). `pte_mulai_berlaku`
+sengaja tetap `null` sampai presensi + pengecualian cuti/sakit/izin selesai
+— mengisinya lebih cepat dari itu akan merugikan orang yang cuti resmi
+secara nyata, bukan cuma melanggar catatan ini.

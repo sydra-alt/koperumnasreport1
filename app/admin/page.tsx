@@ -18,6 +18,7 @@ import {
   useTambahRole,
   useHapusRole,
   useBuatPengguna,
+  useAturUlangKataSandi,
   DAFTAR_ROLE,
 } from '../../lib/api/admin';
 
@@ -241,6 +242,7 @@ function TabPengguna() {
   const tambahRole = useTambahRole();
   const hapusRole = useHapusRole();
   const buatPengguna = useBuatPengguna();
+  const aturUlang = useAturUlangKataSandi();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -248,6 +250,10 @@ function TabPengguna() {
   const [jabatan, setJabatan] = useState('');
   const [divisi, setDivisi] = useState('');
   const [rolesBaru, setRolesBaru] = useState<string[]>([]);
+  // Password baru ditampilkan SEKALI, per baris pengguna -- ditutup manual
+  // atau begitu reset lain dijalankan. Tidak pernah disimpan ke state lain,
+  // tidak pernah dikirim ke mana pun selain kotak ini.
+  const [passwordBaruUntuk, setPasswordBaruUntuk] = useState<{ userId: string; password: string } | null>(null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -323,6 +329,41 @@ function TabPengguna() {
                 );
               })}
             </div>
+            <button
+              type="button"
+              disabled={aturUlang.isPending}
+              onClick={() => {
+                if (!confirm(`Atur ulang kata sandi ${p.nama}? Kata sandi lamanya langsung tidak berlaku.`)) return;
+                setPasswordBaruUntuk(null);
+                aturUlang.mutate(p.id, {
+                  onSuccess: (hasil) => setPasswordBaruUntuk({ userId: p.id, password: hasil.password }),
+                  onError: (err) => alert((err as Error).message),
+                });
+              }}
+              className="mt-2 border px-2 py-1"
+              style={{ borderColor: 'var(--merah)', color: 'var(--merah)', minHeight: 44 }}
+            >
+              {aturUlang.isPending ? 'Mengatur ulang…' : 'Atur ulang kata sandi'}
+            </button>
+            {passwordBaruUntuk?.userId === p.id && (
+              <div className="mt-2 border p-2" style={{ borderColor: 'var(--hijau)', background: 'var(--kertas-2)' }}>
+                <p>
+                  Kata sandi baru untuk <strong>{p.nama}</strong> (salin & berikan langsung ke orangnya sekarang --
+                  tidak akan ditampilkan lagi setelah kotak ini ditutup):
+                </p>
+                <p className="mt-1 select-all border px-2 py-1" style={{ fontFamily: 'var(--mono)', borderColor: 'var(--garis)', background: 'var(--kertas)' }}>
+                  {passwordBaruUntuk.password}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setPasswordBaruUntuk(null)}
+                  className="mt-2 border px-3 py-1"
+                  style={gayaTombol}
+                >
+                  Sudah disalin, tutup
+                </button>
+              </div>
+            )}
           </li>
         ))}
       </ul>
