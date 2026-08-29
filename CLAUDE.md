@@ -60,6 +60,8 @@ npm run lint     # eslint bawaan Next.js
 | `docs/03-CALC-SPEC.md` | Rumus PTE, potongan, agregasi, zona waktu |
 | `docs/04-CATATAN-TEKNIS.md` | SQL skema, RLS, matriks uji, token desain |
 | `docs/05-RENCANA-FASE-2.md` | Setelah fase 1 — jangan dikerjakan dulu |
+| `docs/06-RENCANA-PRESENSI-MOBILE.md` | Tampilan mobile (selesai) + presensi & ekspor (belum, tunggu keputusan CEO) |
+| `docs/07-CATATAN-PELUNCURAN.md` | Urutan peluncuran ke 36 karyawan, blocker data, gerbang `pte_mulai_berlaku` |
 | `docs/REFERENSI-FORMAT-LAPORAN.md` | Isi lengkap 15 form |
 
 ## Asumsi yang belum dikonfirmasi klien
