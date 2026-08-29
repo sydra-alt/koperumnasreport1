@@ -123,7 +123,7 @@ export function CameraCapture({ onGunakan, onBatal }: CameraCaptureProps) {
     return (
       <div className="flex flex-col gap-2">
         {/* eslint-disable-next-line @next/next/no-img-element -- pratinjau lokal dari blob kamera, bukan aset Next */}
-        <img src={previewUrl} alt="Pratinjau foto absen" className="w-full" style={{ border: '1px solid var(--garis)' }} />
+        <img src={previewUrl} alt="Pratinjau foto absen" className="w-full border" style={{ borderColor: 'var(--garis)' }} />
         <div className="flex gap-2">
           <button type="button" onClick={ambilUlang} className="border px-4" style={{ borderColor: 'var(--garis)', color: 'var(--tinta)', minHeight: 48 }}>
             Ambil Ulang
@@ -143,7 +143,7 @@ export function CameraCapture({ onGunakan, onBatal }: CameraCaptureProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      <video ref={videoRef} autoPlay playsInline muted className="w-full" style={{ border: '1px solid var(--garis)', transform: 'scaleX(-1)' }} />
+      <video ref={videoRef} autoPlay playsInline muted className="w-full border" style={{ borderColor: 'var(--garis)', transform: 'scaleX(-1)' }} />
       <div className="flex gap-2">
         <button type="button" onClick={onBatal} className="border px-4" style={{ borderColor: 'var(--garis)', color: 'var(--tinta)', minHeight: 48 }}>
           Batal

@@ -27,7 +27,7 @@ export function PapanKartu({ baris, formNama, bolehTagih, onTagih, menagih }: Pa
         className="flex flex-col gap-2 border-2 border-dashed p-3"
         style={{ borderColor: 'var(--kosong)', minHeight: 44 }}
       >
-        <p style={{ fontFamily: 'var(--display)', color: 'var(--kosong)' }}>{formNama}</p>
+        <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--kosong)' }}>{formNama}</p>
         <p className="text-sm">
           {baris.scopeNama} · PIC: {baris.picNama}
         </p>
@@ -57,7 +57,7 @@ export function PapanKartu({ baris, formNama, bolehTagih, onTagih, menagih }: Pa
   const warna = baris.warna ?? 'hijau';
   return (
     <div className="flex flex-col gap-2 border-2 p-3" style={{ borderColor: WARNA_LATAR[warna] }}>
-      <p style={{ fontFamily: 'var(--display)' }}>
+      <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>
         {IKON[warna]} {formNama}
       </p>
       <p className="text-sm">

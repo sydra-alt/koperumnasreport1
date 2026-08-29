@@ -130,7 +130,7 @@ function TabAssignment() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
-        <p style={{ fontFamily: 'var(--display)' }}>Tambah penugasan</p>
+        <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>Tambah penugasan</p>
         <select value={userId} onChange={(e) => setUserId(e.target.value)} className="border p-2" style={gayaInput}>
           <option value="">-- Pilih pengguna --</option>
           {(profil ?? []).map((p) => (
@@ -266,7 +266,7 @@ function TabPengguna() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
-        <p style={{ fontFamily: 'var(--display)' }}>Tambah pengguna baru</p>
+        <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>Tambah pengguna baru</p>
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="border p-2" style={gayaInput} />
         <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password awal" type="text" className="border p-2" style={gayaInput} />
         <input value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Nama" className="border p-2" style={gayaInput} />
@@ -313,7 +313,7 @@ function TabPengguna() {
       <ul className="flex flex-col gap-2">
         {(daftar ?? []).map((p) => (
           <li key={p.id} className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
-            <p style={{ fontFamily: 'var(--display)' }}>
+            <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>
               {p.nama} {p.jabatan ? `-- ${p.jabatan}` : ''} {p.divisi ? `(${p.divisi})` : ''}
             </p>
             <div className="mt-1 flex flex-wrap gap-2">
@@ -412,7 +412,7 @@ function TabTitikAbsen() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
-        <p style={{ fontFamily: 'var(--display)' }}>Tambah titik absen</p>
+        <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>Tambah titik absen</p>
         <input value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Nama titik (mis. Kantor Pusat)" className="border p-2" style={gayaInput} />
         <div className="flex gap-2">
           <input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="Latitude, mis. -6.914744" className="flex-1 border p-2" style={gayaInput} />
@@ -497,7 +497,7 @@ function TabTitikAbsen() {
       </ul>
 
       <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
-        <p style={{ fontFamily: 'var(--display)' }}>Siapa absen di mana</p>
+        <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>Siapa absen di mana</p>
         <select value={userIdBaru} onChange={(e) => setUserIdBaru(e.target.value)} className="border p-2" style={gayaInput}>
           <option value="">-- Pilih pengguna --</option>
           {(profil ?? []).map((p) => (

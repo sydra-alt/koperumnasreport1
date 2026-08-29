@@ -28,7 +28,7 @@ export function AntreanKartu({ baris, bolehMemutuskan, onPutuskan, memutuskan }:
   return (
     <div className="flex flex-col gap-2 border-2 p-4" style={{ borderColor: WARNA_URGENSI[baris.urgensi] ?? 'var(--garis)' }}>
       <div className="flex items-center justify-between">
-        <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+        <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
           {baris.judul}
         </p>
         <span

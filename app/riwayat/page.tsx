@@ -35,7 +35,7 @@ export default function RiwayatPage() {
               style={{ borderColor: 'var(--garis)', minHeight: 44 }}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span style={{ fontFamily: 'var(--display)' }}>{formRegistry[r.formKey]?.nama ?? r.formKey}</span>
+                <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>{formRegistry[r.formKey]?.nama ?? r.formKey}</span>
                 <span style={{ fontFamily: 'var(--mono)' }}>{r.warna ? IKON_WARNA[r.warna] : ''} {tanggalIndonesiaDariYmd(r.tanggal)}</span>
               </div>
               <span style={{ color: 'var(--biru-3)' }}>

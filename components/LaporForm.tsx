@@ -312,7 +312,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
 
       {formKey === 'personal_marketing' && profile && (
         <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
-          <p style={{ fontFamily: 'var(--display)' }}>Identitas</p>
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>Identitas</p>
           <p>
             {profile.nama} · {profile.divisi ?? '—'} · {profile.jabatan ?? '—'}
           </p>
@@ -321,7 +321,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
 
       {formKey !== 'personal_marketing' && profile && (
         <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }} suppressHydrationWarning>
-          <p style={{ fontFamily: 'var(--display)' }}>Identitas</p>
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>Identitas</p>
           <p>
             {tanggalIndonesiaWIB()}
             {kombinasiAktif ? ` · ${labelKombinasi(kombinasiAktif)}` : ''} · PIC: {profile.nama}
@@ -342,7 +342,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
 
       {formKey === 'personal_marketing' && progres && invitTarget !== null && closingTarget !== null && (
         <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
-          <p style={{ fontFamily: 'var(--display)' }}>Status Personal Marketing</p>
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>Status Personal Marketing</p>
           <p>
             {IKON[statusClosing(progres.closing, closingTarget)]} Closing · {IKON[statusUndangan(progres.undangan, invitTarget)]}{' '}
             Undangan {invitTarget} orang · {ringkasanPte ? (ringkasanPte.lengkap ? '🟢 PTE lengkap' : '🔴 PTE tidak lengkap') : '— PTE'}
@@ -352,7 +352,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
 
       {formKey === 'personal_marketing' && ringkasanPte && (
         <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
-          <p style={{ fontFamily: 'var(--display)' }}>Status PTE Rp500.000 (pratinjau hari ini)</p>
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>Status PTE Rp500.000 (pratinjau hari ini)</p>
           <p>
             {ringkasanPte.live ? '✅' : '❌'} Live · {ringkasanPte.undang ? '✅' : '❌'} Undang ·{' '}
             {ringkasanPte.kesaksian ? '✅' : '❌'} Kesaksian · {ringkasanPte.review ? '✅' : '❌'} Review ·{' '}
@@ -381,7 +381,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
 
       {perluRollupMarketing && progres && invitTarget !== null && closingTarget !== null && (
         <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
-          <p style={{ fontFamily: 'var(--display)' }}>Laporan Personal Marketing</p>
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>Laporan Personal Marketing</p>
           <p>
             Laporan personal sudah dikirim: {laporanMarketingHariIni?.status && laporanMarketingHariIni.status !== 'draft' ? '✅' : '❌'} · Undangan
             bulan ini: {progres.undangan} / {invitTarget} · Closing bulan ini: {progres.closing} / {closingTarget}
@@ -464,7 +464,7 @@ function RekapUnitOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
 
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
         Rekap Unit Seluruh Lokasi (dari PIC Lokasi)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
@@ -497,7 +497,7 @@ function RekapUnitOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
                   <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)' }}>{sel(r.belum_mulai)}</td>
                 </tr>
               ))}
-              <tr style={{ fontFamily: 'var(--display)' }}>
+              <tr style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>
                 <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)' }}>Total</td>
                 <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)' }}>{sel(total.target)}</td>
                 <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)' }}>{sel(total.sedang_dibangun)}</td>
@@ -525,7 +525,7 @@ function RekapMaterialOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
 
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
         Material per Lokasi (dari PIC Lokasi)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
@@ -539,7 +539,7 @@ function RekapMaterialOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
         <div className="flex flex-col gap-3">
           {data.map((r) => (
             <div key={r.lokasi} className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
-              <p style={{ fontFamily: 'var(--display)' }}>{r.lokasi}</p>
+              <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>{r.lokasi}</p>
               <p>
                 Material cukup: {yaTidak(r.material_cukup)} · Kiriman precast/perikas diterima: {r.kiriman_precast_jumlah ?? 0} pcs
               </p>
@@ -566,7 +566,7 @@ function RekapInfrastrukturOtomatis({ data }: { data: PembangunanPerLokasiRow[] 
 
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
         Kondisi Infrastruktur per Lokasi (dari PIC Lokasi)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
@@ -581,7 +581,7 @@ function RekapInfrastrukturOtomatis({ data }: { data: PembangunanPerLokasiRow[] 
         <div className="flex flex-col gap-3">
           {data.map((r) => (
             <div key={r.lokasi} className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
-              <p style={{ fontFamily: 'var(--display)' }}>{r.lokasi}</p>
+              <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>{r.lokasi}</p>
               <p>
                 Jalan: {r.jalan_status ?? '—'} · Listrik: {r.listrik_status ?? '—'} · Air: {r.air_status ?? '—'}
               </p>
@@ -607,7 +607,7 @@ function RekapInfrastrukturOtomatis({ data }: { data: PembangunanPerLokasiRow[] 
 function BelumUploadOtomatis({ data }: { data: LokasiBelumUpload[] }) {
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
         PIC Lokasi yang Belum Mengirim Foto/Video Pembangunan
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
@@ -639,7 +639,7 @@ function KebutuhanBesokRestoOtomatis({ data }: { data: ReturnType<typeof ringkas
   const adaKebutuhan = data.stokHabis.length > 0 || data.stokAkanHabis.length > 0 || data.esBatu || data.air || data.gas;
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
         Kebutuhan untuk Besok
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
@@ -679,7 +679,7 @@ function KebutuhanBesokRestoOtomatis({ data }: { data: ReturnType<typeof ringkas
 function StokManagerUntukItaOtomatis({ data }: { data: ManagerRestoUntukItaRow[] }) {
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
         Angka Manager Resto (pembanding &amp; kebutuhan stok)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
@@ -693,7 +693,7 @@ function StokManagerUntukItaOtomatis({ data }: { data: ManagerRestoUntukItaRow[]
         <div className="flex flex-col gap-3">
           {data.map((o) => (
             <div key={o.outlet} className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
-              <p style={{ fontFamily: 'var(--display)' }}>{o.outlet}</p>
+              <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>{o.outlet}</p>
               <p>
                 Ada selisih stok (versi Manager): {o.ada_selisih_stok === null ? '—' : o.ada_selisih_stok ? '✅' : '❌'} -- jumlah item
                 selisih: {o.jumlah_item_selisih ?? 0}
@@ -734,7 +734,7 @@ function KebutuhanPembangunanAccountingOtomatis({ data }: { data: KebutuhanPemba
   const rupiah = (n: number) => `Rp${n.toLocaleString('id-ID')}`;
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
         Kebutuhan Pembangunan
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
@@ -743,7 +743,7 @@ function KebutuhanPembangunanAccountingOtomatis({ data }: { data: KebutuhanPemba
       </p>
       <div className="flex flex-col gap-2 text-sm">
         <p>Precast/DTI: {rupiah(data.precastDti)}</p>
-        <p style={{ fontFamily: 'var(--display)' }}>Material borongan (total {rupiah(data.totalMaterial)})</p>
+        <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>Material borongan (total {rupiah(data.totalMaterial)})</p>
         {data.materialBorongan.length === 0 ? (
           <p style={{ color: 'var(--kosong)' }}>Tidak ada pengajuan material hari ini.</p>
         ) : (
@@ -755,7 +755,7 @@ function KebutuhanPembangunanAccountingOtomatis({ data }: { data: KebutuhanPemba
             ))}
           </ul>
         )}
-        <p style={{ fontFamily: 'var(--display)' }}>Rencana infrastruktur (total {rupiah(data.totalInfrastruktur)})</p>
+        <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>Rencana infrastruktur (total {rupiah(data.totalInfrastruktur)})</p>
         {data.infrastrukturRencana.length === 0 ? (
           <p style={{ color: 'var(--kosong)' }}>Tidak ada rencana infrastruktur hari ini.</p>
         ) : (
@@ -784,7 +784,7 @@ function OmzetRestoOtomatis({ data }: { data: OmzetRestoRow[] }) {
   const rupiah = (n: number | null) => (n === null ? '—' : `Rp${n.toLocaleString('id-ID')}`);
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
         Omzet Resto -- Tiga Pengukuran
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
@@ -800,7 +800,7 @@ function OmzetRestoOtomatis({ data }: { data: OmzetRestoRow[] }) {
             const selisih = o.omzetManager !== null && o.omzetIta !== null ? o.omzetManager - o.omzetIta : null;
             return (
               <p key={o.outlet}>
-                <b style={{ fontFamily: 'var(--display)' }}>{o.outlet}</b> -- versi Manager: {rupiah(o.omzetManager)} · versi Ita:{' '}
+                <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{o.outlet}</b> -- versi Manager: {rupiah(o.omzetManager)} · versi Ita:{' '}
                 {rupiah(o.omzetIta)} · selisih: {selisih === null ? '—' : rupiah(selisih)}
               </p>
             );
@@ -822,7 +822,7 @@ function CashflowOtomatis({ data }: { data: ReturnType<typeof hitungCashflowHari
   const rupiah = (n: number) => `Rp${n.toLocaleString('id-ID')}`;
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
         Cashflow Hari Ini (dihitung otomatis)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>

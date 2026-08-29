@@ -42,7 +42,7 @@ function KalenderKaryawan({ userId }: { userId: string }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <p style={{ fontFamily: 'var(--display)' }}>
+      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
         Kalender {tahun}-{bulan}
       </p>
       <div className="grid gap-1" style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
@@ -184,7 +184,7 @@ function Isi() {
 
       {terpilih && (
         <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-          <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+          <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
             Detail -- {terpilih.nama}
           </p>
           <KalenderKaryawan userId={terpilih.user_id} />

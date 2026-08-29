@@ -215,7 +215,7 @@ export const f16Ita: FormSchema = {
       id: 'stock_opname',
       judul: 'Stock Opname Mingguan (khusus Senin)',
       hanyaHari: [1],
-      catatan: 'Blok ini cuma tampil hari Senin.',
+      catatan: 'Bagian ini cuma tampil hari Senin.',
       fields: [
         { key: 'so_thrifting_stok_sistem', label: 'Thrifting -- stok sistem (pcs)', type: 'angka' },
         { key: 'so_thrifting_stok_fisik', label: 'Thrifting -- stok fisik (pcs)', type: 'angka' },

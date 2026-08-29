@@ -264,7 +264,7 @@ export default function AbsenPage() {
       {layar === 'konfirmasi_titik' && titikDipilih && (
         <div className="flex flex-col gap-3">
           <div className="border p-3" style={{ borderColor: 'var(--garis)' }}>
-            <p style={{ fontFamily: 'var(--display)', fontSize: '1.1rem' }}>{titikDipilih.nama}</p>
+            <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>{titikDipilih.nama}</p>
             <p style={{ fontFamily: 'var(--mono)', color: 'var(--kosong)' }}>{Math.round(titikDipilih.jarakMeter)} meter</p>
           </div>
           <div className="flex gap-2">

@@ -43,7 +43,7 @@ export const f01PersonalMarketing: FormSchema = {
     {
       id: 'undangan',
       judul: 'Target Undangan Konsumen Baru',
-      catatan: 'Target minimal policy.invite_target orang baru/bulan. "Undangan hari ini" diisi di Blok 4 (PTE) -- satu field yang sama, tidak diulang di sini. Progres "___/20" ditampilkan di atas.',
+      catatan: 'Target minimal sesuai kebijakan undangan bulanan perusahaan. "Undangan hari ini" diisi di bagian "PTE Hari Ini — Enam Kewajiban" -- satu field yang sama, tidak diulang di sini. Progres "___/20" ditampilkan di atas.',
       fields: [
         { key: 'undang_merespons', label: 'Yang Merespons', type: 'angka' },
         { key: 'undang_mau_presentasi', label: 'Yang Mau Presentasi', type: 'angka' },
@@ -63,7 +63,7 @@ export const f01PersonalMarketing: FormSchema = {
           type: 'angka',
           buktiWajib: true,
           buktiKunci: 'undang',
-          bantuan: 'Bukti: undangan / follow-up. Angka ini juga dipakai untuk progres Blok 3 & 6.',
+          bantuan: 'Bukti: undangan / follow-up. Angka ini juga dipakai untuk progres undangan yang ditampilkan di bagian atas.',
         },
         { key: 'kesaksian_jumlah', label: 'Kesaksian / Testimoni', type: 'angka', buktiWajib: true, buktiKunci: 'kesaksian', bantuan: 'Bukti: video atau foto' },
         { key: 'review_jumlah', label: 'Google Review', type: 'angka', buktiWajib: true, buktiKunci: 'review', bantuan: 'Bukti: link atau screenshot' },

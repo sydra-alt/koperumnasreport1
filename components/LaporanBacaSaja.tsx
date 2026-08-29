@@ -96,28 +96,24 @@ export function LaporanBacaSaja({ schema, data, tanggal, lampiran }: LaporanBaca
     <div className="flex flex-col gap-4">
       {blockBerlaku.map((block) => (
         <div key={block.id} className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-          <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+          <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
             {block.judul}
           </p>
-          {block.catatan && (
-            <p className="mb-2 text-sm" style={{ color: 'var(--biru-3)' }}>
-              {block.catatan}
-            </p>
-          )}
+          {block.catatan && <p className="teks-penjelasan mb-2">{block.catatan}</p>}
           <div className="mt-2 flex flex-col gap-3 text-sm">
             {block.fields.map((field) => {
               const lampiranField = lampiran.filter((l) => l.fieldKey === (field.buktiKunci ?? field.key));
               if (field.type === 'lampiran') {
                 return (
                   <div key={field.key}>
-                    <p style={{ fontFamily: 'var(--display)' }}>{field.label}</p>
+                    <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-label)', color: 'var(--label)' }}>{field.label}</p>
                     <LampiranField items={lampiranField} />
                   </div>
                 );
               }
               return (
                 <div key={field.key}>
-                  <p style={{ fontFamily: 'var(--display)' }}>{field.label}</p>
+                  <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-label)', color: 'var(--label)' }}>{field.label}</p>
                   <NilaiField field={field} nilai={data[field.key]} />
                   {field.buktiWajib && <LampiranField items={lampiranField} />}
                 </div>

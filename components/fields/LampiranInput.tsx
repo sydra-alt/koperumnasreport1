@@ -69,7 +69,7 @@ export function LampiranInput({ name, label = 'Lampirkan bukti', reportId, field
   return (
     <div className="flex flex-col gap-2">
       <label
-        className="inline-flex w-fit items-center border px-4"
+        className="tombol-pil inline-flex w-fit items-center border px-4"
         style={{
           borderColor: siapUnggah ? 'var(--biru)' : 'var(--kosong)',
           color: siapUnggah ? 'var(--biru)' : 'var(--kosong)',
@@ -116,11 +116,23 @@ export function LampiranInput({ name, label = 'Lampirkan bukti', reportId, field
         ))}
 
       {items.length > 0 && (
-        <ul className="flex flex-col gap-1">
+        <ul className="flex flex-col gap-2">
           {items.map((it, i) => (
-            <li key={it.id} className="flex items-center justify-between gap-2 text-sm" style={{ minHeight: 44 }}>
-              <span>{it.nama}</span>
-              <button type="button" onClick={() => hapus(i)} style={{ color: 'var(--merah)' }}>
+            <li
+              key={it.id}
+              className="border flex items-center justify-between gap-2 px-3"
+              style={{ minHeight: 44, background: 'var(--hijau-lembut)', borderColor: 'var(--hijau)' }}
+            >
+              <span className="flex items-center gap-2" style={{ color: 'var(--hijau)' }}>
+                <span aria-hidden="true">✓</span>
+                <span>
+                  Bukti terlampir
+                  <span className="teks-penjelasan" style={{ display: 'block' }}>
+                    {it.nama}
+                  </span>
+                </span>
+              </span>
+              <button type="button" onClick={() => hapus(i)} style={{ color: 'var(--merah)', minHeight: 44 }}>
                 Hapus
               </button>
             </li>

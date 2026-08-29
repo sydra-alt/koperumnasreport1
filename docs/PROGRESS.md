@@ -396,6 +396,32 @@ Saat menulis `docs/07-CATATAN-PELUNCURAN.md`, ditemukan (bukan diminta lebih dul
 
 ---
 
+## Token desain diganti total -- "ringan, bukan resmi" (30 Agustus 2026)
+
+User sendiri yang menulis token lama (`04-CATATAN-TEKNIS.md` §6, arah "cetak biru gambar teknik") dan sendiri yang membatalkannya: dioptimalkan untuk terlihat khas, bukan untuk 35 orang lapangan mengisi form panjang tiap hari dari HP. Rencana token ditunjukkan dulu ke user sebelum kode ditulis (instruksi eksplisit), disetujui dengan 5 koreksi (dijelaskan di tiap sub-bagian di bawah), BARU diterapkan.
+
+**Token baru** (nilai lengkap ada di `04-CATATAN-TEKNIS.md` §6 dan `app/tokens.css`):
+- Latar `#FBFBF9` (dulu `#E6E9E3`), garis `#E4E0D3` lembut hangat (dulu `#9FAEA9` dipakai di 1,5-2px `--tinta` pekat).
+- `--tinta` (teks isi) dihangatkan ke `#1F2A33` (dulu `#10202E`) -- **koreksi user**, bukan usulan awal saya (usul pertama tidak menyentuh `--tinta` sama sekali; user sendiri yang minta setelah melihat token pertama, alasannya kontras terlalu keras untuk dibaca lama di atas kertas hangat). `--biru`/`--hijau`/`--kuning`/`--merah` **TIDAK disentuh** -- ditegaskan ulang user sendiri, itu bahasa status baku perusahaan.
+- SATU keluarga huruf, Plus Jakarta Sans, untuk SELURUH antarmuka -- dulu dua (Barlow Condensed + IBM Plex Sans). Mono (IBM Plex Mono) dipersempit HANYA untuk rupiah/jam/koordinat.
+- `text-transform: uppercase` DIBUANG TOTAL -- keluhan #1 user ("penyebab terbesar rasa kakunya").
+- `border-radius`: 8px input/tombol, 12px kartu, 999px (pil) khusus tombol lampirkan -- dulu 0 di mana pun (CLAUDE.md aturan #10 lama). **Kecuali sel tabel** (`<td>`/`<th>`) -- ditemukan sendiri saat menerapkan (bukan diminta): radius 12px per sel bikin celah aneh di grid tabel, jadi dikecualikan tetap kotak.
+- Hierarki eksplisit: judul bagian 17px/weight 500/warna `--biru`, label field 13px/warna `--label` (token baru), isian 16px.
+- **Koreksi user (3 hal di luar daftar awal, tapi ikut menentukan rasa):** jarak antar field 16px/antar bagian 28px (dulu gap-3/gap-6 Tailwind = 12px/24px), tinggi input minimal 44px (jaring pengaman lewat CSS global, bukan cuma andalan per-komponen), `line-height: 1.6` khusus teks penjelasan (kelas baru `.teks-penjelasan`).
+- Baris bukti terlampir: latar `--hijau-lembut` (token baru) + ikon ✓ + teks "Bukti terlampir" -- bukan cuma daftar nama file polos (`components/fields/LampiranInput.tsx`).
+
+**Mekanisme penerapan -- kenapa cuma segelintir file untuk sebagian besar perubahan:** radius, uppercase-removal, garis, dan keluarga huruf SEMUANYA diterapkan lewat SATU perubahan di `app/globals.css` (selector global: `.border`, `button`/`input`/`select`/`textarea`, `h1-h6`, dst.) -- BUKAN diulang di tiap komponen. Uppercase khususnya: aturan lama cuma ada di SATU baris (`h1,h2,h3,h4,h5,h6,button,label{text-transform:uppercase}`), jadi menghapusnya otomatis membersihkan SELURUH aplikasi sekaligus, persis instruksi "jangan setengah lama setengah baru". Keluarga huruf: `--display`/`--body` (nama token lama) dipertahankan sebagai ALIAS ke `--font` yang baru di `app/tokens.css` -- kode yang sudah menulis `var(--display)` di puluhan tempat TIDAK perlu diubah untuk urusan font-nya, cuma tokennya yang berubah.
+
+**Yang TETAP butuh diedit satu-satu** (tidak bisa lewat CSS global karena beda konteks/ukuran per elemen): hierarki ukuran judul-bagian vs label vs teks biasa -- 59 titik `fontFamily: 'var(--display)'` di 15 file, ditinjau SATU-SATU (bukan disamakan buta) supaya judul section (17px/weight 500/biru) tidak disamakan dengan label baris list yang lebih kecil (cukup weight 500 tanpa ukuran dipaksa naik).
+
+**Bug nyata ditemukan sambil menata (bukan dicari-cari):** `app/akun/page.tsx` memanggil `tabTerlihat()` TANPA parameter `divisi` -- kadiv+HRD yang tab "Tinjau Absensi"-nya kalah prioritas nav bawah dan seharusnya muncul di halaman Akun (luapan) akan kehilangannya DI SITU JUGA (`bolehTinjauAbsen` salah mengira `false` tanpa `divisi`). Diperbaiki sekalian, sama pola dengan bug `KopHalaman.tsx` yang sudah pernah ditemukan.
+
+**Sisir ulang "Blok" (instruksi #1, dilanjutkan dari perbaikan Masalah 3 tanggal 24 Agustus):** ditemukan 3 sisa jargon di TEKS YANG BENAR-BENAR TAMPIL ke pengguna (`field.bantuan`/`block.catatan`, dirender `FormRenderer.tsx`) -- `forms/f01-personal-marketing.ts` ("...di Blok 4 (PTE)..." dan "...progres Blok 3 & 6" -- yang kedua disederhanakan jadi "progres undangan yang ditampilkan di bagian atas", bukan dipaksa mengarang ulang nomor blok lama yang sudah dibuang), `forms/f16-ita.ts` ("Blok ini cuma tampil hari Senin" -> "Bagian ini..."). Sisa "Blok" lain di seluruh `forms/`/`components/` SEMUANYA komentar developer (JSDoc, `//`), bukan teks layar -- diverifikasi lewat grep bertarget, tidak dihapus (komentar developer boleh tetap teknis). **"Bagian 1-17" di Laporan Terpusat TETAP dipertahankan** sesuai instruksi -- itu nomor dari kertas asli perusahaan, bukan istilah "Blok" bikinan implementasi.
+
+**Diverifikasi:** `tsc --noEmit`/`npm run lint`/`npm run build` bersih (0 error, 1 warning lama tidak terkait). **BELUM diverifikasi visual sungguhan** -- user eksplisit akan memeriksa langsung dari HP, bukan dari deskripsi; tidak ada tool browser/screenshot di sesi ini untuk memverifikasi tampilan akhir sendiri.
+
+---
+
 ## §3 Presensi ber-radius (`docs/06-RENCANA-PRESENSI-MOBILE.md`, 29 Agustus 2026)
 
 Dikerjakan atas instruksi eksplisit **"jangan menunggu"** koordinat asli CEO (§5 dokumen belum terjawab) -- mekanismenya yang harus jadi dulu, satu baris `lokasi_absen` CONTOH (koordinat dari contoh dokumen sendiri, `-6.914744, 107.609810`, berlabel "CONTOH -- ganti dari halaman Admin") dipakai supaya halaman Absen tidak kosong/rusak saat pertama dicoba.

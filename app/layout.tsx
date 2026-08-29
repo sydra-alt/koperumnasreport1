@@ -1,20 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Barlow_Condensed, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { IBM_Plex_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { SerwistProvider } from "@serwist/turbopack/react";
 import { KopHalaman } from "../components/KopHalaman";
 import { Providers } from "../components/Providers";
 import "./globals.css";
 
-const barlowCondensed = Barlow_Condensed({
+// SATU keluarga huruf untuk seluruh antarmuka (30 Agustus 2026, 04-CATATAN-
+// TEKNIS.md §6) -- dulu dua (Barlow Condensed untuk judul/label + IBM Plex
+// Sans untuk isi). Plus Jakarta Sans dipilih user secara eksplisit (dibuat
+// untuk konteks Indonesia). --font-display/--font-body TIDAK dipakai lagi
+// di sini -- app/tokens.css meng-alias `--display`/`--body` ke `--font-sans`
+// yang sama, supaya kode lama yang masih menulis var(--display)/var(--body)
+// tidak perlu diubah satu per satu.
+const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-display",
-});
-
-const ibmPlexSans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
 });
 
 const ibmPlexMono = IBM_Plex_Mono({
@@ -49,7 +50,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="id"
-      className={`${barlowCondensed.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable}`}
+      className={`${plusJakartaSans.variable} ${ibmPlexMono.variable}`}
     >
       <body>
         <SerwistProvider swUrl="/serwist/sw.js" disable={process.env.NODE_ENV === "development"}>

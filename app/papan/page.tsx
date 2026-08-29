@@ -58,7 +58,7 @@ function PapanKontrolIsi() {
         <p>Memuat…</p>
       ) : tanggalBukanHariKerja ? (
         <div className="border p-6 text-center" style={{ borderColor: 'var(--garis)' }}>
-          <p style={{ fontFamily: 'var(--display)', color: 'var(--kosong)' }}>Bukan hari kerja</p>
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--kosong)' }}>Bukan hari kerja</p>
           <p className="text-sm" style={{ color: 'var(--kosong)' }}>
             {tanggalIndonesiaDariYmd(tanggal)} bukan hari wajib lapor, jadi tidak ada laporan yang ditunggu.
           </p>
@@ -76,7 +76,7 @@ function PapanKontrolIsi() {
             const sudah = daftar.filter((b) => b.reportId).length;
             return (
               <div key={formKey} className="flex flex-col gap-2">
-                <p style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
+                <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
                   {formNama} ({sudah}/{daftar.length})
                 </p>
                 <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>

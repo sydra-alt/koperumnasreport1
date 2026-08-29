@@ -25,7 +25,7 @@ Jangan pasang: React Router (App Router sudah menangani rute), ORM apa pun, Redu
 7. **Semua agregasi lewat view Postgres**, jangan dihitung ulang di React.
 8. **View wajib `security_invoker = on`**, kalau tidak data rahasia bocor.
 9. **Mobile-first.** Diuji di lebar 360px. Sasaran sentuh minimal 44px.
-10. **`border-radius: 0`** di seluruh antarmuka. Ini keputusan desain, bukan kelalaian.
+10. **Token desain di `docs/04-CATATAN-TEKNIS.md` §6** (diganti 30 Agustus 2026 -- "ringan, bukan resmi", bukan lagi cetak biru bersudut tajam): `border-radius` 8px input/tombol, 12px kartu, 999px tombol lampirkan — bukan 0. Satu keluarga huruf (`--font`, Plus Jakarta Sans) untuk seluruh antarmuka, tidak ada `text-transform: uppercase`. Baca §6 sebelum menulis CSS/style baru, jangan menebak nilai lama.
 11. **`'use client'`** wajib di FormRenderer, semua komponen field, provider, dan apa pun yang memakai hook atau menangani klik. Layout dan halaman penyusun tata letak tetap Server Component.
 12. **`SUPABASE_SERVICE_ROLE_KEY` tidak boleh berawalan `NEXT_PUBLIC_`** dan tidak boleh disentuh dari Client Component. Hanya di Route Handler atau Server Action.
 

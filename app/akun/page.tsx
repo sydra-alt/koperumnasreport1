@@ -14,7 +14,12 @@ import { tabTerlihat, tabLuapan } from '../../lib/navUtama';
  */
 export default function AkunPage() {
   const { profile, roles, assignments, signOut } = useAuth();
-  const semua = tabTerlihat(roles, assignments, formRegistry);
+  // divisi WAJIB diteruskan -- tanpa ini, kadiv+HRD yang tab "Tinjau
+  // Absensi"-nya kebetulan kalah prioritas & masuk luapan (di bawah) akan
+  // kehilangannya di sini juga (bolehTinjauAbsen salah mengira false),
+  // sama seperti bug yang sudah pernah terjadi di KopHalaman sebelum ini
+  // ditemukan (ditemukan saat menata ulang halaman ini, bukan dicari-cari).
+  const semua = tabTerlihat(roles, assignments, formRegistry, profile?.divisi ?? null);
   const luapan = tabLuapan(semua);
 
   return (
@@ -24,18 +29,18 @@ export default function AkunPage() {
       </h1>
 
       <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-        <p style={{ fontFamily: 'var(--display)' }}>{profile?.nama ?? '—'}</p>
-        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+        <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>{profile?.nama ?? '—'}</p>
+        <p className="teks-penjelasan">
           {profile?.jabatan ?? '—'} · {profile?.divisi ?? '—'}
         </p>
-        <p className="text-sm" style={{ color: 'var(--biru-3)' }}>
+        <p className="teks-penjelasan">
           Peran: {roles.length > 0 ? roles.join(', ') : '—'}
         </p>
       </div>
 
       {luapan.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
+          <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
             Lainnya
           </p>
           {luapan.map((tab) => (

@@ -58,17 +58,13 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId }
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col" style={{ gap: 'var(--jarak-bagian)' }}>
         {blokBerlakuHariIni(schema).map((block) => (
-          <fieldset key={block.id} className="flex flex-col gap-3 border p-4" style={{ borderColor: 'var(--garis)' }}>
-            <legend className="px-1 text-lg" style={{ fontFamily: 'var(--display)' }}>
+          <fieldset key={block.id} className="flex flex-col border p-4" style={{ borderColor: 'var(--garis)', gap: 'var(--jarak-field)' }}>
+            <legend className="px-1" style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
               {block.judul}
             </legend>
-            {block.catatan && (
-              <p className="text-sm" style={{ color: 'var(--biru-3)' }}>
-                {block.catatan}
-              </p>
-            )}
+            {block.catatan && <p className="teks-penjelasan">{block.catatan}</p>}
             {block.fields.map((field) => {
               const bermasalah = Boolean(errors[field.key]);
               return (
@@ -78,7 +74,7 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId }
                   className="flex flex-col gap-1 p-2"
                   style={{ background: bermasalah ? 'rgba(166,43,43,0.12)' : 'transparent' }}
                 >
-                  <span>
+                  <span style={{ fontSize: 'var(--ukuran-label)', color: 'var(--label)' }}>
                     {field.label}
                     {field.wajib && <span style={{ color: 'var(--merah)' }}> *</span>}
                   </span>
@@ -103,11 +99,7 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId }
                     />
                   )}
 
-                  {field.bantuan && (
-                    <span className="text-sm" style={{ color: 'var(--kosong)' }}>
-                      {field.bantuan}
-                    </span>
-                  )}
+                  {field.bantuan && <span className="teks-penjelasan">{field.bantuan}</span>}
 
                   {bermasalah && (
                     <span className="text-sm" style={{ color: 'var(--merah)' }}>

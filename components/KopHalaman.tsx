@@ -25,7 +25,7 @@ export function KopHalaman() {
 
   return (
     <>
-      <header className="nav-atas border-b" style={{ borderColor: 'var(--tinta)', borderWidth: 1.5, background: 'var(--kertas-2)' }}>
+      <header className="nav-atas border-b" style={{ borderColor: 'var(--garis)', background: 'var(--kertas-2)' }}>
         <div className="flex flex-wrap items-center justify-between gap-2 p-3">
           <div>
             <div className="text-lg" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
@@ -59,8 +59,7 @@ export function KopHalaman() {
                 style={{
                   minHeight: 44,
                   fontFamily: 'var(--display)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
+                  fontWeight: 500,
                   color: aktif ? 'var(--kertas-2)' : 'var(--biru)',
                   background: aktif ? 'var(--biru)' : 'transparent',
                 }}
@@ -83,8 +82,7 @@ export function KopHalaman() {
               style={{
                 minHeight: 'var(--tinggi-nav-bawah)',
                 fontFamily: 'var(--display)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.03em',
+                fontWeight: 500,
                 color: aktif ? 'var(--biru)' : 'var(--tinta)',
                 background: aktif ? 'var(--kertas)' : 'transparent',
               }}

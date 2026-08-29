@@ -24,7 +24,7 @@ function DashboardCeo() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="mb-2" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
+        <p className="mb-2" style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
           Keuangan Hari Ini
         </p>
         {!keuangan ? (
@@ -54,7 +54,7 @@ function DashboardCeo() {
       </div>
 
       <div>
-        <p className="mb-2" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
+        <p className="mb-2" style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
           Rekap Unit Pembangunan Hari Ini
         </p>
         <AngkaGrid
@@ -68,7 +68,7 @@ function DashboardCeo() {
       </div>
 
       <div>
-        <p className="mb-2" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
+        <p className="mb-2" style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
           Silang-Cek Omzet Resto Hari Ini
         </p>
         {!selisihResto || selisihResto.length === 0 ? (
@@ -77,7 +77,7 @@ function DashboardCeo() {
           <div className="flex flex-col gap-2">
             {selisihResto.map((r) => (
               <p key={r.outlet} className="text-sm" style={{ fontFamily: 'var(--mono)' }}>
-                <b style={{ fontFamily: 'var(--display)' }}>{r.outlet}</b> -- Manager: {formatRupiah(r.versiManager ?? 0)} · Ita:{' '}
+                <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{r.outlet}</b> -- Manager: {formatRupiah(r.versiManager ?? 0)} · Ita:{' '}
                 {formatRupiah(r.versiIta ?? 0)} ·{' '}
                 <span style={{ color: r.selisih ? 'var(--merah)' : 'var(--hijau)' }}>selisih {formatRupiah(r.selisih ?? 0)}</span>
               </p>
@@ -141,7 +141,7 @@ function DaftarTugas() {
 
   return (
     <div className="flex flex-col gap-3">
-      <p style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
+      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
         Yang perlu dikerjakan hari ini
       </p>
       {tugasBelum.map((t) => (
@@ -151,7 +151,7 @@ function DaftarTugas() {
           style={{ borderColor: 'var(--garis)', minHeight: 44 }}
         >
           <div>
-            <p style={{ fontFamily: 'var(--display)' }}>
+            <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>
               {t.namaForm}
               {t.scopeLabel ? ` (${t.scopeLabel})` : ''}
             </p>

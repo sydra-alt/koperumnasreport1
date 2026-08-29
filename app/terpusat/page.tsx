@@ -27,7 +27,7 @@ function Seksi({ nomor, judul, sumber, children }: { nomor: string; judul: strin
   return (
     <div className="border p-4 print-seksi" style={{ borderColor: 'var(--garis)' }}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-lg" style={{ fontFamily: 'var(--display)' }}>
+        <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
           {nomor} · {judul}
         </p>
         {sumber && (
@@ -257,7 +257,7 @@ function Isi() {
           <div className="flex flex-col gap-3">
             {picLokasi.map((p) => (
               <div key={p.lokasi} className="border p-3" style={{ borderColor: 'var(--garis)' }}>
-                <p style={{ fontFamily: 'var(--display)' }}>
+                <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>
                   📍 {p.lokasi} -- PIC: {p.picNama}
                 </p>
                 <p>
@@ -339,7 +339,7 @@ function Isi() {
         </p>
         {(selisihResto ?? []).length > 0 && (
           <div>
-            <p style={{ fontFamily: 'var(--display)' }}>Silang-cek omzet resto</p>
+            <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>Silang-cek omzet resto</p>
             {selisihResto!.map((r) => (
               <p key={r.outlet}>
                 {r.outlet}: selisih {formatRupiah(r.selisih ?? 0)}
@@ -381,7 +381,7 @@ function Isi() {
         />
         {(tertinggal ?? []).length > 0 && (
           <div>
-            <p style={{ color: 'var(--merah)', fontFamily: 'var(--display)' }}>Pegawai belum bergerak/tertinggal target:</p>
+            <p style={{ color: 'var(--merah)', fontFamily: 'var(--display)', fontWeight: 500 }}>Pegawai belum bergerak/tertinggal target:</p>
             <ul className="list-disc pl-5">
               {tertinggal!.map((k) => (
                 <li key={k.nama}>
@@ -419,7 +419,7 @@ function Isi() {
         </p>
         {picBelumLapor.length > 0 && (
           <div>
-            <p style={{ fontFamily: 'var(--display)' }}>PIC yang belum memberikan laporan:</p>
+            <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>PIC yang belum memberikan laporan:</p>
             <ul className="list-disc pl-5">
               {picBelumLapor.map((p) => (
                 <li key={p.assignmentId}>

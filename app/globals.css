@@ -1,8 +1,34 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
-* {
-  border-radius: 0 !important;
+/* Token desain (04-CATATAN-TEKNIS.md §6, diganti 30 Agustus 2026) -- "ringan,
+   bukan resmi": satu keluarga huruf, kalimat biasa (bukan HURUF BESAR
+   SEMUA), sudut membulat, garis lembut, kertas hangat. Diterapkan di sini
+   secara GLOBAL (bukan per-komponen) supaya seluruh aplikasi berubah
+   sekaligus, tidak setengah lama setengah baru. */
+
+.border, .border-2 {
+  border-radius: var(--radius-besar); /* kartu, kotak pembatas umum -- border-2 dipakai kartu status (AntreanKartu/PapanKartu), garis tebalnya SENGAJA dipertahankan (warna urgensi/status, bukan "tinta pekat" yang dimaksud dibuang) */
+}
+/* Tombol/isian -- baris pertama untuk yang TANPA class .border (tombol solid
+   tanpa garis pinggir); baris kedua spesifisitas lebih tinggi supaya menang
+   atas .border di atas untuk yang PAKAI .border (mayoritas tombol di app
+   ini pakai className="border ..."). Keduanya perlu ada bersamaan --
+   `button{...}` saja kalah spesifisitas lawan `.border` kalau dua-duanya
+   kena elemen yang sama. */
+button, input, select, textarea {
+  border-radius: var(--radius-kecil);
+}
+button.border, input.border, select.border, textarea.border, a.border, label.border {
+  border-radius: var(--radius-kecil);
+}
+.tombol-pil {
+  border-radius: var(--radius-pil) !important; /* tombol lampirkan -- pengecualian tunggal, sengaja !important */
+}
+/* Sel tabel (<td>/<th>) TETAP kotak walau .border -- radius 12px per sel di
+   grid tabel bikin celah aneh antar sel, bukan kartu yang lembut. */
+td.border, th.border {
+  border-radius: 0;
 }
 
 body {
@@ -10,13 +36,33 @@ body {
   min-height: 100svh;
   background: var(--kertas);
   color: var(--tinta);
-  font-family: var(--body);
+  font-family: var(--font);
+  line-height: 1.5;
 }
 
-h1, h2, h3, h4, h5, h6, button, label {
-  font-family: var(--display);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font);
+  font-weight: 500;
+  color: var(--biru); /* judul tetap warna biru -- hierarki lewat warna, bukan cuma ukuran */
+}
+
+/* Tinggi minimal 44px + ukuran huruf isian (16px) untuk semua isian --
+   checkbox/radio dikecualikan dari tinggi (dipaksa 44px akan membuatnya
+   raksasa/aneh, bukan salah ketuk yang dicegah). Tombol sudah lama pakai
+   `minHeight: 44` inline per-komponen, aturan ini jaring pengaman untuk
+   yang belum, dan satu-satunya tempat ukuran huruf isian diatur -- tidak
+   perlu diulang di tiap components/fields/*.tsx. */
+input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+  min-height: var(--tinggi-input);
+  font-size: var(--ukuran-isi);
+}
+
+/* Teks penjelasan (bantuan field, catatan blok) -- kalimat panjang
+   berbahasa Indonesia butuh ruang napas lebih dari body text biasa. */
+.teks-penjelasan {
+  line-height: 1.6;
+  color: var(--label);
+  font-size: var(--ukuran-label);
 }
 
 /* Nav bawah (§2 06-RENCANA-PRESENSI-MOBILE.md): layar sempit (<768px) pakai
@@ -30,7 +76,7 @@ h1, h2, h3, h4, h5, h6, button, label {
   left: 0; right: 0; bottom: 0;
   z-index: 20;
   display: flex;
-  border-top: 1.5px solid var(--tinta);
+  border-top: 1px solid var(--garis);
   background: var(--kertas-2);
   padding-bottom: env(safe-area-inset-bottom);
 }

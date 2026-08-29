@@ -1,20 +1,49 @@
 :root {
-  --kertas:    #E6E9E3;
-  --kertas-2:  #F1F3EE;
-  --tinta:     #10202E;
-  --biru:      #123A56;
+  /* Latar & garis (30 Agustus 2026 -- "ringan, bukan resmi", 04-CATATAN-TEKNIS.md §6) */
+  --kertas:    #FBFBF9;
+  --kertas-2:  #F3F1EA;
+  --garis:     #E4E0D3;
+
+  /* Teks */
+  --tinta:     #1F2A33; /* teks isi -- dihangatkan dari #10202E, kontras terlalu keras di atas kertas baru untuk dibaca lama */
+  --label:     #78756A; /* abu hangat -- label field, teks penjelasan */
+
+  /* Aksen -- TIDAK DIUBAH. Bukan sumber kekakuan, dan hijau/kuning/merah
+     sudah jadi bahasa status baku di seluruh perusahaan (jangan disentuh). */
+  --biru:      #123A56; /* judul tetap warna ini -- hierarki lewat warna, bukan cuma ukuran */
   --biru-2:    #1D5476;
   --biru-3:    #2E6E93;
-  --garis:     #9FAEA9;
 
   --hijau:     #2C7A50;
+  --hijau-lembut: #E7F2EA; /* latar baris "Bukti terlampir" */
   --kuning:    #B8801B;
   --merah:     #A62B2B;
   --kosong:    #8A968F;
 
-  --display: var(--font-display), sans-serif;
-  --body:    var(--font-body), system-ui, sans-serif;
-  --mono:    var(--font-mono), monospace;
+  /* Huruf -- SATU keluarga untuk seluruh antarmuka (dulu dua: Barlow
+     Condensed + IBM Plex Sans). --display/--body dipertahankan sebagai
+     ALIAS ke keluarga yang sama -- supaya kode yang sudah menulis
+     `var(--display)`/`var(--body)` di mana pun tidak perlu diubah satu
+     per satu, cukup token ini yang berubah. */
+  --font:    var(--font-sans), "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  --display: var(--font);
+  --body:    var(--font);
+  --mono:    var(--font-mono), monospace; /* HANYA rupiah, jam, koordinat -- tidak untuk label/judul/tombol */
+
+  /* Skala */
+  --ukuran-judul: 17px; /* judul bagian, weight 500 */
+  --ukuran-label: 13px; /* label field */
+  --ukuran-isi:   16px; /* isian/nilai field */
+
+  /* Bentuk */
+  --radius-kecil: 8px;  /* input, tombol */
+  --radius-besar: 12px; /* kartu */
+  --radius-pil:   999px; /* tombol lampirkan */
+
+  /* Jarak & tinggi sentuh */
+  --jarak-field:  16px; /* antar field dalam satu bagian */
+  --jarak-bagian: 28px; /* antar bagian/blok */
+  --tinggi-input: 44px; /* tinggi minimal semua isian */
 
   /* Tinggi nav bawah TANPA area aman -- dipakai bareng env(safe-area-inset-bottom)
      di mana pun perlu tahu berapa ruang yang harus disisakan di atas nav

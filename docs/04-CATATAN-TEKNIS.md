@@ -526,38 +526,74 @@ docs/
 
 ## §6 · Token desain
 
-Arahnya **cetak biru gambar teknik**: kertas gambar pucat, tinta biru tua, garis grid halus.
-Alasannya fungsional, bukan selera — warna 🟢🟡🔴 sudah punya arti tetap di perusahaan ini,
-jadi warna dasar antarmuka tidak boleh ikut memakai hijau, kuning, atau merah.
+**Diganti total 30 Agustus 2026.** Arah lama ("cetak biru gambar teknik" — kertas pucat abu-abu,
+huruf besar semua, sudut tajam, garis tebal) dioptimalkan untuk terlihat khas, bukan untuk 35
+orang lapangan yang mengisi form panjang setiap hari dari HP dengan sinyal seadanya. Prinsip
+penggantinya: **antarmuka harus terasa ringan, bukan resmi.** Warna 🟢🟡🔴 (hijau/kuning/merah)
+dan `--biru` TETAP TIDAK DIUBAH — bukan sumber kekakuannya, dan hijau/kuning/merah sudah jadi
+bahasa status baku di seluruh perusahaan, tidak boleh disentuh dengan alasan apa pun.
 
 ```css
 :root{
-  --kertas:    #E6E9E3;
-  --kertas-2:  #F1F3EE;
-  --tinta:     #10202E;
-  --biru:      #123A56;
-  --biru-2:    #1D5476;
-  --biru-3:    #2E6E93;
-  --garis:     #9FAEA9;
+  /* Latar & garis */
+  --kertas:      #FBFBF9;
+  --kertas-2:    #F3F1EA;
+  --garis:       #E4E0D3;
 
-  --hijau:     #2C7A50;
-  --kuning:    #B8801B;
-  --merah:     #A62B2B;
-  --kosong:    #8A968F;
+  /* Teks */
+  --tinta:       #1F2A33;  /* teks isi -- dihangatkan dari #10202E, kontras terlalu keras untuk dibaca lama di atas kertas hangat */
+  --label:       #78756A;  /* abu hangat -- label field, teks penjelasan */
 
-  --display: "Barlow Condensed", sans-serif;  /* judul, label, tombol — huruf besar */
-  --body:    "IBM Plex Sans", system-ui, sans-serif;
-  --mono:    "IBM Plex Mono", monospace;      /* angka, rupiah, jam, kode form */
+  /* Aksen -- TIDAK DIUBAH */
+  --biru:        #123A56;  /* judul tetap warna ini -- hierarki lewat warna, bukan cuma ukuran */
+  --biru-2:      #1D5476;
+  --biru-3:      #2E6E93;
+  --hijau:       #2C7A50;
+  --hijau-lembut:#E7F2EA;  /* latar baris "Bukti terlampir" */
+  --kuning:      #B8801B;
+  --merah:       #A62B2B;
+  --kosong:      #8A968F;
+
+  --font:  "Plus Jakarta Sans", "Inter", system-ui, sans-serif;  /* SATU keluarga untuk seluruh antarmuka -- dulu dua (Barlow Condensed + IBM Plex Sans) */
+  --mono:  "IBM Plex Mono", monospace;  /* HANYA rupiah, jam, koordinat -- TIDAK untuk label/judul/tombol */
+
+  /* Skala */
+  --ukuran-judul: 17px;  /* judul bagian, weight 500 */
+  --ukuran-label: 13px;  /* label field */
+  --ukuran-isi:   16px;  /* isian/nilai field */
+
+  /* Bentuk */
+  --radius-kecil: 8px;   /* input, tombol */
+  --radius-besar: 12px;  /* kartu */
+  --radius-pil:   999px; /* tombol lampirkan */
+
+  /* Jarak & tinggi sentuh */
+  --jarak-field:  16px;  /* antar field dalam satu bagian */
+  --jarak-bagian: 28px;  /* antar bagian/blok */
+  --tinggi-input: 44px;  /* tinggi minimal semua isian */
 }
 ```
 
 Aturan pemakaian:
-- Semua **angka** memakai `--mono`. Rupiah, jumlah unit, jam, persentase.
-- Semua **judul dan label** memakai `--display`, huruf besar, `letter-spacing` renggang.
-- Sudut kotak **0px**. Tidak ada `border-radius` di mana pun.
-- Bayangan tidak dipakai. Pemisah memakai garis 1,5px `--tinta`.
-- Kartu "belum lapor" memakai garis putus-putus `--kosong`, bukan warna merah — belum lapor
-  bukan berarti bermasalah.
+- **Tidak ada `text-transform: uppercase` di mana pun.** Ini penyebab terbesar kesan kaku
+  yang lama — kalimat biasa, bukan HURUF BESAR SEMUA.
+- Semua **angka** memakai `--mono`. Rupiah, jumlah unit, jam, koordinat GPS. Label/judul/tombol
+  TIDAK PERNAH memakai `--mono`.
+- **Hierarki lewat ukuran DAN warna**: judul bagian 17px/weight 500/warna `--biru`; label field
+  13px/warna `--label`; isian 16px. Bukan "semuanya seukuran" seperti sebelumnya.
+- Sudut membulat: 8px input/tombol, 12px kartu, 999px (pil) khusus tombol lampirkan. **Kecuali
+  sel tabel (`<td>`/`<th>`) — tetap kotak**, radius per sel di grid tabel bikin celah aneh,
+  bukan kartu yang lembut.
+- Garis pemisah 1px `--garis` (lembut, hangat) — bukan 1,5px `--tinta` (tinta pekat). Kartu
+  status (Antrean Keputusan, Papan Kontrol) yang memakai garis tebal berwarna urgensi/status
+  DIKECUALIKAN — itu bahasa status, bukan garis pemisah biasa.
+- Kartu "belum lapor" tetap memakai garis putus-putus `--kosong`, bukan warna merah — belum
+  lapor bukan berarti bermasalah.
+- Baris bukti yang sudah terlampir: latar `--hijau-lembut` + ikon ✓ + teks "Bukti terlampir" —
+  bukan sekadar kotak tercentang.
+- Diterapkan GLOBAL lewat `app/globals.css` (bukan per-komponen) — radius/tinggi-input/ukuran-isi
+  lewat selector elemen (`button`, `input`, `.border`, dst.), bukan diulang di tiap file, supaya
+  seluruh aplikasi berubah sekaligus kalau tokennya berubah lagi nanti.
 
 ---
 

@@ -26,7 +26,7 @@ function Baris({ item }: { item: AbsensiTinjau }) {
 
   return (
     <li className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--kuning)' }}>
-      <p style={{ fontFamily: 'var(--display)', fontSize: '1.05rem' }}>
+      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
         {item.userNama} — {item.tipe === 'masuk' ? 'Masuk' : 'Pulang'}
       </p>
       <p className="text-sm" style={{ color: 'var(--kosong)' }}>
