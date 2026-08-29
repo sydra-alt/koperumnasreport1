@@ -120,24 +120,30 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId }
           </fieldset>
         ))}
 
-        {pesanError.length > 0 && (
-          <div className="border p-3" style={{ borderColor: 'var(--merah)', background: 'rgba(166,43,43,0.08)' }}>
-            <p style={{ fontFamily: 'var(--display)', color: 'var(--merah)' }}>Periksa kembali sebelum mengirim:</p>
-            <ul className="list-disc pl-5">
-              {pesanError.map((e) => (
-                <li key={e.key}>{e.pesan}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {/* Menempel di atas nav bawah pada layar sempit (§2 06-RENCANA-PRESENSI-MOBILE.md) --
+            form personal_marketing 9 blok baru terlihat tombolnya kalau digulir sampai
+            bawah tanpa ini; dengan sticky, selalu terlihat. Background solid wajib supaya
+            konten yang lewat di baliknya tidak tembus pandang. */}
+        <div className="tombol-kirim-menempel" style={{ background: 'var(--kertas)' }}>
+          {pesanError.length > 0 && (
+            <div className="border p-3" style={{ borderColor: 'var(--merah)', background: 'rgba(166,43,43,0.08)' }}>
+              <p style={{ fontFamily: 'var(--display)', color: 'var(--merah)' }}>Periksa kembali sebelum mengirim:</p>
+              <ul className="list-disc pl-5">
+                {pesanError.map((e) => (
+                  <li key={e.key}>{e.pesan}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-        <button
-          type="submit"
-          className="px-4 py-3"
-          style={{ background: 'var(--biru)', color: 'var(--kertas-2)', minHeight: 44 }}
-        >
-          Kirim
-        </button>
+          <button
+            type="submit"
+            className="w-full px-4 py-3"
+            style={{ background: 'var(--biru)', color: 'var(--kertas-2)', minHeight: 48 }}
+          >
+            Kirim
+          </button>
+        </div>
       </form>
     </FormProvider>
   );

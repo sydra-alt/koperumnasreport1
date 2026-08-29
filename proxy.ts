@@ -38,5 +38,17 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  // manifest.webmanifest, icon(-192/-512), apple-icon, dan serwist/ (service
+  // worker) DITAMBAHKAN ke pengecualian di sini -- ditemukan saat menguji
+  // ikon PWA (24 Agustus 2026): tanpa ini, browser/OS yang mengambil
+  // manifest+ikon TANPA sesi (selalu begitu -- pengecekan "bisa dipasang" &
+  // ikon layar utama terjadi sebelum ada login sama sekali) dialihkan ke
+  // /masuk, membuat manifestnya rusak (dapat HTML redirect, bukan
+  // JSON/gambar) dan PWA tidak pernah bisa dipasang. `serwist` dicek
+  // terpisah dengan curl dev server (29 Agustus 2026): rute service worker
+  // sungguhnya /serwist/sw.js (bukan /sw.js di root), jadi pengecualian
+  // "sw\.js" saja tidak cukup -- prefiks "serwist" ditambahkan.
+  matcher: [
+    '/((?!_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|icon-192|icon-512|icon$|apple-icon|serwist|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 };

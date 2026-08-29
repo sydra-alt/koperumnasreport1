@@ -18,3 +18,36 @@ h1, h2, h3, h4, h5, h6, button, label {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+/* Nav bawah (§2 06-RENCANA-PRESENSI-MOBILE.md): layar sempit (<768px) pakai
+   nav bawah tetap, layar lebar pakai nav atas yang sudah ada. Breakpoint
+   768px = md Tailwind, konsisten dengan sisa aplikasi. Kedua nav SELALU ada
+   di DOM (bukan dirender kondisional dari JS) -- yang berubah cuma
+   `display`, supaya tidak ada perbedaan render server/klien. */
+.nav-atas { display: none; }
+.nav-bawah {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 20;
+  display: flex;
+  border-top: 1.5px solid var(--tinta);
+  background: var(--kertas-2);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+body { padding-bottom: calc(var(--tinggi-nav-bawah) + env(safe-area-inset-bottom)); }
+
+@media (min-width: 768px) {
+  .nav-atas { display: block; }
+  .nav-bawah { display: none; }
+  body { padding-bottom: 0; }
+}
+
+/* Tombol Kirim yang menempel di atas nav bawah pada form panjang (LaporForm/FormRenderer). */
+.tombol-kirim-menempel {
+  position: sticky;
+  bottom: calc(var(--tinggi-nav-bawah) + env(safe-area-inset-bottom));
+  z-index: 10;
+}
+@media (min-width: 768px) {
+  .tombol-kirim-menempel { position: static; }
+}

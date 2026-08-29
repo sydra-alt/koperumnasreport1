@@ -15,4 +15,10 @@
   --display: var(--font-display), sans-serif;
   --body:    var(--font-body), system-ui, sans-serif;
   --mono:    var(--font-mono), monospace;
+
+  /* Tinggi nav bawah TANPA area aman -- dipakai bareng env(safe-area-inset-bottom)
+     di mana pun perlu tahu berapa ruang yang harus disisakan di atas nav
+     (padding halaman, tombol Kirim yang menempel). Satu variabel, dua pemakai --
+     kalau tingginya berubah, cukup ganti di sini. */
+  --tinggi-nav-bawah: 56px;
 }
