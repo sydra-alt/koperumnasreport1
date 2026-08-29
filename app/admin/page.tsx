@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Terlindungi } from '../../components/Terlindungi';
+import { usePolicy } from '../../lib/api/policy';
 import {
   useDaftarLokasiAdmin,
   useTambahLokasi,
@@ -19,10 +20,17 @@ import {
   useHapusRole,
   useBuatPengguna,
   useAturUlangKataSandi,
+  useDaftarLokasiAbsenAdmin,
+  useTambahLokasiAbsen,
+  useUbahLokasiAbsen,
+  useDaftarPenugasanAbsenAdmin,
+  useTambahPenugasanAbsen,
+  useHapusPenugasanAbsen,
+  useAturJamKerja,
   DAFTAR_ROLE,
 } from '../../lib/api/admin';
 
-type Tab = 'lokasi' | 'outlet' | 'assignment' | 'policy' | 'pengguna';
+type Tab = 'lokasi' | 'outlet' | 'assignment' | 'policy' | 'pengguna' | 'titik-absen';
 
 const gayaInput = { borderColor: 'var(--garis)', minHeight: 44 } as const;
 const gayaTombol = { borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 44 } as const;
@@ -371,6 +379,210 @@ function TabPengguna() {
   );
 }
 
+function TabTitikAbsen() {
+  const { data: titik } = useDaftarLokasiAbsenAdmin();
+  const { data: penugasan } = useDaftarPenugasanAbsenAdmin();
+  const { data: profil } = useDaftarProfilDenganRole();
+  const { data: policy } = usePolicy();
+  const tambahTitik = useTambahLokasiAbsen();
+  const ubahTitik = useUbahLokasiAbsen();
+  const tambahPenugasan = useTambahPenugasanAbsen();
+  const hapusPenugasan = useHapusPenugasanAbsen();
+  const aturJam = useAturJamKerja();
+
+  // Radius default dari policy.absen_radius_default_meter (CLAUDE.md #4 --
+  // angka aturan bisnis dari tabel policy, bukan hardcode) -- state KOSONG
+  // sampai admin ketik sendiri, placeholder-nya yang menunjukkan defaultnya.
+  const radiusDefault = String(policy?.absen_radius_default_meter ?? 200);
+  const [nama, setNama] = useState('');
+  const [lat, setLat] = useState('');
+  const [lon, setLon] = useState('');
+  const [radius, setRadius] = useState('');
+
+  const [userIdBaru, setUserIdBaru] = useState('');
+  const [titikIdBaru, setTitikIdBaru] = useState('');
+
+  const [draf, setDraf] = useState<Record<string, { nama: string; lat: string; lon: string; radius: string; aktif: boolean }>>({});
+  const [drafJam, setDrafJam] = useState<Record<string, { jamMasuk: string; jamPulang: string }>>({});
+
+  function kunciPenugasan(userId: string, lokasiAbsenId: string) {
+    return `${userId}|${lokasiAbsenId}`;
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
+        <p style={{ fontFamily: 'var(--display)' }}>Tambah titik absen</p>
+        <input value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Nama titik (mis. Kantor Pusat)" className="border p-2" style={gayaInput} />
+        <div className="flex gap-2">
+          <input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="Latitude, mis. -6.914744" className="flex-1 border p-2" style={gayaInput} />
+          <input value={lon} onChange={(e) => setLon(e.target.value)} placeholder="Longitude, mis. 107.609810" className="flex-1 border p-2" style={gayaInput} />
+        </div>
+        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+          Buka Google Maps, tekan lama di titiknya, salin dua angka yang muncul.
+        </p>
+        <input value={radius} onChange={(e) => setRadius(e.target.value)} placeholder={`Radius (meter) -- default ${radiusDefault}`} className="border p-2" style={gayaInput} />
+        <button
+          type="button"
+          disabled={!nama.trim() || !lat || !lon || tambahTitik.isPending}
+          onClick={() =>
+            tambahTitik.mutate(
+              { nama: nama.trim(), latitude: Number(lat), longitude: Number(lon), radiusMeter: Number(radius || radiusDefault) },
+              { onSuccess: () => { setNama(''); setLat(''); setLon(''); setRadius(''); } },
+            )
+          }
+          className="border px-4 py-2"
+          style={gayaTombol}
+        >
+          Tambah titik
+        </button>
+        {tambahTitik.isError && <p style={{ color: 'var(--merah)' }}>{(tambahTitik.error as Error).message}</p>}
+      </div>
+
+      <ul className="flex flex-col gap-2">
+        {(titik ?? []).map((t) => {
+          const d = draf[t.id] ?? { nama: t.nama, lat: String(t.latitude), lon: String(t.longitude), radius: String(t.radiusMeter), aktif: t.aktif };
+          return (
+            <li key={t.id} className="flex flex-col gap-2 border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
+              <input
+                value={d.nama}
+                onChange={(e) => setDraf((s) => ({ ...s, [t.id]: { ...d, nama: e.target.value } }))}
+                className="border p-2"
+                style={gayaInput}
+              />
+              <div className="flex gap-2">
+                <input
+                  value={d.lat}
+                  onChange={(e) => setDraf((s) => ({ ...s, [t.id]: { ...d, lat: e.target.value } }))}
+                  className="flex-1 border p-2"
+                  style={{ ...gayaInput, fontFamily: 'var(--mono)' }}
+                />
+                <input
+                  value={d.lon}
+                  onChange={(e) => setDraf((s) => ({ ...s, [t.id]: { ...d, lon: e.target.value } }))}
+                  className="flex-1 border p-2"
+                  style={{ ...gayaInput, fontFamily: 'var(--mono)' }}
+                />
+                <input
+                  value={d.radius}
+                  onChange={(e) => setDraf((s) => ({ ...s, [t.id]: { ...d, radius: e.target.value } }))}
+                  className="w-24 border p-2"
+                  style={gayaInput}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDraf((s) => ({ ...s, [t.id]: { ...d, aktif: !d.aktif } }))}
+                  className="border px-2 py-1"
+                  style={{ borderColor: d.aktif ? 'var(--hijau)' : 'var(--kosong)', color: d.aktif ? 'var(--hijau)' : 'var(--kosong)', minHeight: 44 }}
+                >
+                  {d.aktif ? 'Aktif' : 'Nonaktif'}
+                </button>
+                <button
+                  type="button"
+                  disabled={ubahTitik.isPending}
+                  onClick={() =>
+                    ubahTitik.mutate({ id: t.id, nama: d.nama.trim(), latitude: Number(d.lat), longitude: Number(d.lon), radiusMeter: Number(d.radius), aktif: d.aktif })
+                  }
+                  className="border px-3 py-1"
+                  style={gayaTombol}
+                >
+                  Simpan
+                </button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
+        <p style={{ fontFamily: 'var(--display)' }}>Siapa absen di mana</p>
+        <select value={userIdBaru} onChange={(e) => setUserIdBaru(e.target.value)} className="border p-2" style={gayaInput}>
+          <option value="">-- Pilih pengguna --</option>
+          {(profil ?? []).map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nama}
+            </option>
+          ))}
+        </select>
+        <select value={titikIdBaru} onChange={(e) => setTitikIdBaru(e.target.value)} className="border p-2" style={gayaInput}>
+          <option value="">-- Pilih titik absen --</option>
+          {(titik ?? []).map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.nama}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          disabled={!userIdBaru || !titikIdBaru || tambahPenugasan.isPending}
+          onClick={() =>
+            tambahPenugasan.mutate({ userId: userIdBaru, lokasiAbsenId: titikIdBaru }, { onSuccess: () => { setUserIdBaru(''); setTitikIdBaru(''); } })
+          }
+          className="border px-4 py-2"
+          style={gayaTombol}
+        >
+          Tugaskan
+        </button>
+        {tambahPenugasan.isError && <p style={{ color: 'var(--merah)' }}>{(tambahPenugasan.error as Error).message}</p>}
+      </div>
+
+      <ul className="flex flex-col gap-2">
+        {(penugasan ?? []).map((pn) => {
+          const kunci = kunciPenugasan(pn.userId, pn.lokasiAbsenId);
+          const dj = drafJam[kunci] ?? { jamMasuk: pn.jamMasuk ?? '', jamPulang: pn.jamPulang ?? '' };
+          return (
+            <li key={kunci} className="flex flex-col gap-2 border p-2 text-sm" style={{ borderColor: 'var(--garis)' }}>
+              <div className="flex items-center justify-between">
+                <span>
+                  {pn.userNama} -- {pn.lokasiAbsenNama}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => hapusPenugasan.mutate({ userId: pn.userId, lokasiAbsenId: pn.lokasiAbsenId })}
+                  className="border px-2 py-1"
+                  style={{ borderColor: 'var(--merah)', color: 'var(--merah)', minHeight: 44 }}
+                >
+                  Hapus
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span style={{ color: 'var(--kosong)' }}>Jam:</span>
+                <input
+                  value={dj.jamMasuk}
+                  onChange={(e) => setDrafJam((s) => ({ ...s, [kunci]: { ...dj, jamMasuk: e.target.value } }))}
+                  placeholder="masuk (kosong = default)"
+                  className="w-32 border p-1"
+                  style={{ ...gayaInput, minHeight: 40 }}
+                />
+                <input
+                  value={dj.jamPulang}
+                  onChange={(e) => setDrafJam((s) => ({ ...s, [kunci]: { ...dj, jamPulang: e.target.value } }))}
+                  placeholder="pulang (kosong = default)"
+                  className="w-32 border p-1"
+                  style={{ ...gayaInput, minHeight: 40 }}
+                />
+                <button
+                  type="button"
+                  disabled={aturJam.isPending}
+                  onClick={() =>
+                    aturJam.mutate({ userId: pn.userId, lokasiAbsenId: pn.lokasiAbsenId, jamMasuk: dj.jamMasuk.trim() || null, jamPulang: dj.jamPulang.trim() || null })
+                  }
+                  className="border px-2 py-1"
+                  style={gayaTombol}
+                >
+                  Simpan jam
+                </button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function Isi() {
   const [tab, setTab] = useState<Tab>('lokasi');
   const TAB: { key: Tab; label: string }[] = [
@@ -379,6 +591,7 @@ function Isi() {
     { key: 'assignment', label: 'Penugasan' },
     { key: 'policy', label: 'Policy' },
     { key: 'pengguna', label: 'Pengguna' },
+    { key: 'titik-absen', label: 'Titik Absen' },
   ];
 
   return (
@@ -406,6 +619,7 @@ function Isi() {
       {tab === 'assignment' && <TabAssignment />}
       {tab === 'policy' && <TabPolicy />}
       {tab === 'pengguna' && <TabPengguna />}
+      {tab === 'titik-absen' && <TabTitikAbsen />}
     </div>
   );
 }

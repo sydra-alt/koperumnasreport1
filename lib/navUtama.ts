@@ -27,6 +27,7 @@ interface TabTetapDef {
  */
 const TAB_TETAP: TabTetapDef[] = [
   { key: 'beranda', label: 'Beranda', href: '/', peran: null },
+  { key: 'absen', label: 'Absen', href: '/absen', peran: null },
   { key: 'riwayat', label: 'Laporan Saya', href: '/riwayat', peran: null },
   { key: 'lapor', label: 'Lapor', href: '/lapor/personal_marketing', peran: 'karyawan' },
   { key: 'papan', label: 'Papan Kontrol', href: '/papan', peran: ['ceo', 'pusat'] },
@@ -38,12 +39,23 @@ const TAB_TETAP: TabTetapDef[] = [
 ];
 
 /** Semua tab yang berhak dilihat user ini -- dipakai TopNav apa adanya, dan bahan baku `tabBawah()`. */
-export function tabTerlihat(roles: string[], assignments: AssignmentRingkas[], formRegistry: Record<string, FormSchema>): TabNav[] {
+export function tabTerlihat(
+  roles: string[],
+  assignments: AssignmentRingkas[],
+  formRegistry: Record<string, FormSchema>,
+  divisi: string | null = null,
+): TabNav[] {
   const tetap = TAB_TETAP.filter(
     (t) => t.peran === null || (Array.isArray(t.peran) ? t.peran : [t.peran]).some((p) => roles.includes(p)),
   );
   const dinamis = tabLaporDinamis(assignments, formRegistry).map((t, i) => ({ key: `lapor-dinamis-${i}-${t.href}`, ...t }));
-  return [...tetap, ...dinamis];
+  // "Tinjau Absensi" (presensi) -- ceo/pusat, ATAU kadiv KHUSUS divisi HRD
+  // (role 'kadiv' generik dipegang banyak kepala divisi lain, jadi tidak
+  // bisa dinyatakan lewat `peran` biasa seperti tab di TAB_TETAP -- sama
+  // alasan dengan `is_hrd_kadiv()` di RLS, lihat migrasi 0022_presensi.sql).
+  const bolehTinjauAbsen = roles.includes('ceo') || roles.includes('pusat') || (roles.includes('kadiv') && divisi === 'HRD');
+  const tinjau: TabNav[] = bolehTinjauAbsen ? [{ key: 'absen-tinjau', label: 'Tinjau Absensi', href: '/absen/tinjau' }] : [];
+  return [...tetap, ...dinamis, ...tinjau];
 }
 
 /**
@@ -59,8 +71,18 @@ export function tabTerlihat(roles: string[], assignments: AssignmentRingkas[], f
  * dokumen: karyawan biasa -> Lapor+Riwayat (cuma 2 kandidat, keduanya
  * muat); CEO/Pusat -> Papan+Keputusan+Terpusat (yang menang lawan
  * Marketing/Admin).
+ *
+ * `absen` DITAMBAH setelah `terpusat` (presensi, 29 Agustus 2026) --
+ * dipakai 2x sehari oleh hampir semua karyawan biasa, tapi SENGAJA tidak
+ * diletakkan di atas papan/keputusan/terpusat: itu akan menggeser Terpusat
+ * keluar dari 3 slot CEO/Pusat (yang sudah teruji sungguhan di HP,
+ * Checkpoint 4, 29 Agustus 2026) -- padahal untuk karyawan biasa posisi
+ * `absen` relatif terhadap `lapor`/`riwayat` TIDAK PENTING SAMA SEKALI,
+ * cuma ada 3 kandidat buat mereka (absen+lapor+riwayat), semuanya muat di
+ * 3 slot tengah apa pun urutannya. `absen-tinjau` (Tinjau Absensi, buat
+ * ceo/pusat/kadiv-HRD) ditaruh sesudahnya -- dipakai sesekali, bukan harian.
  */
-const PRIORITAS_TENGAH = ['papan', 'keputusan', 'terpusat', 'lapor', 'riwayat', 'marketing', 'admin'];
+const PRIORITAS_TENGAH = ['papan', 'keputusan', 'terpusat', 'absen', 'absen-tinjau', 'lapor', 'riwayat', 'marketing', 'admin'];
 
 function prioritasDari(key: string): number {
   const dasar = key.startsWith('lapor-dinamis-') ? 'lapor' : key;

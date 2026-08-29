@@ -1,5 +1,10 @@
-/** Kompres gambar di browser lewat canvas (tanpa library tambahan). */
-export async function kompresGambar(file: File, sisiTerpanjangMaks: number, kualitas: number): Promise<Blob> {
+/**
+ * Kompres gambar di browser lewat canvas (tanpa library tambahan).
+ * `Blob`, bukan `File` -- `File` cuma satu kasus (dari `<input type=file>`);
+ * `createImageBitmap` sendiri terima Blob apa pun, termasuk hasil
+ * `canvas.toBlob()` dari kamera (components/CameraCapture.tsx, presensi).
+ */
+export async function kompresGambar(file: Blob, sisiTerpanjangMaks: number, kualitas: number): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   const skala = Math.min(1, sisiTerpanjangMaks / Math.max(bitmap.width, bitmap.height));
   const lebar = Math.max(1, Math.round(bitmap.width * skala));

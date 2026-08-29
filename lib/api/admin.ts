@@ -291,6 +291,146 @@ export function useBuatPengguna() {
   });
 }
 
+// ─── Titik Absen + siapa absen di mana (presensi, docs/06 §3) ────────
+// Sama pola dengan Lokasi/Outlet/Assignment di atas -- CEO sudah punya
+// akses tulis penuh lewat RLS `lokasi_absen_admin`/`penugasan_absen_admin`
+// (has_role('ceo')), TIDAK ada Route Handler baru. Jam kerja per orang
+// PENGECUALIAN -- lewat RPC atur_jam_kerja() (bisa dipanggil ceo/pusat/
+// kadiv-HRD, bukan cuma ceo), bukan update tabel langsung.
+export interface LokasiAbsenRowAdmin {
+  id: string;
+  nama: string;
+  latitude: number;
+  longitude: number;
+  radiusMeter: number;
+  aktif: boolean;
+}
+
+export function useDaftarLokasiAbsenAdmin() {
+  return useQuery({
+    queryKey: ['admin-lokasi-absen'],
+    queryFn: async (): Promise<LokasiAbsenRowAdmin[]> => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('lokasi_absen')
+        .select('id, nama, latitude, longitude, radius_meter, aktif')
+        .order('nama');
+      if (error) throw error;
+      return (data ?? []).map((r) => ({
+        id: r.id,
+        nama: r.nama,
+        latitude: r.latitude,
+        longitude: r.longitude,
+        radiusMeter: r.radius_meter,
+        aktif: r.aktif,
+      }));
+    },
+  });
+}
+
+export function useTambahLokasiAbsen() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (baris: { nama: string; latitude: number; longitude: number; radiusMeter: number }) => {
+      const supabase = createClient();
+      const { error } = await supabase.from('lokasi_absen').insert({
+        nama: baris.nama,
+        latitude: baris.latitude,
+        longitude: baris.longitude,
+        radius_meter: baris.radiusMeter,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-lokasi-absen'] }),
+  });
+}
+
+export function useUbahLokasiAbsen() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (baris: { id: string; nama: string; latitude: number; longitude: number; radiusMeter: number; aktif: boolean }) => {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('lokasi_absen')
+        .update({ nama: baris.nama, latitude: baris.latitude, longitude: baris.longitude, radius_meter: baris.radiusMeter, aktif: baris.aktif })
+        .eq('id', baris.id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-lokasi-absen'] }),
+  });
+}
+
+export interface PenugasanAbsenRowAdmin {
+  userId: string;
+  userNama: string;
+  lokasiAbsenId: string;
+  lokasiAbsenNama: string;
+  jamMasuk: string | null;
+  jamPulang: string | null;
+}
+
+export function useDaftarPenugasanAbsenAdmin() {
+  return useQuery({
+    queryKey: ['admin-penugasan-absen'],
+    queryFn: async (): Promise<PenugasanAbsenRowAdmin[]> => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('penugasan_absen')
+        .select('user_id, lokasi_absen_id, jam_masuk, jam_pulang, user:user_id(nama), lokasi_absen:lokasi_absen_id(nama)');
+      if (error) throw error;
+      return (data ?? []).map((r) => ({
+        userId: r.user_id,
+        userNama: (r.user as unknown as { nama: string } | null)?.nama ?? '—',
+        lokasiAbsenId: r.lokasi_absen_id,
+        lokasiAbsenNama: (r.lokasi_absen as unknown as { nama: string } | null)?.nama ?? '—',
+        jamMasuk: r.jam_masuk,
+        jamPulang: r.jam_pulang,
+      }));
+    },
+  });
+}
+
+export function useTambahPenugasanAbsen() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (baris: { userId: string; lokasiAbsenId: string }) => {
+      const supabase = createClient();
+      const { error } = await supabase.from('penugasan_absen').insert({ user_id: baris.userId, lokasi_absen_id: baris.lokasiAbsenId });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-penugasan-absen'] }),
+  });
+}
+
+export function useHapusPenugasanAbsen() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (baris: { userId: string; lokasiAbsenId: string }) => {
+      const supabase = createClient();
+      const { error } = await supabase.from('penugasan_absen').delete().eq('user_id', baris.userId).eq('lokasi_absen_id', baris.lokasiAbsenId);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-penugasan-absen'] }),
+  });
+}
+
+export function useAturJamKerja() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (baris: { userId: string; lokasiAbsenId: string; jamMasuk: string | null; jamPulang: string | null }) => {
+      const supabase = createClient();
+      const { error } = await supabase.rpc('atur_jam_kerja', {
+        p_user_id: baris.userId,
+        p_lokasi_absen_id: baris.lokasiAbsenId,
+        p_jam_masuk: baris.jamMasuk,
+        p_jam_pulang: baris.jamPulang,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-penugasan-absen'] }),
+  });
+}
+
 // ─── Atur ulang kata sandi -- juga lewat Route Handler + service_role ─
 // Satu-satunya jalan reset password di sistem ini (docs/07-CATATAN-
 // PELUNCURAN.md) -- tidak ada alur "lupa password" mandiri lewat email.

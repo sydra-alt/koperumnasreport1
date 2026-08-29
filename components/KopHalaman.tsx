@@ -15,12 +15,12 @@ import { tanggalIndonesiaWIB } from '../lib/tanggal';
  * Ini menghindari dua kali `useAuth()`/dua kali pengecekan sesi kosong.
  */
 export function KopHalaman() {
-  const { roles, session, signOut, assignments } = useAuth();
+  const { roles, session, signOut, assignments, profile } = useAuth();
   const pathname = usePathname();
 
   if (!session) return null;
 
-  const semua = tabTerlihat(roles, assignments, formRegistry);
+  const semua = tabTerlihat(roles, assignments, formRegistry, profile?.divisi ?? null);
   const bawah = tabBawah(semua);
 
   return (
