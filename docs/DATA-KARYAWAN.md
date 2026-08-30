@@ -22,11 +22,11 @@ Menggantikan data contoh (Ciwidey/Pangalengan/Soreang) di `docs/00-SETUP-MANUAL.
 | Diki | IT | `it` | `kadiv`, `karyawan` |
 | Ibnu | IT | `it` | `karyawan` |
 | Ery | IT | `it` | `karyawan` |
-| Fauzan | Inservice | ⚠️ belum ada | `karyawan` |
-| Cahya | Inservice | ⚠️ belum ada | `karyawan` |
-| Dedi | Inservice | ⚠️ belum ada | `karyawan` |
-| Yundi | Inservice | ⚠️ belum ada | `karyawan` |
-| Masudin | Inservice | ⚠️ belum ada | `karyawan` |
+| Fauzan | GA | `ga`, `cs` | `karyawan` |
+| Cahya | Security + GA | `security`, `ga`, `cs` (tiga-tiganya -- serabutan, sama pola dengan Sabrina yang mengisi 2 form) | `karyawan` |
+| Dedi | Security | `security`, `cs` | `karyawan` |
+| Yundi | Security | `security`, `cs` | `karyawan` |
+| Masudin | ❓ belum jelas | -- ditunda, jangan ditebak | `karyawan` |
 | Ronald | Teknik | `pembangunan` | `kadiv`, `karyawan` |
 | Wandi | Teknik | `pembangunan` | `karyawan` |
 | Seno | DTI | `dti` | `kadiv`, `karyawan` |
@@ -57,7 +57,9 @@ Total: **36 orang**.
 
 ### 🟡 Tidak memblokir, tapi perlu jawaban minggu ini
 
-**3. "Inservice" itu apa persis?** Lima orang, jumlah terbesar kedua setelah Indosteak — jelas divisi penting, tapi belum punya form. Dugaan saya: menangani rumah STK, serah terima, dan maintenance rumah yang sudah ditempati. Kalau benar, bagian 9 laporan Sabrina ("STK & rumah tidak ditempati") sebenarnya milik mereka, bukan PIC lokasi.
+**3. ✅ TERJAWAB (30 Agustus 2026) — "Inservice" itu apa persis?** BUKAN divisi tersendiri -- dugaan saya (STK/serah terima) SALAH. CEO: Dedi & Yundi satpam biasa (`security`), Fauzan OB (`ga`), Cahya serabutan OB+satpam (`security` DAN `ga`, dua-duanya). Masudin masih belum jelas, sengaja ditunda -- **jangan ditebak**, tetap `karyawan` saja sampai CEO menjelaskan. Ini SEKALIGUS menjawab §2 nomor 6 baris `ga` -- form itu sekarang punya pengisi (Fauzan, Cahya), tidak perlu dicoret.
+
+CEO lalu melengkapi (masih 30 Agustus 2026): "Mereka inservice satpam dan general affair, tugas mereka juga CS kalau ada konsumen datang." Jadi Dedi, Yundi, Fauzan, Cahya juga dapat assignment `cs` (empat orang baru, di atas Avril/Anne/Fur yang sudah ada -- total 7 pengisi `cs`). Karena `cs` itu `scope:'global'` dan sebelumnya diasumsikan cuma satu pengisi per hari, sudah diperiksa dulu ke pemilik proyek sebelum diterapkan (menyentuh bentuk data) -- diputuskan: TETAP satu form `cs` untuk semua, dan kode rollup Terpusat (`lib/api/terpusat.ts` -- `useLaporanCsHariIni`, `app/terpusat/page.tsx` Bagian 2) diperbaiki supaya bisa menjumlahkan beberapa pengisi per hari alih-alih berasumsi satu baris. Papan Kontrol tidak perlu diubah -- sudah benar per-assignment lewat `author_id`.
 
 **4. "Rukost" itu unit usaha?** Toyib sendirian. Kalau ini bisnis kos-kosan, dia butuh form sendiri seperti Indosteak/Indokopi.
 
@@ -67,9 +69,9 @@ Total: **36 orang**.
 
 | Form | Siapa yang mengisi? |
 |---|---|
-| `accounting` | ❓ |
+| `accounting` | ✅ Shabita (terjawab 30 Agustus 2026, §1 di atas) |
 | `kendaraan` (driver) | ❓ |
-| `ga` (operasional kantor) | ❓ |
+| `ga` (operasional kantor) | ✅ Fauzan & Cahya (terjawab 30 Agustus 2026, lihat nomor 3 di atas) |
 | `ita` (thrifting & kontrol F&B) | ❓ Ita tidak ada di daftar |
 
 Kalau memang tidak ada divisinya, formnya dicoret saja — lebih baik daripada jadi kartu "belum lapor" abadi di Papan Kontrol.

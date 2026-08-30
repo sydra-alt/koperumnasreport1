@@ -15,10 +15,15 @@ import type { FormSchema } from './types';
  * bukan agregasi otomatis. Agregasi company-wide sungguhan (kalau nanti
  * dibutuhkan) itu wilayah Task 20, bukan task ini.
  *
- * Data cuti/sakit/izin di blok 1 BELUM disambungkan ke pengecualian
- * `hari_bolong` di `v_marketing_bulanan` -- tabelnya cuma teks nama bebas,
- * tidak berelasi ke user_id, jadi tidak bisa dipakai otomatis. Tetap utang
- * WAJIB sebelum go-live yang sama seperti dicatat di PROGRESS.md sebelumnya.
+ * Sakit/Izin/Cuti (blok 1) DIHAPUS dari field angka manual sejak 30 Agustus
+ * 2026 (§3.5b, "satu angka, satu pengisi") -- sekarang dihitung otomatis
+ * dari tabel `cuti` (halaman /cuti, disetujui HRD/CEO) lewat panel
+ * `AbsensiCutiOtomatis` di LaporForm.tsx, bukan diketik ulang HRD. Angka ini
+ * JUGA yang mengecualikan hari_bolong di `marketing_bulanan_untuk()`
+ * (migrasi 0025_cuti.sql) -- satu tabel, dua pemakai, bukan rumus ketiga.
+ * `daftar_tidak_hadir` di bawah TETAP field tabel manual -- itu catatan
+ * per-orang (termasuk tanpa keterangan) yang lebih detail dari `cuti`,
+ * bukan duplikat.
  */
 export const f14Hrd: FormSchema = {
   key: 'hrd',
@@ -32,9 +37,6 @@ export const f14Hrd: FormSchema = {
       fields: [
         { key: 'pegawai_total', label: 'Total pegawai', type: 'angka' },
         { key: 'pegawai_hadir', label: 'Hadir', type: 'angka' },
-        { key: 'pegawai_sakit', label: 'Sakit', type: 'angka' },
-        { key: 'pegawai_izin', label: 'Izin', type: 'angka' },
-        { key: 'pegawai_cuti', label: 'Cuti', type: 'angka' },
         { key: 'pegawai_terlambat', label: 'Terlambat', type: 'angka' },
         { key: 'pegawai_tanpa_keterangan', label: 'Tidak hadir tanpa keterangan', type: 'angka' },
         { key: 'tingkat_kehadiran', label: 'Tingkat kehadiran (%)', type: 'angka' },

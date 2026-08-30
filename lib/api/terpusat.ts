@@ -5,13 +5,16 @@ import { createClient } from '../supabase/client';
 import { tanggalWIB } from '../tanggal';
 
 /**
- * Satu laporan GLOBAL untuk TANGGAL yang diminta (cs/ga/hrd/perizinan/dti/
+ * Satu laporan GLOBAL untuk TANGGAL yang diminta (ga/hrd/perizinan/dti/
  * kendaraan/it/pembangunan) -- masing-masing form_key itu paling banyak SATU
  * baris per hari (`scope:'global'`), jadi query biasa cukup, TIDAK butuh
  * view/RPC. Pusat/CEO sudah berhak baca lewat `can_see_report()` (form_key
  * selain 'accounting'), sama seperti `useOmzetRestoHariIni` (Task 17).
  * Default `tanggal` = hari ini WIB -- pemanggil yang belum ikut pemilih
  * tanggal (kalau ada) tetap dapat perilaku lama tanpa berubah.
+ *
+ * `cs` TIDAK lagi lewat sini sejak 30 Agustus 2026 -- lihat
+ * `useLaporanCsHariIni` di bawah.
  */
 export function useLaporanHariIni(formKey: string, tanggal: string = tanggalWIB(), enabled = true) {
   return useQuery({
@@ -28,6 +31,42 @@ export function useLaporanHariIni(formKey: string, tanggal: string = tanggalWIB(
       if (error) throw error;
       if (!data) return null;
       return { data: data.data as Record<string, unknown>, submittedAt: data.submitted_at };
+    },
+    enabled,
+  });
+}
+
+/**
+ * §2 CS -- sejak Koreksi 2 (30 Agustus 2026) form `cs` bisa punya sampai 7
+ * pengisi sekaligus dalam satu hari (Avril/Anne/Fur + 4 inservice
+ * security/GA yang juga bertugas CS kalau ada konsumen datang), jadi TIDAK
+ * bisa lagi diasumsikan satu baris per hari seperti `useLaporanHariIni`.
+ * Kembalikan daftar per pengisi -- pemanggil yang menjumlahkan angka &
+ * menampilkan masalah urgent per orang.
+ */
+export interface LaporanCsHariIni {
+  penulisNama: string;
+  submittedAt: string | null;
+  data: Record<string, unknown>;
+}
+
+export function useLaporanCsHariIni(tanggal: string = tanggalWIB(), enabled = true) {
+  return useQuery({
+    queryKey: ['laporan-cs-hari-ini-terpusat', tanggal],
+    queryFn: async (): Promise<LaporanCsHariIni[]> => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('report')
+        .select('data, submitted_at, author:author_id(nama)')
+        .eq('form_key', 'cs')
+        .eq('tanggal', tanggal)
+        .neq('status', 'draft');
+      if (error) throw error;
+      return (data ?? []).map((r) => ({
+        penulisNama: (r.author as unknown as { nama: string } | null)?.nama ?? '—',
+        submittedAt: r.submitted_at,
+        data: r.data as Record<string, unknown>,
+      }));
     },
     enabled,
   });

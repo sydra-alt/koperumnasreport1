@@ -11,6 +11,7 @@ import { jamWIB, tanggalWIB } from '../../lib/tanggal';
 import { formRegistry } from '../../forms';
 import {
   useLaporanHariIni,
+  useLaporanCsHariIni,
   useSecurityUntukTanggal,
   useStkUntukTanggal,
   useMarketingUntukTanggal,
@@ -22,6 +23,7 @@ import { useLaporanAccountingHariIni, hitungRingkasanKeuanganCeo } from '../../l
 import { useRekapPembangunanPerLokasi } from '../../lib/api/pembangunan';
 import { usePapanUntukTanggal } from '../../lib/api/papan';
 import { useAntreanKeputusan } from '../../lib/api/decision';
+import { useCutiUntukTanggal } from '../../lib/api/cuti';
 import { formatRupiah } from '../../lib/rupiah';
 
 function Seksi({ nomor, judul, sumber, children }: { nomor: string; judul: string; sumber?: string; children: ReactNode }) {
@@ -65,6 +67,10 @@ function teks(data: Record<string, unknown>, key: string): string | null {
   return typeof v === 'string' && v.trim() ? v : null;
 }
 
+function jumlahkanCs(list: { data: Record<string, unknown> }[], key: string): number {
+  return list.reduce((total, item) => total + (typeof item.data[key] === 'number' ? (item.data[key] as number) : 0), 0);
+}
+
 function Isi() {
   const { roles } = useAuth();
   const isCeo = roles.includes('ceo');
@@ -72,7 +78,7 @@ function Isi() {
   const tanggalHariIni = tanggal === tanggalWIB();
 
   const { data: it } = useLaporanHariIni('it', tanggal);
-  const { data: cs } = useLaporanHariIni('cs', tanggal);
+  const { data: csList } = useLaporanCsHariIni(tanggal);
   const { data: ga } = useLaporanHariIni('ga', tanggal);
   const { data: hrd } = useLaporanHariIni('hrd', tanggal);
   const { data: perizinan } = useLaporanHariIni('perizinan', tanggal);
@@ -93,6 +99,8 @@ function Isi() {
   const { data: selisihResto } = useSelisihRestoUntukTanggal(tanggal);
   const { data: papan } = usePapanUntukTanggal(tanggal);
   const { data: antrean } = useAntreanKeputusan();
+  const { data: cutiHariIni } = useCutiUntukTanggal(tanggal);
+  const jumlahCutiJenis = (jenis: 'sakit' | 'izin' | 'cuti') => (cutiHariIni ?? []).filter((c) => c.jenis === jenis).length;
 
   const targetTotal = (rekapPerLokasi ?? []).reduce((total, r) => total + (r.target ?? 0), 0);
   const statusPic = (papan ?? []).filter((p) => p.formKey === 'pic_lokasi');
@@ -134,26 +142,28 @@ function Isi() {
         )}
       </Seksi>
 
-      <Seksi nomor="2" judul="CS & Masalah Konsumen" sumber={cs ? sumberDari('cs', cs.submittedAt) : undefined}>
-        {!cs ? (
+      <Seksi nomor="2" judul="CS & Masalah Konsumen" sumber={csList && csList.length > 0 ? `dari ${csList.length} pengisi CS` : undefined}>
+        {!csList || csList.length === 0 ? (
           <Kosong nama="CS" />
         ) : (
           <>
             <AngkaGrid
               butir={[
-                { label: 'Tiket masuk', nilai: angka(cs.data, 'tiket_masuk_total') },
-                { label: 'Keluhan baru', nilai: angka(cs.data, 'keluhan_baru') },
-                { label: 'Selesai', nilai: angka(cs.data, 'keluhan_selesai_hari_ini') },
-                { label: 'Belum selesai', nilai: angka(cs.data, 'keluhan_belum_selesai') },
-                { label: 'Video call', nilai: angka(cs.data, 'tiket_video_call') },
+                { label: 'Tiket masuk', nilai: String(jumlahkanCs(csList, 'tiket_masuk_total')) },
+                { label: 'Keluhan baru', nilai: String(jumlahkanCs(csList, 'keluhan_baru')) },
+                { label: 'Selesai', nilai: String(jumlahkanCs(csList, 'keluhan_selesai_hari_ini')) },
+                { label: 'Belum selesai', nilai: String(jumlahkanCs(csList, 'keluhan_belum_selesai')) },
+                { label: 'Video call', nilai: String(jumlahkanCs(csList, 'tiket_video_call')) },
               ]}
             />
-            {teks(cs.data, 'keluhan_urgent_masalah') && (
-              <p>
-                Masalah urgent: {teks(cs.data, 'keluhan_urgent_masalah')} -- PIC: {teks(cs.data, 'keluhan_urgent_pic') ?? '—'} -- target:{' '}
-                {teks(cs.data, 'keluhan_urgent_target') ?? '—'}
-              </p>
-            )}
+            {csList
+              .filter((c) => teks(c.data, 'keluhan_urgent_masalah'))
+              .map((c, i) => (
+                <p key={i}>
+                  Masalah urgent ({c.penulisNama}): {teks(c.data, 'keluhan_urgent_masalah')} -- PIC: {teks(c.data, 'keluhan_urgent_pic') ?? '—'} -- target:{' '}
+                  {teks(c.data, 'keluhan_urgent_target') ?? '—'}
+                </p>
+              ))}
           </>
         )}
       </Seksi>
@@ -200,9 +210,9 @@ function Isi() {
               butir={[
                 { label: 'Total pegawai', nilai: angka(hrd.data, 'pegawai_total') },
                 { label: 'Hadir', nilai: angka(hrd.data, 'pegawai_hadir') },
-                { label: 'Sakit', nilai: angka(hrd.data, 'pegawai_sakit') },
-                { label: 'Izin', nilai: angka(hrd.data, 'pegawai_izin') },
-                { label: 'Cuti', nilai: angka(hrd.data, 'pegawai_cuti') },
+                { label: 'Sakit', nilai: String(jumlahCutiJenis('sakit')) },
+                { label: 'Izin', nilai: String(jumlahCutiJenis('izin')) },
+                { label: 'Cuti', nilai: String(jumlahCutiJenis('cuti')) },
                 { label: 'Terlambat', nilai: angka(hrd.data, 'pegawai_terlambat') },
                 { label: 'Tanpa keterangan', nilai: angka(hrd.data, 'pegawai_tanpa_keterangan') },
               ]}

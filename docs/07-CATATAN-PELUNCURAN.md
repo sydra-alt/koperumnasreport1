@@ -19,7 +19,7 @@ laporan keuangan:
 |---|---|---|
 | 1 | ✅ **TERJAWAB (30 Agustus 2026) — Siapa Accounting?** **Shabita.** `scripts/akun.json` dan `profile.nama` produksi sudah diperbarui dari placeholder `"GANTI"`. | ~~Form `accounting` adalah satu-satunya laporan rahasia di seluruh sistem — salah kasih akun ini ke orang yang salah = kebocoran laporan keuangan sejak hari pertama.~~ Selesai. |
 | 2 | **Siapa manager Indosteak & Indokopi?** Ditebak Ryan & Toni karena disebut pertama di daftar. | Kalau tebakan salah, laporan restoran diisi orang yang tidak berwenang, dan manager sungguhan tidak punya akun. |
-| 3 | **"Inservice" (5 orang) itu menangani apa?** Belum ada form untuknya — divisi terbesar kedua setelah Indosteak. | Kelima orang ini akan login lalu tidak menemukan tugas apa pun kalau dibiarkan begini. |
+| 3 | ✅ **TERJAWAB (30 Agustus 2026) — "Inservice" itu apa?** BUKAN divisi tersendiri — Dedi & Yundi satpam (`security`), Fauzan OB (`ga`), Cahya dua-duanya, Masudin masih ditunda (bukan ditebak). `docs/DATA-KARYAWAN.md` §1 sudah diperbarui. | ~~Kelima orang ini akan login lalu tidak menemukan tugas apa pun.~~ Selesai untuk 4 dari 5 — Masudin masih perlu dijawab. |
 | 4 | **"Rukost" itu unit usaha sendiri?** Toyib sendirian, tanpa form. | Sama seperti di atas — satu orang tanpa tugas yang jelas. |
 | 5 | **Lokasi perumahan cuma Tajur & Bekasi, atau ada lagi?** | Kalau ada lokasi lain tanpa PIC tercatat, laporan lokasi itu akan bolong tanpa ada yang bertugas. |
 | 6 | **Form `accounting`/`kendaraan`/`ga`/`ita` — siapa isinya?** | Kalau memang tidak ada orangnya, form itu **dicoret**, bukan dibiarkan jadi kartu "belum lapor" abadi di Papan Kontrol. |
@@ -159,39 +159,34 @@ Sampaikan **sebelum** hari pertama mereka diminta login, bukan bersamaan:
 
 ## 3 · Kapan `pte_mulai_berlaku` boleh diisi
 
-**Belum sekarang. Belum bisa ditentukan tanggal pastinya di catatan ini.**
+**Penghalang TEKNIS sudah tertutup (30 Agustus 2026) — tapi tanggalnya
+TETAP keputusan CEO, bukan agent, dan bukan otomatis "sekarang boleh".**
 
-Alasannya bukan teknis PTE-nya sendiri (itu sudah selesai & teruji sejak
-22 Agustus) — alasannya adalah **debt yang masih terbuka dan ditegaskan
-ulang oleh user 29 Agustus 2026**, dicatat juga di `docs/PROGRESS.md` bagian
-"Utang WAJIB sebelum go-live":
+Sebelumnya bagian ini mencatat debt yang ditegaskan ulang user 29 Agustus
+2026: cuti/sakit/izin yang disetujui belum mengecualikan `hari_bolong`,
+menunggu presensi dibangun lebih dulu. Presensi sudah jalan sejak 29 Agustus
+(§3 `docs/06-RENCANA-PRESENSI-MOBILE.md`), dan halaman **Cuti** (`/cuti`
+pengajuan, `/cuti/tinjau` persetujuan HRD/CEO) menutup penyambungannya ke
+`hari_bolong` pada 30 Agustus 2026 — lihat `docs/PROGRESS.md` bagian "Batch
+— Cuti diatur dari web" untuk detail lengkap + bukti uji
+(`scripts/uji-cuti-rls.mjs`, 12 titik, semua lolos, termasuk pembuktian
+langsung bahwa satu hari kerja yang tertutup cuti disetujui benar-benar
+dikecualikan dari `hari_wajib`).
 
-> Cuti/sakit/izin yang **disetujui** belum mengecualikan `hari_bolong`.
-> Datanya perlu mengalir dari presensi (§3 `docs/06-RENCANA-PRESENSI-MOBILE.md`),
-> yang **belum dibangun** — butuh keputusan kebijakan CEO dulu (§5 dokumen itu:
-> radius berapa meter, GPS spoofing ditangani bagaimana, dst.), lalu baru
-> presensi dikerjakan, lalu baru pengecualian cuti/sakit/izin bisa disambungkan
-> ke `hari_bolong`.
+**Yang berubah secara konkret:** kalau `pte_mulai_berlaku` diisi sekarang,
+karyawan yang cuti resmi (disetujui lewat `/cuti/tinjau`) **TIDAK LAGI**
+tercatat bolong untuk hari itu — bekas risiko kerugian Rp500.000 yang
+dicatat di bagian ini sebelumnya sudah tidak berlaku lagi secara teknis.
 
-**Akibat konkret kalau `pte_mulai_berlaku` diisi sebelum itu selesai:**
-setiap karyawan marketing yang cuti resmi (disetujui atasan) bulan itu akan
-tercatat bolong seolah mangkir, dan kehilangan bonus Rp500.000 murni karena
-sistemnya belum bisa membedakan "cuti disetujui" dari "tidak lapor tanpa
-alasan". Ini bukan risiko kecil — ini kerugian uang nyata untuk orang yang
-sebenarnya tidak salah apa-apa.
+**Yang TIDAK berubah:** tanggal aktivasinya sendiri. User eksplisit
+menegaskan ini (30 Agustus 2026): "Betul juga soal pte_mulai_berlaku:
+penghalang teknisnya tertutup setelah ini, tapi tanggalnya tetap aku yang
+isi, bukan kamu." Nilai produksi TETAP `null` — CEO yang mengisinya sendiri
+lewat halaman Admin, kapan pun beliau siap, dan **umumkan ke staf marketing
+lebih dulu** (bukan retroaktif di tengah bulan) supaya tidak ada yang kaget
+kewajibannya tiba-tiba mulai dihitung.
 
-**Urutan yang benar:**
-
-1. Jawab 6 pertanyaan kebijakan presensi di `docs/06-RENCANA-PRESENSI-MOBILE.md` §5.
-2. Presensi dibangun & diuji (siklus task terpisah, di luar cakupan
-   peluncuran laporan harian ini).
-3. Pengecualian cuti/sakit/izin disambungkan ke `hari_bolong` — bagian ini
-   yang benar-benar menutup debt-nya, bukan cuma presensi tercatat.
-4. **Baru setelah itu** tentukan tanggal `pte_mulai_berlaku`, dan **umumkan
-   ke staf marketing lebih dulu** (bukan retroaktif di tengah bulan) supaya
-   tidak ada yang kaget kewajibannya tiba-tiba mulai dihitung.
-
-Sampai urutan itu selesai, `hari_wajib=0` untuk semua orang dan status
+Sampai CEO mengisinya, `hari_wajib=0` untuk semua orang dan status
 bonus/potongan tetap tampil "belum berlaku" di layar — **itu benar, bukan
 bug, dan tidak perlu "diperbaiki" supaya angka muncul lebih cepat.**
 
@@ -232,6 +227,6 @@ dua hal manusia, bukan kode: **data karyawan yang masih punya 6 pertanyaan
 terbuka ke CEO** (termasuk siapa Accounting, akun paling sensitif di sistem
 ini), dan **dua keputusan kecil soal password** (password awal seragam atau
 unik per orang, dan siapa titik kontak minggu pertama). `pte_mulai_berlaku`
-sengaja tetap `null` sampai presensi + pengecualian cuti/sakit/izin selesai
-— mengisinya lebih cepat dari itu akan merugikan orang yang cuti resmi
-secara nyata, bukan cuma melanggar catatan ini.
+sengaja tetap `null` — bukan lagi karena penghalang teknis (presensi +
+pengecualian cuti/sakit/izin sudah selesai & teruji 30 Agustus 2026),
+melainkan murni menunggu CEO sendiri yang menentukan & mengisi tanggalnya.

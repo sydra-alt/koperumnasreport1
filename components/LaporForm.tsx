@@ -21,7 +21,8 @@ import {
   type KebutuhanPembangunanAccounting,
   type OmzetRestoRow,
 } from '../lib/api/accounting';
-import { hariISOWIB, tanggalIndonesiaWIB } from '../lib/tanggal';
+import { hariISOWIB, tanggalIndonesiaWIB, tanggalWIB } from '../lib/tanggal';
+import { useCutiUntukTanggal, type CutiUntukTanggal } from '../lib/api/cuti';
 import { angkaDariTeks, tanggalDariTeks } from '../lib/teksAngka';
 import { urgensiTerburukDariKirim, warnaDipilihDari, warnaOtomatis, warnaTerburuk } from '../lib/warna';
 import { debounce } from '../lib/debounce';
@@ -89,6 +90,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
   const { data: stokManagerUntukIta } = useManagerRestoUntukIta(formKey === 'ita');
   const { data: kebutuhanPembangunanAccounting } = useKebutuhanPembangunanAccounting(formKey === 'accounting');
   const { data: omzetResto } = useOmzetRestoHariIni(formKey === 'accounting');
+  const { data: cutiHariIni } = useCutiUntukTanggal(tanggalWIB(), formKey === 'hrd');
   // Blok "Laporan Personal Marketing" (rekap PTE/undangan/closing milik pengirim
   // sendiri) muncul di HAMPIR SEMUA form divisi -- lihat forms/blok-bersama.ts.
   // Query ini cuma perlu jalan utk form SELAIN personal_marketing itu sendiri.
@@ -404,6 +406,8 @@ export function LaporForm({ formKey }: { formKey: string }) {
       {formKey === 'accounting' && omzetResto && <OmzetRestoOtomatis data={omzetResto} />}
 
       {formKey === 'accounting' && cashflowAccounting && <CashflowOtomatis data={cashflowAccounting} />}
+
+      {formKey === 'hrd' && cutiHariIni && <AbsensiCutiOtomatis data={cutiHariIni} />}
 
       <p className="text-sm" style={{ color: 'var(--kosong)' }}>
         {statusSimpan === 'menyimpan' && 'Menyimpan draft…'}
@@ -831,6 +835,45 @@ function CashflowOtomatis({ data }: { data: ReturnType<typeof hitungCashflowHari
       <p style={{ fontFamily: 'var(--mono)' }}>(+) Uang masuk: {rupiah(data.totalMasuk)}</p>
       <p style={{ fontFamily: 'var(--mono)' }}>(-) Uang keluar: {rupiah(data.totalKeluar)}</p>
       <p style={{ fontFamily: 'var(--mono)' }}>NET CASHFLOW: {rupiah(data.net)}</p>
+    </div>
+  );
+}
+
+const LABEL_CUTI_JENIS: Record<CutiUntukTanggal['jenis'], string> = { cuti: 'Cuti', sakit: 'Sakit', izin: 'Izin' };
+
+/**
+ * Blok 1 "Absensi Hari Ini" (hrd) -- sakit/izin/cuti dihitung dari tabel
+ * `cuti` (halaman /cuti, disetujui HRD/CEO), BUKAN diketik ulang HRD
+ * (§3.5b, "satu angka, satu pengisi" -- instruksi eksplisit user 30 Agustus
+ * 2026). Kalau ada pengajuan yang belum disetujui hari ini, HRD diarahkan
+ * ke /cuti/tinjau dulu supaya angkanya benar sebelum kirim.
+ */
+function AbsensiCutiOtomatis({ data }: { data: CutiUntukTanggal[] }) {
+  return (
+    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
+      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
+        Sakit / Izin / Cuti Hari Ini (dari halaman Cuti)
+      </p>
+      <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
+        Dihitung otomatis dari pengajuan cuti yang SUDAH DISETUJUI. Hanya baca -- kalau ada pengajuan yang belum diputuskan, selesaikan dulu di{' '}
+        <a href="/cuti/tinjau" style={{ color: 'var(--biru)' }}>
+          Tinjau Cuti
+        </a>{' '}
+        supaya angkanya benar.
+      </p>
+      {data.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+          Tidak ada sakit/izin/cuti yang disetujui untuk hari ini.
+        </p>
+      ) : (
+        <ul className="list-disc pl-5 text-sm">
+          {data.map((c, i) => (
+            <li key={i}>
+              {c.nama} -- {LABEL_CUTI_JENIS[c.jenis]}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -45,6 +45,11 @@ const TAB_TETAP: TabTetapDef[] = [
   // tetap yang menyertakan 'accounting' di daftar perannya.
   { key: 'keuangan', label: 'Keuangan', href: '/keuangan', peran: ['accounting', 'ceo'] },
   { key: 'akun', label: 'Akun', href: '/akun', peran: null },
+  // Halaman pengajuan (30 Agustus 2026) -- SEMUA yang login boleh mengajukan
+  // cuti/sakit/izin, sama seperti 'riwayat'/'absen'. Halaman tinjau di
+  // bawah TERPISAH, bukan lewat TAB_TETAP -- gerbangnya ceo+is_hrd_kadiv(),
+  // sama alasan `absen-tinjau` tidak bisa dinyatakan lewat `peran` biasa.
+  { key: 'cuti', label: 'Cuti', href: '/cuti', peran: null },
 ];
 
 /** Semua tab yang berhak dilihat user ini -- dipakai TopNav apa adanya, dan bahan baku `tabBawah()`. */
@@ -64,7 +69,13 @@ export function tabTerlihat(
   // alasan dengan `is_hrd_kadiv()` di RLS, lihat migrasi 0022_presensi.sql).
   const bolehTinjauAbsen = roles.includes('ceo') || roles.includes('pusat') || (roles.includes('kadiv') && divisi === 'HRD');
   const tinjau: TabNav[] = bolehTinjauAbsen ? [{ key: 'absen-tinjau', label: 'Tinjau Absensi', href: '/absen/tinjau' }] : [];
-  return [...tetap, ...dinamis, ...tinjau];
+  // "Tinjau Cuti" -- gerbang SENGAJA BEDA dari absen-tinjau di atas: ceo +
+  // is_hrd_kadiv() SAJA, TANPA 'pusat' (instruksi eksplisit user, koreksi 1,
+  // 30 Agustus 2026 -- lihat komentar sama di app/cuti/tinjau/page.tsx dan
+  // policy cuti_select, migrasi 0025_cuti.sql).
+  const bolehTinjauCuti = roles.includes('ceo') || (roles.includes('kadiv') && divisi === 'HRD');
+  const tinjauCuti: TabNav[] = bolehTinjauCuti ? [{ key: 'cuti-tinjau', label: 'Tinjau Cuti', href: '/cuti/tinjau' }] : [];
+  return [...tetap, ...dinamis, ...tinjau, ...tinjauCuti];
 }
 
 /**
