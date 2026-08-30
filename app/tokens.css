@@ -50,4 +50,11 @@
      (padding halaman, tombol Kirim yang menempel). Satu variabel, dua pemakai --
      kalau tingginya berubah, cukup ganti di sini. */
   --tinggi-nav-bawah: 56px;
+
+  /* Ruang ekstra untuk tombol bundar Absen (30 Agustus 2026) yang menonjol
+     ~14px DI ATAS nav bawah + label kecil di bawahnya -- tanpa ini, baris
+     terakhir halaman/tombol Kirim yang menempel bisa tertutup tombol itu.
+     Dipakai bareng `--tinggi-nav-bawah`, BUKAN pengganti -- lihat
+     `components/AbsenFab.tsx` dan pemakaiannya di app/globals.css. */
+  --tambahan-fab-absen: 28px;
 }

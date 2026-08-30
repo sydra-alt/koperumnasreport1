@@ -16,7 +16,7 @@ interface TabTetapDef {
 
 /**
  * Satu daftar tab tetap, dipakai TopNav (semua yang berhak, tanpa batas) dan
- * BottomNav (Beranda + 3 prioritas teratas + Akun, lihat `tabBawah()`) --
+ * BottomNav (Beranda + 2-3 prioritas teratas + Akun, lihat `tabBawah()`) --
  * SATU sumber, bukan didefinisikan dua kali (Task tampilan mobile, 24
  * Agustus 2026). `key: 'keputusan'` diperbaiki ke `['ceo','pusat']` (dulu
  * cuma `'ceo'`) -- ditemukan saat menulis ulang nav ini: `Terlindungi` di
@@ -24,6 +24,11 @@ interface TabTetapDef {
  * `pusat` melihat antrean, tapi tab navigasinya sendiri tidak pernah
  * menampilkannya ke Sabrina -- dia tidak akan pernah menemukan halaman itu
  * lewat menu, walau berhak membukanya.
+ *
+ * `absen` di daftar ini HANYA dipakai TopNav (desktop, tidak diubah 30
+ * Agustus 2026) -- di BottomNav tombolnya sendiri yang bundar & terpisah
+ * (`components/AbsenFab.tsx`), `tabBawah()`/`tabLuapan()` sengaja
+ * mengecualikannya dari daftar tab biasa supaya tidak dobel.
  */
 const TAB_TETAP: TabTetapDef[] = [
   { key: 'beranda', label: 'Beranda', href: '/', peran: null },
@@ -60,29 +65,22 @@ export function tabTerlihat(
 
 /**
  * Urutan prioritas SLOT TENGAH nav bawah (§2 06-RENCANA-PRESENSI-MOBILE.md)
- * -- "Papan Kontrol" isinya menyesuaikan peran, maksimal 5 tombol. Beranda
- * dan Akun SELALU dua slot tetap (awal & akhir); sisanya cuma 3 slot,
- * diisi dari daftar ini urut prioritas -- kalau seseorang berhak atas
- * lebih dari 3 (mis. CEO: papan+keputusan+terpusat+marketing+admin = 5
- * kandidat), yang KALAH prioritas TETAP bisa dibuka lewat halaman Akun
- * (lihat `app/akun/page.tsx`), bukan hilang.
+ * -- Beranda dan Akun SELALU dua slot tetap (awal & akhir); sisanya diisi
+ * dari daftar ini urut prioritas -- yang KALAH prioritas TETAP bisa dibuka
+ * lewat halaman Akun (`app/akun/page.tsx`), bukan hilang.
  *
- * Urutan ini dipilih supaya cocok PERSIS dengan dua contoh eksplisit di
- * dokumen: karyawan biasa -> Lapor+Riwayat (cuma 2 kandidat, keduanya
- * muat); CEO/Pusat -> Papan+Keputusan+Terpusat (yang menang lawan
- * Marketing/Admin).
- *
- * `absen` DITAMBAH setelah `terpusat` (presensi, 29 Agustus 2026) --
- * dipakai 2x sehari oleh hampir semua karyawan biasa, tapi SENGAJA tidak
- * diletakkan di atas papan/keputusan/terpusat: itu akan menggeser Terpusat
- * keluar dari 3 slot CEO/Pusat (yang sudah teruji sungguhan di HP,
- * Checkpoint 4, 29 Agustus 2026) -- padahal untuk karyawan biasa posisi
- * `absen` relatif terhadap `lapor`/`riwayat` TIDAK PENTING SAMA SEKALI,
- * cuma ada 3 kandidat buat mereka (absen+lapor+riwayat), semuanya muat di
- * 3 slot tengah apa pun urutannya. `absen-tinjau` (Tinjau Absensi, buat
- * ceo/pusat/kadiv-HRD) ditaruh sesudahnya -- dipakai sesekali, bukan harian.
+ * `absen` TIDAK ADA di daftar ini sama sekali (30 Agustus 2026, redesain
+ * tombol bundar) -- bukan lagi tab yang bersaing prioritas, sekarang tombol
+ * TERPISAH di tengah nav (lihat `tabBawah` param `punyaTitikAbsen` dan
+ * `components/AbsenFab.tsx`). Karena satu slot visual dipakai tombol itu,
+ * jumlah slot tengah yang bersaing turun dari 3 jadi 2 SELAMA tombolnya
+ * tampil -- `terpusat` dinaikkan di atas `keputusan` supaya CEO/Pusat tetap
+ * dapat Papan+Terpusat di 2 slot itu (Keputusan pindah ke Akun, instruksi
+ * eksplisit user). Urutan sisanya (absen-tinjau/lapor/riwayat/marketing/
+ * admin) TIDAK diubah dari sebelumnya -- minim disrupsi ke kombinasi peran
+ * yang sudah diuji (Fauzy: Lapor+Riwayat tetap menang lawan Marketing).
  */
-const PRIORITAS_TENGAH = ['papan', 'keputusan', 'terpusat', 'absen', 'absen-tinjau', 'lapor', 'riwayat', 'marketing', 'admin'];
+const PRIORITAS_TENGAH = ['papan', 'terpusat', 'keputusan', 'absen-tinjau', 'lapor', 'riwayat', 'marketing', 'admin'];
 
 function prioritasDari(key: string): number {
   const dasar = key.startsWith('lapor-dinamis-') ? 'lapor' : key;
@@ -90,27 +88,38 @@ function prioritasDari(key: string): number {
   return idx === -1 ? PRIORITAS_TENGAH.length : idx;
 }
 
-/** Nav bawah: Beranda + (maksimal 3, urut prioritas) + Akun. */
-export function tabBawah(semua: TabNav[]): TabNav[] {
-  const beranda = semua.find((t) => t.key === 'beranda');
-  const akun = semua.find((t) => t.key === 'akun');
-  const tengah = semua
-    .filter((t) => t.key !== 'beranda' && t.key !== 'akun')
+function tengahTerurut(semua: TabNav[]): TabNav[] {
+  return semua
+    .filter((t) => t.key !== 'beranda' && t.key !== 'akun' && t.key !== 'absen')
     .slice()
     .sort((a, b) => prioritasDari(a.key) - prioritasDari(b.key));
+}
+
+/**
+ * Nav bawah: Beranda + (2 atau 3, urut prioritas) + Akun.
+ * `punyaTitikAbsen` -- `true` kalau user punya >=1 `penugasan_absen`
+ * (lihat `lib/api/absensi.ts`, `useTitikAbsenSaya`): tombol bundar Absen
+ * tampil DI LUAR daftar ini (disisipkan terpisah oleh `KopHalaman.tsx`),
+ * jadi cuma 2 slot tengah biasa yang tersisa. `false` -- presensi tidak
+ * berlaku untuk orang ini (belum/tidak ditugaskan ke titik mana pun):
+ * TIDAK ADA tombol bundar sama sekali ("jangan tampilkan tombol yang tidak
+ * berlaku untuknya", instruksi eksplisit user) -- slotnya kembali jadi 3
+ * tab biasa, persis nav bawah sebelum tombol bundar ada.
+ */
+export function tabBawah(semua: TabNav[], punyaTitikAbsen: boolean): TabNav[] {
+  const beranda = semua.find((t) => t.key === 'beranda');
+  const akun = semua.find((t) => t.key === 'akun');
+  const jumlahSlot = punyaTitikAbsen ? 2 : 3;
 
   const hasil: TabNav[] = [];
   if (beranda) hasil.push(beranda);
-  hasil.push(...tengah.slice(0, 3));
+  hasil.push(...tengahTerurut(semua).slice(0, jumlahSlot));
   if (akun) hasil.push(akun);
   return hasil;
 }
 
 /** Tab yang KALAH prioritas dan tidak muat di nav bawah -- ditampilkan sebagai tautan tambahan di halaman Akun. */
-export function tabLuapan(semua: TabNav[]): TabNav[] {
-  const tengah = semua
-    .filter((t) => t.key !== 'beranda' && t.key !== 'akun')
-    .slice()
-    .sort((a, b) => prioritasDari(a.key) - prioritasDari(b.key));
-  return tengah.slice(3);
+export function tabLuapan(semua: TabNav[], punyaTitikAbsen: boolean): TabNav[] {
+  const jumlahSlot = punyaTitikAbsen ? 2 : 3;
+  return tengahTerurut(semua).slice(jumlahSlot);
 }

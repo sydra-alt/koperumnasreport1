@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import { formRegistry } from '../../forms';
 import { tabTerlihat, tabLuapan } from '../../lib/navUtama';
+import { useTitikAbsenSaya } from '../../lib/api/absensi';
 
 /**
  * Halaman "Akun" -- slot terakhir nav bawah (§2 06-RENCANA-PRESENSI-MOBILE.md).
@@ -13,14 +14,18 @@ import { tabTerlihat, tabLuapan } from '../../lib/navUtama';
  * halaman yang jadi tidak terjangkau sama sekali gara-gara batas 5 tombol.
  */
 export default function AkunPage() {
-  const { profile, roles, assignments, signOut } = useAuth();
+  const { profile, roles, assignments, signOut, session } = useAuth();
   // divisi WAJIB diteruskan -- tanpa ini, kadiv+HRD yang tab "Tinjau
   // Absensi"-nya kebetulan kalah prioritas & masuk luapan (di bawah) akan
   // kehilangannya di sini juga (bolehTinjauAbsen salah mengira false),
   // sama seperti bug yang sudah pernah terjadi di KopHalaman sebelum ini
   // ditemukan (ditemukan saat menata ulang halaman ini, bukan dicari-cari).
   const semua = tabTerlihat(roles, assignments, formRegistry, profile?.divisi ?? null);
-  const luapan = tabLuapan(semua);
+  // punyaTitikAbsen WAJIB juga diteruskan (sama alasan dengan divisi di
+  // atas) -- tabLuapan() perlu tahu apakah 2 atau 3 slot tengah dipakai di
+  // nav bawah supaya daftar "kalah prioritas" di sini cocok persis.
+  const { data: titikSaya } = useTitikAbsenSaya(session?.user.id);
+  const luapan = tabLuapan(semua, (titikSaya?.length ?? 0) > 0);
 
   return (
     <main className="flex flex-col gap-6 p-6">

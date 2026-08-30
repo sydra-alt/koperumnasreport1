@@ -436,6 +436,22 @@ Setelah token desain di atas dipakai nyata di HP: nav bawah dirasa "masih tulisa
 
 ---
 
+## Tombol bundar Absen di tengah nav bawah (30 Agustus 2026)
+
+Susulan langsung dari umpan balik ikon di atas -- masih di sesi yang sama, user minta Absen naik level dari tab biasa jadi tombol bundar terangkat, terpisah dari lima tab lainnya, dengan status hari ini terlihat tanpa buka halaman.
+
+**Struktur baru nav bawah.** `absen` DIHAPUS TOTAL dari `PRIORITAS_TENGAH` (`lib/navUtama.ts`) -- bukan lagi tab yang bersaing prioritas, jadi slot tengah turun dari 3 jadi 2 (satu kiri, satu kanan tombol bundar) SELAMA tombolnya tampil. `terpusat` dinaikkan di atas `keputusan` supaya susunan CEO/Pusat jadi persis "Papan · [ABSEN] · Terpusat" (instruksi eksplisit) -- **Keputusan pindah ke halaman Akun**, bukan hilang. Urutan sisanya (`absen-tinjau`/`lapor`/`riwayat`/`marketing`/`admin`) SENGAJA tidak diubah dari batch presensi sebelumnya -- minim disrupsi ke kombinasi peran yang sudah teruji (Fauzy: Lapor+Riwayat tetap menang lawan Marketing, bukan berubah karena penataan ulang ini).
+
+`tabBawah()`/`tabLuapan()` (`lib/navUtama.ts`) sekarang menerima parameter `punyaTitikAbsen: boolean` -- `true` (2 slot tengah, tombol bundar tampil) kalau user punya >=1 baris `penugasan_absen`; `false` (kembali 3 slot tab biasa, TANPA tombol bundar sama sekali) kalau tidak. **Ini keputusan interpretasi yang perlu dikonfirmasi user**: instruksi aslinya bilang "peran yang tidak wajib absen", tapi sistem ini TIDAK PUNYA konsep "peran bebas presensi" di skema mana pun -- presensi selalu berbasis PENUGASAN per orang (`penugasan_absen`), bukan role. Saya pakai "punya penugasan atau tidak" sebagai proksi paling masuk akal & sudah ada datanya, BUKAN menebak/membuat aturan role baru (mis. "ceo dikecualikan") yang tidak diminta. Efek sampingnya: karena BELUM ADA satu pun `penugasan_absen` sungguhan sampai admin mengisi lewat tab "Titik Absen", **semua 7 akun uji saat ini akan melihat nav bawah TANPA tombol bundar** (kembali ke tampilan sebelumnya) -- itu benar sesuai data saat ini, bukan bug.
+
+`components/AbsenFab.tsx` (baru) -- bundar 56px, `var(--biru)` + ikon putih (`NavIcon` ikon "absen", `currentColor` mewarisi putih), naik `translateY(-14px)` dari posisi wajarnya di nav, label kecil di bawahnya. Status dari `useAbsenHariIni()` (hook yang sama dipakai `app/absen/page.tsx`, tidak ada logika baru): belum absen masuk -> "Absen masuk" (biru); sudah masuk belum pulang -> "Absen pulang" (biru); dua-duanya -> "Sudah absen" (`var(--kosong)`, abu) -- SELALU menuju `/absen` apa adanya, halaman itu sendiri yang menentukan aksi/menampilkan ringkasan, tombol ini murni cermin status + jalan pintas.
+
+**Padding ekstra supaya tombol tidak menutupi isi halaman.** Token baru `--tambahan-fab-absen: 28px` (`app/tokens.css`), ditambahkan ke `body`'s `padding-bottom` DAN posisi `bottom` tombol Kirim yang menempel (`app/globals.css`) -- **sengaja UNCONDITIONAL** (berlaku di semua halaman mobile, bukan cuma yang tombolnya tampil): `punyaTitikAbsen` adalah hasil query async yang tidak terjangkau dari CSS `body` (dikendalikan `app/layout.tsx`, bukan komponen nav) -- sedikit ruang kosong ekstra untuk yang tombolnya tidak tampil jauh lebih aman daripada risiko baris terakhir ketutupan untuk yang tombolnya tampil.
+
+**Diverifikasi:** `tsc --noEmit`/`npm run lint`/`npm run build` bersih (0 error, 1 warning lama tidak terkait). `scripts/uji-nav-mobile.mjs` ditulis ulang total (bukan cuma disunting) mengikuti struktur baru -- 15 titik, semua LOLOS, termasuk memastikan Dadang (pic_lokasi+karyawan) tetap dapat kedua tab Lapor-nya (bukan Riwayat) walau slot tengah turun dari 3 jadi 2. **BELUM diverifikasi visual sungguhan** -- posisi persis tombol relatif ke label (offset `translateY`/`marginTop` yang dipakai) ditulis berdasar perhitungan manual, bukan pengukuran di browser sungguhan; user yang akan mengecek langsung dari HP dan mungkin perlu koreksi kecil setelah dilihat nyata.
+
+---
+
 ## §3 Presensi ber-radius (`docs/06-RENCANA-PRESENSI-MOBILE.md`, 29 Agustus 2026)
 
 Dikerjakan atas instruksi eksplisit **"jangan menunggu"** koordinat asli CEO (§5 dokumen belum terjawab) -- mekanismenya yang harus jadi dulu, satu baris `lokasi_absen` CONTOH (koordinat dari contoh dokumen sendiri, `-6.914744, 107.609810`, berlabel "CONTOH -- ganti dari halaman Admin") dipakai supaya halaman Absen tidak kosong/rusak saat pertama dicoba.

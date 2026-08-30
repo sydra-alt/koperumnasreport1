@@ -80,7 +80,14 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   background: var(--kertas-2);
   padding-bottom: env(safe-area-inset-bottom);
 }
-body { padding-bottom: calc(var(--tinggi-nav-bawah) + env(safe-area-inset-bottom)); }
+/* `--tambahan-fab-absen` disisakan UNCONDITIONAL di semua halaman mobile --
+   bukan cuma untuk yang tombolnya tampil. Menentukan itu butuh tahu
+   `punyaTitikAbsen` (query async, `components/KopHalaman.tsx`) yang tidak
+   bisa dijangkau dari sini (body dikendalikan `app/layout.tsx`, bukan
+   komponen nav) -- sedikit ruang kosong ekstra untuk yang tombolnya TIDAK
+   tampil jauh lebih aman daripada risiko baris terakhir ketutupan untuk
+   yang tombolnya tampil. */
+body { padding-bottom: calc(var(--tinggi-nav-bawah) + var(--tambahan-fab-absen) + env(safe-area-inset-bottom)); }
 
 @media (min-width: 768px) {
   .nav-atas { display: block; }
@@ -91,7 +98,7 @@ body { padding-bottom: calc(var(--tinggi-nav-bawah) + env(safe-area-inset-bottom
 /* Tombol Kirim yang menempel di atas nav bawah pada form panjang (LaporForm/FormRenderer). */
 .tombol-kirim-menempel {
   position: sticky;
-  bottom: calc(var(--tinggi-nav-bawah) + env(safe-area-inset-bottom));
+  bottom: calc(var(--tinggi-nav-bawah) + var(--tambahan-fab-absen) + env(safe-area-inset-bottom));
   z-index: 10;
 }
 @media (min-width: 768px) {
