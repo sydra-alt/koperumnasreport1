@@ -2,6 +2,30 @@
 
 > Diperbarui setiap task selesai. Status: ⬜ belum · 🟨 berjalan · ✅ selesai
 
+## Batch — Indosteak jadi dua outlet (Perubahan 1, 30 Agustus 2026)
+
+CEO menjawab: Indosteak sekarang DUA outlet (Cempaka & Pekansari, bukan satu). Instruksi eksplisit user: periksa dampak ke `v_selisih_resto`/§4.4 CALC-SPEC dulu, laporkan, baru perbaiki -- BUKAN diperbaiki diam-diam.
+
+**Dampak yang ditemukan (diperiksa lewat grep menyeluruh, bukan ditebak):**
+1. `selisih_resto_untuk_tanggal()` (migrasi 0020) -- `'omzet_' || lower(o.nama)` rusak untuk "Indosteak Cempaka" (spasi) dan dua outlet berbagi awalan "indosteak".
+2. `useOmzetRestoHariIni` (`lib/api/accounting.ts`, Bagian 13 Rekonsiliasi Resto) -- pola HARDCODE SAMA di jalur klien terpisah, mudah terlewat kalau cuma memperbaiki SQL-nya.
+3. `forms/f16-ita.ts` -- 2 blok pembukuan hardcode (`omzet_indosteak`/`omzet_indokopi`) + field kontrol-stok/stock-opname per outlet, semuanya perlu jadi 3 set.
+
+**Diperiksa, DIKONFIRMASI GENERIK, TIDAK disentuh:** `manager_resto` form (`scope:'outlet'`, tanpa nama outlet hardcode) dan `v_manager_resto_untuk_ita` (group by `outlet_id`->nama) -- keduanya otomatis benar untuk 3 outlet. `accounting`'s `masuk_indosteak`/`masuk_indokopi` (cashflow lump-sum, BUKAN bagian kontrak `omzet_` ini) TIDAK diubah -- keputusan sadar, dilaporkan sebagai catatan minor, bukan diputuskan sepihak untuk dipecah jadi granular per lokasi.
+
+**Perbaikan (migrasi `0031_indosteak_dua_outlet.sql`):** kolom `outlet.slug` baru (identitas stabil, independen dari nama tampilan) -- live DB diperiksa dulu (kedua outlet lama nol baris `report`, aman diganti nama+slug di tempat tanpa migrasi data). 3 outlet sekarang: Indokopi Jatinegara (`indokopi_jatinegara`), Indosteak Cempaka (`indosteak_cempaka`), Indosteak Pekansari (`indosteak_pekansari`). `selisih_resto_untuk_tanggal()` dan `useOmzetRestoHariIni` diganti ke `'omzet_' || slug`. `forms/f16-ita.ts` -- 3 blok pembukuan penuh + field kontrol stok/stock opname dipecah 3, field key konsisten pakai slug penuh di semuanya (bukan cuma yang kontrak).
+
+**Manager sungguhan (tebakan Ryan/Toni dicabut CEO sendiri):** Erry → Indokopi Jatinegara, Dea → Indosteak Cempaka (dobel dengan `kontrol_marketing`), Cuko → Indosteak Pekansari.
+
+**Diverifikasi:** `scripts/uji-outlet-slug.mjs` (baru, 4 titik, semua lolos) -- menanam laporan manager_resto+ita utk KETIGA outlet sekaligus, cek angka versi_manager/versi_ita/selisih cocok per outlet lewat slug, tidak ada yang tertukar antar dua outlet "Indosteak". Regresi: `scripts/uji-dashboard-ceo.mjs` dan `scripts/uji-batch16-17.mjs` diperbaiki (nama outlet lama tidak lagi ada) dan lolos untuk BAGIAN yang menyentuh outlet -- `uji-dashboard-ceo.mjs` PUNYA staleness lain yang TIDAK terkait (`v_pembangunan_hari_ini` sudah di-drop migrasi 0020, digantikan fungsi `pembangunan_untuk_tanggal`, skrip itu tidak pernah diperbarui setelahnya) -- ditemukan sambil regresi, DICATAT sebagai debt terpisah, BUKAN diperbaiki sekarang (di luar cakupan perubahan outlet). `tsc --noEmit`/`npm run lint`/`npm run build` bersih.
+
+**Belum terselesaikan, dilaporkan bukan ditebak:**
+- Lokasi report `security` Cahya/Dedi/Yundi/Masudin -- CEO menjawab titik ABSEN mereka (Kantor Pusat + Indokopi Jatinegara, tabel `lokasi_absen`), tapi form `security` (laporan tugas) di-scope ke tabel `lokasi` yang BEDA (cuma ada Tajur/Bekasi/DTI, tidak ada "Kantor Pusat"). Presensi dan scope laporan adalah dua hal berbeda -- belum ditambahkan baris `lokasi` baru, menunggu konfirmasi eksplisit.
+- `lokasi_absen` "Indosteak" (1 titik existing) direkam SEBELUM pemisahan Cempaka/Pekansari diketahui -- belum jelas titik itu punya yang mana.
+- Qasim/Bagus/Ahmad/Elsa/Lusy dikonfirmasi kerja di "Indosteak" sebelum split -- belum jelas siapa di Cempaka vs Pekansari.
+
+Detail lengkap (termasuk pertanyaan yang sudah terjawab: Ery=Erry satu orang, Shabita orang ke-37 bukan pengganti, Masudin cs+security fleksibel, Syahbudin shift normal, Ita akun sungguhan, Toyib tetap wajib PTE) ada di `docs/DATA-KARYAWAN.md` §1/§2/§6 (§6 baru -- titik absen uji `putri`/`dadang`, migrasi `0032_lokasi_absen_uji.sql`).
+
 ## Perbaikan cacat spesifikasi: hari_wajib tanpa tanggal mulai (22 Agustus 2026)
 
 **Ditemukan lewat data uji Checkpoint 3 (bukan bug kode — cacat di rumus `03-CALC-SPEC.md` §3 versi awal).** Toyib bekerja 5 hari, selesai 3, tapi `hari_wajib` lama dihitung dari tanggal 1 bulan berjalan → tercatat bolong 16 hari. Kalau dipakai sungguhan, di bulan pertama peluncuran **seluruh 36 karyawan** akan kehilangan bonus Rp500.000 bukan karena lalai, tapi karena sistemnya baru menyala. User memperbaiki spesifikasi, saya menjalankan perbaikannya.
@@ -679,6 +703,62 @@ Instruksi eksplisit user, tiga hal sekaligus -- nomor 1 (pemetaan Inservice) dan
 `tsc --noEmit`/`npm run lint`/`npm run build` bersih (0 error, 1 warning lama tidak terkait, `/cuti` dan `/cuti/tinjau` muncul di daftar rute build).
 
 **Catatan Inservice/CS (menutup pertanyaan §2 DATA-KARYAWAN.md nomor 3, lanjutan):** CEO melengkapi jawaban -- Dedi/Yundi/Fauzan/Cahya (Inservice) JUGA bertugas CS. Karena form `cs` `scope:'global'` awalnya diasumsikan SATU pengisi per hari (`lib/api/terpusat.ts` -- `useLaporanHariIni` dgn `.maybeSingle()`, akan ERROR kalau >1 baris), diperiksa dulu ke user sebelum diterapkan (instruksi eksplisit: "jangan diputuskan sendiri, ini menyentuh bentuk data"). Diputuskan: TETAP satu form `cs` untuk semua (bukan berbasis lokasi, bukan satu-orang-ditunjuk) -- kode rollup Terpusat diperbaiki: `useLaporanCsHariIni` (baru) mengambil SEMUA baris `cs` hari itu, `app/terpusat/page.tsx` Bagian 2 menjumlahkan angka lintas pengisi + menampilkan tiap masalah urgent per orang. Papan Kontrol TIDAK perlu diubah -- `papan_untuk_tanggal` (migrasi 0020) sudah join per `assignment` dengan `author_id`, otomatis benar untuk banyak pengisi. `docs/DATA-KARYAWAN.md` §1/§2 diperbarui dua kali (Koreksi 1 lalu Koreksi 2).
+
+## Batch — Shift dari tabel, bukan CHECK CONSTRAINT (Perubahan 2, 30 Agustus 2026)
+
+Instruksi eksplisit user, rencana ditunjukkan dulu dan DUA keputusan desain dikonfirmasi sebelum kode ditulis (bukan ditebak):
+
+1. **`assignment.shift`/`report.shift` (text, CHECK) diganti `shift_id uuid references shift(id)`** -- bukan FK ke `shift.nama` (text). Alasan user sendiri, dikonfirmasi: nama yang bisa diedit CEO bukan fondasi relasi historis -- persis pelajaran `outlet.slug` (Perubahan 1) yang baru diperbaiki. Diff lebih besar (semua konsumen `shift` di 8 file TS), diambil sadar.
+2. **Lima kolom** (`id, nama, jam_mulai, jam_selesai, batas_lapor, aktif`), bukan empat. `jam_mulai`/`jam_selesai` diseed **NULL SENGAJA** -- nilai `policy.shift_deadline` lama (14:30/22:30/07:30) adalah **deadline dengan tenggang, BUKAN jam pulang sungguhan**; kalau di-backfill ke `jam_selesai`, Admin akan menampilkan jam kerja salah sejak hari pertama tanpa ada yang tahu itu asumsi (poin eksplisit user). `batas_lapor` diseed dari nilai lama supaya TIDAK regresi. Admin -> Kelola Shift menampilkan "⚠️ Jam kerja belum diisi" selama `jam_mulai`/`jam_selesai` masih null.
+
+**Migrasi `0033_tabel_shift.sql`** -- SATU migrasi, TIGA pengaman eksplisit diminta user:
+- **Backfill gagal = migrasi dibatalkan seluruhnya**, bukan lanjut dengan baris yatim. `DO` block `RAISE EXCEPTION` kalau ada `assignment`/`report` yang `shift` lama terisi tapi `shift_id` masih null setelah backfill -- karena migrasi dikirim sebagai satu pesan multi-statement (`scripts/db.mjs`), satu exception membatalkan SEMUA statement sebelumnya di file yang sama (implicit transaction Postgres), bukan cuma yang gagal.
+- **Kolom `shift` LAMA SENGAJA TIDAK DIHAPUS** di migrasi ini -- supaya bisa mundur tanpa kehilangan data kalau ada yang salah. Penghapusannya migrasi TERPISAH, SETELAH dikonfirmasi semuanya jalan -- **BELUM ditulis, menunggu konfirmasi eksplisit user, jangan dikerjakan tanpa itu.**
+- `report_uniq`/`assignment_uniq` di-drop+recreate memakai `coalesce(shift_id, '00000000-...'::uuid)` (pola sama `lokasi_id`/`outlet_id` di index yang sama) -- `policy.shift_deadline` dihapus (digantikan `shift.batas_lapor`).
+
+**Backfill live DB**: 1 baris `assignment` (Kasam, security/DTI/pagi) berhasil dipetakan ke `shift_id` yang benar, 0 baris `report` (belum ada laporan sungguhan). Tidak ada baris yatim -- migrasi lolos tanpa exception.
+
+**Kode aplikasi disesuaikan penuh** (8 file): `lib/api/report.ts` (`ScopeOpsi.shiftId` + `shiftBatasLapor`, `batasJamKirim`/`apakahTerlambat` baca `batasLapor` yang dioper langsung, bukan lookup `policy.shift_deadline` lagi), `lib/api/shift.ts` (baru, `useDaftarShift()`), `lib/api/admin.ts` (`useDaftarShiftAdmin`/`useTambahShift`/`useUbahShift`, `AssignmentRowAdmin.shiftId`+`shiftNama`), `lib/auth/AuthProvider.tsx` (`Assignment.shift_id`), `lib/tugasHariIni.ts` (param `namaShift`/`batasLaporShift` baru, `LABEL_SHIFT` dihapus), `components/LaporForm.tsx` (`KombinasiScope.shiftId`, `labelKombinasi` pakai `useDaftarShift()`), `app/page.tsx` (resolver shift utk Beranda), `app/admin/page.tsx` (tab "Penugasan" -- shift picker dinamis; tab BARU "Shift" -- CRUD lengkap termasuk peringatan "Jam kerja belum diisi").
+
+**Dua celah ditemukan sendiri SAAT MENULIS, diperbaiki SEBELUM commit (bukan setelah)**:
+- Migrasi pertama (draft, tidak pernah diterapkan) tidak mengecualikan koneksi pemilik/service dari guard -- TIDAK relevan di sini (itu temuan batch profil sebelumnya), dicatat supaya tidak diulang: SETIAP kali menambah proteksi baru yang membaca `auth.uid()`, cek dulu apakah skrip admin (`buat-akun.mjs` dkk, `auth.uid()` selalu null) ikut terdampak.
+- `batasJamKirim`/`apakahTerlambat` awalnya nyaris tetap menerima `shift` (string) dan melakukan lookup sendiri ke tabel `shift` di dalam fungsi murni -- diubah jadi menerima `batasLapor` yang SUDAH di-resolve pemanggil, supaya fungsi ini TETAP murni/gampang diuji tanpa DB (konsisten dgn desain aslinya).
+
+**Diverifikasi:**
+- `scripts/uji-shift-rename-bukti.mjs` (5 titik, BUKTI eksplisit diminta user) -- ganti nama shift "Pagi" -> "Shift Pagi" (persis `useUbahShift()`), assignment & report LAMA Kasam (dibuat SEBELUM rename, salah satunya ditanam 30 hari mundur) tetap resolve ke `shift_id` yang SAMA PERSIS, nama ikut ter-update otomatis lewat join, TANPA update massal apa pun ke `assignment`/`report`. **Ini bukti konkret uuid FK bekerja seperti dijanjikan.**
+- 5 skrip uji regresi diperbaiki (nama kolom lama -> `shift_id`, lookup id shift dari tabel, bukan literal teks): `uji-checkpoint2.mjs`, `uji-task24-matriks.mjs`, `uji-batch-d.mjs`, `uji-tugas-beranda.mjs` (reimplementasi lengkap `hitungTugasHariIni`/`batasJamKirim` disesuaikan, "dijaga tetap identik" dgn versi TS sungguhan), `uji-terlambat-workday.mjs` (reimplementasi disesuaikan, walau tidak ada assersi yang berubah). Semua LOLOS PENUH setelah diperbaiki.
+- 2 staleness LAIN ditemukan sambil regresi (`uji-tanggal-mundur.mjs`, `uji-terpusat.mjs`) -- **BUKAN disebabkan perubahan shift**, sudah basi sejak migrasi 0020 (view `v_security_hari_ini` dihapus, diganti fungsi `security_untuk_tanggal()`, skrip tidak pernah diperbarui). Dicatat sebagai debt terpisah, TIDAK diperbaiki sekarang -- di luar cakupan batch shift, sama seperti staleness `v_pembangunan_hari_ini` di `uji-dashboard-ceo.mjs` yang dicatat di batch Perubahan 1.
+- `tsc --noEmit`/`npm run lint`/`npm run build` bersih.
+
+**BELUM DIKERJAKAN, sengaja menunggu konfirmasi eksplisit** (instruksi user): migrasi TERPISAH menghapus kolom `shift` lama dari `assignment`/`report`. Jangan dikerjakan sampai user bilang "semuanya jalan, hapus kolom lama".
+
+## Pelajaran RLS: insert policy harus memeriksa NILAI kolom, bukan cuma pemilik (30 Agustus 2026)
+
+**Ditegaskan user setelah celah `cuti_insert` (0026) ditemukan sendiri sebelum sempat di-commit.** Pola kesalahannya lebih umum dari satu tabel, dicatat di sini supaya diingat setiap kali menulis policy insert baru, bukan cuma diperbaiki lalu dilupakan:
+
+> RLS insert yang cuma memeriksa `SIAPA yang mengajukan` (`user_id = auth.uid()`) TIDAK OTOMATIS aman kalau tabelnya juga punya kolom yang seharusnya HANYA diisi PIHAK LAIN belakangan (status persetujuan, siapa yang menyetujui, kapan). Pemilik baris tetap bisa mengisi kolom itu sendiri saat INSERT, melewati RPC/policy update yang dikira jadi satu-satunya jalur. **Setiap tabel dengan alur dua pihak (pengaju → penyetuju) butuh `WITH CHECK` yang MEMBATASI NILAI kolom keputusan itu ke default/`null`, bukan cuma memverifikasi pemiliknya.**
+
+**Audit menyeluruh dijalankan atas semua tabel dengan kolom keputusan/nominal** (instruksi eksplisit user, "periksa ulang seluruh insert policy lain dengan kacamata itu"):
+
+| Tabel | Kolom rawan | Status sebelum diperiksa | Tindakan |
+|---|---|---|---|
+| `cuti` | `status`, `disetujui_oleh`, `disetujui_at` | 🔴 celah nyata (ditemukan lewat penulisan uji fitur ini) | ✅ Diperbaiki migrasi `0026` |
+| `decision` | `status`, `decided_by`, `decided_at` | 🔴 celah nyata — karyawan bisa memalsukan "CEO sudah menyetujui" lewat insert langsung, melewati `dec_decide` (yang sendiri SUDAH benar, `has_role('ceo')` di update) | ✅ Diperbaiki migrasi `0027` |
+| `absensi` | `keputusan_hrd`, `disetujui_oleh` (+ `status='manual_hrd'`, belum ada jalur UI-nya) | 🔴 celah nyata — karyawan bisa memalsukan "HRD sudah menerima" tanda 🟡, melewati `putuskan_absensi()` | ✅ Diperbaiki migrasi `0027` |
+| `closing` | `status` (booking/akad/batal) | Diperiksa, BUKAN celah yang sama — tidak ada peran approval terpisah di spesifikasi mana pun untuk closing, self-attested BY DESIGN (sama seperti `pte_daily`, lihat baris berikut) | Dilaporkan, tidak diubah |
+| `pte_daily` | `live`, `undang_jumlah`, dst. | Diperiksa, BUKAN celah yang sama — tidak ada kolom "milik pihak lain" sama sekali, seluruh angka PTE memang diketik sendiri, kepercayaan terhadap laporan sendiri adalah desain sistem ini, bukan celah RLS | Dilaporkan, tidak diubah |
+| `report` | `status`, `warna`, `submitted_at` | 🟡 **pola BEDA, ditemukan sambil mengaudit, DILAPORKAN belum diperbaiki** — kolom ini MEMANG legitimately diisi pengirim saat kirim laporan (bukan "kolom pihak lain"), tapi nilainya DIHITUNG DI BROWSER (`apakahTerlambat()`, `lib/api/report.ts`) lalu dipercaya apa adanya, tidak dihitung ulang di server -- pengirim bisa memalsukan `submitted_at` mundur atau status 'terkirim' padahal lewat batas waktu. Perbaikannya BUKAN `WITH CHECK` sederhana (nilai boleh diisi pengirim) — perlu dihitung ulang di server (trigger/RPC), menyentuh SEMUA 15 form. **Belum dikerjakan, sengaja tanpa izin eksplisit dulu.** |
+| `absensi` (lagi) | `status`/`jarak_meter` (valid vs di_luar_radius) | 🟡 pola sama dgn `report` di atas — dihitung di browser (`statusDariJarak`, `lib/absen.ts`) dari GPS yang dilaporkan sendiri, tidak diverifikasi ulang terhadap koordinat `lokasi_absen` di server. **Belum dikerjakan** — perlu penghitungan jarak ulang di server (mis. haversine SQL), keputusan desain terpisah. |
+
+**Diverifikasi** (`scripts/uji-perbaikan-insert-policy.mjs`, 5 titik, semua lolos): pemalsuan `decision.status`/`decided_by` dan `absensi.keputusan_hrd`/`disetujui_oleh`/`status='manual_hrd'` ditolak; insert WAJAR (persis yang dikirim `lib/api/decision.ts`/`lib/api/absensi.ts`) tetap berhasil. Regresi dicek ulang: `scripts/uji-presensi-rls.mjs`, `uji-keputusan-ceo.mjs`, `uji-absen.mjs`, `uji-storage-absensi.mjs` — semua tetap lolos, tidak ada jalur pakai sah yang rusak.
+
+**Dua temuan `report`/`absensi.status` di atas TETAP TERBUKA** — dilaporkan ke user, bukan diperbaiki diam-diam, karena perbaikannya butuh penghitungan ulang di server (bukan sekadar `WITH CHECK`) dan menyentuh permukaan lebih luas (seluruh 15 form untuk `report`).
+
+**Temuan TAK TERDUGA, LEBIH PARAH, ditemukan sambil menambah kolom persetujuan privasi ke `profile`** (bukan salah satu dari 4 tabel yang diminta, tapi pola sama, dan lebih serius): `profile_update` (`0002_rls.sql`) TIDAK PERNAH punya `WITH CHECK` sama sekali. **Dibuktikan langsung** (penyamaran JWT, ROLLBACK): karyawan biasa (Toyib) berhasil mengubah `profile.divisi` miliknya sendiri jadi `'HRD'` lewat UPDATE langsung. Karena role `kadiv` generik SUDAH dipegang beberapa orang non-HRD (Avril/CS, Makruf/Perizinan, Diki/IT, Ronald/Teknik, Seno/DTI -- `docs/DATA-KARYAWAN.md` §1), siapa pun dari mereka bisa mengubah divisi teks miliknya sendiri, lolos `is_hrd_kadiv()`, dan mendapat akses melihat & MEMUTUSKAN absensi/cuti SELURUH KARYAWAN -- bukan cuma milik sendiri. `aktif` sama rawannya secara lebih halus (karyawan set `aktif=false` miliknya sendiri, keluar dari filter `where pr.aktif` di `marketing_bulanan_untuk()`, menyembunyikan kepatuhan PTE-nya sendiri).
+
+Diperbaiki lewat TRIGGER (bukan `WITH CHECK` -- RLS check cuma melihat baris baru, butuh OLD vs NEW yang trigger punya native): `jaga_profil_sensitif()` (migrasi `0028`) menolak perubahan `divisi`/`aktif` kecuali pemanggilnya `has_role('ceo')`. **Ditemukan sendiri dalam hitungan detik setelah 0028 diterapkan**: guard itu ikut memblokir koneksi pemilik/service (`scripts/buat-akun.mjs`, dst.) karena `auth.uid()` bernilai `null` di koneksi itu (dibuktikan langsung: `select auth.uid()` di `scripts/db.mjs` → `null`), jadi `has_role('ceo')` selalu false di sana juga. Diperbaiki migrasi `0029` -- guard cuma berlaku kalau `auth.uid() is not null` (idiom yang sudah dipakai berulang di RLS codebase ini utk membedakan sesi browser dari koneksi langsung/service).
+
+**Diverifikasi** (`scripts/uji-jaga-profil-sensitif.mjs`, 5 titik, semua lolos): karyawan biasa ditolak ubah `divisi`/`aktif` miliknya sendiri; TETAP boleh ubah `nama` (kolom tidak sensitif); CEO tetap boleh ubah `divisi`/`aktif` siapa pun; koneksi pemilik/service (persis pola `buat-akun.mjs`) TETAP bisa UPSERT `divisi` tanpa terblokir. `uji-admin.mjs` (regresi) tetap lolos penuh.
 
 ## Utang WAJIB sebelum go-live penggajian sungguhan
 

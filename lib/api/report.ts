@@ -8,7 +8,15 @@ import { hariISOWIB, jamWIB, tanggalWIB } from '../tanggal';
 export interface ScopeOpsi {
   lokasiId?: string;
   outletId?: string;
-  shift?: string;
+  shiftId?: string;
+  /**
+   * `batas_lapor` shift terpilih (tabel `shift`, migrasi 0033) -- dibawa
+   * TERPISAH dari `shiftId` supaya `batasJamKirim`/`apakahTerlambat` tetap
+   * fungsi murni (tidak perlu query sendiri ke tabel `shift`). Pemanggil
+   * (`LaporForm.tsx`) yang sudah punya daftar shift lewat `useDaftarShift()`
+   * yang mengisi ini.
+   */
+  shiftBatasLapor?: string | null;
   /** false = query dimatikan -- dipakai selagi scope (mis. lokasi) belum dipilih user. Default true. */
   aktif?: boolean;
 }
@@ -20,7 +28,7 @@ export interface ReportRow {
   author_id: string;
   lokasi_id: string | null;
   outlet_id: string | null;
-  shift: string | null;
+  shift_id: string | null;
   data: Record<string, unknown>;
   status: 'draft' | 'terkirim' | 'terlambat';
   warna: 'hijau' | 'kuning' | 'merah' | null;
@@ -28,7 +36,7 @@ export interface ReportRow {
 }
 
 function kunciQuery(formKey: string, opsi?: ScopeOpsi) {
-  return ['report-hari-ini', formKey, opsi?.lokasiId ?? null, opsi?.outletId ?? null, opsi?.shift ?? null];
+  return ['report-hari-ini', formKey, opsi?.lokasiId ?? null, opsi?.outletId ?? null, opsi?.shiftId ?? null];
 }
 
 /** Laporan hari ini (WIB) milik user yang sedang login untuk form+scope ini, kalau ada. */
@@ -52,7 +60,7 @@ export function useReportHariIni(formKey: string, opsi?: ScopeOpsi) {
 
       query = opsi?.lokasiId ? query.eq('lokasi_id', opsi.lokasiId) : query.is('lokasi_id', null);
       query = opsi?.outletId ? query.eq('outlet_id', opsi.outletId) : query.is('outlet_id', null);
-      query = opsi?.shift ? query.eq('shift', opsi.shift) : query.is('shift', null);
+      query = opsi?.shiftId ? query.eq('shift_id', opsi.shiftId) : query.is('shift_id', null);
 
       const { data, error } = await query.maybeSingle();
       if (error) throw error;
@@ -92,7 +100,7 @@ export function useSimpanDraft(formKey: string, opsi?: ScopeOpsi) {
           author_id: user.id,
           lokasi_id: opsi?.lokasiId ?? null,
           outlet_id: opsi?.outletId ?? null,
-          shift: opsi?.shift ?? null,
+          shift_id: opsi?.shiftId ?? null,
           data: isi,
           status: 'draft',
         })
@@ -107,15 +115,19 @@ export function useSimpanDraft(formKey: string, opsi?: ScopeOpsi) {
   });
 }
 
-/** Batas jam kirim (WIB, "HH:mm") untuk form+shift ini, dari policy.deadline_by_form / shift_deadline. */
-export function batasJamKirim(policy: PolicyMap, formKey: string, shift?: string | null): string {
+/**
+ * Batas jam kirim (WIB, "HH:mm") untuk form ini, dari `policy.deadline_by_form`.
+ * Kalau nilainya `'per_shift'`, deadline diambil dari `batasLapor` yang
+ * dioper pemanggil (`shift.batas_lapor`, tabel `shift` migrasi 0033 --
+ * MENGGANTIKAN `policy.shift_deadline` lama yang sudah dihapus).
+ */
+export function batasJamKirim(policy: PolicyMap, formKey: string, batasLapor?: string | null): string {
   const deadlineByForm = policy.deadline_by_form as Record<string, string> | undefined;
   const deadlineDefault = (policy.deadline_default as string | undefined) ?? '18:00';
   const batas = deadlineByForm?.[formKey] ?? deadlineDefault;
 
   if (batas === 'per_shift') {
-    const shiftDeadline = policy.shift_deadline as Record<string, string> | undefined;
-    return (shift && shiftDeadline?.[shift]) ?? deadlineDefault;
+    return batasLapor ?? deadlineDefault;
   }
   return batas;
 }
@@ -129,10 +141,10 @@ export function batasJamKirim(policy: PolicyMap, formKey: string, shift?: string
  * Minggu bukan hari wajib, padahal "tidak ada kewajiban" seharusnya berarti
  * "tidak ada keterlambatan".
  */
-export function apakahTerlambat(policy: PolicyMap, formKey: string, shift?: string | null): boolean {
+export function apakahTerlambat(policy: PolicyMap, formKey: string, batasLapor?: string | null): boolean {
   const workdays = (policy.workdays as number[] | undefined) ?? [1, 2, 3, 4, 5, 6];
   if (!workdays.includes(hariISOWIB())) return false;
-  return jamWIB() > batasJamKirim(policy, formKey, shift);
+  return jamWIB() > batasJamKirim(policy, formKey, batasLapor);
 }
 
 export function useKirimReport(formKey: string, opsi?: ScopeOpsi) {
@@ -150,7 +162,7 @@ export function useKirimReport(formKey: string, opsi?: ScopeOpsi) {
       policy: PolicyMap;
     }) => {
       const supabase = createClient();
-      const status = apakahTerlambat(policy, formKey, opsi?.shift) ? 'terlambat' : 'terkirim';
+      const status = apakahTerlambat(policy, formKey, opsi?.shiftBatasLapor) ? 'terlambat' : 'terkirim';
 
       const { error } = await supabase
         .from('report')

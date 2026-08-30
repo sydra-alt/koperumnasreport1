@@ -14,23 +14,25 @@ function hariISOWIB(d = new Date()) {
   const nama = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Jakarta', weekday: 'short' }).format(d);
   return { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 }[nama];
 }
-function batasJamKirim(policy, formKey, shift) {
+// 30 Agustus 2026 (migrasi 0033_tabel_shift.sql): parameter ketiga sekarang
+// `batasLapor` (nilai `shift.batas_lapor` yang sudah di-resolve pemanggil),
+// BUKAN lagi `shift` + lookup ke `policy.shift_deadline` (dihapus).
+function batasJamKirim(policy, formKey, batasLapor) {
   const deadlineByForm = policy.deadline_by_form;
   const deadlineDefault = policy.deadline_default ?? '18:00';
   const batas = deadlineByForm?.[formKey] ?? deadlineDefault;
   if (batas === 'per_shift') {
-    const shiftDeadline = policy.shift_deadline;
-    return (shift && shiftDeadline?.[shift]) ?? deadlineDefault;
+    return batasLapor ?? deadlineDefault;
   }
   return batas;
 }
 function jamWIBSekarang() {
   return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
 }
-function apakahTerlambat(policy, formKey, shift) {
+function apakahTerlambat(policy, formKey, batasLapor) {
   const workdays = policy.workdays ?? [1, 2, 3, 4, 5, 6];
   if (!workdays.includes(hariISOWIB())) return false;
-  return jamWIBSekarang() > batasJamKirim(policy, formKey, shift);
+  return jamWIBSekarang() > batasJamKirim(policy, formKey, batasLapor);
 }
 
 function cek(kondisi, pesan) {

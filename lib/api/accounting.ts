@@ -63,9 +63,11 @@ export function useKebutuhanPembangunanAccounting(enabled = true) {
  * sendiri. TIDAK lewat view security-definer -- role `accounting` SUDAH
  * punya `can_see_report()` langsung ke `manager_resto` dan `ita`
  * (0002_rls.sql), jadi query biasa saja, sesuai instruksi "jangan pakai
- * security definer di mana pun yang tidak perlu". Kunci `omzet_indosteak`/
- * `omzet_indokopi` di laporan Ita mengikuti kontrak yang sama dengan
- * `v_selisih_resto` (03-CALC-SPEC.md §4.4, `'omzet_' || lower(nama outlet)`).
+ * security definer di mana pun yang tidak perlu". Kunci `omzet_<slug>` di
+ * laporan Ita mengikuti kontrak yang sama dengan
+ * `selisih_resto_untuk_tanggal()` (migrasi 0031, `'omzet_' || outlet.slug`
+ * -- BUKAN lagi `lower(nama outlet)`, diganti sejak Indosteak jadi dua
+ * outlet dengan nama berspasi/berbagi awalan).
  */
 export interface OmzetRestoRow {
   outlet: string;
@@ -83,7 +85,7 @@ export function useOmzetRestoHariIni(enabled = true) {
       const [{ data: laporanManager, error: errManager }, { data: laporanIta, error: errIta }] = await Promise.all([
         supabase
           .from('report')
-          .select('data, outlet:outlet_id(nama)')
+          .select('data, outlet:outlet_id(nama, slug)')
           .eq('form_key', 'manager_resto')
           .eq('tanggal', tanggal)
           .neq('status', 'draft'),
@@ -97,8 +99,9 @@ export function useOmzetRestoHariIni(enabled = true) {
       return (laporanManager ?? []).map((r) => {
         // Embed report.outlet_id -> outlet (FK ke-satu) selalu objek tunggal saat
         // runtime -- lihat catatan serupa di lib/api/pembangunan.ts.
-        const outlet = (r.outlet as unknown as { nama: string } | null)?.nama ?? '—';
-        const kunciIta = `omzet_${outlet.toLowerCase()}`;
+        const outletEmbed = r.outlet as unknown as { nama: string; slug: string } | null;
+        const outlet = outletEmbed?.nama ?? '—';
+        const kunciIta = `omzet_${outletEmbed?.slug ?? ''}`;
         const omzetIta = dataIta[kunciIta];
         const dataManager = r.data as Record<string, unknown>;
         return {

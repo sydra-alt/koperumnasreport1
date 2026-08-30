@@ -8,6 +8,7 @@ import { statusClosing, statusUndangan, useProgresBulananSaya } from '../lib/api
 import { hitungKelayakanBonus, hitungPotongan, ringkasanPteHariIni, sinkronClosing, sinkronPteDaily } from '../lib/api/pte';
 import { useDaftarLokasi } from '../lib/api/lokasi';
 import { useDaftarOutlet } from '../lib/api/outlet';
+import { useDaftarShift } from '../lib/api/shift';
 import { buatKeputusanDariLaporan } from '../lib/api/decision';
 import { apakahTerlambat, useKirimReport, useReportHariIni, useSimpanDraft, type ScopeOpsi } from '../lib/api/report';
 import { useRekapPembangunanPerLokasi, type PembangunanPerLokasiRow } from '../lib/api/pembangunan';
@@ -30,12 +31,11 @@ import { formRegistry } from '../forms';
 import { FormRenderer } from './FormRenderer';
 
 const IKON: Record<'hijau' | 'kuning' | 'merah', string> = { hijau: '🟢', kuning: '🟡', merah: '🔴' };
-const LABEL_SHIFT: Record<string, string> = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
 
 interface KombinasiScope {
   lokasiId: string | null;
   outletId: string | null;
-  shift: string | null;
+  shiftId: string | null;
 }
 
 export function LaporForm({ formKey }: { formKey: string }) {
@@ -43,23 +43,25 @@ export function LaporForm({ formKey }: { formKey: string }) {
   const { session, profile, assignments } = useAuth();
   const { data: daftarLokasi } = useDaftarLokasi();
   const { data: daftarOutlet } = useDaftarOutlet();
+  const { data: daftarShift } = useDaftarShift();
 
   // Scope 'lokasi' (pic_lokasi, security, dst.) atau 'outlet' (manager_resto):
   // kalau user di-assign lebih dari satu kombinasi (lokasi/outlet, shift), dia
   // harus pilih dulu -- laporan hari ini per kombinasi berbeda adalah baris
-  // report terpisah (report_uniq meng-coalesce lokasi_id/outlet_id/shift,
-  // lihat 0001_init.sql). Kalau cuma satu kombinasi, otomatis, tidak perlu
-  // pemilih. `shift` bernilai null utk form tanpa shift (mis. pic_lokasi,
-  // manager_resto) -- dedup lewat kunci gabungan otomatis mengecil jadi
-  // pemilih-lokasi/outlet-saja untuk kasus itu, tidak ada cabang kode terpisah.
+  // report terpisah (report_uniq meng-coalesce lokasi_id/outlet_id/shift_id,
+  // lihat 0001_init.sql + 0033_tabel_shift.sql). Kalau cuma satu kombinasi,
+  // otomatis, tidak perlu pemilih. `shiftId` bernilai null utk form tanpa
+  // shift (mis. pic_lokasi, manager_resto) -- dedup lewat kunci gabungan
+  // otomatis mengecil jadi pemilih-lokasi/outlet-saja untuk kasus itu, tidak
+  // ada cabang kode terpisah.
   const berScope = schema?.scope === 'lokasi' || schema?.scope === 'outlet';
   const kombinasiDitugaskan = useMemo(() => {
     if (!berScope) return [];
     const peta = new Map<string, KombinasiScope>();
     for (const a of assignments) {
       if (a.form_key !== formKey) continue;
-      const kunci = `${a.lokasi_id ?? ''}|${a.outlet_id ?? ''}|${a.shift ?? ''}`;
-      if (!peta.has(kunci)) peta.set(kunci, { lokasiId: a.lokasi_id, outletId: a.outlet_id, shift: a.shift });
+      const kunci = `${a.lokasi_id ?? ''}|${a.outlet_id ?? ''}|${a.shift_id ?? ''}`;
+      if (!peta.has(kunci)) peta.set(kunci, { lokasiId: a.lokasi_id, outletId: a.outlet_id, shiftId: a.shift_id });
     }
     return Array.from(peta.values());
   }, [assignments, formKey, berScope]);
@@ -68,16 +70,19 @@ export function LaporForm({ formKey }: { formKey: string }) {
   const perluPilihKombinasi = berScope && kombinasiDitugaskan.length > 1 && !kombinasiTerpilih;
   const namaLokasi = (id: string) => daftarLokasi?.find((l) => l.id === id)?.nama ?? id;
   const namaOutlet = (id: string) => daftarOutlet?.find((o) => o.id === id)?.nama ?? id;
+  const namaShift = (id: string) => daftarShift?.find((s) => s.id === id)?.nama ?? id;
+  const batasLaporShift = (id: string) => daftarShift?.find((s) => s.id === id)?.batasLapor ?? null;
   const labelKombinasi = (k: KombinasiScope) => {
     const namaScope = k.lokasiId ? namaLokasi(k.lokasiId) : k.outletId ? namaOutlet(k.outletId) : '—';
-    return `${namaScope}${k.shift ? ` · ${LABEL_SHIFT[k.shift] ?? k.shift}` : ''}`;
+    return `${namaScope}${k.shiftId ? ` · ${namaShift(k.shiftId)}` : ''}`;
   };
 
   const opsi: ScopeOpsi | undefined = berScope
     ? {
         lokasiId: kombinasiAktif?.lokasiId ?? undefined,
         outletId: kombinasiAktif?.outletId ?? undefined,
-        shift: kombinasiAktif?.shift ?? undefined,
+        shiftId: kombinasiAktif?.shiftId ?? undefined,
+        shiftBatasLapor: kombinasiAktif?.shiftId ? batasLaporShift(kombinasiAktif.shiftId) : null,
         aktif: Boolean(kombinasiAktif),
       }
     : undefined;
@@ -224,7 +229,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
       // schema) dan warna_otomatis (decision urgensi 1 -> merah; terlambat
       // atau decision urgensi 2/3 -> kuning) -- lihat lib/warna.ts untuk apa
       // yang SUDAH dan BELUM ditangani di sini.
-      const terlambatKirim = apakahTerlambat(policy, formKey, kombinasiAktif?.shift ?? null);
+      const terlambatKirim = apakahTerlambat(policy, formKey, kombinasiAktif?.shiftId ? batasLaporShift(kombinasiAktif.shiftId) : null);
       const urgensi = urgensiTerburukDariKirim(schema, isiKirim);
       const warnaAkhir = warnaTerburuk(warnaDipilihDari(schema, isiKirim), warnaOtomatis(urgensi, terlambatKirim));
 

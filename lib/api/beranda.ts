@@ -18,7 +18,7 @@ export function useLaporanHariIniSaya() {
 
       const { data, error } = await supabase
         .from('report')
-        .select('form_key, lokasi_id, outlet_id, shift, status')
+        .select('form_key, lokasi_id, outlet_id, shift_id, status')
         .eq('author_id', user.id)
         .eq('tanggal', tanggalWIB());
       if (error) throw error;

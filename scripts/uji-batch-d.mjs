@@ -47,25 +47,28 @@ try {
   const sabrina = sabrinaRows[0].id;
   const { rows: dtiRows } = await q(`select id from lokasi where nama = 'DTI';`);
   const dti = dtiRows[0].id;
-  console.log(`Kasam=${kasam}  Sabrina=${sabrina}  DTI=${dti}`);
+  const { rows: shiftRows } = await q(`select id, nama from shift where nama in ('Pagi', 'Malam');`);
+  const shiftPagi = shiftRows.find((s) => s.nama === 'Pagi').id;
+  const shiftMalam = shiftRows.find((s) => s.nama === 'Malam').id;
+  console.log(`Kasam=${kasam}  Sabrina=${sabrina}  DTI=${dti}  shiftPagi=${shiftPagi}  shiftMalam=${shiftMalam}`);
 
-  langkah('SETUP — pastikan assignment asli Kasam (security/DTI/pagi) ada, tambah shift malam sementara');
+  langkah('SETUP — pastikan assignment asli Kasam (security/DTI/pagi) ada, tambah shift malam sementara (shift_id, migrasi 0033)');
   const { rows: asgAsli } = await q(
-    `select shift from assignment where user_id=$1 and form_key='security' and lokasi_id=$2;`,
+    `select shift_id from assignment where user_id=$1 and form_key='security' and lokasi_id=$2;`,
     [kasam, dti],
   );
-  console.log('Assignment security Kasam saat ini:', asgAsli.map((r) => r.shift));
+  console.log('Assignment security Kasam saat ini:', asgAsli.map((r) => r.shift_id));
   await q(
-    `insert into assignment (user_id, form_key, lokasi_id, shift) values ($1, 'security', $2, 'malam')
+    `insert into assignment (user_id, form_key, lokasi_id, shift_id) values ($1, 'security', $2, $3)
      on conflict do nothing;`,
-    [kasam, dti],
+    [kasam, dti, shiftMalam],
   );
   const { rows: asgSetelah } = await q(
-    `select shift from assignment where user_id=$1 and form_key='security' and lokasi_id=$2 order by shift;`,
+    `select shift_id from assignment where user_id=$1 and form_key='security' and lokasi_id=$2 order by shift_id;`,
     [kasam, dti],
   );
   console.log(
-    asgSetelah.length === 2 ? 'OK: Kasam sekarang punya 2 shift (pagi + malam) di DTI' : `SALAH: shift = ${JSON.stringify(asgSetelah)}`,
+    asgSetelah.length === 2 ? 'OK: Kasam sekarang punya 2 shift (pagi + malam) di DTI' : `SALAH: shift_id = ${JSON.stringify(asgSetelah)}`,
   );
 
   langkah('UJI 1 — sebagai Kasam, kirim laporan security shift PAGI dan MALAM di DTI hari yang sama');
@@ -73,26 +76,26 @@ try {
   await jadiSebagai(kasam);
 
   const { rows: rPagi } = await q(
-    `insert into report (form_key, tanggal, author_id, lokasi_id, shift, data, status, warna, submitted_at)
-     values ('security', (now() at time zone 'Asia/Jakarta')::date, $1, $2, 'pagi', '{"satpam_hadir":2}', 'terkirim', 'hijau', now())
+    `insert into report (form_key, tanggal, author_id, lokasi_id, shift_id, data, status, warna, submitted_at)
+     values ('security', (now() at time zone 'Asia/Jakarta')::date, $1, $2, $3, '{"satpam_hadir":2}', 'terkirim', 'hijau', now())
      returning id;`,
-    [kasam, dti],
+    [kasam, dti, shiftPagi],
   );
   const { rows: rMalam } = await q(
-    `insert into report (form_key, tanggal, author_id, lokasi_id, shift, data, status, warna, submitted_at)
-     values ('security', (now() at time zone 'Asia/Jakarta')::date, $1, $2, 'malam', '{"satpam_hadir":1}', 'terkirim', 'hijau', now())
+    `insert into report (form_key, tanggal, author_id, lokasi_id, shift_id, data, status, warna, submitted_at)
+     values ('security', (now() at time zone 'Asia/Jakarta')::date, $1, $2, $3, '{"satpam_hadir":1}', 'terkirim', 'hijau', now())
      returning id;`,
-    [kasam, dti],
+    [kasam, dti, shiftMalam],
   );
   console.log(
     rPagi.length === 1 && rMalam.length === 1
-      ? 'OK: 2 baris report (shift pagi & malam) berhasil dibuat, tidak bentrok report_uniq'
+      ? 'OK: 2 baris report (shift pagi & malam) berhasil dibuat, tidak bentrok report_uniq (kunci shift_id, migrasi 0033)'
       : 'SALAH: gagal membuat salah satu baris',
   );
 
   const { rows: cekDua } = await q(
-    `select shift from report where form_key='security' and author_id=$1 and lokasi_id=$2
-     and tanggal=(now() at time zone 'Asia/Jakarta')::date order by shift;`,
+    `select shift_id from report where form_key='security' and author_id=$1 and lokasi_id=$2
+     and tanggal=(now() at time zone 'Asia/Jakarta')::date order by shift_id;`,
     [kasam, dti],
   );
   console.log(

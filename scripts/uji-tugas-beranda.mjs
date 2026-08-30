@@ -7,27 +7,30 @@
 // registry form yang dipakai di sini SINTETIS (bukan forms/index.ts asli)
 // -- yang diuji kontrak fungsinya (dedup, status, label), bukan nama form
 // sungguhan.
+//
+// Diperbarui 30 Agustus 2026 (migrasi 0033_tabel_shift.sql): `shift` (text,
+// 'pagi'/'siang'/'malam') diganti `shift_id` (uuid) + resolver
+// `namaShift`/`batasLaporShift` -- LABEL_SHIFT dan `policy.shift_deadline`
+// dihapus, sama seperti lib/tugasHariIni.ts/lib/api/report.ts sungguhan.
 
-const LABEL_SHIFT = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
 const FORM_REGISTRY = {
   personal_marketing: { nama: 'Laporan Personal Marketing' },
   pic_lokasi: { nama: 'Laporan Lokasi' },
   security: { nama: 'Laporan Keamanan' },
 };
 
-function batasJamKirim(policy, formKey, shift) {
+function batasJamKirim(policy, formKey, batasLapor) {
   const deadlineByForm = policy.deadline_by_form;
   const deadlineDefault = policy.deadline_default ?? '18:00';
   const batas = deadlineByForm?.[formKey] ?? deadlineDefault;
   if (batas === 'per_shift') {
-    const shiftDeadline = policy.shift_deadline;
-    return (shift && shiftDeadline?.[shift]) ?? deadlineDefault;
+    return batasLapor ?? deadlineDefault;
   }
   return batas;
 }
 
-function kunciScope(lokasiId, outletId, shift) {
-  return `${lokasiId ?? ''}|${outletId ?? ''}|${shift ?? ''}`;
+function kunciScope(lokasiId, outletId, shiftId) {
+  return `${lokasiId ?? ''}|${outletId ?? ''}|${shiftId ?? ''}`;
 }
 
 function labelSisaWaktu(deadline, jamSekarang) {
@@ -51,19 +54,19 @@ function sapaanWaktu(jamSekarang) {
   return 'Selamat malam';
 }
 
-function hitungTugasHariIni(assignments, roles, laporanHariIni, policy, jamSekarang, namaLokasi, namaOutlet) {
-  function statusUntuk(formKey, lokasiId, outletId, shift) {
+function hitungTugasHariIni(assignments, roles, laporanHariIni, policy, jamSekarang, namaLokasi, namaOutlet, namaShift, batasLaporShift) {
+  function statusUntuk(formKey, lokasiId, outletId, shiftId) {
     const cocok = laporanHariIni.find(
-      (r) => r.form_key === formKey && kunciScope(r.lokasi_id, r.outlet_id, r.shift) === kunciScope(lokasiId, outletId, shift),
+      (r) => r.form_key === formKey && kunciScope(r.lokasi_id, r.outlet_id, r.shift_id) === kunciScope(lokasiId, outletId, shiftId),
     );
     if (!cocok) return 'belum';
     return cocok.status === 'draft' ? 'draft' : 'selesai';
   }
-  function baris(formKey, namaForm, scopeLabel, lokasiId, outletId, shift) {
-    const status = statusUntuk(formKey, lokasiId, outletId, shift);
+  function baris(formKey, namaForm, scopeLabel, lokasiId, outletId, shiftId) {
+    const status = statusUntuk(formKey, lokasiId, outletId, shiftId);
     if (status === 'draft') return { formKey, namaForm, scopeLabel, status, label: 'tersimpan, belum dikirim', lewatDeadline: false, tombol: 'Lanjutkan' };
     if (status === 'selesai') return { formKey, namaForm, scopeLabel, status, label: '', lewatDeadline: false, tombol: '' };
-    const { label, lewat } = labelSisaWaktu(batasJamKirim(policy, formKey, shift), jamSekarang);
+    const { label, lewat } = labelSisaWaktu(batasJamKirim(policy, formKey, shiftId ? batasLaporShift(shiftId) : null), jamSekarang);
     return { formKey, namaForm, scopeLabel, status, label, lewatDeadline: lewat, tombol: 'Isi sekarang' };
   }
 
@@ -75,13 +78,13 @@ function hitungTugasHariIni(assignments, roles, laporanHariIni, policy, jamSekar
   for (const a of assignments) {
     if (a.form_key === 'personal_marketing') continue;
     if (!FORM_REGISTRY[a.form_key]) continue;
-    const kunci = `${a.form_key}|${kunciScope(a.lokasi_id, a.outlet_id, a.shift)}`;
+    const kunci = `${a.form_key}|${kunciScope(a.lokasi_id, a.outlet_id, a.shift_id)}`;
     if (!peta.has(kunci)) peta.set(kunci, a);
   }
   for (const a of peta.values()) {
     const namaScope = a.lokasi_id ? namaLokasi(a.lokasi_id) : a.outlet_id ? namaOutlet(a.outlet_id) : null;
-    const scopeLabel = [namaScope, a.shift ? LABEL_SHIFT[a.shift] : null].filter(Boolean).join(' · ') || null;
-    hasil.push(baris(a.form_key, FORM_REGISTRY[a.form_key].nama, scopeLabel, a.lokasi_id, a.outlet_id, a.shift));
+    const scopeLabel = [namaScope, a.shift_id ? namaShift(a.shift_id) : null].filter(Boolean).join(' · ') || null;
+    hasil.push(baris(a.form_key, FORM_REGISTRY[a.form_key].nama, scopeLabel, a.lokasi_id, a.outlet_id, a.shift_id));
   }
   return hasil;
 }
@@ -106,15 +109,17 @@ cek(sapaanWaktu('17:59') === 'Selamat sore', '17:59 -> sore');
 cek(sapaanWaktu('18:00') === 'Selamat malam', '18:00 -> malam (batas)');
 
 console.log('\n════ UJI hitungTugasHariIni ════');
-const policy = { deadline_default: '18:00', deadline_by_form: { security: 'per_shift' }, shift_deadline: { pagi: '14:30' } };
+const policy = { deadline_default: '18:00', deadline_by_form: { security: 'per_shift' } };
 const namaLokasi = (id) => ({ tajur: 'Tajur', bekasi: 'Bekasi' })[id] ?? id;
 const namaOutlet = (id) => id;
+const namaShift = (id) => ({ 'shift-pagi': 'Pagi', 'shift-siang': 'Siang', 'shift-malam': 'Malam' })[id] ?? id;
+const batasLaporShift = (id) => ({ 'shift-pagi': '14:30', 'shift-siang': '22:30', 'shift-malam': '07:30' })[id] ?? null;
 
 // Karyawan biasa, PIC 2 lokasi, belum kirim apa pun -- harap 3 tugas (personal_marketing + 2 lokasi).
 const t1 = hitungTugasHariIni(
   [
-    { form_key: 'pic_lokasi', lokasi_id: 'tajur', outlet_id: null, shift: null },
-    { form_key: 'pic_lokasi', lokasi_id: 'bekasi', outlet_id: null, shift: null },
+    { form_key: 'pic_lokasi', lokasi_id: 'tajur', outlet_id: null, shift_id: null },
+    { form_key: 'pic_lokasi', lokasi_id: 'bekasi', outlet_id: null, shift_id: null },
   ],
   ['pic_lokasi', 'karyawan'],
   [],
@@ -122,6 +127,8 @@ const t1 = hitungTugasHariIni(
   '10:00',
   namaLokasi,
   namaOutlet,
+  namaShift,
+  batasLaporShift,
 );
 cek(t1.length === 3, `3 tugas (personal_marketing + 2 lokasi) -- dapat ${t1.length}`);
 cek(t1.every((t) => t.status === 'belum'), 'semuanya status "belum" (belum ada laporan hari ini)');
@@ -130,8 +137,8 @@ cek(t1.find((t) => t.formKey === 'pic_lokasi' && t.scopeLabel === 'Tajur') !== u
 // Assignment DOBEL ke lokasi yang sama (data kotor) -- harap TETAP 1 tugas, bukan 2.
 const t2 = hitungTugasHariIni(
   [
-    { form_key: 'pic_lokasi', lokasi_id: 'tajur', outlet_id: null, shift: null },
-    { form_key: 'pic_lokasi', lokasi_id: 'tajur', outlet_id: null, shift: null },
+    { form_key: 'pic_lokasi', lokasi_id: 'tajur', outlet_id: null, shift_id: null },
+    { form_key: 'pic_lokasi', lokasi_id: 'tajur', outlet_id: null, shift_id: null },
   ],
   ['pic_lokasi', 'karyawan'],
   [],
@@ -139,22 +146,26 @@ const t2 = hitungTugasHariIni(
   '10:00',
   namaLokasi,
   namaOutlet,
+  namaShift,
+  batasLaporShift,
 );
 cek(t2.filter((t) => t.formKey === 'pic_lokasi').length === 1, 'assignment dobel ke scope sama -> dedup jadi 1 tugas');
 
 // CEO tanpa role karyawan -- TIDAK ada tugas personal_marketing sama sekali.
-const t3 = hitungTugasHariIni([], ['ceo'], [], policy, '10:00', namaLokasi, namaOutlet);
+const t3 = hitungTugasHariIni([], ['ceo'], [], policy, '10:00', namaLokasi, namaOutlet, namaShift, batasLaporShift);
 cek(t3.length === 0, `CEO tanpa role karyawan -> 0 tugas (dapat ${t3.length})`);
 
 // Draft hari ini -- status "draft", label "tersimpan, belum dikirim", tombol "Lanjutkan".
 const t4 = hitungTugasHariIni(
   [],
   ['karyawan'],
-  [{ form_key: 'personal_marketing', lokasi_id: null, outlet_id: null, shift: null, status: 'draft' }],
+  [{ form_key: 'personal_marketing', lokasi_id: null, outlet_id: null, shift_id: null, status: 'draft' }],
   policy,
   '10:00',
   namaLokasi,
   namaOutlet,
+  namaShift,
+  batasLaporShift,
 );
 cek(t4[0].status === 'draft' && t4[0].label === 'tersimpan, belum dikirim' && t4[0].tombol === 'Lanjutkan', 'laporan draft -> status/label/tombol benar');
 
@@ -162,38 +173,44 @@ cek(t4[0].status === 'draft' && t4[0].label === 'tersimpan, belum dikirim' && t4
 const t5 = hitungTugasHariIni(
   [],
   ['karyawan'],
-  [{ form_key: 'personal_marketing', lokasi_id: null, outlet_id: null, shift: null, status: 'terkirim' }],
+  [{ form_key: 'personal_marketing', lokasi_id: null, outlet_id: null, shift_id: null, status: 'terkirim' }],
   policy,
   '10:00',
   namaLokasi,
   namaOutlet,
+  namaShift,
+  batasLaporShift,
 );
 cek(t5[0].status === 'selesai', 'laporan terkirim -> status "selesai"');
 
 // form_key yang TIDAK terdaftar di registry -- dilewati, tidak jadi tugas mati.
 const t6 = hitungTugasHariIni(
-  [{ form_key: 'form_belum_ada', lokasi_id: null, outlet_id: null, shift: null }],
+  [{ form_key: 'form_belum_ada', lokasi_id: null, outlet_id: null, shift_id: null }],
   ['karyawan'],
   [],
   policy,
   '10:00',
   namaLokasi,
   namaOutlet,
+  namaShift,
+  batasLaporShift,
 );
 cek(t6.length === 1 && t6[0].formKey === 'personal_marketing', 'form_key tak terdaftar dilewati, cuma personal_marketing yang muncul');
 
-// Shift -- deadline per_shift dipakai benar (security, shift pagi, deadline 14:30).
+// Shift -- deadline per_shift dipakai benar (security, shift pagi, batas_lapor 14:30 dari tabel shift, BUKAN policy.shift_deadline lagi).
 const t7 = hitungTugasHariIni(
-  [{ form_key: 'security', lokasi_id: 'tajur', outlet_id: null, shift: 'pagi' }],
+  [{ form_key: 'security', lokasi_id: 'tajur', outlet_id: null, shift_id: 'shift-pagi' }],
   ['karyawan'],
   [],
   policy,
   '15:00',
   namaLokasi,
   namaOutlet,
+  namaShift,
+  batasLaporShift,
 );
 const tugasSecurity = t7.find((t) => t.formKey === 'security');
-cek(tugasSecurity.lewatDeadline === true && tugasSecurity.label.startsWith('terlambat'), `security shift pagi jam 15:00 (deadline 14:30) -> terlambat (dapat "${tugasSecurity.label}")`);
+cek(tugasSecurity.lewatDeadline === true && tugasSecurity.label.startsWith('terlambat'), `security shift pagi jam 15:00 (batas_lapor 14:30) -> terlambat (dapat "${tugasSecurity.label}")`);
 cek(tugasSecurity.scopeLabel === 'Tajur · Pagi', `label scope gabung lokasi + shift (dapat "${tugasSecurity.scopeLabel}")`);
 
 console.log(process.exitCode ? '\n❌ ADA YANG GAGAL' : '\n✅ SEMUA LOLOS');

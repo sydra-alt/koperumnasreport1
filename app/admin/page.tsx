@@ -27,10 +27,13 @@ import {
   useTambahPenugasanAbsen,
   useHapusPenugasanAbsen,
   useAturJamKerja,
+  useDaftarShiftAdmin,
+  useTambahShift,
+  useUbahShift,
   DAFTAR_ROLE,
 } from '../../lib/api/admin';
 
-type Tab = 'lokasi' | 'outlet' | 'assignment' | 'policy' | 'pengguna' | 'titik-absen';
+type Tab = 'lokasi' | 'outlet' | 'assignment' | 'policy' | 'pengguna' | 'titik-absen' | 'shift';
 
 const gayaInput = { borderColor: 'var(--garis)', minHeight: 44 } as const;
 const gayaTombol = { borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 44 } as const;
@@ -118,6 +121,7 @@ function TabAssignment() {
   const { data: profil } = useDaftarProfilDenganRole();
   const { data: lokasi } = useDaftarLokasiAdmin();
   const { data: outlet } = useDaftarOutletAdmin();
+  const { data: shiftDaftar } = useDaftarShiftAdmin();
   const tambah = useTambahAssignment();
   const hapus = useHapusAssignment();
 
@@ -125,7 +129,7 @@ function TabAssignment() {
   const [formKey, setFormKey] = useState('');
   const [lokasiId, setLokasiId] = useState('');
   const [outletId, setOutletId] = useState('');
-  const [shift, setShift] = useState('');
+  const [shiftId, setShiftId] = useState('');
 
   return (
     <div className="flex flex-col gap-3">
@@ -156,18 +160,20 @@ function TabAssignment() {
             </option>
           ))}
         </select>
-        <select value={shift} onChange={(e) => setShift(e.target.value)} className="border p-2" style={gayaInput}>
+        <select value={shiftId} onChange={(e) => setShiftId(e.target.value)} className="border p-2" style={gayaInput}>
           <option value="">-- Tanpa shift --</option>
-          <option value="pagi">Pagi</option>
-          <option value="siang">Siang</option>
-          <option value="malam">Malam</option>
+          {(shiftDaftar ?? []).map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.nama}
+            </option>
+          ))}
         </select>
         <button
           type="button"
           disabled={!userId || !formKey.trim() || tambah.isPending}
           onClick={() =>
             tambah.mutate(
-              { userId, formKey: formKey.trim(), lokasiId: lokasiId || null, outletId: outletId || null, shift: shift || null },
+              { userId, formKey: formKey.trim(), lokasiId: lokasiId || null, outletId: outletId || null, shiftId: shiftId || null },
               { onSuccess: () => setFormKey('') },
             )
           }
@@ -186,7 +192,7 @@ function TabAssignment() {
               {a.userNama} -- {a.formKey}
               {a.lokasiNama ? ` · ${a.lokasiNama}` : ''}
               {a.outletNama ? ` · ${a.outletNama}` : ''}
-              {a.shift ? ` · ${a.shift}` : ''}
+              {a.shiftNama ? ` · ${a.shiftNama}` : ''}
             </span>
             <button
               type="button"
@@ -583,6 +589,108 @@ function TabTitikAbsen() {
   );
 }
 
+/**
+ * Kelola Shift (30 Agustus 2026, migrasi 0033_tabel_shift.sql) -- CEO
+ * mengatur nama/jam/batas lapor tanpa migrasi. `jam_mulai`/`jam_selesai`
+ * SENGAJA diseed kosong (keputusan eksplisit user -- nilai `batas_lapor`
+ * lama BUKAN jam pulang sungguhan, tidak boleh dipakai sebagai tebakan) --
+ * baris dengan jam kosong menampilkan "Jam kerja belum diisi" jelas,
+ * BUKAN placeholder yang terlihat seperti data asli.
+ */
+function TabShift() {
+  const { data: daftar } = useDaftarShiftAdmin();
+  const tambah = useTambahShift();
+  const ubah = useUbahShift();
+  const [namaBaru, setNamaBaru] = useState('');
+
+  const [draf, setDraf] = useState<Record<string, { nama: string; jamMulai: string; jamSelesai: string; batasLapor: string; aktif: boolean }>>({});
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex gap-2">
+        <input value={namaBaru} onChange={(e) => setNamaBaru(e.target.value)} placeholder="Nama shift baru (mis. Pagi)" className="flex-1 border p-2" style={gayaInput} />
+        <button
+          type="button"
+          disabled={!namaBaru.trim() || tambah.isPending}
+          onClick={() => tambah.mutate(namaBaru.trim(), { onSuccess: () => setNamaBaru('') })}
+          className="border px-4"
+          style={gayaTombol}
+        >
+          Tambah
+        </button>
+      </div>
+      {tambah.isError && <p style={{ color: 'var(--merah)' }}>{(tambah.error as Error).message}</p>}
+
+      <ul className="flex flex-col gap-2">
+        {(daftar ?? []).map((s) => {
+          const d = draf[s.id] ?? { nama: s.nama, jamMulai: s.jamMulai ?? '', jamSelesai: s.jamSelesai ?? '', batasLapor: s.batasLapor ?? '', aktif: s.aktif };
+          const jamBelumDiisi = !s.jamMulai || !s.jamSelesai;
+          return (
+            <li key={s.id} className="flex flex-col gap-2 border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
+              <input value={d.nama} onChange={(e) => setDraf((v) => ({ ...v, [s.id]: { ...d, nama: e.target.value } }))} className="border p-2" style={gayaInput} />
+              {jamBelumDiisi && (
+                <p style={{ color: 'var(--kuning)' }}>⚠️ Jam kerja belum diisi -- isi jam mulai/selesai di bawah.</p>
+              )}
+              <div className="flex gap-2">
+                <input
+                  value={d.jamMulai}
+                  onChange={(e) => setDraf((v) => ({ ...v, [s.id]: { ...d, jamMulai: e.target.value } }))}
+                  placeholder="Jam mulai (HH:mm)"
+                  className="flex-1 border p-2"
+                  style={{ ...gayaInput, fontFamily: 'var(--mono)' }}
+                />
+                <input
+                  value={d.jamSelesai}
+                  onChange={(e) => setDraf((v) => ({ ...v, [s.id]: { ...d, jamSelesai: e.target.value } }))}
+                  placeholder="Jam selesai (HH:mm)"
+                  className="flex-1 border p-2"
+                  style={{ ...gayaInput, fontFamily: 'var(--mono)' }}
+                />
+              </div>
+              <input
+                value={d.batasLapor}
+                onChange={(e) => setDraf((v) => ({ ...v, [s.id]: { ...d, batasLapor: e.target.value } }))}
+                placeholder="Batas jam lapor (HH:mm) -- dipakai form 'per_shift' (mis. security)"
+                className="border p-2"
+                style={{ ...gayaInput, fontFamily: 'var(--mono)' }}
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDraf((v) => ({ ...v, [s.id]: { ...d, aktif: !d.aktif } }))}
+                  className="border px-2 py-1"
+                  style={{ borderColor: d.aktif ? 'var(--hijau)' : 'var(--kosong)', color: d.aktif ? 'var(--hijau)' : 'var(--kosong)', minHeight: 44 }}
+                >
+                  {d.aktif ? 'Aktif' : 'Nonaktif'}
+                </button>
+                <button
+                  type="button"
+                  disabled={ubah.isPending}
+                  onClick={() =>
+                    ubah.mutate({
+                      id: s.id,
+                      nama: d.nama.trim(),
+                      jamMulai: d.jamMulai.trim() || null,
+                      jamSelesai: d.jamSelesai.trim() || null,
+                      batasLapor: d.batasLapor.trim() || null,
+                      aktif: d.aktif,
+                    })
+                  }
+                  className="border px-3 py-1"
+                  style={gayaTombol}
+                >
+                  Simpan
+                </button>
+              </div>
+              {ubah.isError && <p style={{ color: 'var(--merah)' }}>{(ubah.error as Error).message}</p>}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function Isi() {
   const [tab, setTab] = useState<Tab>('lokasi');
   const TAB: { key: Tab; label: string }[] = [
@@ -592,6 +700,7 @@ function Isi() {
     { key: 'policy', label: 'Policy' },
     { key: 'pengguna', label: 'Pengguna' },
     { key: 'titik-absen', label: 'Titik Absen' },
+    { key: 'shift', label: 'Shift' },
   ];
 
   return (
@@ -620,6 +729,7 @@ function Isi() {
       {tab === 'policy' && <TabPolicy />}
       {tab === 'pengguna' && <TabPengguna />}
       {tab === 'titik-absen' && <TabTitikAbsen />}
+      {tab === 'shift' && <TabShift />}
     </div>
   );
 }

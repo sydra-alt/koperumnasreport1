@@ -11,6 +11,7 @@ interface Profile {
   jabatan: string | null;
   divisi: string | null;
   aktif: boolean;
+  persetujuan_privasi_absen_at: string | null;
 }
 
 interface Assignment {
@@ -18,7 +19,7 @@ interface Assignment {
   form_key: string;
   lokasi_id: string | null;
   outlet_id: string | null;
-  shift: string | null;
+  shift_id: string | null;
 }
 
 interface AuthContextValue {

@@ -52,8 +52,9 @@ try {
   const { rows: lokasiRows } = await q(`select id, nama from lokasi order by nama;`);
   const tajur = lokasiRows.find((l) => l.nama === 'Tajur').id;
   const bekasi = lokasiRows.find((l) => l.nama === 'Bekasi').id;
-  const { rows: outletRows } = await q(`select id, nama from outlet order by nama;`);
-  const indosteak = outletRows.find((o) => o.nama === 'Indosteak').id;
+  const { rows: outletRows } = await q(`select id, nama, slug from outlet order by nama;`);
+  const outletCempaka = outletRows.find((o) => o.slug === 'indosteak_cempaka');
+  const indosteak = outletCempaka.id;
 
   const pic1 = await buatProfilSementara('PIC Uji Dashboard 1', ['pic_lokasi', 'karyawan']);
   const pic2 = await buatProfilSementara('PIC Uji Dashboard 2', ['pic_lokasi', 'karyawan']);
@@ -84,8 +85,8 @@ try {
   const ita = await buatProfilSementara('Ita Uji Dashboard', ['karyawan']);
   await q(
     `insert into report (form_key, tanggal, author_id, status, data) values
-     ('ita', (now() at time zone 'Asia/Jakarta')::date, $1, 'terkirim', '{"omzet_indosteak":4800000}'::jsonb);`,
-    [ita],
+     ('ita', (now() at time zone 'Asia/Jakarta')::date, $1, 'terkirim', jsonb_build_object('omzet_' || $2::text, 4800000));`,
+    [ita, outletCempaka.slug],
   );
 
   const pusat = await buatProfilSementara('Pusat Uji Dashboard', ['pusat']);
@@ -121,11 +122,11 @@ try {
   const { rows: keuKaryawan } = await q(`select * from v_keuangan_rekap where tanggal = (now() at time zone 'Asia/Jakarta')::date;`);
   cek(keuKaryawan.length === 0, `karyawan biasa (bukan ceo/pusat/accounting) 0 baris (dapat ${keuKaryawan.length})`);
 
-  langkah('UJI 3 -- v_selisih_resto: Indosteak (kedua laporan ada) tampil, selisih 200000; outlet lain TIDAK tampil');
+  langkah('UJI 3 -- selisih_resto_untuk_tanggal(): Indosteak Cempaka (kedua laporan ada) tampil, selisih 200000; outlet lain TIDAK tampil');
   await jadiSebagai(pusat);
-  const { rows: selisih } = await q(`select * from v_selisih_resto;`);
-  cek(selisih.length === 1, `cuma Indosteak yang tampil (dapat ${selisih.length} baris)`);
-  cek(selisih[0]?.outlet === 'Indosteak', `outlet = Indosteak (dapat "${selisih[0]?.outlet}")`);
+  const { rows: selisih } = await q(`select * from selisih_resto_untuk_tanggal();`);
+  cek(selisih.length === 1, `cuma Indosteak Cempaka yang tampil (dapat ${selisih.length} baris)`);
+  cek(selisih[0]?.outlet === 'Indosteak Cempaka', `outlet = Indosteak Cempaka (dapat "${selisih[0]?.outlet}")`);
   cek(Number(selisih[0]?.selisih) === 200000, `selisih = 200000 (dapat ${selisih[0]?.selisih})`);
 
   await q('set local role postgres;');

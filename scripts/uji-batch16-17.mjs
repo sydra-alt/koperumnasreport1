@@ -55,9 +55,9 @@ try {
   langkah('SETUP — profil sementara: Manager Indosteak, Manager Indokopi, Ita, Accounting, Toyib(karyawan polos sudah ada)');
   const { rows: toyibRows } = await q(`select id from profile where nama='Toyib';`);
   const toyib = toyibRows[0].id;
-  const { rows: outletRows } = await q(`select id, nama from outlet order by nama;`);
-  const indokopi = outletRows.find((o) => o.nama === 'Indokopi').id;
-  const indosteak = outletRows.find((o) => o.nama === 'Indosteak').id;
+  const { rows: outletRows } = await q(`select id, nama, slug from outlet order by nama;`);
+  const indokopi = outletRows.find((o) => o.slug === 'indokopi_jatinegara').id;
+  const indosteak = outletRows.find((o) => o.slug === 'indosteak_cempaka').id;
 
   const managerIndosteak = await buatProfilSementara('Manager Indosteak', ['karyawan'], []);
   await q(`insert into assignment (user_id, form_key, outlet_id) values ($1, 'manager_resto', $2);`, [managerIndosteak, indosteak]);
@@ -101,8 +101,8 @@ try {
   const bocorIta = JSON.stringify(hasilIta).includes('RAHASIA');
   cek(hasilIta.length === 2, `Ita lihat 2 baris (Indokopi+Indosteak), dapat ${hasilIta.length}`);
   cek(!bocorIta, 'tidak ada field "RAHASIA" bocor ke Ita (dugaan_penyebab/masalah_karyawan)');
-  const indosteakRow = hasilIta.find((r) => r.outlet === 'Indosteak');
-  cek(Number(indosteakRow?.jumlah_item_selisih) === 1, `Indosteak jumlah_item_selisih=1, dapat ${indosteakRow?.jumlah_item_selisih}`);
+  const indosteakRow = hasilIta.find((r) => r.outlet === 'Indosteak Cempaka');
+  cek(Number(indosteakRow?.jumlah_item_selisih) === 1, `Indosteak Cempaka jumlah_item_selisih=1, dapat ${indosteakRow?.jumlah_item_selisih}`);
   cek(indosteakRow?.stok_habis?.[0]?.barang === 'Saus sambal', 'stok_habis (terstruktur) ikut terbawa ke Ita');
 
   langkah('UJI 3 — sebagai Ita, SELECT langsung ke report WHERE form_key=\'manager_resto\' (RAW OUTPUT, harap 0)');

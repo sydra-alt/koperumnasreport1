@@ -108,7 +108,8 @@ export interface AssignmentRowAdmin {
   formKey: string;
   lokasiNama: string | null;
   outletNama: string | null;
-  shift: string | null;
+  shiftId: string | null;
+  shiftNama: string | null;
 }
 
 export function useDaftarAssignmentAdmin() {
@@ -118,13 +119,14 @@ export function useDaftarAssignmentAdmin() {
       const supabase = createClient();
       const { data, error } = await supabase
         .from('assignment')
-        .select('id, form_key, shift, user:user_id(id, nama), lokasi:lokasi_id(nama), outlet:outlet_id(nama)')
+        .select('id, form_key, shift_id, user:user_id(id, nama), lokasi:lokasi_id(nama), outlet:outlet_id(nama), shift:shift_id(nama)')
         .order('form_key');
       if (error) throw error;
       return (data ?? []).map((r) => {
         const user = r.user as unknown as { id: string; nama: string } | null;
         const lokasi = r.lokasi as unknown as { nama: string } | null;
         const outlet = r.outlet as unknown as { nama: string } | null;
+        const shift = r.shift as unknown as { nama: string } | null;
         return {
           id: r.id,
           userId: user?.id ?? '',
@@ -132,7 +134,8 @@ export function useDaftarAssignmentAdmin() {
           formKey: r.form_key,
           lokasiNama: lokasi?.nama ?? null,
           outletNama: outlet?.nama ?? null,
-          shift: r.shift,
+          shiftId: r.shift_id,
+          shiftNama: shift?.nama ?? null,
         };
       });
     },
@@ -142,20 +145,87 @@ export function useDaftarAssignmentAdmin() {
 export function useTambahAssignment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (baris: { userId: string; formKey: string; lokasiId?: string | null; outletId?: string | null; shift?: string | null }) => {
+    mutationFn: async (baris: { userId: string; formKey: string; lokasiId?: string | null; outletId?: string | null; shiftId?: string | null }) => {
       const supabase = createClient();
       const { error } = await supabase.from('assignment').insert({
         user_id: baris.userId,
         form_key: baris.formKey,
         lokasi_id: baris.lokasiId ?? null,
         outlet_id: baris.outletId ?? null,
-        shift: baris.shift ?? null,
+        shift_id: baris.shiftId ?? null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-assignment'] });
       queryClient.invalidateQueries({ queryKey: ['papan-hari-ini'] });
+    },
+  });
+}
+
+// ─── Shift (30 Agustus 2026, migrasi 0033_tabel_shift.sql) ────────────
+// Sama pola dengan Lokasi/Outlet -- CEO akses tulis penuh lewat RLS
+// `shift_admin` (has_role('ceo')), tidak ada RPC/Route Handler baru (beda
+// dari jam kerja PER ORANG di presensi, yang punya alasan RPC tersendiri).
+export interface ShiftRowAdmin {
+  id: string;
+  nama: string;
+  jamMulai: string | null;
+  jamSelesai: string | null;
+  batasLapor: string | null;
+  aktif: boolean;
+}
+
+export function useDaftarShiftAdmin() {
+  return useQuery({
+    queryKey: ['admin-shift'],
+    queryFn: async (): Promise<ShiftRowAdmin[]> => {
+      const supabase = createClient();
+      const { data, error } = await supabase.from('shift').select('id, nama, jam_mulai, jam_selesai, batas_lapor, aktif').order('nama');
+      if (error) throw error;
+      return (data ?? []).map((r) => ({
+        id: r.id,
+        nama: r.nama,
+        jamMulai: r.jam_mulai,
+        jamSelesai: r.jam_selesai,
+        batasLapor: r.batas_lapor,
+        aktif: r.aktif,
+      }));
+    },
+  });
+}
+
+export function useTambahShift() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (nama: string) => {
+      const supabase = createClient();
+      const { error } = await supabase.from('shift').insert({ nama });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-shift'] }),
+  });
+}
+
+export function useUbahShift() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (baris: { id: string; nama: string; jamMulai: string | null; jamSelesai: string | null; batasLapor: string | null; aktif: boolean }) => {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('shift')
+        .update({ nama: baris.nama, jam_mulai: baris.jamMulai, jam_selesai: baris.jamSelesai, batas_lapor: baris.batasLapor, aktif: baris.aktif })
+        .eq('id', baris.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-shift'] });
+      // Nama shift ikut dipakai lewat namaShift()/batasLaporShift() di
+      // Beranda & LaporForm (useDaftarShift, cache key 'shift-daftar')
+      // -- ikut disegarkan supaya perubahan nama langsung terlihat, bukan
+      // menunggu refresh manual.
+      queryClient.invalidateQueries({ queryKey: ['shift-daftar'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-assignment'] });
     },
   });
 }

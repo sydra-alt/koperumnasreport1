@@ -280,14 +280,16 @@ where form_key = 'accounting'
 
 ### 4.4 Silang-cek omzet resto
 
+**Diperbarui 30 Agustus 2026 (migrasi `0031_indosteak_dua_outlet.sql`):** Indosteak jadi DUA outlet (Cempaka & Pekansari), bukan satu -- pola kunci lama `'omzet_' || lower(nama outlet)` berhenti berfungsi begitu nama outlet berspasi ("Indosteak Cempaka") dan dua outlet berbagi awalan yang sama. Diganti kolom `outlet.slug` (identitas stabil, independen dari nama tampilan) -- kunci JSON sekarang `'omzet_' || outlet.slug`. Live sekarang sebagai fungsi berparameter tanggal (`selisih_resto_untuk_tanggal(p_tanggal)`, migrasi `0020`), bukan lagi view tetap -- bentuk di bawah dipertahankan sebagai gambaran logika, bukan SQL yang benar-benar dijalankan:
+
 ```sql
 create or replace view public.v_selisih_resto as
 select
-  o.nama                                             as outlet,
-  (mr.data->>'total_omzet')::bigint                  as versi_manager,
-  (it.data->>('omzet_' || lower(o.nama)))::bigint    as versi_ita,
+  o.nama                                       as outlet,
+  (mr.data->>'total_omzet')::bigint            as versi_manager,
+  (it.data->>('omzet_' || o.slug))::bigint     as versi_ita,
   (mr.data->>'total_omzet')::bigint
-    - (it.data->>('omzet_' || lower(o.nama)))::bigint as selisih
+    - (it.data->>('omzet_' || o.slug))::bigint as selisih
 from outlet o
 join report mr on mr.form_key = 'manager_resto'
               and mr.outlet_id = o.id

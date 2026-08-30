@@ -25,9 +25,16 @@ import type { FormSchema } from './types';
  *    ditampilkan otomatis di sebelahnya utk dibandingkan, selisih dihitung
  *    sistem. Ita membandingkan, bukan mengetik ulang punya Manager.
  *
- * Kunci `omzet_indosteak`/`omzet_indokopi` (blok 5/6) adalah KONTRAK dengan
- * `v_selisih_resto` (03-CALC-SPEC.md §4.4) -- pola `'omzet_' || lower(nama)`.
- * Jangan diganti namanya.
+ * Kunci `omzet_<slug>` (blok pembukuan per outlet) adalah KONTRAK dengan
+ * `selisih_resto_untuk_tanggal()` (migrasi 0031_indosteak_dua_outlet.sql) --
+ * pola `'omzet_' || outlet.slug`. Jangan diganti namanya tanpa mengganti
+ * `outlet.slug` juga.
+ *
+ * Sejak 30 Agustus 2026 Indosteak jadi DUA outlet (Cempaka & Pekansari,
+ * bukan satu) -- tiga blok pembukuan sekarang (Indokopi Jatinegara,
+ * Indosteak Cempaka, Indosteak Pekansari), bukan dua. Field kontrol
+ * stok/stock-opname per outlet ikut dipecah tiga demi konsistensi, walau
+ * itu bukan bagian kontrak JSON (cuma isian manual Ita).
  *
  * Blok "Stock Opname Mingguan" cuma tampil hari Senin (`hanyaHari: [1]`,
  * lihat forms/validasi.ts `blokBerlakuHariIni`).
@@ -121,52 +128,76 @@ export const f16Ita: FormSchema = {
       ],
     },
     {
-      id: 'pembukuan_indosteak',
-      judul: 'Cek Pembukuan Indosteak',
+      id: 'pembukuan_indokopi_jatinegara',
+      judul: 'Cek Pembukuan Indokopi Jatinegara',
       fields: [
-        { key: 'omzet_indosteak', label: 'Omzet sistem hari ini', type: 'uang' },
-        { key: 'cash_indosteak', label: 'Cash', type: 'uang' },
-        { key: 'qris_indosteak', label: 'QRIS', type: 'uang' },
-        { key: 'bank_indosteak', label: 'Bank/Transfer', type: 'uang' },
-        { key: 'sesuai_indosteak', label: 'Omzet sistem = uang penjualan', type: 'ya_tidak' },
+        { key: 'omzet_indokopi_jatinegara', label: 'Omzet sistem hari ini', type: 'uang' },
+        { key: 'cash_indokopi_jatinegara', label: 'Cash', type: 'uang' },
+        { key: 'qris_indokopi_jatinegara', label: 'QRIS', type: 'uang' },
+        { key: 'bank_indokopi_jatinegara', label: 'Bank/Transfer', type: 'uang' },
+        { key: 'sesuai_indokopi_jatinegara', label: 'Omzet sistem = uang penjualan', type: 'ya_tidak' },
         {
-          key: 'selisih_indosteak',
+          key: 'selisih_indokopi_jatinegara',
           label: 'Selisih',
           type: 'uang',
-          wajibJika: { field: 'sesuai_indosteak', nilai: 'tidak' },
+          wajibJika: { field: 'sesuai_indokopi_jatinegara', nilai: 'tidak' },
         },
         {
-          key: 'penyebab_indosteak',
+          key: 'penyebab_indokopi_jatinegara',
           label: 'Penyebab/keterangan',
           type: 'teks_panjang',
-          wajibJika: { field: 'sesuai_indosteak', nilai: 'tidak' },
+          wajibJika: { field: 'sesuai_indokopi_jatinegara', nilai: 'tidak' },
         },
-        { key: 'bukti_diberikan_accounting_indosteak', label: 'Bukti/data sudah diberikan ke Accounting', type: 'ya_tidak' },
+        { key: 'bukti_diberikan_accounting_indokopi_jatinegara', label: 'Bukti/data sudah diberikan ke Accounting', type: 'ya_tidak' },
+        { key: 'review_google_indokopi_jatinegara', label: 'Google Review Indokopi Jatinegara (jumlah baru)', type: 'angka' },
       ],
     },
     {
-      id: 'pembukuan_indokopi',
-      judul: 'Cek Pembukuan Indokopi',
+      id: 'pembukuan_indosteak_cempaka',
+      judul: 'Cek Pembukuan Indosteak Cempaka',
       fields: [
-        { key: 'omzet_indokopi', label: 'Omzet sistem hari ini', type: 'uang' },
-        { key: 'cash_indokopi', label: 'Cash', type: 'uang' },
-        { key: 'qris_indokopi', label: 'QRIS', type: 'uang' },
-        { key: 'bank_indokopi', label: 'Bank/Transfer', type: 'uang' },
-        { key: 'sesuai_indokopi', label: 'Omzet sistem = uang penjualan', type: 'ya_tidak' },
+        { key: 'omzet_indosteak_cempaka', label: 'Omzet sistem hari ini', type: 'uang' },
+        { key: 'cash_indosteak_cempaka', label: 'Cash', type: 'uang' },
+        { key: 'qris_indosteak_cempaka', label: 'QRIS', type: 'uang' },
+        { key: 'bank_indosteak_cempaka', label: 'Bank/Transfer', type: 'uang' },
+        { key: 'sesuai_indosteak_cempaka', label: 'Omzet sistem = uang penjualan', type: 'ya_tidak' },
         {
-          key: 'selisih_indokopi',
+          key: 'selisih_indosteak_cempaka',
           label: 'Selisih',
           type: 'uang',
-          wajibJika: { field: 'sesuai_indokopi', nilai: 'tidak' },
+          wajibJika: { field: 'sesuai_indosteak_cempaka', nilai: 'tidak' },
         },
         {
-          key: 'penyebab_indokopi',
+          key: 'penyebab_indosteak_cempaka',
           label: 'Penyebab/keterangan',
           type: 'teks_panjang',
-          wajibJika: { field: 'sesuai_indokopi', nilai: 'tidak' },
+          wajibJika: { field: 'sesuai_indosteak_cempaka', nilai: 'tidak' },
         },
-        { key: 'bukti_diberikan_accounting_indokopi', label: 'Bukti/data sudah diberikan ke Accounting', type: 'ya_tidak' },
-        { key: 'review_google_indokopi', label: 'Google Review Indokopi (jumlah baru)', type: 'angka' },
+        { key: 'bukti_diberikan_accounting_indosteak_cempaka', label: 'Bukti/data sudah diberikan ke Accounting', type: 'ya_tidak' },
+      ],
+    },
+    {
+      id: 'pembukuan_indosteak_pekansari',
+      judul: 'Cek Pembukuan Indosteak Pekansari',
+      fields: [
+        { key: 'omzet_indosteak_pekansari', label: 'Omzet sistem hari ini', type: 'uang' },
+        { key: 'cash_indosteak_pekansari', label: 'Cash', type: 'uang' },
+        { key: 'qris_indosteak_pekansari', label: 'QRIS', type: 'uang' },
+        { key: 'bank_indosteak_pekansari', label: 'Bank/Transfer', type: 'uang' },
+        { key: 'sesuai_indosteak_pekansari', label: 'Omzet sistem = uang penjualan', type: 'ya_tidak' },
+        {
+          key: 'selisih_indosteak_pekansari',
+          label: 'Selisih',
+          type: 'uang',
+          wajibJika: { field: 'sesuai_indosteak_pekansari', nilai: 'tidak' },
+        },
+        {
+          key: 'penyebab_indosteak_pekansari',
+          label: 'Penyebab/keterangan',
+          type: 'teks_panjang',
+          wajibJika: { field: 'sesuai_indosteak_pekansari', nilai: 'tidak' },
+        },
+        { key: 'bukti_diberikan_accounting_indosteak_pekansari', label: 'Bukti/data sudah diberikan ke Accounting', type: 'ya_tidak' },
       ],
     },
     {
@@ -185,14 +216,18 @@ export const f16Ita: FormSchema = {
       judul: 'Kontrol Stok Restoran',
       catatan: 'Angka pengecekan Manager Resto ditampilkan otomatis di atas sebagai pembanding -- Anda tetap mengisi hasil pengecekan sendiri.',
       fields: [
-        { key: 'stok_sesuai_indosteak', label: 'Indosteak -- stok sistem = stok aktual (versi Ita)', type: 'ya_tidak' },
-        { key: 'stok_habis_indosteak', label: 'Indosteak -- stok habis', type: 'teks_panjang' },
-        { key: 'stok_hampir_habis_indosteak', label: 'Indosteak -- stok hampir habis', type: 'teks_panjang' },
-        { key: 'kebutuhan_indosteak', label: 'Indosteak -- kebutuhan', type: 'teks_panjang' },
-        { key: 'stok_sesuai_indokopi', label: 'Indokopi -- stok sistem = stok aktual (versi Ita)', type: 'ya_tidak' },
-        { key: 'stok_habis_indokopi', label: 'Indokopi -- stok habis', type: 'teks_panjang' },
-        { key: 'stok_hampir_habis_indokopi', label: 'Indokopi -- stok hampir habis', type: 'teks_panjang' },
-        { key: 'kebutuhan_indokopi', label: 'Indokopi -- kebutuhan', type: 'teks_panjang' },
+        { key: 'stok_sesuai_indokopi_jatinegara', label: 'Indokopi Jatinegara -- stok sistem = stok aktual (versi Ita)', type: 'ya_tidak' },
+        { key: 'stok_habis_indokopi_jatinegara', label: 'Indokopi Jatinegara -- stok habis', type: 'teks_panjang' },
+        { key: 'stok_hampir_habis_indokopi_jatinegara', label: 'Indokopi Jatinegara -- stok hampir habis', type: 'teks_panjang' },
+        { key: 'kebutuhan_indokopi_jatinegara', label: 'Indokopi Jatinegara -- kebutuhan', type: 'teks_panjang' },
+        { key: 'stok_sesuai_indosteak_cempaka', label: 'Indosteak Cempaka -- stok sistem = stok aktual (versi Ita)', type: 'ya_tidak' },
+        { key: 'stok_habis_indosteak_cempaka', label: 'Indosteak Cempaka -- stok habis', type: 'teks_panjang' },
+        { key: 'stok_hampir_habis_indosteak_cempaka', label: 'Indosteak Cempaka -- stok hampir habis', type: 'teks_panjang' },
+        { key: 'kebutuhan_indosteak_cempaka', label: 'Indosteak Cempaka -- kebutuhan', type: 'teks_panjang' },
+        { key: 'stok_sesuai_indosteak_pekansari', label: 'Indosteak Pekansari -- stok sistem = stok aktual (versi Ita)', type: 'ya_tidak' },
+        { key: 'stok_habis_indosteak_pekansari', label: 'Indosteak Pekansari -- stok habis', type: 'teks_panjang' },
+        { key: 'stok_hampir_habis_indosteak_pekansari', label: 'Indosteak Pekansari -- stok hampir habis', type: 'teks_panjang' },
+        { key: 'kebutuhan_indosteak_pekansari', label: 'Indosteak Pekansari -- kebutuhan', type: 'teks_panjang' },
       ],
     },
     {
@@ -222,14 +257,18 @@ export const f16Ita: FormSchema = {
         { key: 'so_thrifting_selisih_pcs', label: 'Thrifting -- selisih (pcs)', type: 'angka' },
         { key: 'so_thrifting_selisih_rp', label: 'Thrifting -- selisih (Rp)', type: 'uang' },
         { key: 'so_thrifting_status', label: 'Thrifting -- sesuai', type: 'ya_tidak' },
-        { key: 'so_indosteak_stok_sistem', label: 'Indosteak -- nilai/jumlah stok sistem', type: 'teks' },
-        { key: 'so_indosteak_stok_aktual', label: 'Indosteak -- stok aktual', type: 'teks' },
-        { key: 'so_indosteak_selisih', label: 'Indosteak -- selisih', type: 'teks' },
-        { key: 'so_indosteak_status', label: 'Indosteak -- sesuai', type: 'ya_tidak' },
-        { key: 'so_indokopi_stok_sistem', label: 'Indokopi -- nilai/jumlah stok sistem', type: 'teks' },
-        { key: 'so_indokopi_stok_aktual', label: 'Indokopi -- stok aktual', type: 'teks' },
-        { key: 'so_indokopi_selisih', label: 'Indokopi -- selisih', type: 'teks' },
-        { key: 'so_indokopi_status', label: 'Indokopi -- sesuai', type: 'ya_tidak' },
+        { key: 'so_indokopi_jatinegara_stok_sistem', label: 'Indokopi Jatinegara -- nilai/jumlah stok sistem', type: 'teks' },
+        { key: 'so_indokopi_jatinegara_stok_aktual', label: 'Indokopi Jatinegara -- stok aktual', type: 'teks' },
+        { key: 'so_indokopi_jatinegara_selisih', label: 'Indokopi Jatinegara -- selisih', type: 'teks' },
+        { key: 'so_indokopi_jatinegara_status', label: 'Indokopi Jatinegara -- sesuai', type: 'ya_tidak' },
+        { key: 'so_indosteak_cempaka_stok_sistem', label: 'Indosteak Cempaka -- nilai/jumlah stok sistem', type: 'teks' },
+        { key: 'so_indosteak_cempaka_stok_aktual', label: 'Indosteak Cempaka -- stok aktual', type: 'teks' },
+        { key: 'so_indosteak_cempaka_selisih', label: 'Indosteak Cempaka -- selisih', type: 'teks' },
+        { key: 'so_indosteak_cempaka_status', label: 'Indosteak Cempaka -- sesuai', type: 'ya_tidak' },
+        { key: 'so_indosteak_pekansari_stok_sistem', label: 'Indosteak Pekansari -- nilai/jumlah stok sistem', type: 'teks' },
+        { key: 'so_indosteak_pekansari_stok_aktual', label: 'Indosteak Pekansari -- stok aktual', type: 'teks' },
+        { key: 'so_indosteak_pekansari_selisih', label: 'Indosteak Pekansari -- selisih', type: 'teks' },
+        { key: 'so_indosteak_pekansari_status', label: 'Indosteak Pekansari -- sesuai', type: 'ya_tidak' },
         { key: 'so_daftar_barang_selisih', label: 'Daftar barang selisih', type: 'teks_panjang' },
         { key: 'so_penyebab_selisih', label: 'Penyebab selisih', type: 'teks_panjang' },
         { key: 'so_tindakan_perbaikan', label: 'Tindakan/perbaikan', type: 'teks_panjang' },

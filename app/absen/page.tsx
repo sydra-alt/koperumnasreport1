@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import { usePolicy } from '../../lib/api/policy';
-import { useTitikAbsenSaya, useAbsenHariIni, useKirimAbsen } from '../../lib/api/absensi';
+import { useTitikAbsenSaya, useAbsenHariIni, useKirimAbsen, useSetujuiPrivasiPresensi } from '../../lib/api/absensi';
 import { urutkanTitikTerdekat, hitungTerlambatMenit, statusDariJarak, type TitikDenganJarak } from '../../lib/absen';
 import { jamWIB, tanggalWIB } from '../../lib/tanggal';
 import { CameraCapture } from '../../components/CameraCapture';
@@ -43,6 +43,9 @@ export default function AbsenPage() {
   const { data: titikSaya, isLoading: titikLoading } = useTitikAbsenSaya(userId);
   const { data: absenHariIni, isLoading: absenLoading, refetch: muatUlangAbsenHariIni } = useAbsenHariIni(userId);
   const kirimAbsen = useKirimAbsen(userId);
+  const setujuiPrivasi = useSetujuiPrivasiPresensi();
+  const [privasiDisetujuiLokal, setPrivasiDisetujuiLokal] = useState(false);
+  const sudahSetujuiPrivasi = Boolean(profile?.persetujuan_privasi_absen_at) || privasiDisetujuiLokal;
 
   const [layar, setLayar] = useState<Layar>('memuat');
   const [tipeAktif, setTipeAktif] = useState<'masuk' | 'pulang' | null>(null);
@@ -76,6 +79,19 @@ export default function AbsenPage() {
 
   if (!session || titikLoading || absenLoading || !policy || layar === 'memuat') {
     return <main className="p-6">Memuat…</main>;
+  }
+
+  if (!sudahSetujuiPrivasi) {
+    return (
+      <PersetujuanPrivasi
+        sedangMenyimpan={setujuiPrivasi.isPending}
+        error={setujuiPrivasi.isError ? (setujuiPrivasi.error as Error).message : null}
+        onSetuju={async () => {
+          await setujuiPrivasi.mutateAsync();
+          setPrivasiDisetujuiLokal(true);
+        }}
+      />
+    );
   }
 
   const jamMasukDefault = String(policy.jam_masuk ?? '08:00');
@@ -393,6 +409,62 @@ function BarisAbsen({
     <button type="button" onClick={onTekan} className="border p-3 text-left" style={gayaTombolUtama}>
       Absen {label}
     </button>
+  );
+}
+
+/**
+ * Muncul sekali per akun, sebelum halaman Absen terbuka pertama kali
+ * (instruksi eksplisit user, 30 Agustus 2026 -- UU PDP: orang harus tahu
+ * data apa yang direkam SEBELUM perekamannya mulai). Tombol "Saya mengerti
+ * dan setuju" memanggil RPC `setujui_privasi_presensi()` -- waktunya
+ * dihitung SERVER (`now()`), bukan dipercaya dari klien, supaya catatan
+ * persetujuan ini kuat sebagai bukti. Tersimpan sekali seumur akun (RPC
+ * idempoten lewat `where ... is null`).
+ */
+function PersetujuanPrivasi({
+  onSetuju,
+  sedangMenyimpan,
+  error,
+}: {
+  onSetuju: () => Promise<void>;
+  sedangMenyimpan: boolean;
+  error: string | null;
+}) {
+  return (
+    <main className="mx-auto flex max-w-md flex-col gap-4 p-6">
+      <h1 className="text-2xl" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
+        Sebelum Anda Absen
+      </h1>
+      <div className="flex flex-col gap-3 border p-4 text-sm" style={{ borderColor: 'var(--garis)', borderRadius: 'var(--radius-besar)' }}>
+        <p>
+          <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Apa yang direkam:</b> titik lokasi Anda, foto wajah, dan jam --
+          <b> hanya SAAT Anda menekan tombol absen</b>, bukan pelacakan sepanjang hari. Di luar momen itu, lokasi Anda tidak direkam sama sekali.
+        </p>
+        <p>
+          <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Untuk apa:</b> rekap kehadiran (hadir, terlambat, lokasi dalam/luar radius penugasan Anda).
+        </p>
+        <p>
+          <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Berapa lama disimpan:</b> foto disimpan 90 hari lalu dihapus. Catatan kehadiran (waktu, lokasi, status) tetap disimpan.
+        </p>
+        <p>
+          <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Siapa yang bisa melihat:</b> HRD dan CEO.
+        </p>
+      </div>
+      {error && (
+        <p className="text-sm" style={{ color: 'var(--merah)' }}>
+          {error}
+        </p>
+      )}
+      <button
+        type="button"
+        disabled={sedangMenyimpan}
+        onClick={() => void onSetuju()}
+        className="border px-4"
+        style={{ ...gayaTombolUtama, borderRadius: 'var(--radius-pil)' }}
+      >
+        {sedangMenyimpan ? 'Menyimpan…' : 'Saya mengerti dan setuju'}
+      </button>
+    </main>
   );
 }
 

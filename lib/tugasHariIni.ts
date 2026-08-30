@@ -2,20 +2,18 @@ import type { PolicyMap } from './api/policy';
 import { batasJamKirim } from './api/report';
 import { formRegistry } from '../forms';
 
-const LABEL_SHIFT: Record<string, string> = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
-
 export interface AssignmentRingkas {
   form_key: string;
   lokasi_id: string | null;
   outlet_id: string | null;
-  shift: string | null;
+  shift_id: string | null;
 }
 
 export interface LaporanHariIniRingkas {
   form_key: string;
   lokasi_id: string | null;
   outlet_id: string | null;
-  shift: string | null;
+  shift_id: string | null;
   status: 'draft' | 'terkirim' | 'terlambat';
 }
 
@@ -30,8 +28,8 @@ export interface TugasHariIni {
   tombol: string;
 }
 
-function kunciScope(lokasiId: string | null, outletId: string | null, shift: string | null): string {
-  return `${lokasiId ?? ''}|${outletId ?? ''}|${shift ?? ''}`;
+function kunciScope(lokasiId: string | null, outletId: string | null, shiftId: string | null): string {
+  return `${lokasiId ?? ''}|${outletId ?? ''}|${shiftId ?? ''}`;
 }
 
 /** "batas 18.00" kalau belum lewat, "terlambat X jam Y menit" kalau sudah -- dua jam WIB 'HH:mm', bukan Date/instant, jadi tidak ada risiko tebakan zona waktu. */
@@ -69,24 +67,26 @@ export function hitungTugasHariIni(
   jamSekarang: string,
   namaLokasi: (id: string) => string,
   namaOutlet: (id: string) => string,
+  namaShift: (id: string) => string,
+  batasLaporShift: (id: string) => string | null,
 ): TugasHariIni[] {
-  function statusUntuk(formKey: string, lokasiId: string | null, outletId: string | null, shift: string | null): 'belum' | 'draft' | 'selesai' {
+  function statusUntuk(formKey: string, lokasiId: string | null, outletId: string | null, shiftId: string | null): 'belum' | 'draft' | 'selesai' {
     const cocok = laporanHariIni.find(
-      (r) => r.form_key === formKey && kunciScope(r.lokasi_id, r.outlet_id, r.shift) === kunciScope(lokasiId, outletId, shift),
+      (r) => r.form_key === formKey && kunciScope(r.lokasi_id, r.outlet_id, r.shift_id) === kunciScope(lokasiId, outletId, shiftId),
     );
     if (!cocok) return 'belum';
     return cocok.status === 'draft' ? 'draft' : 'selesai';
   }
 
-  function baris(formKey: string, namaForm: string, scopeLabel: string | null, lokasiId: string | null, outletId: string | null, shift: string | null): TugasHariIni {
-    const status = statusUntuk(formKey, lokasiId, outletId, shift);
+  function baris(formKey: string, namaForm: string, scopeLabel: string | null, lokasiId: string | null, outletId: string | null, shiftId: string | null): TugasHariIni {
+    const status = statusUntuk(formKey, lokasiId, outletId, shiftId);
     if (status === 'draft') {
       return { formKey, namaForm, scopeLabel, status, label: 'tersimpan, belum dikirim', lewatDeadline: false, tombol: 'Lanjutkan' };
     }
     if (status === 'selesai') {
       return { formKey, namaForm, scopeLabel, status, label: '', lewatDeadline: false, tombol: '' };
     }
-    const { label, lewat } = labelSisaWaktu(batasJamKirim(policy, formKey, shift), jamSekarang);
+    const { label, lewat } = labelSisaWaktu(batasJamKirim(policy, formKey, shiftId ? batasLaporShift(shiftId) : null), jamSekarang);
     return { formKey, namaForm, scopeLabel, status, label, lewatDeadline: lewat, tombol: 'Isi sekarang' };
   }
 
@@ -100,14 +100,14 @@ export function hitungTugasHariIni(
   for (const a of assignments) {
     if (a.form_key === 'personal_marketing') continue;
     if (!formRegistry[a.form_key]) continue;
-    const kunci = `${a.form_key}|${kunciScope(a.lokasi_id, a.outlet_id, a.shift)}`;
+    const kunci = `${a.form_key}|${kunciScope(a.lokasi_id, a.outlet_id, a.shift_id)}`;
     if (!peta.has(kunci)) peta.set(kunci, a);
   }
 
   for (const a of peta.values()) {
     const namaScope = a.lokasi_id ? namaLokasi(a.lokasi_id) : a.outlet_id ? namaOutlet(a.outlet_id) : null;
-    const scopeLabel = [namaScope, a.shift ? LABEL_SHIFT[a.shift] : null].filter(Boolean).join(' · ') || null;
-    hasil.push(baris(a.form_key, formRegistry[a.form_key].nama, scopeLabel, a.lokasi_id, a.outlet_id, a.shift));
+    const scopeLabel = [namaScope, a.shift_id ? namaShift(a.shift_id) : null].filter(Boolean).join(' · ') || null;
+    hasil.push(baris(a.form_key, formRegistry[a.form_key].nama, scopeLabel, a.lokasi_id, a.outlet_id, a.shift_id));
   }
 
   return hasil;

@@ -205,6 +205,17 @@ export function usePutuskanAbsensi() {
   });
 }
 
+// ─── Persetujuan privasi presensi (sekali seumur akun) ─────────────────
+export function useSetujuiPrivasiPresensi() {
+  return useMutation({
+    mutationFn: async () => {
+      const supabase = createClient();
+      const { error } = await supabase.rpc('setujui_privasi_presensi');
+      if (error) throw error;
+    },
+  });
+}
+
 export function useSignedUrlAbsensi() {
   return useMutation({
     mutationFn: async ({ path, umurDetik = 60 }: { path: string; umurDetik?: number }) => {

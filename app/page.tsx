@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth/AuthProvider';
 import { usePolicy } from '../lib/api/policy';
 import { useDaftarLokasi } from '../lib/api/lokasi';
 import { useDaftarOutlet } from '../lib/api/outlet';
+import { useDaftarShift } from '../lib/api/shift';
 import { useLaporanHariIniSaya } from '../lib/api/beranda';
 import { useProgresBulananSaya } from '../lib/api/marketing';
 import { hitungTugasHariIni, sapaanWaktu } from '../lib/tugasHariIni';
@@ -100,6 +101,7 @@ function DaftarTugas() {
   const { data: policy } = usePolicy();
   const { data: lokasi } = useDaftarLokasi();
   const { data: outlet } = useDaftarOutlet();
+  const { data: shift } = useDaftarShift();
   const { data: laporanHariIni, isLoading } = useLaporanHariIniSaya();
   const { data: progres } = useProgresBulananSaya();
 
@@ -109,6 +111,8 @@ function DaftarTugas() {
 
   const namaLokasi = (id: string) => lokasi?.find((l) => l.id === id)?.nama ?? id;
   const namaOutlet = (id: string) => outlet?.find((o) => o.id === id)?.nama ?? id;
+  const namaShift = (id: string) => shift?.find((s) => s.id === id)?.nama ?? id;
+  const batasLaporShift = (id: string) => shift?.find((s) => s.id === id)?.batasLapor ?? null;
   const workdays = (policy.workdays as number[] | undefined) ?? [1, 2, 3, 4, 5, 6];
   const hariLibur = !workdays.includes(hariISOWIB());
 
@@ -123,7 +127,7 @@ function DaftarTugas() {
     );
   }
 
-  const tugas = hitungTugasHariIni(assignments, roles, laporanHariIni ?? [], policy, jamWIB(), namaLokasi, namaOutlet);
+  const tugas = hitungTugasHariIni(assignments, roles, laporanHariIni ?? [], policy, jamWIB(), namaLokasi, namaOutlet, namaShift, batasLaporShift);
   const tugasBelum = tugas.filter((t) => t.status !== 'selesai');
   const invitTarget = Number(policy.invite_target);
   const closingTarget = Number(policy.closing_target);

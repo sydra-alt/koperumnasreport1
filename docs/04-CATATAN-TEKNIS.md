@@ -46,6 +46,14 @@ create table public.outlet (
 );
 
 -- siapa bertanggung jawab mengisi form apa, untuk scope mana
+--
+-- **Diperbarui 30 Agustus 2026 (migrasi `0033_tabel_shift.sql`):** `shift`
+-- (text, CHECK ke 3 nilai tetap) diganti `shift_id uuid references
+-- shift(id)` -- CEO sering mengubah jadwal shift, butuh diatur dari Admin
+-- tanpa migrasi tiap kali. Kolom `shift` LAMA (di bawah) masih ada di
+-- database SUNGGUHAN sampai migrasi penghapusannya (belum ditulis, menunggu
+-- konfirmasi user) -- bentuk di bawah dipertahankan sebagai gambaran skema
+-- ASLI (Task 04), bukan lagi yang aktif dipakai kode.
 create table public.assignment (
   id        uuid primary key default gen_random_uuid(),
   user_id   uuid not null references public.profile(id) on delete cascade,

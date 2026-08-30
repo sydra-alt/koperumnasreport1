@@ -328,11 +328,14 @@ try {
     console.log('auth.uid() =', s12);
     await q(`
       do $$
+      declare
+        shift_pagi uuid := (select id from public.shift where nama = 'Pagi');
+        shift_siang uuid := (select id from public.shift where nama = 'Siang');
       begin
-        insert into public.report (form_key, tanggal, author_id, shift, data)
-        values ('security', (now() at time zone 'Asia/Jakarta')::date, current_setting('uji.id_kasam')::uuid, 'pagi', '{}');
-        insert into public.report (form_key, tanggal, author_id, shift, data)
-        values ('security', (now() at time zone 'Asia/Jakarta')::date, current_setting('uji.id_kasam')::uuid, 'siang', '{}');
+        insert into public.report (form_key, tanggal, author_id, shift_id, data)
+        values ('security', (now() at time zone 'Asia/Jakarta')::date, current_setting('uji.id_kasam')::uuid, shift_pagi, '{}');
+        insert into public.report (form_key, tanggal, author_id, shift_id, data)
+        values ('security', (now() at time zone 'Asia/Jakarta')::date, current_setting('uji.id_kasam')::uuid, shift_siang, '{}');
         perform set_config('uji.hasil12', 'BERHASIL_BENAR: dua shift, dua baris, tidak bentrok', true);
       exception
         when others then
