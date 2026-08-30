@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../lib/auth/AuthProvider';
@@ -18,7 +19,7 @@ import { AbsenFab } from './AbsenFab';
  * Ini menghindari dua kali `useAuth()`/dua kali pengecekan sesi kosong.
  */
 export function KopHalaman() {
-  const { roles, session, signOut, assignments, profile } = useAuth();
+  const { roles, session, signOut, assignments, profile, loading } = useAuth();
   const pathname = usePathname();
   // Tombol bundar Absen (30 Agustus 2026) cuma tampil untuk yang PUNYA
   // penugasan presensi -- "jangan tampilkan tombol yang tidak berlaku
@@ -28,7 +29,14 @@ export function KopHalaman() {
   const { data: titikSaya } = useTitikAbsenSaya(session?.user.id);
   const punyaTitikAbsen = (titikSaya?.length ?? 0) > 0;
 
-  if (!session) return null;
+  // /masuk dan /ganti-password BERDIRI SENDIRI, tanpa kerangka aplikasi
+  // (instruksi eksplisit user, 30 Agustus 2026 -- bug: nav akun lama masih
+  // terlihat di /masuk setelah logout). Dicek lebih dulu, sebelum `loading`/
+  // `!session`, supaya dua halaman ini TIDAK PERNAH menampilkan nav apa pun
+  // apa pun status sesinya. `loading`/`!session` di bawah menutup sisanya --
+  // "lebih baik kosong sesaat daripada menampilkan menu yang salah".
+  if (pathname === '/masuk' || pathname === '/ganti-password') return null;
+  if (loading || !session) return null;
 
   const semua = tabTerlihat(roles, assignments, formRegistry, profile?.divisi ?? null);
   const bawah = tabBawah(semua, punyaTitikAbsen);
@@ -42,16 +50,19 @@ export function KopHalaman() {
     <>
       <header className="nav-atas border-b" style={{ borderColor: 'var(--garis)', background: 'var(--kertas-2)' }}>
         <div className="flex flex-wrap items-center justify-between gap-2 p-3">
-          <div>
-            <div className="text-lg" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
-              Koperumnas Group
-            </div>
-            <div
-              className="text-sm"
-              style={{ fontFamily: 'var(--mono)', color: 'var(--biru-3)' }}
-              suppressHydrationWarning
-            >
-              {tanggalIndonesiaWIB()}
+          <div className="flex items-center gap-2">
+            <Image src="/logo-koperumnas.jpg" alt="" width={28} height={28} style={{ borderRadius: 'var(--radius-kecil)' }} />
+            <div>
+              <div className="text-lg" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
+                Koperumnas Group
+              </div>
+              <div
+                className="text-sm"
+                style={{ fontFamily: 'var(--mono)', color: 'var(--biru-3)' }}
+                suppressHydrationWarning
+              >
+                {tanggalIndonesiaWIB()}
+              </div>
             </div>
           </div>
           <button

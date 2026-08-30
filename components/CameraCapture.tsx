@@ -2,12 +2,72 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { kompresGambar } from '../lib/gambar';
+import { jamWIB } from '../lib/tanggal';
 
 type Status = 'meminta' | 'siap' | 'ditolak' | 'gagal' | 'preview';
+
+export interface WatermarkAbsen {
+  nama: string;
+  titikNama: string;
+  lat: number;
+  lon: number;
+}
 
 interface CameraCaptureProps {
   onGunakan: (blob: Blob) => void;
   onBatal: () => void;
+  /** Kalau diisi, dibubuhkan ke foto sebagai watermark (instruksi eksplisit user, 30 Agustus 2026) -- nama, jam WIB SAAT DIAMBIL, koordinat, nama titik. */
+  watermark?: WatermarkAbsen;
+}
+
+let logoWatermarkCache: HTMLImageElement | null = null;
+function muatLogoWatermark(): Promise<HTMLImageElement> {
+  if (logoWatermarkCache) return Promise.resolve(logoWatermarkCache);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      logoWatermarkCache = img;
+      resolve(img);
+    };
+    img.onerror = reject;
+    img.src = '/logo-koperumnas.jpg';
+  });
+}
+
+/** Bar semi-transparan di bawah foto: logo kecil + nama/jam/titik/koordinat. Gagal muat logo TIDAK boleh menggagalkan absen -- teks tetap dibubuhkan. */
+async function bubuhkanWatermark(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, w: WatermarkAbsen) {
+  const tinggiBar = Math.round(canvas.height * 0.16);
+  const y0 = canvas.height - tinggiBar;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.fillRect(0, y0, canvas.width, tinggiBar);
+
+  const paddingKiri = Math.round(canvas.width * 0.03);
+  let xTeks = paddingKiri;
+
+  try {
+    const logo = await muatLogoWatermark();
+    const tinggiLogo = Math.round(tinggiBar * 0.62);
+    const lebarLogo = Math.round((logo.width / logo.height) * tinggiLogo);
+    const yLogo = y0 + Math.round((tinggiBar - tinggiLogo) / 2);
+    // latar putih solid di belakang logo -- kontras di atas overlay gelap
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(paddingKiri, yLogo, lebarLogo, tinggiLogo);
+    ctx.drawImage(logo, paddingKiri, yLogo, lebarLogo, tinggiLogo);
+    xTeks = paddingKiri + lebarLogo + Math.round(canvas.width * 0.025);
+  } catch {
+    // logo gagal dimuat -- lanjut tanpa logo, teks watermark tetap tampil.
+  }
+
+  const ukuranFontBesar = Math.max(14, Math.round(canvas.width * 0.042));
+  const ukuranFontKecil = Math.max(11, Math.round(canvas.width * 0.032));
+  ctx.fillStyle = '#ffffff';
+  ctx.textBaseline = 'middle';
+
+  ctx.font = `700 ${ukuranFontBesar}px sans-serif`;
+  ctx.fillText(`${w.nama} · ${jamWIB()} WIB`, xTeks, y0 + tinggiBar * 0.35);
+
+  ctx.font = `400 ${ukuranFontKecil}px sans-serif`;
+  ctx.fillText(`${w.titikNama} · ${w.lat.toFixed(6)}, ${w.lon.toFixed(6)}`, xTeks, y0 + tinggiBar * 0.72);
 }
 
 /**
@@ -18,7 +78,7 @@ interface CameraCaptureProps {
  * atribut `capture` pada input file tidak konsisten memaksa itu lintas
  * browser, `getUserMedia` + `facingMode:'user'` yang benar-benar menjaminnya.
  */
-export function CameraCapture({ onGunakan, onBatal }: CameraCaptureProps) {
+export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [status, setStatus] = useState<Status>('meminta');
@@ -64,6 +124,7 @@ export function CameraCapture({ onGunakan, onBatal }: CameraCaptureProps) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.drawImage(video, 0, 0);
+    if (watermark) await bubuhkanWatermark(ctx, canvas, watermark);
     canvas.toBlob(
       async (blobMentah) => {
         if (!blobMentah) return;

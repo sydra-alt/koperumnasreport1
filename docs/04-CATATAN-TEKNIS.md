@@ -210,6 +210,10 @@ language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.role where user_id = auth.uid() and role = r);
 $$;
 
+-- Diperbarui 30 Agustus 2026 (migrasi 0037_can_see_report_kontrol_fnb.sql)
+-- -- form `ita` dipecah jadi `thrifting`+`kontrol_fnb` (migrasi 0036),
+-- cakupan akses accounting dipertahankan PERSIS SAMA seperti sebelum
+-- pemecahan (dulu satu form 'ita' mencakup keduanya).
 create or replace function public.can_see_report(f text, author uuid)
 returns boolean
 language sql stable security definer set search_path = public as $$
@@ -218,7 +222,7 @@ language sql stable security definer set search_path = public as $$
     or public.has_role('ceo')
     or (public.has_role('pusat')             and f <> 'accounting')
     or (public.has_role('kontrol_marketing') and f =  'personal_marketing')
-    or (public.has_role('accounting')        and f in ('accounting','manager_resto','ita'))
+    or (public.has_role('accounting')        and f in ('accounting','manager_resto','thrifting','kontrol_fnb'))
     or (public.has_role('manager_resto')     and f =  'personal_marketing');
 $$;
 ```

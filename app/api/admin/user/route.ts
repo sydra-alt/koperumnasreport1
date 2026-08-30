@@ -15,9 +15,10 @@ import { createClient as createServerClient } from '../../../../lib/supabase/ser
  * Auth Admin API (`createUser`) tidak tunduk RLS sama sekali -- karena
  * itu, permintaan diverifikasi DUA LAPIS sebelum kunci dipakai:
  * (1) ada sesi login sungguhan (cookie, lewat `lib/supabase/server.ts`
- * yang memakai anon key + RLS biasa), (2) sesi itu punya role `ceo`
- * (dicek lewat query `role` dengan klien SESI ITU SENDIRI, bukan admin
- * client -- kalau bukan `ceo`, RLS `role_select` tetap mengizinkan baca
+ * yang memakai anon key + RLS biasa), (2) sesi itu punya role `ceo` ATAU
+ * `admin` (migrasi 0039_admin_role.sql -- akses panel Admin, BUKAN akses
+ * laporan accounting) (dicek lewat query `role` dengan klien SESI ITU
+ * SENDIRI, bukan admin client -- RLS `role_select` tetap mengizinkan baca
  * baris sendiri, cukup untuk pengecekan ini).
  *
  * Password SELALU 'admin123' (instruksi eksplisit user, 30 Agustus 2026) --
@@ -42,8 +43,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: errRoles.message }, { status: 500 });
   }
   const roles = (rolesData ?? []).map((r) => r.role);
-  if (!roles.includes('ceo')) {
-    return NextResponse.json({ error: 'Tidak berhak. Hanya CEO yang bisa membuat pengguna baru.' }, { status: 403 });
+  if (!roles.includes('ceo') && !roles.includes('admin')) {
+    return NextResponse.json({ error: 'Tidak berhak. Hanya CEO/Admin yang bisa membuat pengguna baru.' }, { status: 403 });
   }
 
   const body = await request.json().catch(() => null);

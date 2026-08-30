@@ -32,8 +32,8 @@ function kunciScope(lokasiId: string | null, outletId: string | null, shiftId: s
   return `${lokasiId ?? ''}|${outletId ?? ''}|${shiftId ?? ''}`;
 }
 
-/** "batas 18.00" kalau belum lewat, "terlambat X jam Y menit" kalau sudah -- dua jam WIB 'HH:mm', bukan Date/instant, jadi tidak ada risiko tebakan zona waktu. */
-function labelSisaWaktu(deadline: string, jamSekarang: string): { label: string; lewat: boolean } {
+/** "batas 18.00" kalau belum lewat, "terlambat X jam Y menit" kalau sudah -- dua jam WIB 'HH:mm', bukan Date/instant, jadi tidak ada risiko tebakan zona waktu. Diekspor juga untuk layar konfirmasi kirim (components/FormRenderer.tsx) -- pesan "terlambat" di sana pakai perhitungan yang SAMA, bukan logika kedua. */
+export function labelSisaWaktu(deadline: string, jamSekarang: string): { label: string; lewat: boolean } {
   const [dj, dm] = deadline.split(':').map(Number);
   const [sj, sm] = jamSekarang.split(':').map(Number);
   const menitDeadline = dj * 60 + dm;

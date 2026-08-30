@@ -59,17 +59,23 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // manifest.webmanifest, icon(-192/-512), apple-icon, dan serwist/ (service
-  // worker) DITAMBAHKAN ke pengecualian di sini -- ditemukan saat menguji
-  // ikon PWA (24 Agustus 2026): tanpa ini, browser/OS yang mengambil
-  // manifest+ikon TANPA sesi (selalu begitu -- pengecekan "bisa dipasang" &
-  // ikon layar utama terjadi sebelum ada login sama sekali) dialihkan ke
-  // /masuk, membuat manifestnya rusak (dapat HTML redirect, bukan
-  // JSON/gambar) dan PWA tidak pernah bisa dipasang. `serwist` dicek
-  // terpisah dengan curl dev server (29 Agustus 2026): rute service worker
-  // sungguhnya /serwist/sw.js (bukan /sw.js di root), jadi pengecualian
-  // "sw\.js" saja tidak cukup -- prefiks "serwist" ditambahkan.
+  // manifest.webmanifest, favicon.ico, dan serwist/ (service worker)
+  // DITAMBAHKAN ke pengecualian di sini -- ditemukan saat menguji ikon PWA
+  // (24 Agustus 2026): tanpa ini, browser/OS yang mengambil manifest+ikon
+  // TANPA sesi (selalu begitu -- pengecekan "bisa dipasang" & ikon layar
+  // utama terjadi sebelum ada login sama sekali) dialihkan ke /masuk,
+  // membuat manifestnya rusak (dapat HTML redirect, bukan JSON/gambar) dan
+  // PWA tidak pernah bisa dipasang. `serwist` dicek terpisah dengan curl
+  // dev server (29 Agustus 2026): rute service worker sungguhnya
+  // /serwist/sw.js (bukan /sw.js di root), jadi pengecualian "sw\.js" saja
+  // tidak cukup -- prefiks "serwist" ditambahkan.
+  //
+  // Diperbarui 30 Agustus 2026 -- ikon-ikon (icon-192.png, icon-512.png,
+  // apple-touch-icon.png, logo-koperumnas.jpg) sekarang berkas statis di
+  // public/, bukan lagi rute dinamis /icon-192, /icon-512, /icon,
+  // /apple-icon (dihapus) -- sudah tercakup pengecualian ekstensi gambar
+  // generik `.png`/`.jpg`/dst di bawah, pengecualian nama-rute lama dibuang.
   matcher: [
-    '/((?!_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|icon-192|icon-512|icon$|apple-icon|serwist|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|serwist|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 };

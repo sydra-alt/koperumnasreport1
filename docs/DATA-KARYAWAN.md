@@ -16,7 +16,6 @@ Menggantikan data contoh (Ciwidey/Pangalengan/Soreang) di `docs/00-SETUP-MANUAL.
 | Anne | CS | `cs` | `karyawan` |
 | Fur | CS | `cs` | `karyawan` |
 | **Fauzy** | Marketing | — (dashboard kontrol) | `kontrol_marketing`, `karyawan` |
-| **Dea** | Marketing | — (dashboard kontrol) | `kontrol_marketing`, `karyawan` |
 | Makruf | Perizinan | `perizinan` | `kadiv`, `karyawan` |
 | Tasya | Perizinan | `perizinan` | `karyawan` |
 | Diki | IT | `it` | `kadiv`, `karyawan` |
@@ -45,7 +44,9 @@ Menggantikan data contoh (Ciwidey/Pangalengan/Soreang) di `docs/00-SETUP-MANUAL.
 | Fikri, Fadil | Indokopi Jatinegara | — | `karyawan` |
 | **Shabita** | Accounting (Keuangan) | `accounting` | `accounting`, `karyawan` |
 
-Total: **39 orang** (dikoreksi 30 Agustus 2026 -- Ery & Erry SATU orang kerja rangkap, sebelumnya dihitung dua baris; Shabita orang ke-37, TIDAK menggantikan siapa pun -- CEO menegaskan eksplisit; Pak Tri & Mba Rika orang ke-38 dan ke-39, ditambahkan 30 Agustus 2026).
+Total: **40 orang** (dikoreksi 30 Agustus 2026 -- Ery & Erry SATU orang kerja rangkap, sebelumnya dihitung dua baris; Shabita orang ke-37, TIDAK menggantikan siapa pun -- CEO menegaskan eksplisit; Pak Tri & Mba Rika orang ke-38 dan ke-39, ditambahkan 30 Agustus 2026).
+
+⚠️ **Koreksi kedua, sama hari (30 Agustus 2026).** Baris "Dea | Marketing | — (dashboard kontrol) | `kontrol_marketing`, `karyawan`" ternyata duplikat dari baris "Dea | Marketing + Manager Indosteak Cempaka" di bawah (§2 nomor 2 sudah menjawab Dea = manager Indosteak Cempaka, jadi satu orang yang sama, bukan dua Dea berbeda) -- baris duplikatnya sudah dihapus dari §1. Ini mengoreksi total dari 39 jadi **40**: hitungan "39" di paragraf di atas sudah menghitung dua baris Dea sebagai satu sejak awal (makanya angkanya sudah "benar" secara internal), TAPI paragraf itu sendiri tidak pernah menyebut Dea sebagai salah satu koreksi -- ternyata pernah salah hitung dua arah sekaligus (Ery/Erry digabung dengan benar, Dea tidak) yang saling menutupi sampai baris duplikatnya dihapus barulah kelihatan totalnya harusnya 40, bukan 39. Dikonfirmasi user 30 Agustus 2026.
 
 ✅ **TERSELESAIKAN (30 Agustus 2026) -- form `ita` DIPECAH, bukan sekadar mengizinkan dua pengisi.** Ambiguitas rekonsiliasi (Accounting tidak tahu laporan `ita` mana untuk outlet mana) dan celah `omzet_<slug>` (Perubahan 1) sekaligus selesai: `ita` jadi `thrifting` (`scope:'global'`, unit usaha Ita sendiri, TIDAK berubah field-nya) + `kontrol_fnb` (`scope:'outlet'`, SATU laporan PER OUTLET per hari, kunci `omzet_sistem` polos -- lihat `forms/f16-thrifting.ts`, `forms/f16-kontrol-fnb.ts`, migrasi `0036_pecah_ita.sql`). Siapa mengontrol outlet mana sekarang murni urusan tabel `assignment` (diatur CEO sendiri lewat tab Admin "Penugasan"), bukan lagi bentuk form.
 

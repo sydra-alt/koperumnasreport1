@@ -345,7 +345,17 @@ export default function AbsenPage() {
         </div>
       )}
 
-      {layar === 'kamera' && <CameraCapture onGunakan={setelahFoto} onBatal={() => setLayar('konfirmasi_titik')} />}
+      {layar === 'kamera' && (
+        <CameraCapture
+          onGunakan={setelahFoto}
+          onBatal={() => setLayar('konfirmasi_titik')}
+          watermark={
+            titikDipilih && posisi
+              ? { nama: profile?.nama ?? '', titikNama: titikDipilih.nama, lat: posisi.lat, lon: posisi.lon }
+              : undefined
+          }
+        />
+      )}
 
       {layar === 'mengirim' && <p>Mengirim…</p>}
 

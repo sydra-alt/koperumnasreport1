@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth/AuthProvider';
 
@@ -28,6 +29,7 @@ export default function MasukPage() {
 
   return (
     <main className="flex min-h-svh flex-col items-center justify-center p-6" style={{ background: 'var(--kertas)' }}>
+      <Image src="/logo-koperumnas.jpg" alt="Koperumnas Group" width={96} height={96} priority className="mb-4" style={{ borderRadius: 'var(--radius-besar)' }} />
       <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4 border p-6" style={{ borderColor: 'var(--garis)' }}>
         <h1 className="text-2xl" style={{ color: 'var(--biru)' }}>
           Masuk

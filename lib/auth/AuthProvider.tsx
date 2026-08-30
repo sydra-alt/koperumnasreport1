@@ -1,6 +1,8 @@
 'use client';
 
 import type { Session } from '@supabase/supabase-js';
+import { useQueryClient } from '@tanstack/react-query';
+import { usePathname, useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { pesanErrorMasuk } from '../pesanError';
 import { createClient } from '../supabase/client';
@@ -54,6 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<string[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     let aktif = true;
@@ -71,6 +76,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
+    // sesiBaru === null menutupi DUA kasus sekaligus -- signOut() eksplisit
+    // (tombol "Keluar") DAN token yang mati sendiri saat aplikasi terbuka
+    // (refresh token kedaluwarsa/dicabut) -- Supabase memancarkan event yang
+    // sama untuk keduanya, jadi satu penanganan di sini cukup, bukan dua
+    // jalur terpisah. `queryClient.clear()` WAJIB di sini (bukan cuma di
+    // `signOut()`) supaya kasus token-mati-sendiri juga bersih -- itu tidak
+    // pernah melewati fungsi signOut() sama sekali (instruksi eksplisit
+    // user, 30 Agustus 2026, ditemukan lewat uji browser sungguhan: nav
+    // akun lama masih terlihat di /masuk setelah logout).
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, sesiBaru) => {
       setSession(sesiBaru);
       if (sesiBaru) {
@@ -82,6 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
         setRoles([]);
         setAssignments([]);
+        queryClient.clear();
+        setLoading(false);
       }
     });
 
@@ -89,7 +105,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       aktif = false;
       listener.subscription.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `queryClient`/`router` stabil (dari provider), dependensi berlebih di sini cuma memicu resubscribe listener tanpa manfaat.
   }, [supabase]);
+
+  // Alihkan ke /masuk begitu sesi hilang -- KECUALI sudah di /masuk atau
+  // /ganti-password (dua halaman itu memang untuk orang TANPA sesi valid,
+  // redirect di sana cuma bikin loop). Efek TERPISAH dari listener di atas
+  // supaya pathname yang dipakai selalu yang TERBARU (listener attach cuma
+  // sekali saat mount, closure-nya akan membeku ke pathname awal kalau
+  // redirect ditaruh di sana).
+  useEffect(() => {
+    if (!loading && !session && pathname !== '/masuk' && pathname !== '/ganti-password') {
+      router.replace('/masuk');
+    }
+  }, [loading, session, pathname, router]);
 
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -98,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signOut() {
     await supabase.auth.signOut();
+    queryClient.clear();
   }
 
   return (

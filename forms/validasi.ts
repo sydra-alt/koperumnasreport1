@@ -37,7 +37,8 @@ function skemaPerField(f: Field): z.ZodTypeAny {
   }
 }
 
-function terisi(type: FieldType, nilai: unknown): boolean {
+/** Diekspor juga untuk FormRenderer (peta kemajuan §5 DESIGN.md) -- "selesai" satu bagian dihitung dari fungsi yang SAMA dengan validasi wajib, bukan logika kedua yang bisa melenceng. */
+export function terisi(type: FieldType, nilai: unknown): boolean {
   switch (type) {
     case 'centang':
       return nilai === true;

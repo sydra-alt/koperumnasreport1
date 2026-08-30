@@ -45,6 +45,9 @@ next-env.d.ts
 # supabase CLI local state
 supabase/.temp
 
+# Ekspor audit akun -- diambil manual oleh CEO, bukan artefak repo (scripts/ekspor-akun-audit.mjs)
+/audit-40-akun.xlsx
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

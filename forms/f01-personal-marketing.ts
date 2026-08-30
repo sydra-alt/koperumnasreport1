@@ -26,7 +26,7 @@ export const f01PersonalMarketing: FormSchema = {
     {
       id: 'closing',
       judul: 'Target Closing Pribadi',
-      catatan: 'Target minimal policy.closing_target closing/bulan. Progres "___/2" ditampilkan di atas, dihitung sistem.',
+      catatan: 'Target minimal policy.closing_target closing/bulan. Progres dan konsekuensinya ditampilkan di atas bagian ini, dihitung sistem (lib/api/marketing.ts, lib/api/pte.ts) -- bukan diketik ulang di sini.',
       fields: [
         {
           key: 'closing_list',

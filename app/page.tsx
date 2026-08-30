@@ -8,9 +8,11 @@ import { useDaftarOutlet } from '../lib/api/outlet';
 import { useDaftarShift } from '../lib/api/shift';
 import { useLaporanHariIniSaya } from '../lib/api/beranda';
 import { useProgresBulananSaya } from '../lib/api/marketing';
+import { useTitikAbsenSaya, useAbsenHariIni } from '../lib/api/absensi';
 import { hitungTugasHariIni, sapaanWaktu } from '../lib/tugasHariIni';
 import { hariISOWIB, jamWIB } from '../lib/tanggal';
 import { AngkaGrid } from '../components/AngkaGrid';
+import { KeadaanGagal } from '../components/KeadaanGagal';
 import { usePembangunanUntukTanggal, useKeuanganRekapUntukTanggal, useSelisihRestoUntukTanggal } from '../lib/api/dashboard';
 import { useLaporanAccountingHariIni, hitungRingkasanKeuanganCeo } from '../lib/api/accounting';
 import { formatRupiah } from '../lib/rupiah';
@@ -98,12 +100,28 @@ const WARNA_LABEL: Record<'belum' | 'draft' | 'selesai', string> = {
 
 function DaftarTugas() {
   const { assignments, roles } = useAuth();
-  const { data: policy } = usePolicy();
+  const { data: policy, isError: policyGagal, refetch: refetchPolicy } = usePolicy();
   const { data: lokasi } = useDaftarLokasi();
   const { data: outlet } = useDaftarOutlet();
   const { data: shift } = useDaftarShift();
-  const { data: laporanHariIni, isLoading } = useLaporanHariIniSaya();
+  const { data: laporanHariIni, isLoading, isError: laporanGagal, refetch: refetchLaporan } = useLaporanHariIniSaya();
   const { data: progres } = useProgresBulananSaya();
+
+  // Keadaan GAGAL (query error) -- BEDA dari keadaan KOSONG (memang belum
+  // ada tugas) di bawah. Tanpa ini, kegagalan jaringan/server terlihat
+  // identik dengan "semua laporan sudah lengkap", yang justru paling
+  // berbahaya untuk disalahartikan (instruksi eksplisit user, 30 Agustus 2026).
+  if (policyGagal || laporanGagal) {
+    return (
+      <KeadaanGagal
+        pesan="Gagal memuat tugas hari ini."
+        onCoba={() => {
+          void refetchPolicy();
+          void refetchLaporan();
+        }}
+      />
+    );
+  }
 
   if (!policy || isLoading) {
     return <p>Memuat…</p>;
@@ -129,13 +147,16 @@ function DaftarTugas() {
 
   const tugas = hitungTugasHariIni(assignments, roles, laporanHariIni ?? [], policy, jamWIB(), namaLokasi, namaOutlet, namaShift, batasLaporShift);
   const tugasBelum = tugas.filter((t) => t.status !== 'selesai');
+  const tugasSelesai = tugas.length - tugasBelum.length;
   const invitTarget = Number(policy.invite_target);
   const closingTarget = Number(policy.closing_target);
 
   if (tugasBelum.length === 0) {
     return (
       <div className="flex flex-col gap-2">
-        <p>✅ Laporan hari ini sudah lengkap.</p>
+        <p>
+          <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Semua laporan hari ini sudah dikirim.</b>
+        </p>
         <Link href="/riwayat" style={{ color: 'var(--biru-3)' }}>
           Lihat laporan yang sudah dikirim → Laporan Saya
         </Link>
@@ -145,14 +166,20 @@ function DaftarTugas() {
 
   return (
     <div className="flex flex-col gap-3">
-      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
-        Yang perlu dikerjakan hari ini
-      </p>
+      <div>
+        <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
+          Yang perlu dikerjakan hari ini
+        </p>
+        {/* "sudah/target + kalimat manusia" (DESIGN.md §21) -- BUKAN cuma "2/5". */}
+        <p className="text-sm" style={{ color: 'var(--label)' }}>
+          {tugasSelesai} dari {tugas.length} laporan sudah dikirim — {tugasBelum.length} masih ditunggu.
+        </p>
+      </div>
       {tugasBelum.map((t) => (
         <div
           key={`${t.formKey}-${t.scopeLabel ?? ''}`}
           className="flex flex-wrap items-center justify-between gap-3 border p-3"
-          style={{ borderColor: 'var(--garis)', minHeight: 44 }}
+          style={{ borderColor: t.lewatDeadline ? 'var(--merah)' : 'var(--garis)', borderRadius: 'var(--radius-besar)', minHeight: 44 }}
         >
           <div>
             <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>
@@ -166,17 +193,76 @@ function DaftarTugas() {
           <Link
             href={`/lapor/${t.formKey}`}
             className="border px-4 py-2"
-            style={{ borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 44 }}
+            style={{ borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 44, borderRadius: 'var(--radius-kecil)' }}
           >
             {t.tombol}
           </Link>
         </div>
       ))}
       {progres?.pte_berlaku && (
-        <p style={{ fontFamily: 'var(--mono)' }}>
-          Undangan bulan ini: {progres.undangan} / {invitTarget} · Closing bulan ini: {progres.closing} / {closingTarget}
+        <p className="text-sm" style={{ color: 'var(--label)' }}>
+          Target bulan ini — Undangan {progres.undangan} dari {invitTarget} orang, Closing {progres.closing} dari {closingTarget} konsumen.
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * Status absen -- SENGAJA SATU BAGIAN TERPISAH dari "Yang perlu dikerjakan
+ * hari ini" di atas (koreksi eksplisit user, 30 Agustus 2026: "Absen bukan
+ * bagian form" -- DESIGN.md §10.2 contoh aslinya sempat mencampur keduanya
+ * jadi satu daftar bertitik, itu YANG DIKOREKSI). Absen bukan laporan
+ * berbasis `assignment`/`form_key` -- ini presensi, mekanisme beda total
+ * (lihat app/absen/page.tsx). Ditampilkan di sini (§10.2.3 alasan: "jangan
+ * memaksa pengguna masuk ke halaman Absen hanya untuk melihat status") --
+ * BUKAN ditampilkan sama sekali kalau orangnya tidak punya titik absen
+ * (pola sama dengan AbsenFab, components/KopHalaman.tsx).
+ */
+function StatusAbsenHariIni() {
+  const { session } = useAuth();
+  const { data: titikSaya } = useTitikAbsenSaya(session?.user.id);
+  const { data: absenHariIni, isError, refetch } = useAbsenHariIni(session?.user.id);
+
+  if (!titikSaya || titikSaya.length === 0) return null;
+
+  if (isError) {
+    return <KeadaanGagal pesan="Gagal memuat status absen." onCoba={() => void refetch()} />;
+  }
+
+  const masuk = absenHariIni?.find((a) => a.tipe === 'masuk');
+  const pulang = absenHariIni?.find((a) => a.tipe === 'pulang');
+
+  function baris(label: string, data: typeof masuk) {
+    if (!data) {
+      return (
+        <p>
+          <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{label}</b>
+          <br />
+          <span style={{ color: 'var(--kosong)' }}>Belum dilakukan</span>
+        </p>
+      );
+    }
+    const jam = new Date(data.waktu).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
+    return (
+      <p>
+        <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{label}</b>
+        <br />
+        <span style={{ fontFamily: 'var(--mono)' }}>{jam}</span> ·{' '}
+        <span style={{ color: data.status === 'di_luar_radius' ? 'var(--kuning)' : 'var(--hijau)' }}>
+          {data.status === 'di_luar_radius' ? `🟡 di luar radius ${data.lokasiNama ?? ''}` : `Dalam radius ${data.lokasiNama ?? ''}`}
+        </span>
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)', borderRadius: 'var(--radius-besar)' }}>
+      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>Absen hari ini</p>
+      <div className="flex flex-col gap-2 text-sm">
+        {baris('Masuk', masuk)}
+        {baris('Pulang', pulang)}
+      </div>
     </div>
   );
 }
@@ -190,11 +276,13 @@ export default function Home() {
         <p>Memuat…</p>
       ) : (
         <>
-          <h1 className="text-2xl" style={{ color: 'var(--biru)' }}>
+          <h1 className="text-2xl" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
             {sapaanWaktu(jamWIB())}, {profile?.nama ?? '—'}.
           </h1>
 
           <DaftarTugas />
+
+          <StatusAbsenHariIni />
 
           {roles.includes('ceo') && <DashboardCeo />}
         </>

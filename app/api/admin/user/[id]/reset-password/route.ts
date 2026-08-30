@@ -7,10 +7,10 @@ import { createClient as createServerClient } from '../../../../../../lib/supaba
  * Pra-peluncuran (docs/07-CATATAN-PELUNCURAN.md) -- tidak ada alur "lupa
  * password" mandiri lewat email (email @koperumnas.local tidak nyata, tombol
  * reset bawaan Supabase tidak akan pernah sampai). Ini SATU-SATUNYA jalan
- * reset: CEO mengatur ulang lewat halaman Admin. Pola guard & pemakaian
+ * reset: CEO/Admin mengatur ulang lewat halaman Admin. Pola guard & pemakaian
  * service_role PERSIS `app/api/admin/user/route.ts` (dua lapis: sesi login
- * sungguhan, lalu sesi itu punya role `ceo`) -- lihat komentar di file itu
- * untuk penjelasan lengkap kenapa dua lapis.
+ * sungguhan, lalu sesi itu punya role `ceo` atau `admin`) -- lihat komentar
+ * di file itu untuk penjelasan lengkap kenapa dua lapis.
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: targetId } = await params;
@@ -29,8 +29,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: errRoles.message }, { status: 500 });
   }
   const roles = (rolesData ?? []).map((r) => r.role);
-  if (!roles.includes('ceo')) {
-    return NextResponse.json({ error: 'Tidak berhak. Hanya CEO yang bisa mengatur ulang kata sandi.' }, { status: 403 });
+  if (!roles.includes('ceo') && !roles.includes('admin')) {
+    return NextResponse.json({ error: 'Tidak berhak. Hanya CEO/Admin yang bisa mengatur ulang kata sandi.' }, { status: 403 });
   }
 
   if (!targetId) {

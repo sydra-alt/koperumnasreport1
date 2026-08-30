@@ -39,7 +39,7 @@ const TAB_TETAP: TabTetapDef[] = [
   { key: 'keputusan', label: 'Keputusan', href: '/keputusan', peran: ['ceo', 'pusat'] },
   { key: 'marketing', label: 'Marketing', href: '/marketing', peran: ['kontrol_marketing', 'ceo', 'pusat'] },
   { key: 'terpusat', label: 'Terpusat', href: '/terpusat', peran: ['pusat', 'ceo'] },
-  { key: 'admin', label: 'Admin', href: '/admin', peran: 'ceo' },
+  { key: 'admin', label: 'Admin', href: '/admin', peran: ['ceo', 'admin'] },
   // Shabita (accounting) login lalu tidak punya jalan ke mana-mana selain
   // form (ditemukan user, 30 Agustus 2026) -- 'keuangan' SATU-satunya tab
   // tetap yang menyertakan 'accounting' di daftar perannya.

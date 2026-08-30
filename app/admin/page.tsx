@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Terlindungi } from '../../components/Terlindungi';
 import { usePolicy } from '../../lib/api/policy';
+import { pesanKesalahanDb } from '../../lib/pesanErrorDb';
 import {
   useDaftarLokasiAdmin,
   useTambahLokasi,
@@ -59,6 +60,8 @@ function TabLokasi() {
           Tambah
         </button>
       </div>
+      {tambah.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(tambah.error, 'menambah lokasi')}</p>}
+      {ubahAktif.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubahAktif.error, 'mengubah status lokasi')}</p>}
       <ul className="flex flex-col gap-1">
         {(daftar ?? []).map((l) => (
           <li key={l.id} className="flex items-center justify-between border p-2 text-sm" style={{ borderColor: 'var(--garis)' }}>
@@ -98,6 +101,8 @@ function TabOutlet() {
           Tambah
         </button>
       </div>
+      {tambah.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(tambah.error, 'menambah outlet')}</p>}
+      {ubahAktif.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubahAktif.error, 'mengubah status outlet')}</p>}
       <ul className="flex flex-col gap-1">
         {(daftar ?? []).map((o) => (
           <li key={o.id} className="flex items-center justify-between border p-2 text-sm" style={{ borderColor: 'var(--garis)' }}>
@@ -220,7 +225,7 @@ function TabPenugasan() {
                 Nyalakan kembali PTE
               </button>
             )}
-            {ubahWajibPte.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{(ubahWajibPte.error as Error).message}</p>}
+            {ubahWajibPte.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubahWajibPte.error, 'mengubah status PTE')}</p>}
           </div>
 
           {/* ─── Form yang diisi ─── */}
@@ -247,6 +252,7 @@ function TabPenugasan() {
                 </li>
               ))}
             </ul>
+            {hapusAssignment.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(hapusAssignment.error, 'menghapus penugasan')}</p>}
             <input value={formKey} onChange={(e) => setFormKey(e.target.value)} placeholder="form_key (mis. pic_lokasi, security)" className="border p-2 text-sm" style={gayaInput} />
             <div className="flex flex-wrap gap-2">
               <select value={lokasiId} onChange={(e) => setLokasiId(e.target.value)} className="flex-1 border p-2 text-sm" style={gayaInput}>
@@ -288,7 +294,7 @@ function TabPenugasan() {
             >
               Tambah penugasan
             </button>
-            {tambahAssignment.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{(tambahAssignment.error as Error).message}</p>}
+            {tambahAssignment.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(tambahAssignment.error, 'menambah penugasan')}</p>}
           </div>
 
           {/* ─── Titik absen ─── */}
@@ -315,6 +321,7 @@ function TabPenugasan() {
                 </li>
               ))}
             </ul>
+            {hapusPenugasanAbsen.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(hapusPenugasanAbsen.error, 'menghapus titik absen')}</p>}
             <div className="flex gap-2">
               <select value={titikBaru} onChange={(e) => setTitikBaru(e.target.value)} className="flex-1 border p-2 text-sm" style={gayaInput}>
                 <option value="">-- Pilih titik absen --</option>
@@ -334,7 +341,7 @@ function TabPenugasan() {
                 Tugaskan
               </button>
             </div>
-            {tambahPenugasanAbsen.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{(tambahPenugasanAbsen.error as Error).message}</p>}
+            {tambahPenugasanAbsen.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(tambahPenugasanAbsen.error, 'menugaskan titik absen')}</p>}
           </div>
         </>
       )}
@@ -377,6 +384,7 @@ function TabPolicy() {
             >
               Simpan
             </button>
+            {ubah.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubah.error, 'menyimpan kebijakan')}</p>}
           </div>
         );
       })}
@@ -446,7 +454,7 @@ function TabPengguna() {
         >
           {buatPengguna.isPending ? 'Membuat…' : 'Buat pengguna'}
         </button>
-        {buatPengguna.isError && <p style={{ color: 'var(--merah)' }}>{(buatPengguna.error as Error).message}</p>}
+        {buatPengguna.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(buatPengguna.error, 'membuat pengguna')}</p>}
       </div>
 
       <ul className="flex flex-col gap-2">
@@ -476,6 +484,8 @@ function TabPengguna() {
                 );
               })}
             </div>
+            {tambahRole.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(tambahRole.error, 'menambah peran')}</p>}
+            {hapusRole.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(hapusRole.error, 'menghapus peran')}</p>}
             <button
               type="button"
               disabled={aturUlang.isPending}
@@ -484,7 +494,7 @@ function TabPengguna() {
                 setPasswordBaruUntuk(null);
                 aturUlang.mutate(p.id, {
                   onSuccess: (hasil) => setPasswordBaruUntuk({ userId: p.id, password: hasil.password }),
-                  onError: (err) => alert((err as Error).message),
+                  onError: (err) => alert(pesanKesalahanDb(err, 'mengatur ulang kata sandi')),
                 });
               }}
               className="mt-2 border px-2 py-1"
@@ -575,7 +585,7 @@ function TabTitikAbsen() {
         >
           Tambah titik
         </button>
-        {tambahTitik.isError && <p style={{ color: 'var(--merah)' }}>{(tambahTitik.error as Error).message}</p>}
+        {tambahTitik.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(tambahTitik.error, 'menambah titik absen')}</p>}
       </div>
 
       <ul className="flex flex-col gap-2">
@@ -634,6 +644,7 @@ function TabTitikAbsen() {
           );
         })}
       </ul>
+      {ubahTitik.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubahTitik.error, 'menyimpan titik absen')}</p>}
 
       <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
         <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>Siapa absen di mana</p>
@@ -664,8 +675,10 @@ function TabTitikAbsen() {
         >
           Tugaskan
         </button>
-        {tambahPenugasan.isError && <p style={{ color: 'var(--merah)' }}>{(tambahPenugasan.error as Error).message}</p>}
+        {tambahPenugasan.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(tambahPenugasan.error, 'menugaskan titik absen')}</p>}
       </div>
+      {hapusPenugasan.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(hapusPenugasan.error, 'menghapus penugasan titik absen')}</p>}
+      {aturJam.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(aturJam.error, 'menyimpan jam kerja')}</p>}
 
       <ul className="flex flex-col gap-2">
         {(penugasan ?? []).map((pn) => {
@@ -752,7 +765,7 @@ function TabShift() {
           Tambah
         </button>
       </div>
-      {tambah.isError && <p style={{ color: 'var(--merah)' }}>{(tambah.error as Error).message}</p>}
+      {tambah.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(tambah.error, 'menambah shift')}</p>}
 
       <ul className="flex flex-col gap-2">
         {(daftar ?? []).map((s) => {
@@ -815,7 +828,7 @@ function TabShift() {
                   Simpan
                 </button>
               </div>
-              {ubah.isError && <p style={{ color: 'var(--merah)' }}>{(ubah.error as Error).message}</p>}
+              {ubah.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubah.error, 'menyimpan shift')}</p>}
             </li>
           );
         })}
@@ -869,7 +882,7 @@ function Isi() {
 
 export default function AdminPage() {
   return (
-    <Terlindungi peran="ceo">
+    <Terlindungi peran={['ceo', 'admin']}>
       <main className="flex flex-col gap-4 p-6">
         <h1 className="text-2xl" style={{ color: 'var(--biru)' }}>
           Admin

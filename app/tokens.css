@@ -8,11 +8,15 @@
   --tinta:     #1F2A33; /* teks isi -- dihangatkan dari #10202E, kontras terlalu keras di atas kertas baru untuk dibaca lama */
   --label:     #78756A; /* abu hangat -- label field, teks penjelasan */
 
-  /* Aksen -- TIDAK DIUBAH. Bukan sumber kekakuan, dan hijau/kuning/merah
-     sudah jadi bahasa status baku di seluruh perusahaan (jangan disentuh). */
-  --biru:      #123A56; /* judul tetap warna ini -- hierarki lewat warna, bukan cuma ukuran */
-  --biru-2:    #1D5476;
-  --biru-3:    #2E6E93;
+  /* Aksen -- biru diperbarui 30 Agustus 2026 memakai warna ASLI logo
+     (disampel langsung dari public/logo-koperumnas.jpg, docs/DESIGN.md
+     §2.1 -- bukan lagi perkiraan). hijau/kuning/merah TETAP TIDAK DIUBAH --
+     itu bahasa status baku perusahaan, bukan bagian identitas brand.
+     Emas/kuning logo SENGAJA TIDAK masuk sini -- instruksi eksplisit user:
+     gold cuma dipakai di logo, tidak pernah jadi warna UI. */
+  --biru:      #0047AF; /* biru tua asli logo -- judul tetap warna ini, hierarki lewat warna bukan cuma ukuran */
+  --biru-2:    #1C74CD; /* antara biru tua & biru muda logo */
+  --biru-3:    #3FAAF2; /* biru muda asli logo */
 
   --hijau:     #2C7A50;
   --hijau-lembut: #E7F2EA; /* latar baris "Bukti terlampir" */
@@ -34,6 +38,7 @@
   --ukuran-judul: 17px; /* judul bagian, weight 500 */
   --ukuran-label: 13px; /* label field */
   --ukuran-isi:   16px; /* isian/nilai field */
+  --ukuran-progres: 20px; /* angka progres bagian ("0 dari 2 konsumen"), FormRenderer -- DESIGN.md §3.1 */
 
   /* Bentuk */
   --radius-kecil: 8px;  /* input, tombol */

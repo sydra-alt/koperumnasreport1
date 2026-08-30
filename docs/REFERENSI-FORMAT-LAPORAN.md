@@ -15,7 +15,7 @@ Indeks 15 form dan spesifikasi field-nya.
 | `accounting` | Laporan Accounting (rahasia) | `FORMAT-ASLI-03-ACCOUNTING.md` |
 | `it` | Laporan IT | `FORMAT-ASLI-04-IT.md` |
 | `manager_resto` | Laporan Manager Resto | `FORMAT-ASLI-05-MANAGER-RESTO.md` |
-| `ita` | Thrifting & Kontrol F&B | `FORMAT-ASLI-06-ITA.md` |
+| `ita` ⚠️ | Thrifting & Kontrol F&B | `FORMAT-ASLI-06-ITA.md` -- **diimplementasikan sebagai DUA form_key sejak 30 Agustus 2026** (`thrifting` + `kontrol_fnb`, migrasi `0036_pecah_ita.sql`), bukan lagi satu `ita`. Spesifikasi klien di file ini TIDAK berubah -- lihat `forms/f16-thrifting.ts`/`forms/f16-kontrol-fnb.ts` untuk pemetaan bagian mana masuk form mana. |
 | `hrd` | Laporan HRD | `02-FORMAT-LAPORAN-DIVISI-BARU.md` |
 | `security` | Laporan Security | `02-FORMAT-LAPORAN-DIVISI-BARU.md` |
 | `perizinan` | Laporan Perizinan | `02-FORMAT-LAPORAN-DIVISI-BARU.md` |

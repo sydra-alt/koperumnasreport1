@@ -43,7 +43,9 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   width: "device-width",
   initialScale: 1,
-  themeColor: "#123A56",
+  // Biru tua asli logo (disampel langsung dari public/logo-koperumnas.jpg,
+  // lihat docs/DESIGN.md §2.1) -- sama dengan theme_color di app/manifest.ts.
+  themeColor: "#0047AF",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

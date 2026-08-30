@@ -76,12 +76,32 @@ export function useDaftarOutletAdmin() {
   });
 }
 
+/**
+ * `outlet.slug` -- identitas stabil dipakai `selisih_resto_untuk_tanggal()`
+ * (`'omzet_' || o.slug`, migrasi 0031), NOT NULL + UNIQUE sejak migrasi itu.
+ * BUG DITEMUKAN 30 Agustus 2026 (laporan user langsung, "tambah outlet
+ * gagal"): mutasi ini cuma pernah mengirim `nama`, tidak pernah `slug` --
+ * SETIAP percobaan tambah outlet gagal dengan galat not-null constraint
+ * yang sebelumnya tidak ditampilkan sama sekali di UI (lihat app/admin/page.tsx
+ * TabOutlet, sekarang dapat pesan galat). Slug dibuat OTOMATIS dari nama --
+ * CEO tidak perlu tahu konsep "slug" sama sekali, murni urusan internal.
+ */
+function slugDariNama(nama: string): string {
+  return nama
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // buang diakritik kalau ada (mis. e-aksen -> e)
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
 export function useTambahOutlet() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (nama: string) => {
       const supabase = createClient();
-      const { error } = await supabase.from('outlet').insert({ nama });
+      const { error } = await supabase.from('outlet').insert({ nama, slug: slugDariNama(nama) });
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-outlet'] }),
@@ -332,7 +352,7 @@ export function useUbahWajibPte() {
   });
 }
 
-const DAFTAR_ROLE = ['ceo', 'pusat', 'accounting', 'kontrol_marketing', 'kadiv', 'pic_lokasi', 'manager_resto', 'karyawan'] as const;
+const DAFTAR_ROLE = ['ceo', 'admin', 'pusat', 'accounting', 'kontrol_marketing', 'kadiv', 'pic_lokasi', 'manager_resto', 'karyawan'] as const;
 export { DAFTAR_ROLE };
 
 export function useTambahRole() {

@@ -841,3 +841,152 @@ Diperbaiki lewat TRIGGER (bukan `WITH CHECK` -- RLS check cuma melihat baris bar
 - `docs/01-SPESIFIKASI-SISTEM.md` adalah dokumen LAMA yang sudah digantikan `BLUEPRINT.md` — isinya bertentangan (mengusulkan tabel `laporan_field` bergaya EAV, sedangkan BLUEPRINT memutuskan data laporan disimpan JSONB di `report.data`). Dipindahkan ke `docs/arsip/` atas instruksi user. **Jangan pernah dipakai sebagai acuan.**
 - `docs/02-PROMPT-PACK.md` adalah prompt untuk manusia menempel ke agent, bukan dokumen untuk dibaca agent. Dilewati.
 - `docs/05-RENCANA-FASE-2.md` adalah rencana setelah Fase 1 selesai. Belum dibaca, jangan dikerjakan sekarang.
+
+## Uji radius GPS palsu (30 Agustus 2026) — jawaban akhir, jangan tanya lagi
+
+Diminta tiga kali oleh user sebelum akhirnya dikerjakan tuntas. Dijalankan lewat Playwright (Chromium sungguhan, override geolocation lewat CDP `Emulation.setGeolocationOverride` — mekanisme SAMA dengan panel Sensors DevTools), login HTTP asli sebagai Dadang (bukan penyamaran JWT), posisi palsu ~150 km dari "Lokasi Uji". Skrip: **`scripts/uji-radius-gps-palsu.mjs` — DISIMPAN, jangan dihapus**, dipakai ulang setiap kali logika radius/titik absen disentuh lagi (instruksi eksplisit user).
+
+Hasil: jarak terdeteksi 105.241 meter dari titik terdekat (Kantor Pusat) — sistem TIDAK PERNAH menerima diam-diam. Diuji dua nilai `policy.absen_di_luar_radius`:
+- `izinkan_dengan_tanda` (nilai produksi) → 🟡 ditandai untuk diperiksa HRD, tetap bisa lanjut ke kamera.
+- `tolak` (diuji sementara, dikembalikan otomatis oleh skrip) → ditolak keras, tidak ada jalan ke kamera sama sekali.
+
+**Keputusan CEO (30 Agustus 2026): TETAP `izinkan_dengan_tanda`, JANGAN diubah ke `tolak`.** Alasan eksplisit: akurasi GPS di lokasi-lokasi sungguhan belum diketahui — kalau minggu pertama ada yang gagal absen padahal sudah berdiri di lokasi, `tolak` akan membuat sistem dianggap rusak. **Rencana peninjauan (dicatat di sini supaya tidak lupa): kumpulkan data presensi minimal SATU BULAN sejak 39/40 akun asli mulai dipakai, lalu CEO meninjau pola 🟡 lewat halaman Admin/`/absen/tinjau` sebelum memutuskan apakah pindah ke `tolak`.** Jangan ubah nilai policy ini atas inisiatif sendiri — ini keputusan CEO, bukan agent.
+
+## Peran `admin` baru + 40 akun asli dibuat (30 Agustus 2026)
+
+**Peran `admin` (migrasi `0039_admin_role.sql`)** — Diki & Ibnu (IT) diberi akses penuh ke halaman Admin (Lokasi/Outlet/Penugasan/Policy/Pengguna/Titik Absen/Shift) atas instruksi eksplisit user. SENGAJA BUKAN menambahkan mereka ke role `ceo` — itu otomatis membuka laporan Accounting (`can_see_report()`) dan hak memutuskan (`dec_decide`) laporan siapa pun, dua hal yang tidak diminta. `public.is_admin() = has_role('ceo') OR has_role('admin')`, dipakai HANYA di policy/trigger yang menjaga tabel konfigurasi sistem — lihat `docs/04-CATATAN-TEKNIS.md` §7 kalau butuh daftar lengkap tabel mana yang ikut berubah dan mana yang SENGAJA tidak (can_see_report, dec_select/dec_decide, pte_select, closing_select, boleh_lihat_rekap, tagih_laporan, review presensi is_hrd_kadiv tetap murni `ceo`). Diverifikasi: `scripts/uji-admin.mjs`, `scripts/uji-pte-per-orang.mjs` tetap lolos penuh setelah migrasi.
+
+**Temuan sebelum akun dibuat, dilaporkan ke user dan dikonfirmasi (bukan ditebak):** `docs/DATA-KARYAWAN.md` §1 ternyata punya baris "Dea" duplikat (satu versi kontrol_marketing polos, satu versi lebih lengkap dengan manager_resto Indosteak Cempaka) — digabung jadi satu orang per konfirmasi user, mengoreksi total dari yang tertulis "39 orang" jadi **40 orang** yang benar. Baris duplikat sudah dihapus dari `DATA-KARYAWAN.md`, catatan koreksi ditambahkan di sana.
+
+**40 akun dibuat** lewat `scripts/buat-akun.mjs` (`scripts/akun.json` diperluas dari 7 jadi 40 baris) — password seragam `admin123`, `harus_ganti_password=true` semua (mekanisme paksa-ganti dari batch sebelumnya tetap berlaku). Assignment form Ita & Rika **TETAP DITAHAN** sesuai keputusan sebelumnya (§1 `DATA-KARYAWAN.md`) — akun mereka dibuat, tapi TANPA assignment `thrifting`/`kontrol_fnb` dan TANPA `wajib_pte=false`, menunggu CEO mengatur sendiri lewat tab Admin "Penugasan".
+
+**Audit setelah 40 akun dibuat** (`scripts/ekspor-akun-audit.mjs`, HANYA melaporkan, TIDAK memperbaiki apa pun — instruksi eksplisit user):
+- Papan Kontrol hari ini: **5 kartu saja** (dari `assignment` yang sudah ada sejak batch 7-akun-uji lama: hrd×1, pusat×1, security×1, pic_lokasi×1, accounting×1).
+- **10 dari 15 form_key yang butuh assignment TIDAK punya satu pun pengisi**: `perizinan`, `it`, `pembangunan`, `dti`, `kendaraan`, `cs`, `ga`, `manager_resto`, `thrifting`, `kontrol_fnb`. (`personal_marketing` sengaja dikecualikan dari perhitungan ini — wajib otomatis lewat role `karyawan`, dilacak lewat `pte_daily`/`report` langsung, bukan lewat `assignment`/Papan Kontrol.)
+- **35 dari 39 staf non-CEO TIDAK punya satu pun form assignment** (CEO/Putri dikecualikan — dashboard saja).
+- **38 dari 40 orang TIDAK punya satu pun titik absen** (`penugasan_absen`) — titik absen sungguhan SUDAH ada di database (Bekasi, Indokopi Jatinegara, Indosteak Cempaka Putih, Kantor Pusat, Tajur — dari batch sebelumnya), tinggal ditugaskan per orang lewat tab Admin "Penugasan"/"Titik Absen".
+
+Semua ini **DIHARAPKAN** pada tahap ini (akun baru dibuat sengaja tanpa assignment, supaya CEO yang mengatur sendiri lewat Admin tanpa perlu agent lagi) — dilaporkan sebagai data untuk CEO, bukan bug yang diperbaiki sendiri.
+
+**Ekspor Excel** (`scripts/ekspor-akun-audit.mjs`, pakai `exceljs` yang sudah ada di `package.json`) — nama, email, divisi, jabatan, peran, form yang diisi, titik absen, wajib PTE, alasan bebas PTE, aktif — untuk 40 orang. **Dipindah ke root proyek (`audit-40-akun.xlsx`) dan digitignore-kan (bukan dicommit)** atas instruksi user — diambil manual dari sana, bukan lagi dari scratchpad sesi.
+
+## Penugasan 35 orang diisi lewat skrip, bukan manual (30 Agustus 2026)
+
+**`scripts/isi-penugasan.mjs`** (baru) — mengisi `assignment` (form) + `penugasan_absen` (titik) untuk seluruh 40 akun dari `docs/DATA-KARYAWAN.md` §1/§2, idempoten (cek dulu sebelum insert, tabel `assignment` tidak punya unique constraint selain `id`). Papan Kontrol naik dari **5 kartu → 30 kartu**.
+
+**Sengaja ditahan/dilewati, TIDAK ditebak** (ini "daftar sisa" yang diminta user untuk ditanyakan ke CEO):
+- `thrifting`/`kontrol_fnb` Ita & Rika — keputusan tertahan sebelumnya, tidak berubah.
+- form `security` untuk Cahya/Dedi/Yundi — form ini `scope:'lokasi'` (butuh baris tabel `lokasi`, bukan `lokasi_absen`), dan baris `lokasi` "Kantor Pusat" belum ada (`DATA-KARYAWAN.md` §2 sudah menandai ini terbuka sejak sebelumnya) — ketiganya tetap dapat `cs`+`ga`(Cahya)/`cs`(Dedi,Yundi) yang scope-nya global, cuma `security`-nya yang ditahan.
+- form apa pun untuk Masudin — CEO eksplisit (§2) "masih belum jelas, jangan ditebak, tetap karyawan saja" — bertentangan dengan baris lama di §1 yang sudah menyebut `cs`/`security` untuknya; §2 (lebih baru, TERJAWAB) dipakai sebagai acuan.
+- titik absen DTI (Kasam, Syahbudin, Seno) — `lokasi_absen` "DTI" belum ada koordinatnya.
+- titik absen Indosteak Pekansari (Cuko, manager-nya) — cuma "Indosteak cempaka putih" yang ada di `lokasi_absen`, tidak ada titik Pekansari sendiri.
+- titik absen 7 staf resto rank-and-file (Ryan, Toni, Qasim, Bagus, Ahmad, Elsa, Lusy) — belum jelas siapa di outlet Cempaka vs Pekansari (`DATA-KARYAWAN.md` §1 catatan ⚠️ lama, belum terjawab).
+- titik absen Toyib (Rukost) — Rukost sengaja TIDAK PERNAH jadi lokasi/outlet (§5), tidak ada titik yang bisa dipakai untuknya sama sekali; perlu keputusan CEO bagaimana dia absen.
+
+Sisa form_key TANPA pengisi setelah skrip: `thrifting`, `kontrol_fnb` saja (dari 10 sebelumnya) — semuanya masuk daftar di atas. Detail lengkap query hasil ada di transkrip sesi, tidak disalin ulang di sini.
+
+## Logo asli + ikon PWA + watermark absen (30 Agustus 2026)
+
+User menyediakan `public/logo-koperumnas.jpg` + `docs/DESIGN.md` (sistem desain lengkap dari sumber lain, BELUM diterapkan ke seluruh UI — itu tetap "item 3" yang ditahan, butuh rencana tampilan dulu sebelum kode). Batch ini HANYA fondasi brand: warna asli, ikon, dan tiga penempatan logo yang diminta eksplisit.
+
+**Warna disampel LANGSUNG dari file logo** (bukan perkiraan) lewat skrip sekali-pakai (`sharp`, diinstal `--no-save`, dihapus setelah dipakai — TIDAK jadi dependensi permanen): biru tua **`#0047AF`**, biru muda **`#3FAAF2`**, emas **`#F3AB23`** — ternyata lebih vivid/jenuh dari perkiraan lama di `DESIGN.md` §2.1 (`#1A4FA0`/`#57ADE6`/`#EFA829`). `DESIGN.md` §2.1/§2.2 sudah diperbarui pakai nilai sebenarnya ini sebagai jangkar ramp token `--color-brand-*`/`--color-gold-*`. **`app/tokens.css` (token LIVE yang sedang dipakai UI, `--biru` dkk.) SENGAJA TIDAK disentuh** — filenya sendiri menandai "TIDAK DIUBAH" dari overhaul 30 Agustus sebelumnya, dan migrasi penuh ke token `DESIGN.md` adalah bagian dari "item 3" yang masih ditahan.
+
+**Ikon PWA diganti total** — sebelumnya digambar dari kode (`lib/ikonAplikasi.tsx`, monogram "KG", karena belum ada logo resmi), sekarang berkas PNG statis asli turunan logo, LATAR PUTIH SOLID (bukan transparan — instruksi eksplisit, supaya tidak jadi biru-di-atas-hitam di HP bertema gelap): `public/icon-192.png`, `public/icon-512.png`, `public/apple-touch-icon.png` (180×180), `public/favicon.ico` (multi-resolusi 16/32/48). Dibuat lewat skrip sekali-pakai (`sharp` + `png-to-ico`, sama-sama `--no-save`, dihapus setelah dipakai). **Dihapus karena sudah tidak dipakai**: `app/icon.tsx`, `app/apple-icon.tsx`, `app/icon-192/route.tsx`, `app/icon-512/route.tsx`, `app/favicon.ico` (rute dinamis lama), `lib/ikonAplikasi.tsx`. `proxy.ts` matcher-nya ikut dibersihkan — pengecualian nama-rute lama (`icon-192`, `icon-512`, dst.) sudah tidak relevan, sekarang cukup ditutup pengecualian ekstensi gambar generik.
+
+`app/manifest.ts` diperbarui: `name` jadi "Laporan Koperumnas", `theme_color` **`#0047AF`**, `background_color` **`#FFFFFF`**, ikon menunjuk ke PNG statis baru. `app/layout.tsx`'s `viewport.themeColor` (meta tag terpisah dari manifest, dipakai warna status-bar browser) ikut disamakan ke `#0047AF`.
+
+**Logo dipasang di tiga tempat** (instruksi eksplisit): (1) `app/masuk/page.tsx` — di atas form login, 96×96. (2) `components/KopHalaman.tsx` — 28×28 di sebelah "Koperumnas Group" di header. (3) **Watermark foto absen — fitur baru, belum pernah ada sebelumnya** (`components/CameraCapture.tsx`): setelah foto diambil, canvas dibubuhi bar semi-transparan di bawah berisi logo + nama pengirim + jam WIB (dihitung ULANG saat foto diambil, bukan dilewatkan dari luar) + nama titik + koordinat. Logo dimuat lewat `<img>` biasa, dibungkus try/catch — **gagal muat logo TIDAK menggagalkan absen**, teks watermark tetap tampil tanpa logo. Diwire dari `app/absen/page.tsx` (`titikDipilih`/`posisi`/`profile.nama` sudah ada di scope saat kamera dibuka).
+
+Diverifikasi: `npm run build` bersih (26 rute, tidak ada rute ikon lama tersisa), `npx tsc --noEmit` bersih, `npm run lint` bersih (1 warning pre-existing tidak terkait). Diuji lewat Playwright (Chromium sungguhan): logo di `/masuk` dan header keduanya terlihat setelah login sebagai Dadang. Kamera fake-device Chromium 0x0 di mesin ini (keterbatasan lingkungan uji, bukan bug kode) sehingga alur foto-sungguhan-lewat-UI tidak bisa ditembus end-to-end -- sebagai gantinya logika `bubuhkanWatermark()` diuji LANGSUNG di canvas nyata (kode identik disalin ke `page.evaluate`, logo `/logo-koperumnas.jpg` dimuat sungguhan dari dev server): bar watermark, logo, nama+jam, titik+koordinat semuanya tergambar benar secara visual. Belum diuji di HP sungguhan (kamera asli, bukan fake device) -- kalau ada yang terlihat salah di layar nyata, laporkan.
+
+## Dua sisa penugasan diselesaikan (30 Agustus 2026) — instruksi eksplisit CEO, bukan tebakan
+
+- **Lokasi "Kantor Pusat" ditambahkan** (migrasi `0040_lokasi_kantor_pusat.sql`) ke tabel `lokasi` (BEDA dari `lokasi_absen` "Kantor Pusat" yang sudah ada — satu untuk scope laporan `security`, satu untuk titik GPS presensi). Assignment `security` Cahya/Dedi/Yundi @ lokasi ini sekarang selesai lewat `scripts/isi-penugasan.mjs` (diperbarui, aman dijalankan ulang).
+- **Ita & Rika dijalankan sesuai rencana yang sudah tercatat** di `DATA-KARYAWAN.md` (bukan tebakan agent — CEO eksplisit menjalankannya, "lebih baik ada yang mengisi lalu ditukar, daripada dua form kosong menunggu jawaban"): Ita → `thrifting` + `kontrol_fnb`@Indokopi Jatinegara; Rika → `kontrol_fnb`@Indosteak Cempaka + `kontrol_fnb`@Indosteak Pekansari, `wajib_pte=false` alasan "Fokus kontrol stok, tidak menangani marketing" (tercatat otomatis di `pte_pengecualian_log` lewat trigger — `actor_id` NULL karena dijalankan lewat koneksi pemilik/skrip, bukan klik CEO lewat Admin, disengaja bukan bug). CEO bisa menukar sendiri lewat tab Penugasan kalau outlet-nya ternyata beda.
+
+Papan Kontrol: **30 → 37 kartu**. Sisa form_key tanpa pengisi: **tidak ada lagi** — seluruh 15 form yang butuh assignment sekarang punya minimal satu pengisi.
+
+## DESIGN.md mulai diterapkan — Beranda + form personal_marketing (30 Agustus 2026)
+
+Empat koreksi CEO diterapkan LEBIH DULU ke `docs/DESIGN.md` sendiri sebagai §31 (bukan cuma di kode) supaya dokumennya tidak menyesatkan pembaca berikutnya: (1) bagian tertutup wajib terbuka saat ada galat, (2) Absen bukan bagian form -- §10.2 contoh asli yang mencampur keduanya SALAH DIIKUTI, (3) tidak ada emas di palet UI sama sekali (bukan cuma "hemat" seperti draf awal), (4) pola "keadaan gagal" baru (§16 draf awal cuma bahas "kosong").
+
+**Warna** (`app/tokens.css`) -- `--biru`/`--biru-2`/`--biru-3` diganti dari perkiraan lama (`#123A56` dkk., overhaul "ringan bukan resmi" 30 Agustus pagi) ke warna ASLI hasil sampling logo: `#0047AF`/`#1C74CD`/`#3FAAF2`. Ini token GLOBAL -- berlaku ke SELURUH halaman langsung (bukan cuma Beranda/personal_marketing), instruksi eksplisit user ("pakai yang itu, bukan perkiraan lama"). hijau/kuning/merah (status bisnis) TIDAK disentuh.
+
+**`components/KeadaanGagal.tsx`** (baru) -- pola "gagal" generik, dipakai `DaftarTugas`/`StatusAbsenHariIni` di Beranda.
+
+**Beranda (`app/page.tsx`)** -- `DaftarTugas` dapat ringkasan "X dari Y laporan sudah dikirim" (§21 formula, bukan pecahan mentah) + keadaan gagal utk query policy/laporan. **`StatusAbsenHariIni` (baru, section TERPISAH)** -- menampilkan jam masuk/pulang + status radius langsung di Beranda (§10.2.3, "jangan paksa buka /absen cuma utk lihat status") tanpa pernah masuk daftar tugas form (koreksi #2) -- disembunyikan total kalau orangnya tidak punya titik absen (pola sama `AbsenFab`).
+
+**`components/FormRenderer.tsx`** (rewrite besar, GENERIK -- otomatis berlaku ke SEMUA 15 form, bukan cuma personal_marketing, karena CLAUDE.md #6 melarang komponen per-form) -- pengganti "9 kartu setara": peta kemajuan di atas (progress bar + daftar bagian+status, bisa diklik lompat) dan tiap bagian jadi kartu dengan indeks+judul+progres+konsekuensi (opsional, lewat prop baru `ringkasanBlok` yang diisi PEMANGGIL -- FormRenderer sendiri tetap tidak tahu form_key apa pun), bisa diringkas/dibuka, DIPAKSA terbuka kalau ada galat (koreksi #1).
+
+**Bug ditemukan & diperbaiki LEWAT PRATINJAU VISUAL (screenshot), bukan sebelum ditulis:** heuristik "bagian selesai" awal menganggap bagian TANPA field `wajib` otomatis "Selesai" -- untuk personal_marketing yang HAMPIR SEMUA fieldnya pakai `buktiWajib` (syarat bukti) bukan `wajib` (syarat isi), ini membuat Beranda-nya form mengklaim "5 dari 6 bagian selesai" padahal belum diisi apa-apa sama sekali. Diperbaiki: bagian tanpa field wajib DIKECUALIKAN dari rasio (ditandai "Tidak wajib", bukan "Selesai") -- lihat komentar `blokSelesai()`.
+
+Baru `ringkasanBlok` untuk SATU bagian personal_marketing hari ini (**"Target Closing Pribadi"**, sesuai instruksi user "satu bagian dulu, tunjukkan"): progres "X dari Y konsumen" + konsekuensi potongan Rp300.000, dihitung `components/LaporForm.tsx` (business logic tetap di sana, bukan pindah ke FormRenderer). Paragraf konsekuensi yang dulu berdiri sendiri di bawah (mengambang, terpisah dari kartunya) DIHAPUS -- sekarang di dalam kartu bagiannya. Bagian lain personal_marketing (Undangan, PTE, Funnel, Besok, Pernyataan) BELUM dapat `ringkasanBlok` -- tetap dapat peta-kemajuan+collapse generik, tapi progres/konsekuensinya belum terisi. Form lain (14 sisanya) otomatis dapat mekanisme collapse+peta-kemajuan yang sama begitu dirender (FormRenderer generik), TAPI belum direview visual satu per satu -- giliran berikutnya kalau CEO setuju arah ini.
+
+## Bug: nav lama tetap tampil setelah logout (30 Agustus 2026) — ditemukan user lewat uji browser sungguhan
+
+**Akar masalah, dua hal sekaligus:** (1) `signOut()` (`lib/auth/AuthProvider.tsx`) TIDAK PERNAH mengalihkan ke `/masuk` -- cuma memanggil `supabase.auth.signOut()` lalu berhenti, jadi orang yang klik "Keluar" tetap di halaman yang sama (nav-nya sendiri sebenarnya SUDAH hilang benar di situ karena `session` jadi null, tapi kalau lalu pindah ke `/masuk` secara manual, TIDAK ADA penjagaan eksplisit di sana lagi). (2) `KopHalaman` tidak punya pengecualian rute -- `/masuk`/`/ganti-password` cuma terlindungi TIDAK LANGSUNG lewat `if (!session)`, bukan larangan eksplisit, jadi rawan kalau ada state sesi yang sempat tidak sinkron.
+
+**Diperbaiki (bukan cuma tambal, tiga lapis independen supaya kelasnya tertutup, bukan cuma gejalanya):**
+1. `AuthProvider`: `onAuthStateChange` -- begitu `sesiBaru` null (mencakup DUA kasus: klik "Keluar" ATAU token mati sendiri saat aplikasi terbuka, keduanya event yang sama dari Supabase), langsung `queryClient.clear()` + efek terpisah yang `router.replace('/masuk')` KECUALI sudah di `/masuk`/`/ganti-password` (dua-duanya memang untuk orang tanpa sesi, redirect di situ bikin loop). `signOut()` sendiri juga eksplisit panggil `queryClient.clear()` (instruksi langsung user, defense-in-depth di atas listener).
+2. `KopHalaman`: pengecualian rute EKSPLISIT di paling atas -- `pathname === '/masuk' || pathname === '/ganti-password'` → `return null`, sebelum cek `loading`/`session` sama sekali. Dua halaman itu sekarang PASTI tanpa nav apa pun, bukan cuma "kebetulan" lewat state sesi.
+3. `loading` (dari `useAuth()`) sekarang ikut dicek di `KopHalaman` -- nav tidak pernah tampil selama sesi masih dimuat, kosong sesaat lebih baik daripada nav yang salah.
+
+**Diverifikasi lewat Playwright (Chromium sungguhan, BUKAN penyamaran JWT):** login sebagai Putri (CEO) → nav penuh + tautan Admin terlihat (benar, dia CEO) → klik "Keluar" → **otomatis dialihkan ke `/masuk`** (sebelumnya TIDAK terjadi sama sekali -- ini bug nyata yang baru ketemu, bukan cuma dugaan) → 0 elemen `<nav>`, 0 tombol "Keluar", 0 tautan "Admin"/"Keuangan" tersisa. Reload manual di `/masuk` juga bersih, tidak ada redirect loop. Screenshot di scratchpad sesi.
+
+**Diverifikasi**: `npm run build`/`tsc`/`lint` bersih. Playwright (Chromium sungguhan, login sebagai Dadang): (1) Beranda hari kerja -- daftar tugas + ringkasan "0 dari 2 selesai" + status absen section terpisah, semua benar. (2) Form personal_marketing -- peta kemajuan "0 dari 1 bagian WAJIB selesai" (jujur, bukan 5/6 palsu), bagian "Target Closing Pribadi" terbuka default dengan progres+konsekuensi tampil. (3) Submit kosong -- bagian "Pernyataan Karyawan" (satu-satunya field `wajibYa`) otomatis terbuka paksa dengan galat merah, bagian lain tetap tertutup (koreksi #1 terbukti jalan). Screenshot ada di scratchpad sesi.
+
+## Layar konfirmasi setelah kirim (30 Agustus 2026) — "seperti Google Form"
+
+Instruksi eksplisit user: form yang terisi/kosong TIDAK BOLEH tetap terbuka setelah Kirim sukses -- diganti layar konfirmasi (ikon, "Laporan terkirim", nama form + tanggal + jam, status TERLAMBAT eksplisit kalau ada, ringkasan singkat, tiga tombol: Lihat laporan saya / Ubah laporan ini / Kembali ke beranda). Diterapkan lewat `FormRenderer` (GENERIK, otomatis berlaku ke SEMUA 15 form -- instruksi eksplisit "jangan satu form saja"), bukan komponen per-form (CLAUDE.md #6).
+
+**`components/FormRenderer.tsx`**: prop baru `laporanTerkirim?: LaporanTerkirim` (status/`submittedAt`/`pesanTerlambat`/`ringkasan[]` -- data murni, dihitung PEMANGGIL, FormRenderer sendiri tetap tidak tahu form_key apa pun). Kalau diisi dan mode edit belum diminta → `LayarKonfirmasiKirim` dirender, MENGGANTIKAN form sepenuhnya (bukan cuma tulisan kecil di bawah tombol seperti sebelumnya). State `modeEdit` internal, ditogel tombol "Ubah laporan ini", direset otomatis (`useEffect` bandingkan `submittedAt` lewat ref) setiap ada pengiriman BARU -- supaya submit ulang dari mode edit selalu berakhir balik ke layar konfirmasi, bukan macet di form.
+
+**"Sudah dikirim hari ini → jangan tampilkan form kosong"** otomatis benar TANPA kode tambahan: `laporanTerkirim` dihitung dari `reportHariIni` yang SUDAH di-scope ke hari ini sejak awal (`useReportHariIni`, `tanggal = tanggalWIB()`) -- reload halaman langsung dapat `laporanTerkirim` terisi dari query cache/refetch, konfirmasi muncul duluan, bukan form. "Hanya kalau masih hari yang sama" (syarat tombol Ubah) otomatis terpenuhi lewat arsitektur yang sama -- tidak ada laporan "kemarin" yang bisa masuk sini sama sekali.
+
+**Status TERLAMBAT**: `components/LaporForm.tsx` menghitung `pesanTerlambat` lengkap sebagai kalimat ("Terkirim, tercatat terlambat 2 jam 15 menit dari batas 18.00.") lewat `labelSisaWaktu()` (`lib/tugasHariIni.ts`, tadinya privat, sekarang diekspor -- perhitungan terlambat SATU sumber, tidak diduplikasi). Ditampilkan FormRenderer dalam kotak kuning eksplisit, TIDAK PERNAH disembunyikan.
+
+**Ringkasan singkat** digenerikkan lewat mekanisme `ringkasanBlok` yang SUDAH ada (batch sebelumnya) -- baris demi baris "judul bagian: progres", diambil dari `ringkasanBlok` mana pun yang progres-nya terisi. Hari ini cuma personal_marketing.closing yang terisi ("Target Closing Pribadi: 1 dari 2 konsumen") -- form lain otomatis tidak dapat baris ringkasan (bukan dikosongkan sengaja, cuma belum ada `ringkasanBlok` yang dikirim untuknya, sama seperti batch sebelumnya).
+
+Pesan sukses lama (`pesanKirim`, tulisan kecil biru di bawah tombol) DIHAPUS dari jalur sukses -- `pesanKirim` sekarang MURNI untuk galat pengiriman (warna diganti ke `--merah`, sebelumnya `--biru` yang salah kesan untuk galat).
+
+**Diverifikasi lewat Playwright (Chromium sungguhan, login sebagai Dadang, deadline personal_marketing dipaksa "00:01" + hari ini dipaksa masuk hari wajib SEMENTARA supaya hasil TERLAMBAT deterministik, dikembalikan otomatis di `finally`)**: (1) submit sukses → form hilang total (0 tombol "Kirim" tersisa), layar konfirmasi muncul dengan "Laporan terkirim", pesan "Terkirim, tercatat terlambat 23 jam 40 menit dari batas 00.01." tampil jelas, ringkasan "Target Closing Pribadi: 1 dari 2 konsumen" tampil. (2) Reload halaman → konfirmasi langsung muncul lagi (BUKAN form kosong). (3) Klik "Ubah laporan ini" → form muncul lagi, tombol Kirim kembali ada. Screenshot di scratchpad sesi.
+
+## Bug: tambah outlet gagal + audit seluruh tab Admin (31 Agustus 2026)
+
+**Akar masalah ditemukan persis dugaan user #2**: `outlet.slug` (NOT NULL + UNIQUE sejak migrasi `0031_indosteak_dua_outlet.sql`) TIDAK PERNAH diisi `useTambahOutlet()` (`lib/api/admin.ts`) -- SETIAP percobaan tambah outlet gagal dengan galat Postgres `null value in column "slug" ... violates not-null constraint`. **Diperparah oleh galat yang tertelan tanpa ditampilkan** -- `TabOutlet` (`app/admin/page.tsx`) tidak pernah merender `tambah.isError` sama sekali, jadi kegagalannya terlihat seperti "tidak terjadi apa-apa" (persis laporan user). `TabLokasi` punya kekurangan identik (tidak pernah dites gagal, tapi rentan sama).
+
+**Diperbaiki (bukan cuma outlet -- seluruh tab, sesuai instruksi eksplisit "periksa seluruh tab dengan cara yang sama"):**
+1. `useTambahOutlet()` sekarang membuat `slug` OTOMATIS dari nama (`slugDariNama()` -- lowercase, spasi→underscore, buang diakritik) -- CEO tidak perlu tahu konsep "slug" sama sekali, murni internal.
+2. **`lib/pesanErrorDb.ts` (baru)** -- penerjemah galat Postgres → kalimat Indonesia yang bisa dimengerti orang biasa, dikunci ke `error.code` (23502 not-null, 23505 unique, 23503 foreign-key, 42501 RLS/izin, dst.), BUKAN string-match ke `.message` yang bisa berubah bentuk. Pesan yang SUDAH manusiawi (dari Route Handler `app/api/admin/user/*`, sudah berbahasa Indonesia) dikenali lewat `sudahManusiawi()` dan dilewatkan apa adanya, TIDAK ditimpa.
+3. **Setiap aksi tambah/ubah/hapus di ketujuh tab sekarang menampilkan galat** lewat `pesanKesalahanDb()` -- sebelumnya banyak yang diam total: `TabLokasi` (tambah, ubah aktif), `TabOutlet` (tambah, ubah aktif), `TabPenugasan` (hapus assignment, hapus titik absen), `TabPolicy` (simpan -- sebelumnya NOL penanganan galat sama sekali), `TabPengguna` (tambah/hapus role), `TabTitikAbsen` (ubah titik, hapus penugasan, simpan jam kerja). Yang sudah ada (`tambahAssignment`, `tambahPenugasanAbsen`, `ubahWajibPte`, `buatPengguna`, `tambahTitik`, `tambahPenugasan`, `tambah`/`ubah` Shift) diseragamkan lewat `pesanKesalahanDb()` juga -- sebelumnya menampilkan `.message` mentah.
+
+**Diverifikasi SUNGGUHAN lewat Playwright (Chromium, login sebagai Putri/CEO -- BUKAN skrip DB), setiap tombol diklik, setiap form diisi, hasil dicek balik ke database langsung (bukan cuma tampilan):**
+
+| Tab | Aksi | Hasil |
+|---|---|---|
+| Lokasi | Tambah | ✅ Berhasil |
+| Lokasi | Ubah status aktif | ✅ Berhasil |
+| Outlet | Tambah (bug yang dilaporkan) | ✅ **Berhasil setelah perbaikan** -- slug terisi otomatis dan benar |
+| Outlet | Ubah status aktif | ✅ Berhasil |
+| Titik Absen | Tambah | ✅ Berhasil |
+| Titik Absen | Ubah (simpan radius) | ✅ Berhasil |
+| Titik Absen | Tugaskan "siapa absen di mana" | ✅ Berhasil |
+| Titik Absen | Simpan jam kerja | ✅ Berhasil |
+| Titik Absen | Hapus penugasan | ✅ Berhasil |
+| Shift | Tambah | ✅ Berhasil |
+| Shift | Ubah (simpan jam) | ✅ Berhasil |
+| Penugasan | Tambah form assignment | ✅ Berhasil |
+| Penugasan | Hapus form assignment | ✅ Berhasil |
+| Penugasan | Kecualikan dari PTE | ✅ Berhasil |
+| Penugasan | Nyalakan kembali PTE | ✅ Berhasil |
+| Policy | Simpan | ✅ Berhasil |
+| Pengguna | Buat pengguna baru | ✅ Berhasil |
+| Pengguna | Tambah role | ✅ Berhasil |
+| Pengguna | Hapus role | ✅ Berhasil |
+| Pengguna | Atur ulang kata sandi | ✅ Berhasil |
+
+**Semua 20 aksi lolos.** Tiga "GAGAL" yang sempat muncul di percobaan pertama TERNYATA salah skrip uji, bukan bug produk -- dibuktikan ulang dan dikoreksi sebelum dilaporkan: (1) nama titik absen/shift dirender di dalam `<input value=...>`, bukan teks polos, jadi pengecekan pertama (`getByText`) tidak pernah bisa menemukannya walau datanya benar tersimpan (dicek langsung ke DB); (2) `confirm()` dialog browser butuh listener dipasang SEBELUM tombol diklik, bukan sesudah.
+
+**Temuan sampingan, dicatat bukan diperbaiki** (di luar cakupan tugas ini -- tidak ada fitur "hapus akun" di Admin sama sekali): `reset_password_log.actor_id`/`target_id` referensi `auth.users(id)` TANPA `on delete cascade` -- akun yang PERNAH direset/mereset password tidak bisa dihapus dari `auth.users` tanpa membersihkan baris log itu dulu. Ditemukan saat membereskan akun uji sendiri, tidak memengaruhi fitur produk manapun (tidak ada tombol hapus akun di UI).
+
+`npm run build`/`tsc` bersih. Seluruh data uji (lokasi/outlet/titik absen/shift/assignment/akun sementara, toggle PTE Toyib, nilai policy) dibersihkan/dikembalikan persis ke keadaan semula, diverifikasi lewat query balik ke database.

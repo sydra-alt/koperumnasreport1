@@ -115,8 +115,9 @@ Alasan: beberapa aturan belum dikonfirmasi klien (lihat bagian 7). Sistem harus 
 | Peran (`role`) | Mengisi | Melihat |
 |---|---|---|
 | `ceo` | Keputusan/ACC | **Semua**, termasuk Accounting |
+| `admin` (Diki, Ibnu — **baru 30 Agustus 2026**, migrasi `0039_admin_role.sql`) | — | Halaman Admin penuh (Lokasi/Outlet/Penugasan/Policy/Pengguna/Titik Absen/Shift) — **SENGAJA TIDAK** ikut membuka laporan Accounting maupun hak memutuskan (`dec_decide`) laporan orang lain, itu tetap murni `ceo` |
 | `pusat` (Ibu Sabrina) | Laporan Terpusat | Semua **kecuali** detail Accounting — hanya rekap 4 angka |
-| `accounting` | Laporan Accounting | Keuangan + laporan resto & Ita (untuk rekonsiliasi) |
+| `accounting` | Laporan Accounting | Keuangan + laporan resto, thrifting & kontrol F&B (untuk rekonsiliasi) |
 | `kontrol_marketing` (Fauzi, Dea) | Catatan tindak lanjut | Seluruh laporan personal marketing |
 | `kadiv` | Form divisinya | Laporan divisinya sendiri |
 | `pic_lokasi` | Form lokasinya | Lokasi yang di-assign |
@@ -138,7 +139,8 @@ Satu user bisa punya banyak role. **Setiap user aktif otomatis punya role `karya
 | `accounting` | Laporan Accounting (rahasia) | global | Accounting |
 | `it` | Laporan IT | global | PIC IT |
 | `manager_resto` | Laporan Manager Resto | outlet | manager |
-| `ita` | Thrifting & Kontrol F&B | global | Ita |
+| `thrifting` | Laporan Thrifting | global | Ita |
+| `kontrol_fnb` | Kontrol F&B (per outlet, dulu bagian dari `ita`, dipecah 30 Agustus 2026) | outlet | Ita, Rika |
 | `hrd` | Laporan HRD | global | HRD |
 | `security` | Laporan Security | lokasi + shift | satpam |
 | `perizinan` | Laporan Perizinan | global | PIC perizinan |

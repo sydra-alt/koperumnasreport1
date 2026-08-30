@@ -10,7 +10,8 @@ import { useDaftarLokasi } from '../lib/api/lokasi';
 import { useDaftarOutlet } from '../lib/api/outlet';
 import { useDaftarShift } from '../lib/api/shift';
 import { buatKeputusanDariLaporan } from '../lib/api/decision';
-import { apakahTerlambat, useKirimReport, useReportHariIni, useSimpanDraft, type ScopeOpsi } from '../lib/api/report';
+import { apakahTerlambat, batasJamKirim, useKirimReport, useReportHariIni, useSimpanDraft, type ScopeOpsi } from '../lib/api/report';
+import { labelSisaWaktu } from '../lib/tugasHariIni';
 import { useRekapPembangunanPerLokasi, type PembangunanPerLokasiRow } from '../lib/api/pembangunan';
 import { usePicLokasiBelumUpload, type LokasiBelumUpload } from '../lib/api/it';
 import { ringkasanKebutuhanBesok } from '../lib/api/manager-resto';
@@ -22,13 +23,13 @@ import {
   type KebutuhanPembangunanAccounting,
   type OmzetRestoRow,
 } from '../lib/api/accounting';
-import { hariISOWIB, tanggalIndonesiaWIB, tanggalWIB } from '../lib/tanggal';
+import { jamWIB, tanggalIndonesiaWIB, tanggalWIB } from '../lib/tanggal';
 import { useCutiUntukTanggal, type CutiUntukTanggal } from '../lib/api/cuti';
 import { angkaDariTeks, tanggalDariTeks } from '../lib/teksAngka';
 import { urgensiTerburukDariKirim, warnaDipilihDari, warnaOtomatis, warnaTerburuk } from '../lib/warna';
 import { debounce } from '../lib/debounce';
 import { formRegistry } from '../forms';
-import { FormRenderer } from './FormRenderer';
+import { FormRenderer, type LaporanTerkirim } from './FormRenderer';
 
 const IKON: Record<'hijau' | 'kuning' | 'merah', string> = { hijau: '🟢', kuning: '🟡', merah: '🔴' };
 
@@ -233,7 +234,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
       const urgensi = urgensiTerburukDariKirim(schema, isiKirim);
       const warnaAkhir = warnaTerburuk(warnaDipilihDari(schema, isiKirim), warnaOtomatis(urgensi, terlambatKirim));
 
-      const status = await kirimReport.mutateAsync({
+      await kirimReport.mutateAsync({
         reportId: idAkhir,
         isi: isiKirim,
         warna: warnaAkhir,
@@ -282,15 +283,12 @@ export function LaporForm({ formKey }: { formKey: string }) {
         }
       }
 
-      const workdaysKirim = (policy.workdays as number[] | undefined) ?? [1, 2, 3, 4, 5, 6];
-      const diLuarHariWajib = !workdaysKirim.includes(hariISOWIB());
-      setPesanKirim(
-        status === 'terlambat'
-          ? 'Terkirim, tapi tercatat TERLAMBAT.'
-          : diLuarHariWajib
-            ? 'Terkirim -- hari ini di luar hari wajib lapor, jadi tidak dihitung terlambat.'
-            : 'Terkirim tepat waktu.',
-      );
+      // Pesan sukses TIDAK LAGI ditulis ke sini -- layar konfirmasi
+      // FormRenderer (laporanTerkirim, dihitung dari reportHariIni yang baru
+      // saja invalidated) yang menampilkannya sekarang, termasuk status
+      // TERLAMBAT (instruksi eksplisit user, 30 Agustus 2026: "seperti
+      // Google Form", bukan tulisan kecil di bawah tombol). `pesanKirim`
+      // sekarang HANYA dipakai untuk galat pengiriman (catch di bawah).
     } catch (err) {
       setPesanKirim(err instanceof Error ? err.message : 'Gagal mengirim laporan.');
     } finally {
@@ -310,6 +308,64 @@ export function LaporForm({ formKey }: { formKey: string }) {
     formKey === 'personal_marketing' && policy && progres ? hitungPotongan(policy, progres.pte_berlaku, progres.closing) : null;
   const kebutuhanBesokResto = formKey === 'manager_resto' ? ringkasanKebutuhanBesok(nilaiUntukPratinjau) : null;
   const cashflowAccounting = formKey === 'accounting' ? hitungCashflowHariIni(nilaiUntukPratinjau) : null;
+
+  // Ringkasan per bagian untuk FormRenderer (§5 DESIGN.md, koreksi 30 Agustus
+  // 2026) -- HANYA bagian "Target Closing Pribadi" dulu (satu bagian yang
+  // diminta ditunjukkan sebelum lanjut ke bagian lain). Progres+konsekuensi
+  // di sini MENGGANTIKAN paragraf potongan Rp300.000 yang dulu berdiri
+  // sendiri di bawah -- sekarang tersimpan DI DALAM kartu bagiannya, bukan
+  // terpisah/mengambang.
+  const closingSelesai = closingTarget !== null && progres ? progres.closing >= closingTarget : false;
+  const statusClosingBlok: 'aman' | 'perlu_dikawal' | undefined = !infoPotongan || !infoPotongan.berlaku ? undefined : closingSelesai ? 'aman' : 'perlu_dikawal';
+  const ringkasanBlokPersonalMarketing =
+    formKey === 'personal_marketing' && progres && closingTarget !== null
+      ? {
+          closing: {
+            progres: `${progres.closing} dari ${closingTarget} konsumen`,
+            konsekuensi:
+              !infoPotongan || !infoPotongan.berlaku
+                ? 'Ketentuan belum berlaku.'
+                : closingSelesai
+                  ? 'Target closing terpenuhi: Rp300.000 tidak dipotong.'
+                  : `Target closing belum terpenuhi: mengikuti ketentuan potongan Rp${infoPotongan.potongan?.toLocaleString('id-ID')} (proyeksi).`,
+            status: statusClosingBlok,
+          },
+        }
+      : undefined;
+
+  // Layar konfirmasi kirim (instruksi eksplisit user, 30 Agustus 2026:
+  // "seperti Google Form", "terapkan ke SEMUA form lewat FormRenderer") --
+  // dibangun di sini (LaporForm.tsx TAHU form_key/policy/deadline), diteruskan
+  // ke FormRenderer sebagai data murni -- FormRenderer sendiri tetap generik.
+  const pesanTerlambatKirim =
+    reportHariIni?.status === 'terlambat' && reportHariIni.submitted_at && policy
+      ? (() => {
+          const batas = batasJamKirim(policy, formKey, kombinasiAktif?.shiftId ? batasLaporShift(kombinasiAktif.shiftId) : null);
+          const jamKirim = jamWIB(new Date(reportHariIni.submitted_at));
+          return `Terkirim, tercatat ${labelSisaWaktu(batas, jamKirim).label} dari batas ${batas.replace(':', '.')}.`;
+        })()
+      : null;
+
+  // Generik: baris ringkasan singkat diambil dari `ringkasanBlok` (progres
+  // yang SUDAH terisi) yang mana pun sedang dipakai form ini -- HANYA
+  // personal_marketing.closing hari ini (satu bagian, instruksi eksplisit),
+  // form lain otomatis tidak dapat ringkasan (bukan dikosongkan sengaja per
+  // form_key, cuma belum ada `ringkasanBlok` yang dikirim untuknya).
+  const ringkasanKonfirmasi = ringkasanBlokPersonalMarketing
+    ? Object.entries(ringkasanBlokPersonalMarketing)
+        .filter(([, r]) => r.progres)
+        .map(([id, r]) => `${schema.blocks.find((b) => b.id === id)?.judul ?? id}: ${r.progres}`)
+    : undefined;
+
+  const laporanTerkirim: LaporanTerkirim | null =
+    reportHariIni && reportHariIni.status !== 'draft' && reportHariIni.submitted_at
+      ? {
+          status: reportHariIni.status,
+          submittedAt: reportHariIni.submitted_at,
+          pesanTerlambat: pesanTerlambatKirim,
+          ringkasan: ringkasanKonfirmasi,
+        }
+      : null;
 
   return (
     <main className="flex flex-col gap-6 p-6">
@@ -336,13 +392,14 @@ export function LaporForm({ formKey }: { formKey: string }) {
         </div>
       )}
 
-      {formKey === 'personal_marketing' && progres && invitTarget !== null && closingTarget !== null && (
-        <div className="flex flex-wrap gap-4 border p-3" style={{ borderColor: 'var(--garis)', fontFamily: 'var(--mono)' }}>
+      {/* Progres closing SEKARANG di dalam kartu bagian "Target Closing Pribadi"
+          sendiri (ringkasanBlokPersonalMarketing di atas, diteruskan ke
+          FormRenderer) -- tidak diulang di sini lagi. Undangan belum
+          disentuh batch ini (satu bagian dulu, instruksi eksplisit user). */}
+      {formKey === 'personal_marketing' && progres && invitTarget !== null && (
+        <div className="flex flex-wrap gap-4 border p-3" style={{ borderColor: 'var(--garis)', borderRadius: 'var(--radius-besar)', fontFamily: 'var(--mono)' }}>
           <span>
             Undangan bulan ini: {progres.undangan} / {invitTarget}
-          </span>
-          <span>
-            Closing bulan ini: {progres.closing} / {closingTarget}
           </span>
         </div>
       )}
@@ -374,16 +431,6 @@ export function LaporForm({ formKey }: { formKey: string }) {
                 : 'Bonus hangus bulan ini'}
           </p>
         </div>
-      )}
-
-      {formKey === 'personal_marketing' && (
-        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
-          {!infoPotongan || !infoPotongan.berlaku
-            ? 'Ketentuan belum berlaku.'
-            : closingTarget !== null && progres && progres.closing >= closingTarget
-              ? 'Target closing terpenuhi: Rp300.000 tidak dipotong.'
-              : `Target closing belum terpenuhi: mengikuti ketentuan potongan Rp${infoPotongan.potongan?.toLocaleString('id-ID')} (proyeksi).`}
-        </p>
       )}
 
       {perluRollupMarketing && progres && invitTarget !== null && closingTarget !== null && (
@@ -426,10 +473,13 @@ export function LaporForm({ formKey }: { formKey: string }) {
         reportId={reportId}
         onChange={tanganiPerubahan}
         onSubmit={tanganiKirim}
+        ringkasanBlok={ringkasanBlokPersonalMarketing}
+        laporanTerkirim={laporanTerkirim}
       />
 
       {mengirim && <p>Mengirim…</p>}
-      {pesanKirim && <p style={{ color: 'var(--biru)' }}>{pesanKirim}</p>}
+      {/* pesanKirim sekarang HANYA galat -- sukses ditangani layar konfirmasi FormRenderer (laporanTerkirim). */}
+      {pesanKirim && <p style={{ color: 'var(--merah)' }}>{pesanKirim}</p>}
     </main>
   );
 }
@@ -786,10 +836,11 @@ function KebutuhanPembangunanAccountingOtomatis({ data }: { data: KebutuhanPemba
 }
 
 /**
- * 13 · Rekonsiliasi Resto (accounting) -- omzet versi Manager & versi Ita
- * ditampilkan berdampingan, selisih dihitung sistem (keputusan D, "tiga
+ * 13 · Rekonsiliasi Resto (accounting) -- omzet versi Manager & versi Kontrol
+ * F&B ditampilkan berdampingan, selisih dihitung sistem (keputusan D, "tiga
  * pengukuran satu layar"). Query biasa (lib/api/accounting.ts) -- accounting
- * sudah punya can_see_report() ke manager_resto/ita, tidak perlu security
+ * sudah punya can_see_report() ke manager_resto/kontrol_fnb (dulu "ita"
+ * sebelum dipecah 30 Agustus 2026, migrasi 0036/0037), tidak perlu security
  * definer.
  */
 function OmzetRestoOtomatis({ data }: { data: OmzetRestoRow[] }) {
