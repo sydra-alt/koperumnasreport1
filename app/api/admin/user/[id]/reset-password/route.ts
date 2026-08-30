@@ -57,6 +57,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: errUpdate.message }, { status: 400 });
   }
 
+  // Password diatur ulang -- paksa ganti lagi (instruksi eksplisit user, 30
+  // Agustus 2026, migrasi 0034_paksa_ganti_password.sql): siapa pun yang
+  // pegang password baru ini (CEO sendiri, atau siapa pun yang menerimanya)
+  // WAJIB menggantinya sendiri sebelum bisa membuka halaman apa pun.
+  const { error: errFlag } = await admin.from('profile').update({ harus_ganti_password: true }).eq('id', targetId);
+  if (errFlag) {
+    console.error('Gagal menyalakan harus_ganti_password setelah reset:', errFlag.message);
+  }
+
   const { error: errLog } = await admin.from('reset_password_log').insert({ actor_id: user.id, target_id: targetId });
   if (errLog) {
     // Password SUDAH terganti -- gagal mencatat log tidak boleh membuat

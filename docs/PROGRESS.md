@@ -704,6 +704,31 @@ Instruksi eksplisit user, tiga hal sekaligus -- nomor 1 (pemetaan Inservice) dan
 
 **Catatan Inservice/CS (menutup pertanyaan §2 DATA-KARYAWAN.md nomor 3, lanjutan):** CEO melengkapi jawaban -- Dedi/Yundi/Fauzan/Cahya (Inservice) JUGA bertugas CS. Karena form `cs` `scope:'global'` awalnya diasumsikan SATU pengisi per hari (`lib/api/terpusat.ts` -- `useLaporanHariIni` dgn `.maybeSingle()`, akan ERROR kalau >1 baris), diperiksa dulu ke user sebelum diterapkan (instruksi eksplisit: "jangan diputuskan sendiri, ini menyentuh bentuk data"). Diputuskan: TETAP satu form `cs` untuk semua (bukan berbasis lokasi, bukan satu-orang-ditunjuk) -- kode rollup Terpusat diperbaiki: `useLaporanCsHariIni` (baru) mengambil SEMUA baris `cs` hari itu, `app/terpusat/page.tsx` Bagian 2 menjumlahkan angka lintas pengisi + menampilkan tiap masalah urgent per orang. Papan Kontrol TIDAK perlu diubah -- `papan_untuk_tanggal` (migrasi 0020) sudah join per `assignment` dengan `author_id`, otomatis benar untuk banyak pengisi. `docs/DATA-KARYAWAN.md` §1/§2 diperbarui dua kali (Koreksi 1 lalu Koreksi 2).
 
+## Batch — Paksa ganti password (30 Agustus 2026)
+
+CEO minta password awal seragam `admin123` untuk 39 akun (mudah dibagikan) -- user (pemilik proyek) menegaskan itu HANYA boleh kalau paksaan ganti dibangun BERSAMAAN: tanpa paksaan, sebagian besar tidak akan pernah ganti, dan satu orang yang tahu polanya bisa login sebagai siapa pun yang belum ganti -- termasuk Shabita (saldo bank & prioritas pembayaran di laporan Accounting). RLS tidak menolong kalau pintunya dibuka dengan password yang BENAR.
+
+**Migrasi `0034_paksa_ganti_password.sql`:**
+- `profile.harus_ganti_password boolean not null default true`.
+- Perluasan `jaga_profil_sensitif()` (trigger sejak 0028/0029, sudah menjaga `divisi`/`aktif`): kolom ini SEKARANG juga dijaga -- HANYA bisa dimatikan (true->false) lewat koneksi service/CEO, BUKAN lewat update biasa oleh pemiliknya sendiri. **Ini sengaja, bukan berlebihan** -- tanpa guard ini, `/ganti-password`nya sendiri jadi percuma: siapa pun bisa `update profile set harus_ganti_password=false` langsung lewat REST tanpa pernah benar-benar mengganti password, pola celah SAMA yang sudah ditemukan berulang sesi ini (`cuti_insert`, `decision_insert`, `absensi_insert`, `profile.divisi/aktif`). Menyalakan (false->true, dipakai tombol "Atur ulang kata sandi") TIDAK dijaga arah itu.
+
+**Kode:**
+- `scripts/buat-akun.mjs`: `PASSWORD_SEMENTARA` diganti `'123456'` -> `'admin123'`.
+- `app/api/admin/user/route.ts`: password TIDAK LAGI dibaca dari body permintaan -- SELALU `'admin123'` (konstanta server), supaya tidak ada jalan CEO membuat akun dengan password lain yang tidak seragam. Field password dihapus dari form "Tambah pengguna baru" di Admin.
+- `app/api/admin/user/[id]/reset-password/route.ts`: password acak baru SEKARANG juga menyalakan `harus_ganti_password=true` -- password yang direset CEO tetap wajib diganti sendiri oleh pemiliknya, bukan dipakai selamanya.
+- `app/api/ganti-password/route.ts` (baru) -- satu-satunya jalan resmi mematikan penanda: validasi password (>=8 karakter, bukan `admin123`) di server, ganti password sungguhan lewat Auth Admin API (`service_role`), BARU matikan `harus_ganti_password` (client GANDA: sesi cookie utk identitas, service_role utk kedua operasi supaya lolos guard trigger).
+- `app/ganti-password/page.tsx` (baru) -- form 2 kali ketik, validasi client DAN server (jangan cuma percaya satu sisi), `router.push('/')` + `router.refresh()` setelah berhasil (BUKAN `window.location.href` -- linter Next.js menandainya, `router.push` App Router tetap membuat permintaan server yang lewat `proxy.ts` lagi, cukup).
+- `proxy.ts` -- SETELAH pengecekan login yang sudah ada, tambahan: kalau `profile.harus_ganti_password` true, alihkan ke `/ganti-password` -- SEMUA rute kecuali halaman itu sendiri dan endpoint API-nya (kalau tidak dikecualikan, endpoint yang seharusnya MEMATIKAN penanda malah ikut tercegat sebelum sempat jalan).
+- `scripts/terapkan-admin123-uji.mjs` (baru) -- terapkan `admin123` ke 7 akun uji yang sudah ada (`harus_ganti_password` otomatis true lewat DEFAULT kolom, tidak perlu disentuh terpisah).
+
+**Diverifikasi:**
+- `scripts/uji-jaga-harus-ganti-password.mjs` (DB, 4 titik) -- pemilik sendiri DITOLAK mematikan langsung; CEO & koneksi service BOLEH (override); kolom lain (nama) tidak ikut kena blokir. Semua lolos.
+- `scripts/uji-paksa-ganti-password-http.mjs` (**HTTP sungguhan, bukan penyamaran JWT** -- instruksi eksplisit user, 6 titik): login Toyib (`admin123`) sesi cookie sungguhan -> `GET /papan` & `GET /terpusat` LANGSUNG -> 307 ke `/ganti-password` (dua-duanya). `POST /api/ganti-password` password baru -> 200. Login ULANG (sesi fresh, password baru) -> `GET /papan` -> 200, TIDAK dialihkan lagi. Diperiksa langsung ke DB: `harus_ganti_password=false` sungguhan. Semua lolos.
+- Regresi: `uji-jaga-profil-sensitif.mjs`, `uji-admin.mjs`, `uji-checkpoint2.mjs`, `uji-reset-password-log.mjs` -- semua tetap lolos penuh.
+- `tsc --noEmit`/`npm run lint`/`npm run build` bersih.
+
+Ketujuh akun uji SEKARANG semuanya `admin123` + `harus_ganti_password=true` (state seragam, sama seperti 39 akun asli nanti) -- password unik per akun dari `scripts/set-password.mjs` sebelumnya TIDAK LAGI berlaku untuk ketujuhnya.
+
 ## Batch — Shift dari tabel, bukan CHECK CONSTRAINT (Perubahan 2, 30 Agustus 2026)
 
 Instruksi eksplisit user, rencana ditunjukkan dulu dan DUA keputusan desain dikonfirmasi sebelum kode ditulis (bukan ditebak):

@@ -71,7 +71,23 @@ proses onboarding untuk orang yang salah dapat akun.
 
 ---
 
-## Keputusan distribusi password — SEBAGIAN SELESAI (29 Agustus 2026)
+## Keputusan distribusi password — SELESAI (30 Agustus 2026)
+
+**Pertanyaan nomor 1 di bawah ("Password awal 36 akun") sudah TERJAWAB dan DIBANGUN, bukan lagi risiko yang diterima sadar.** CEO memilih password awal seragam `admin123` untuk mudah dibagikan -- user (pemilik proyek) menegaskan itu HANYA aman kalau paksaan ganti dibangun BERSAMAAN, bukan menyusul, karena kalau tidak dipaksa sebagian besar orang tidak akan pernah ganti, dan satu orang yang tahu polanya bisa login sebagai siapa pun yang belum ganti -- termasuk Shabita (laporan Accounting, saldo bank & prioritas pembayaran).
+
+**Dibangun (migrasi `0034_paksa_ganti_password.sql` + kode aplikasi):**
+- `profile.harus_ganti_password` (default `true`) -- SEMUA akun baru (lewat `scripts/buat-akun.mjs` maupun tombol "Tambah pengguna baru" di Admin) dibuat dengan password `admin123` DAN penanda ini menyala.
+- `proxy.ts` memaksa alih ke `/ganti-password` di SEMUA rute selama penanda masih menyala -- tidak bisa dilewati dengan mengetik alamat lain, satu tempat pencegat, bukan pengecekan per halaman yang bisa lupa dipasang.
+- `/ganti-password` -- password baru minimal 8 karakter, tidak boleh `admin123`, diketik dua kali. Setelah berhasil, penanda mati dan langsung masuk Beranda.
+- Tombol "Atur ulang kata sandi" (CEO) juga MENYALAKAN kembali penanda ini -- password yang direset tetap wajib diganti sendiri oleh pemiliknya.
+- **Penanda TIDAK BISA dimatikan lewat update langsung** (guard trigger DB) -- cuma lewat `/api/ganti-password` yang membuktikan dulu password sungguhan berubah. Tanpa guard ini, siapa pun bisa mematikan penandanya lewat REST tanpa pernah ganti password, membuat seluruh mekanisme sia-sia -- pola celah yang sama ditemukan berulang sesi ini (`cuti`/`decision`/`absensi`/`profile.divisi`).
+- Diterapkan juga ke ketujuh akun uji yang sudah ada (`scripts/terapkan-admin123-uji.mjs`) -- password mereka sekarang SAMA `admin123`, harus_ganti_password menyala, sama seperti akan diterima 39 akun asli nanti.
+
+**Diverifikasi HTTP sungguhan** (`scripts/uji-paksa-ganti-password-http.mjs`, bukan penyamaran JWT): login Toyib (`admin123`) lewat sesi cookie sungguhan, `GET /papan` dan `GET /terpusat` LANGSUNG -- keduanya 307 ke `/ganti-password`. `POST /api/ganti-password` dengan password baru -- 200. Login ULANG dengan password baru (sesi fresh) -- `GET /papan` sekarang 200, tidak dialihkan lagi. Diperiksa juga langsung ke database: `harus_ganti_password` benar-benar `false` setelah itu. 6/6 titik lolos. Guard anti-bypass diverifikasi terpisah (`scripts/uji-jaga-harus-ganti-password.mjs`, 4/4 lolos).
+
+Pertanyaan nomor 2 (titik kontak kalau lupa password) MASIH TERBUKA -- proses murni, bukan teknis, tetap perlu disepakati sebelum hari pertama.
+
+## (Riwayat, sebelum 30 Agustus 2026)
 
 **Ditutup hari ini:** halaman Admin → tab Pengguna sekarang punya tombol
 **"Atur ulang kata sandi"** per orang. CEO login lewat browser biasa, klik

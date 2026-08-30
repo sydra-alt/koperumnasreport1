@@ -34,6 +34,27 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Paksa ganti password (instruksi eksplisit user, 30 Agustus 2026) --
+  // SEMUA rute dialihkan ke /ganti-password selama profile.harus_ganti_
+  // password masih true, TIDAK BISA dilewati dengan mengetik alamat lain
+  // (proxy ini yang mencegat, bukan pengecekan di tiap halaman -- satu
+  // tempat, tidak mungkin lupa dipasang di halaman baru). Dua pengecualian
+  // MUTLAK: halaman ganti-password itu sendiri (kalau tidak, redirect
+  // loop) dan endpoint API-nya (kalau tidak, permintaan mengganti password
+  // sendiri dicegat sebelum sempat jalan).
+  if (
+    user &&
+    !request.nextUrl.pathname.startsWith('/ganti-password') &&
+    !request.nextUrl.pathname.startsWith('/api/ganti-password')
+  ) {
+    const { data: profil } = await supabase.from('profile').select('harus_ganti_password').eq('id', user.id).single();
+    if (profil?.harus_ganti_password) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/ganti-password';
+      return NextResponse.redirect(url);
+    }
+  }
+
   return supabaseResponse;
 }
 

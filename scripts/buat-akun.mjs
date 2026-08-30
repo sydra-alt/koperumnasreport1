@@ -20,11 +20,13 @@ import { Client } from 'pg';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
 
-// Password sementara seragam untuk semua akun awal -- KEPUTUSAN SENGAJA, bukan
-// kelalaian. Direset ke password asli masing-masing setelah seluruh fitur
-// diverifikasi jalan, sebelum dipakai sungguhan oleh karyawan. Lihat catatan
-// di docs/PROGRESS.md.
-const PASSWORD_SEMENTARA = '123456';
+// Password sementara SERAGAM 'admin123' (instruksi eksplisit user, 30
+// Agustus 2026) -- AMAN hanya karena `profile.harus_ganti_password` (default
+// true, migrasi 0034_paksa_ganti_password.sql) memaksa setiap akun ganti
+// password lewat /ganti-password sebelum bisa membuka halaman apa pun
+// (proxy.ts). Jangan pernah mengubah password seragam ini tanpa memastikan
+// paksaan gantinya masih aktif -- lihat docs/PROGRESS.md.
+const PASSWORD_SEMENTARA = 'admin123';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

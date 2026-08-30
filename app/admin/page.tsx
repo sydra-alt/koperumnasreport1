@@ -259,7 +259,6 @@ function TabPengguna() {
   const aturUlang = useAturUlangKataSandi();
 
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [nama, setNama] = useState('');
   const [jabatan, setJabatan] = useState('');
   const [divisi, setDivisi] = useState('');
@@ -274,8 +273,10 @@ function TabPengguna() {
       <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
         <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>Tambah pengguna baru</p>
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="border p-2" style={gayaInput} />
-        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password awal" type="text" className="border p-2" style={gayaInput} />
         <input value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Nama" className="border p-2" style={gayaInput} />
+        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+          Password awal otomatis &quot;admin123&quot; -- pengguna wajib menggantinya saat login pertama.
+        </p>
         <input value={jabatan} onChange={(e) => setJabatan(e.target.value)} placeholder="Jabatan (opsional)" className="border p-2" style={gayaInput} />
         <input value={divisi} onChange={(e) => setDivisi(e.target.value)} placeholder="Divisi (opsional)" className="border p-2" style={gayaInput} />
         <div className="flex flex-wrap gap-2">
@@ -292,14 +293,13 @@ function TabPengguna() {
         </div>
         <button
           type="button"
-          disabled={!email.trim() || !password || !nama.trim() || buatPengguna.isPending}
+          disabled={!email.trim() || !nama.trim() || buatPengguna.isPending}
           onClick={() =>
             buatPengguna.mutate(
-              { email: email.trim(), password, nama: nama.trim(), jabatan: jabatan.trim() || undefined, divisi: divisi.trim() || undefined, roles: rolesBaru },
+              { email: email.trim(), nama: nama.trim(), jabatan: jabatan.trim() || undefined, divisi: divisi.trim() || undefined, roles: rolesBaru },
               {
                 onSuccess: () => {
                   setEmail('');
-                  setPassword('');
                   setNama('');
                   setJabatan('');
                   setDivisi('');
