@@ -33,6 +33,8 @@ Menggantikan data contoh (Ciwidey/Pangalengan/Soreang) di `docs/00-SETUP-MANUAL.
 | Kasam | Security DTI | `security` (lokasi DTI) | `karyawan` |
 | Syahbudin | Security DTI | `security` (lokasi DTI, shift normal -- sama pola Kasam) | `karyawan` |
 | Ita | Thrifting & Kontrol F&B | `ita` (penjualan thrifting + kontrol stok ketiga outlet) | `karyawan` |
+| Pak Tri | Kendaraan | `kendaraan` (menjawab §2 nomor 6 -- form ini sebelumnya tanpa pengisi) | `karyawan` |
+| Mba Rika | Stok (bersama Ita) | `ita` ⚠️ DITAHAN -- lihat catatan di bawah, jangan diassign sebelum dijawab | `karyawan` |
 | **Dadang** | Humas Tajur | `pic_lokasi` (Tajur) | `pic_lokasi`, `karyawan` |
 | **Jery** | Humas Bekasi | `pic_lokasi` (Bekasi) | `pic_lokasi`, `karyawan` |
 | Toyib | Rukost | ⚠️ belum ada form -- karyawan biasa penjaga kost, tetap wajib PTE seperti yang lain | `karyawan` |
@@ -43,7 +45,9 @@ Menggantikan data contoh (Ciwidey/Pangalengan/Soreang) di `docs/00-SETUP-MANUAL.
 | Fikri, Fadil | Indokopi Jatinegara | — | `karyawan` |
 | **Shabita** | Accounting (Keuangan) | `accounting` | `accounting`, `karyawan` |
 
-Total: **37 orang** (dikoreksi 30 Agustus 2026 -- Ery & Erry SATU orang kerja rangkap, sebelumnya dihitung dua baris; Shabita orang ke-37, TIDAK menggantikan siapa pun -- CEO menegaskan eksplisit).
+Total: **39 orang** (dikoreksi 30 Agustus 2026 -- Ery & Erry SATU orang kerja rangkap, sebelumnya dihitung dua baris; Shabita orang ke-37, TIDAK menggantikan siapa pun -- CEO menegaskan eksplisit; Pak Tri & Mba Rika orang ke-38 dan ke-39, ditambahkan 30 Agustus 2026).
+
+⚠️ **Assignment `ita` Mba Rika DITAHAN -- SAMA PERSIS pola pertanyaan CS sebelumnya, belum dijawab.** Form `ita` `scope:'global'`, dan DUA konsumen kode sudah dipastikan mengasumsikan TEPAT SATU laporan `ita` per hari (`useOmzetRestoHariIni` di `lib/api/accounting.ts` pakai `.maybeSingle()`, `selisih_resto_untuk_tanggal()` di SQL melakukan JOIN langsung ke `report` `ita` tanpa batas jumlah baris -- dua laporan `ita` sehari akan membuat JOIN itu menggandakan baris salah, bukan cuma error seperti kasus CS). Kalau Ita DAN Mba Rika berdua mengisi form `ita` di hari yang sama, Bagian 13 "Rekonsiliasi Resto" Accounting dan `selisih_resto_untuk_tanggal()` bisa salah hitung TANPA error yang kelihatan. **Belum diassign, menunggu keputusan user** (bukan CEO -- ini keputusan bentuk data, sama seperti CS): apakah Mba Rika ikut form `ita` yang sama (perlu perbaikan kode dulu, sama seperti CS), form `ita` jadi per-orang, atau cukup satu (Ita) yang assignment resminya, Mba Rika membantu di luar sistem. Ita SENDIRI (satu-satunya, aman) BELUM diassign juga -- ditahan bersamaan supaya keputusannya sekali jalan, bukan assign Ita dulu lalu ubah lagi.
 
 ⚠️ **Indosteak sekarang DUA outlet** (Cempaka & Pekansari, bukan satu), CEO menjawab 30 Agustus 2026 -- lihat migrasi `0031_indosteak_dua_outlet.sql`. Qasim/Bagus/Ahmad/Elsa/Lusy sudah dikonfirmasi kerja di "Indosteak" sebelum pemisahan ini diketahui -- BELUM jelas siapa di Cempaka dan siapa di Pekansari, jangan ditebak.
 

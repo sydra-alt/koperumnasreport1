@@ -30,6 +30,7 @@ import {
   useDaftarShiftAdmin,
   useTambahShift,
   useUbahShift,
+  useUbahWajibPte,
   DAFTAR_ROLE,
 } from '../../lib/api/admin';
 
@@ -116,95 +117,227 @@ function TabOutlet() {
   );
 }
 
-function TabAssignment() {
-  const { data: daftar } = useDaftarAssignmentAdmin();
+/**
+ * Penugasan PER ORANG (30 Agustus 2026, instruksi eksplisit user) --
+ * gabungan tiga hal yang sebelumnya tersebar (assignment form, titik
+ * absen, PTE) jadi SATU layar per orang, tanpa deploy. Data & mutasi
+ * SEPENUHNYA reuse hook yang sudah ada (useDaftarAssignmentAdmin dkk,
+ * useDaftarPenugasanAbsenAdmin dkk) -- disaring ke satu `userId` di sisi
+ * klien, BUKAN query baru. `useUbahWajibPte` (baru) memakai update biasa,
+ * bukan RPC -- RLS + trigger jaga_profil_sensitif() sudah menolak siapa
+ * pun selain CEO (lihat lib/api/admin.ts).
+ */
+function TabPenugasan() {
   const { data: profil } = useDaftarProfilDenganRole();
+  const { data: assignmentSemua } = useDaftarAssignmentAdmin();
   const { data: lokasi } = useDaftarLokasiAdmin();
   const { data: outlet } = useDaftarOutletAdmin();
   const { data: shiftDaftar } = useDaftarShiftAdmin();
-  const tambah = useTambahAssignment();
-  const hapus = useHapusAssignment();
+  const { data: titikAbsenSemua } = useDaftarLokasiAbsenAdmin();
+  const { data: penugasanAbsenSemua } = useDaftarPenugasanAbsenAdmin();
+
+  const tambahAssignment = useTambahAssignment();
+  const hapusAssignment = useHapusAssignment();
+  const tambahPenugasanAbsen = useTambahPenugasanAbsen();
+  const hapusPenugasanAbsen = useHapusPenugasanAbsen();
+  const ubahWajibPte = useUbahWajibPte();
 
   const [userId, setUserId] = useState('');
   const [formKey, setFormKey] = useState('');
   const [lokasiId, setLokasiId] = useState('');
   const [outletId, setOutletId] = useState('');
   const [shiftId, setShiftId] = useState('');
+  const [titikBaru, setTitikBaru] = useState('');
+  const [alasanBebasPte, setAlasanBebasPte] = useState('');
+
+  const orang = (profil ?? []).find((p) => p.id === userId) ?? null;
+  const assignmentOrang = (assignmentSemua ?? []).filter((a) => a.userId === userId);
+  const penugasanAbsenOrang = (penugasanAbsenSemua ?? []).filter((p) => p.userId === userId);
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
-        <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>Tambah penugasan</p>
-        <select value={userId} onChange={(e) => setUserId(e.target.value)} className="border p-2" style={gayaInput}>
-          <option value="">-- Pilih pengguna --</option>
-          {(profil ?? []).map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nama}
-            </option>
-          ))}
-        </select>
-        <input value={formKey} onChange={(e) => setFormKey(e.target.value)} placeholder="form_key (mis. pic_lokasi, security)" className="border p-2" style={gayaInput} />
-        <select value={lokasiId} onChange={(e) => setLokasiId(e.target.value)} className="border p-2" style={gayaInput}>
-          <option value="">-- Tanpa lokasi --</option>
-          {(lokasi ?? []).map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.nama}
-            </option>
-          ))}
-        </select>
-        <select value={outletId} onChange={(e) => setOutletId(e.target.value)} className="border p-2" style={gayaInput}>
-          <option value="">-- Tanpa outlet --</option>
-          {(outlet ?? []).map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.nama}
-            </option>
-          ))}
-        </select>
-        <select value={shiftId} onChange={(e) => setShiftId(e.target.value)} className="border p-2" style={gayaInput}>
-          <option value="">-- Tanpa shift --</option>
-          {(shiftDaftar ?? []).map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nama}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          disabled={!userId || !formKey.trim() || tambah.isPending}
-          onClick={() =>
-            tambah.mutate(
-              { userId, formKey: formKey.trim(), lokasiId: lokasiId || null, outletId: outletId || null, shiftId: shiftId || null },
-              { onSuccess: () => setFormKey('') },
-            )
-          }
-          className="border px-4 py-2"
-          style={gayaTombol}
-        >
-          Tambah penugasan
-        </button>
-        {tambah.isError && <p style={{ color: 'var(--merah)' }}>{(tambah.error as Error).message}</p>}
-      </div>
+    <div className="flex flex-col gap-4">
+      <select
+        value={userId}
+        onChange={(e) => {
+          setUserId(e.target.value);
+          setAlasanBebasPte('');
+        }}
+        className="border p-2"
+        style={gayaInput}
+      >
+        <option value="">-- Pilih orang --</option>
+        {(profil ?? []).map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.nama}
+          </option>
+        ))}
+      </select>
 
-      <ul className="flex flex-col gap-1">
-        {(daftar ?? []).map((a) => (
-          <li key={a.id} className="flex items-center justify-between border p-2 text-sm" style={{ borderColor: 'var(--garis)' }}>
-            <span>
-              {a.userNama} -- {a.formKey}
-              {a.lokasiNama ? ` · ${a.lokasiNama}` : ''}
-              {a.outletNama ? ` · ${a.outletNama}` : ''}
-              {a.shiftNama ? ` · ${a.shiftNama}` : ''}
-            </span>
+      {!orang ? (
+        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+          Pilih satu orang untuk mengatur form, titik absen, dan status PTE-nya.
+        </p>
+      ) : (
+        <>
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>
+            {orang.nama} {orang.jabatan ? `-- ${orang.jabatan}` : ''} {orang.divisi ? `(${orang.divisi})` : ''}
+          </p>
+
+          {/* ─── PTE ─── */}
+          <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
+            <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>PTE</p>
+            <p className="text-sm" style={{ color: orang.wajib_pte ? 'var(--hijau)' : 'var(--kuning)' }}>
+              {orang.wajib_pte ? '✅ Wajib PTE (normal)' : `⚠️ DIKECUALIKAN dari PTE${orang.alasan_bebas_pte ? ` -- ${orang.alasan_bebas_pte}` : ''}`}
+            </p>
+            {orang.wajib_pte ? (
+              <>
+                <textarea
+                  value={alasanBebasPte}
+                  onChange={(e) => setAlasanBebasPte(e.target.value)}
+                  placeholder="Alasan mengecualikan (wajib diisi)"
+                  className="border p-2 text-sm"
+                  style={{ ...gayaInput, minHeight: 60 }}
+                  rows={2}
+                />
+                <button
+                  type="button"
+                  disabled={!alasanBebasPte.trim() || ubahWajibPte.isPending}
+                  onClick={() => ubahWajibPte.mutate({ userId: orang.id, wajibPte: false, alasan: alasanBebasPte.trim() })}
+                  className="w-fit border px-3 py-1 text-sm"
+                  style={{ borderColor: 'var(--kuning)', color: 'var(--kuning)', minHeight: 44 }}
+                >
+                  Kecualikan dari PTE
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                disabled={ubahWajibPte.isPending}
+                onClick={() => ubahWajibPte.mutate({ userId: orang.id, wajibPte: true, alasan: null })}
+                className="w-fit border px-3 py-1 text-sm"
+                style={{ borderColor: 'var(--hijau)', color: 'var(--hijau)', minHeight: 44 }}
+              >
+                Nyalakan kembali PTE
+              </button>
+            )}
+            {ubahWajibPte.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{(ubahWajibPte.error as Error).message}</p>}
+          </div>
+
+          {/* ─── Form yang diisi ─── */}
+          <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
+            <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Form yang diisi</p>
+            <ul className="flex flex-col gap-1">
+              {assignmentOrang.length === 0 && <li className="text-sm" style={{ color: 'var(--kosong)' }}>Belum ada penugasan form.</li>}
+              {assignmentOrang.map((a) => (
+                <li key={a.id} className="flex items-center justify-between border p-2 text-sm" style={{ borderColor: 'var(--garis)' }}>
+                  <span>
+                    {a.formKey}
+                    {a.lokasiNama ? ` · ${a.lokasiNama}` : ''}
+                    {a.outletNama ? ` · ${a.outletNama}` : ''}
+                    {a.shiftNama ? ` · ${a.shiftNama}` : ''}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => hapusAssignment.mutate(a.id)}
+                    className="border px-2 py-1"
+                    style={{ borderColor: 'var(--merah)', color: 'var(--merah)', minHeight: 44 }}
+                  >
+                    Hapus
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <input value={formKey} onChange={(e) => setFormKey(e.target.value)} placeholder="form_key (mis. pic_lokasi, security)" className="border p-2 text-sm" style={gayaInput} />
+            <div className="flex flex-wrap gap-2">
+              <select value={lokasiId} onChange={(e) => setLokasiId(e.target.value)} className="flex-1 border p-2 text-sm" style={gayaInput}>
+                <option value="">-- Tanpa lokasi --</option>
+                {(lokasi ?? []).map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.nama}
+                  </option>
+                ))}
+              </select>
+              <select value={outletId} onChange={(e) => setOutletId(e.target.value)} className="flex-1 border p-2 text-sm" style={gayaInput}>
+                <option value="">-- Tanpa outlet --</option>
+                {(outlet ?? []).map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.nama}
+                  </option>
+                ))}
+              </select>
+              <select value={shiftId} onChange={(e) => setShiftId(e.target.value)} className="flex-1 border p-2 text-sm" style={gayaInput}>
+                <option value="">-- Tanpa shift --</option>
+                {(shiftDaftar ?? []).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nama}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button
               type="button"
-              onClick={() => hapus.mutate(a.id)}
-              className="border px-2 py-1"
-              style={{ borderColor: 'var(--merah)', color: 'var(--merah)', minHeight: 44 }}
+              disabled={!formKey.trim() || tambahAssignment.isPending}
+              onClick={() =>
+                tambahAssignment.mutate(
+                  { userId: orang.id, formKey: formKey.trim(), lokasiId: lokasiId || null, outletId: outletId || null, shiftId: shiftId || null },
+                  { onSuccess: () => setFormKey('') },
+                )
+              }
+              className="w-fit border px-3 py-1 text-sm"
+              style={gayaTombol}
             >
-              Hapus
+              Tambah penugasan
             </button>
-          </li>
-        ))}
-      </ul>
+            {tambahAssignment.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{(tambahAssignment.error as Error).message}</p>}
+          </div>
+
+          {/* ─── Titik absen ─── */}
+          <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
+            <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Titik absen</p>
+            <ul className="flex flex-col gap-1">
+              {penugasanAbsenOrang.length === 0 && <li className="text-sm" style={{ color: 'var(--kosong)' }}>Belum ada titik absen.</li>}
+              {penugasanAbsenOrang.map((p) => (
+                <li key={p.lokasiAbsenId} className="flex items-center justify-between border p-2 text-sm" style={{ borderColor: 'var(--garis)' }}>
+                  <span>
+                    {p.lokasiAbsenNama}
+                    {p.jamMasuk || p.jamPulang ? ` · ${p.jamMasuk ?? '-'} s/d ${p.jamPulang ?? '-'}` : ' · jam default'}
+                    {' '}
+                    <span style={{ color: 'var(--kosong)' }}>(atur jam di tab &quot;Titik Absen&quot;)</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => hapusPenugasanAbsen.mutate({ userId: orang.id, lokasiAbsenId: p.lokasiAbsenId })}
+                    className="border px-2 py-1"
+                    style={{ borderColor: 'var(--merah)', color: 'var(--merah)', minHeight: 44 }}
+                  >
+                    Hapus
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-2">
+              <select value={titikBaru} onChange={(e) => setTitikBaru(e.target.value)} className="flex-1 border p-2 text-sm" style={gayaInput}>
+                <option value="">-- Pilih titik absen --</option>
+                {(titikAbsenSemua ?? []).map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nama}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={!titikBaru || tambahPenugasanAbsen.isPending}
+                onClick={() => tambahPenugasanAbsen.mutate({ userId: orang.id, lokasiAbsenId: titikBaru }, { onSuccess: () => setTitikBaru('') })}
+                className="border px-3 py-1 text-sm"
+                style={gayaTombol}
+              >
+                Tugaskan
+              </button>
+            </div>
+            {tambahPenugasanAbsen.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{(tambahPenugasanAbsen.error as Error).message}</p>}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -725,7 +858,7 @@ function Isi() {
       </div>
       {tab === 'lokasi' && <TabLokasi />}
       {tab === 'outlet' && <TabOutlet />}
-      {tab === 'assignment' && <TabAssignment />}
+      {tab === 'assignment' && <TabPenugasan />}
       {tab === 'policy' && <TabPolicy />}
       {tab === 'pengguna' && <TabPengguna />}
       {tab === 'titik-absen' && <TabTitikAbsen />}

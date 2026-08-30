@@ -285,6 +285,8 @@ export interface ProfilDenganRole {
   jabatan: string | null;
   divisi: string | null;
   aktif: boolean;
+  wajib_pte: boolean;
+  alasan_bebas_pte: string | null;
   roles: string[];
 }
 
@@ -294,7 +296,7 @@ export function useDaftarProfilDenganRole() {
     queryFn: async (): Promise<ProfilDenganRole[]> => {
       const supabase = createClient();
       const [{ data: profil, error: errProfil }, { data: role, error: errRole }] = await Promise.all([
-        supabase.from('profile').select('id, nama, jabatan, divisi, aktif').order('nama'),
+        supabase.from('profile').select('id, nama, jabatan, divisi, aktif, wajib_pte, alasan_bebas_pte').order('nama'),
         supabase.from('role').select('user_id, role'),
       ]);
       if (errProfil) throw errProfil;
@@ -303,6 +305,29 @@ export function useDaftarProfilDenganRole() {
         ...p,
         roles: (role ?? []).filter((r) => r.user_id === p.id).map((r) => r.role),
       }));
+    },
+  });
+}
+
+// ─── PTE per orang (30 Agustus 2026, migrasi 0035_pte_per_orang.sql) ──
+// Update BIASA (bukan RPC) -- RLS profile_update + trigger
+// jaga_profil_sensitif() SUDAH menolak siapa pun selain CEO mengubah
+// wajib_pte/alasan_bebas_pte (pola sama divisi/aktif), dan trigger
+// TERPISAH (catat_perubahan_wajib_pte) mencatat perubahan ke
+// pte_pengecualian_log OTOMATIS lewat jalur mana pun yang lolos guard itu --
+// jadi tidak perlu RPC khusus di sini seperti putuskan_cuti()/atur_jam_kerja().
+export function useUbahWajibPte() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, wajibPte, alasan }: { userId: string; wajibPte: boolean; alasan: string | null }) => {
+      const supabase = createClient();
+      const { error } = await supabase.from('profile').update({ wajib_pte: wajibPte, alasan_bebas_pte: alasan }).eq('id', userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-profil-role'] });
+      queryClient.invalidateQueries({ queryKey: ['marketing-bulanan-semua'] });
+      queryClient.invalidateQueries({ queryKey: ['progres-bulanan-saya'] });
     },
   });
 }

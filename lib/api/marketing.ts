@@ -9,8 +9,10 @@ export interface ProgresBulanan {
   nama: string;
   divisi: string | null;
   bulan: string;
-  /** false = policy.pte_mulai_berlaku masih null -- kewajiban PTE belum berjalan sama sekali. */
+  /** false = policy.pte_mulai_berlaku masih null ATAU wajib_pte orang ini false -- kewajiban PTE tidak berjalan. */
   pte_berlaku: boolean;
+  /** false = CEO SENGAJA mengecualikan orang ini dari PTE (Admin -- Kelola Pengguna). Beda dari pte_berlaku: ini status PER ORANG, bukan status program. */
+  wajib_pte: boolean;
   hari_wajib: number;
   hari_lengkap: number;
   hari_bolong: number;
@@ -50,13 +52,23 @@ export function useProgresBulananSaya() {
  * "karyawan x kepatuhan bulan berjalan". RLS view ini `security_invoker=on`;
  * pembatas SIAPA yang boleh membuka halaman `/marketing` sudah di
  * `Terlindungi` (`kontrol_marketing`/`ceo`/`pusat`), sesuai "Selesai kalau".
+ *
+ * `wajib_pte = false` DISARING DI SINI (30 Agustus 2026, migrasi
+ * 0035_pte_per_orang.sql) -- instruksi eksplisit user: "tidak muncul di
+ * dashboard Kontrol Marketing". Beda dari `pte_berlaku=false` biasa (mis.
+ * `policy.pte_mulai_berlaku` belum diisi) yang TETAP tampil sebagai
+ * "belum berlaku" -- ini pengecualian DISENGAJA per orang, bukan status
+ * program yang belum menyala, jadi memang tidak seharusnya muncul sama
+ * sekali di sini. `useProgresBulananSaya()` (dashboard milik sendiri)
+ * SENGAJA TIDAK disaring -- orang yang dikecualikan tetap berhak melihat
+ * status "PTE tidak berlaku" miliknya sendiri.
  */
 export function useMarketingBulananSemua() {
   return useQuery({
     queryKey: ['marketing-bulanan-semua'],
     queryFn: async (): Promise<ProgresBulanan[]> => {
       const supabase = createClient();
-      const { data, error } = await supabase.from('v_marketing_bulanan').select('*').order('nama');
+      const { data, error } = await supabase.from('v_marketing_bulanan').select('*').eq('wajib_pte', true).order('nama');
       if (error) throw error;
       return data ?? [];
     },

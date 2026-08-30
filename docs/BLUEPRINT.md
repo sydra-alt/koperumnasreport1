@@ -123,7 +123,9 @@ Alasan: beberapa aturan belum dikonfirmasi klien (lihat bagian 7). Sistem harus 
 | `manager_resto` | Form outletnya | Outletnya + status PTE karyawan outletnya |
 | `karyawan` | Laporan Personal Marketing | Laporannya sendiri |
 
-Satu user bisa punya banyak role. **Setiap user aktif otomatis punya role `karyawan`** — tidak ada pengecualian, termasuk CEO, IT, dan Accounting.
+Satu user bisa punya banyak role. **Setiap user aktif otomatis punya role `karyawan`** — tidak ada pengecualian, termasuk CEO, IT, dan Accounting. (Kecuali Putri/CEO sendiri, yang sengaja TIDAK diberi role `karyawan` sama sekali — lihat `docs/DATA-KARYAWAN.md` §1.)
+
+**Diperbarui 30 Agustus 2026 — kewajiban PTE (bonus/potongan/hari_bolong) BISA dikecualikan per orang, role `karyawan` itu sendiri TIDAK berubah.** `profile.wajib_pte` (default `true`, migrasi `0035_pte_per_orang.sql`) mengatur HANYA program PTE-nya (bonus Rp500.000, potongan Rp300.000, hari_bolong) — kewajiban lapor `personal_marketing` tetap melekat ke role `karyawan` seperti semula, tidak ikut dimatikan. Pengecualian HARUS disengaja (CEO saja lewat Admin, dengan alasan tertulis) dan tercatat lengkap (siapa, kapan, dari apa ke apa) di `pte_pengecualian_log`. Orang yang dikecualikan tidak muncul di dashboard Kontrol Marketing, `hari_wajib`-nya 0 (tidak pernah dihitung bolong), dan tidak kena potongan closing.
 
 ---
 
