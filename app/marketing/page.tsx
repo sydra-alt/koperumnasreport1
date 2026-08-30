@@ -13,6 +13,7 @@ import {
 } from '../../lib/api/marketing';
 import { hitungKelayakanBonus, hitungPotongan } from '../../lib/api/pte';
 import { kalenderPteBulanIni } from '../../lib/kalenderPte';
+import { TombolEkspor } from '../../components/TombolEkspor';
 import { tanggalWIB } from '../../lib/tanggal';
 
 const IKON: Record<'hijau' | 'kuning' | 'merah', string> = { hijau: '🟢', kuning: '🟡', merah: '🔴' };
@@ -201,6 +202,7 @@ export default function MarketingPage() {
         <h1 className="text-2xl" style={{ color: 'var(--biru)' }}>
           Dashboard Kontrol Marketing
         </h1>
+        <TombolEkspor path="/api/ekspor/marketing" label="Kepatuhan marketing bulanan" />
         <Isi />
       </main>
     </Terlindungi>

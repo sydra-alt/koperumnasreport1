@@ -5,6 +5,7 @@ import { Terlindungi } from '../../components/Terlindungi';
 import { LaporForm } from '../../components/LaporForm';
 import { AngkaGrid } from '../../components/AngkaGrid';
 import { PemilihTanggal } from '../../components/PemilihTanggal';
+import { TombolEkspor } from '../../components/TombolEkspor';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import { jamWIB, tanggalWIB } from '../../lib/tanggal';
 import { formRegistry } from '../../forms';
@@ -445,7 +446,7 @@ function Isi() {
         )}
       </Seksi>
 
-      <div className="print-hide">
+      <div className="print-hide flex flex-col gap-3">
         <button
           type="button"
           onClick={() => window.print()}
@@ -454,6 +455,8 @@ function Isi() {
         >
           Cetak / Ekspor PDF
         </button>
+        <TombolEkspor path="/api/ekspor/laporan" label="Rekap laporan per divisi (Excel)" />
+        {isCeo && <TombolEkspor path="/api/ekspor/keuangan" label="Rekap keuangan bulanan (Excel, hanya CEO/Accounting)" />}
       </div>
 
       {tanggalHariIni ? (
@@ -475,7 +478,15 @@ function Isi() {
 export default function TerpusatPage() {
   return (
     <Terlindungi peran={['pusat', 'ceo']}>
+      {/* PDF (§4 06-RENCANA-PRESENSI-MOBILE.md, "pakai CSS cetak yang sudah
+          ada") -- `@page` ditambahkan supaya HASIL CETAK/SIMPAN-PDF sungguh
+          muat A4 dengan margin wajar, bukan cuma dipotong browser apa
+          adanya (sebelumnya cuma diatur ukuran huruf & sembunyikan
+          nav/tombol, belum pernah mengatur ukuran kertas eksplisit). Tidak
+          ada library PDF baru dipasang -- tetap window.print() bawaan
+          browser, sesuai instruksi. */}
       <style>{`
+        @page { size: A4; margin: 12mm; }
         @media print {
           .print-hide { display: none !important; }
           header, nav { display: none !important; }

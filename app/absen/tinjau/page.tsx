@@ -5,6 +5,7 @@ import { Terlindungi } from '../../../components/Terlindungi';
 import { useAuth } from '../../../lib/auth/AuthProvider';
 import { useAntreanTinjauAbsen, usePutuskanAbsensi, useSignedUrlAbsensi, type AbsensiTinjau } from '../../../lib/api/absensi';
 import { tanggalIndonesiaDariYmd } from '../../../lib/tanggal';
+import { TombolEkspor } from '../../../components/TombolEkspor';
 
 function Baris({ item }: { item: AbsensiTinjau }) {
   const signedUrl = useSignedUrlAbsensi();
@@ -110,6 +111,7 @@ export default function TinjauAbsenPage() {
         <h1 className="text-2xl" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
           Tinjau Absensi
         </h1>
+        <TombolEkspor path="/api/ekspor/absensi" label="Rekap absensi bulanan" />
         <p className="text-sm" style={{ color: 'var(--kosong)' }}>
           Presensi 🟡 di luar radius yang belum diputuskan.
         </p>
