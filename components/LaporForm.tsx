@@ -14,7 +14,7 @@ import { apakahTerlambat, useKirimReport, useReportHariIni, useSimpanDraft, type
 import { useRekapPembangunanPerLokasi, type PembangunanPerLokasiRow } from '../lib/api/pembangunan';
 import { usePicLokasiBelumUpload, type LokasiBelumUpload } from '../lib/api/it';
 import { ringkasanKebutuhanBesok } from '../lib/api/manager-resto';
-import { useManagerRestoUntukIta, type ManagerRestoUntukItaRow } from '../lib/api/ita';
+import { useManagerRestoUntukKontrolFnb, type ManagerRestoUntukKontrolFnbRow } from '../lib/api/kontrol-fnb';
 import {
   hitungCashflowHariIni,
   useKebutuhanPembangunanAccounting,
@@ -92,7 +92,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
   const { data: progres } = useProgresBulananSaya();
   const { data: rekapPembangunan } = useRekapPembangunanPerLokasi(formKey === 'pembangunan');
   const { data: belumUpload } = usePicLokasiBelumUpload(formKey === 'it');
-  const { data: stokManagerUntukIta } = useManagerRestoUntukIta(formKey === 'ita');
+  const { data: stokManagerUntukKontrolFnb } = useManagerRestoUntukKontrolFnb(formKey === 'kontrol_fnb');
   const { data: kebutuhanPembangunanAccounting } = useKebutuhanPembangunanAccounting(formKey === 'accounting');
   const { data: omzetResto } = useOmzetRestoHariIni(formKey === 'accounting');
   const { data: cutiHariIni } = useCutiUntukTanggal(tanggalWIB(), formKey === 'hrd');
@@ -402,7 +402,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
 
       {formKey === 'manager_resto' && kebutuhanBesokResto && <KebutuhanBesokRestoOtomatis data={kebutuhanBesokResto} />}
 
-      {formKey === 'ita' && stokManagerUntukIta && <StokManagerUntukItaOtomatis data={stokManagerUntukIta} />}
+      {formKey === 'kontrol_fnb' && stokManagerUntukKontrolFnb && <StokManagerUntukKontrolFnbOtomatis data={stokManagerUntukKontrolFnb} />}
 
       {formKey === 'accounting' && kebutuhanPembangunanAccounting && (
         <KebutuhanPembangunanAccountingOtomatis data={kebutuhanPembangunanAccounting} />
@@ -680,12 +680,15 @@ function KebutuhanBesokRestoOtomatis({ data }: { data: ReturnType<typeof ringkas
 }
 
 /**
- * 8/9 (ita) -- angka Manager Resto per outlet, dari view security-definer
- * `v_manager_resto_untuk_ita` (§3.4b). Dipakai utk dua hal sekaligus:
- * pembanding di blok "Kontrol Stok Restoran" (silang-cek Ita, keputusan 3)
- * dan rollup baca-saja di blok "Kebutuhan Stok/RAB" (keputusan D-lanjutan).
+ * 8/9 (kontrol_fnb, dulu "ita" sebelum dipecah 30 Agustus 2026 -- lihat
+ * forms/f16-kontrol-fnb.ts) -- angka Manager Resto per outlet, dari view
+ * security-definer `v_manager_resto_untuk_kontrol_fnb` (§3.4b, migrasi
+ * 0036, diganti nama dari `v_manager_resto_untuk_ita`). Dipakai utk dua hal
+ * sekaligus: pembanding di blok "Kontrol Stok Restoran" (silang-cek,
+ * keputusan 3) dan rollup baca-saja di blok "Kebutuhan Stok/RAB" (keputusan
+ * D-lanjutan).
  */
-function StokManagerUntukItaOtomatis({ data }: { data: ManagerRestoUntukItaRow[] }) {
+function StokManagerUntukKontrolFnbOtomatis({ data }: { data: ManagerRestoUntukKontrolFnbRow[] }) {
   return (
     <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
       <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
@@ -797,7 +800,7 @@ function OmzetRestoOtomatis({ data }: { data: OmzetRestoRow[] }) {
         Omzet Resto -- Tiga Pengukuran
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
-        Omzet versi Manager Resto dan versi Ita, hari ini. Hanya baca -- lengkapi angka sisi bank di &quot;Rekonsiliasi Resto&quot;, selisih dihitung otomatis.
+        Omzet versi Manager Resto dan versi Kontrol F&amp;B, hari ini. Hanya baca -- lengkapi angka sisi bank di &quot;Rekonsiliasi Resto&quot;, selisih dihitung otomatis.
       </p>
       {data.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--kosong)' }}>
@@ -806,11 +809,11 @@ function OmzetRestoOtomatis({ data }: { data: OmzetRestoRow[] }) {
       ) : (
         <div className="flex flex-col gap-2 text-sm">
           {data.map((o) => {
-            const selisih = o.omzetManager !== null && o.omzetIta !== null ? o.omzetManager - o.omzetIta : null;
+            const selisih = o.omzetManager !== null && o.omzetKontrolFnb !== null ? o.omzetManager - o.omzetKontrolFnb : null;
             return (
               <p key={o.outlet}>
-                <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{o.outlet}</b> -- versi Manager: {rupiah(o.omzetManager)} · versi Ita:{' '}
-                {rupiah(o.omzetIta)} · selisih: {selisih === null ? '—' : rupiah(selisih)}
+                <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{o.outlet}</b> -- versi Manager: {rupiah(o.omzetManager)} · versi Kontrol F&amp;B:{' '}
+                {rupiah(o.omzetKontrolFnb)} · selisih: {selisih === null ? '—' : rupiah(selisih)}
               </p>
             );
           })}

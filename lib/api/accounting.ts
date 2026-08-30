@@ -58,21 +58,24 @@ export function useKebutuhanPembangunanAccounting(enabled = true) {
 }
 
 /**
- * Blok 13 "Rekonsiliasi Resto" -- omzet versi Manager Resto & versi Ita per
- * outlet, ditampilkan berdampingan dengan angka bank yang diketik Accounting
- * sendiri. TIDAK lewat view security-definer -- role `accounting` SUDAH
- * punya `can_see_report()` langsung ke `manager_resto` dan `ita`
- * (0002_rls.sql), jadi query biasa saja, sesuai instruksi "jangan pakai
- * security definer di mana pun yang tidak perlu". Kunci `omzet_<slug>` di
- * laporan Ita mengikuti kontrak yang sama dengan
- * `selisih_resto_untuk_tanggal()` (migrasi 0031, `'omzet_' || outlet.slug`
- * -- BUKAN lagi `lower(nama outlet)`, diganti sejak Indosteak jadi dua
- * outlet dengan nama berspasi/berbagi awalan).
+ * Blok 13 "Rekonsiliasi Resto" -- omzet versi Manager Resto & versi Kontrol
+ * F&B per outlet, ditampilkan berdampingan dengan angka bank yang diketik
+ * Accounting sendiri. TIDAK lewat view security-definer -- role `accounting`
+ * SUDAH punya `can_see_report()` langsung ke `manager_resto` dan
+ * `kontrol_fnb` (0002_rls.sql), jadi query biasa saja, sesuai instruksi
+ * "jangan pakai security definer di mana pun yang tidak perlu".
+ *
+ * Diperbarui 30 Agustus 2026 (migrasi 0036) -- form `ita` (`scope:'global'`,
+ * satu laporan menampung 3 outlet lewat kunci `'omzet_' || outlet.slug`,
+ * pola Perubahan 1) dipecah jadi `thrifting` (tetap global) + `kontrol_fnb`
+ * (`scope:'outlet'`, SATU laporan PER OUTLET). Join sekarang PERSIS pola
+ * `manager_resto` sendiri -- `outlet_id` langsung, kunci `omzet_sistem`
+ * polos, tidak ada lagi nama outlet dijahit ke nama kolom sama sekali.
  */
 export interface OmzetRestoRow {
   outlet: string;
   omzetManager: number | null;
-  omzetIta: number | null;
+  omzetKontrolFnb: number | null;
 }
 
 export function useOmzetRestoHariIni(enabled = true) {
@@ -82,32 +85,31 @@ export function useOmzetRestoHariIni(enabled = true) {
       const supabase = createClient();
       const tanggal = tanggalWIB();
 
-      const [{ data: laporanManager, error: errManager }, { data: laporanIta, error: errIta }] = await Promise.all([
+      const [{ data: laporanManager, error: errManager }, { data: laporanKontrolFnb, error: errKontrolFnb }] = await Promise.all([
         supabase
           .from('report')
-          .select('data, outlet:outlet_id(nama, slug)')
+          .select('data, outlet_id, outlet:outlet_id(nama)')
           .eq('form_key', 'manager_resto')
           .eq('tanggal', tanggal)
           .neq('status', 'draft'),
-        supabase.from('report').select('data').eq('form_key', 'ita').eq('tanggal', tanggal).neq('status', 'draft').maybeSingle(),
+        supabase.from('report').select('data, outlet_id').eq('form_key', 'kontrol_fnb').eq('tanggal', tanggal).neq('status', 'draft'),
       ]);
       if (errManager) throw errManager;
-      if (errIta) throw errIta;
-
-      const dataIta = (laporanIta?.data as Record<string, unknown> | undefined) ?? {};
+      if (errKontrolFnb) throw errKontrolFnb;
 
       return (laporanManager ?? []).map((r) => {
         // Embed report.outlet_id -> outlet (FK ke-satu) selalu objek tunggal saat
         // runtime -- lihat catatan serupa di lib/api/pembangunan.ts.
-        const outletEmbed = r.outlet as unknown as { nama: string; slug: string } | null;
+        const outletEmbed = r.outlet as unknown as { nama: string } | null;
         const outlet = outletEmbed?.nama ?? '—';
-        const kunciIta = `omzet_${outletEmbed?.slug ?? ''}`;
-        const omzetIta = dataIta[kunciIta];
+        const laporanFnbOutletIni = (laporanKontrolFnb ?? []).find((k) => k.outlet_id === r.outlet_id);
+        const dataFnb = (laporanFnbOutletIni?.data as Record<string, unknown> | undefined) ?? {};
+        const omzetKontrolFnb = dataFnb.omzet_sistem;
         const dataManager = r.data as Record<string, unknown>;
         return {
           outlet,
           omzetManager: typeof dataManager.total_omzet === 'number' ? dataManager.total_omzet : null,
-          omzetIta: typeof omzetIta === 'number' ? omzetIta : null,
+          omzetKontrolFnb: typeof omzetKontrolFnb === 'number' ? omzetKontrolFnb : null,
         };
       });
     },

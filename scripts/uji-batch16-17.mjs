@@ -1,17 +1,19 @@
 #!/usr/bin/env node
-// Uji Task 16 (manager_resto, ita) + Task 17 (accounting), DB sungguhan lewat
-// penyamaran RLS, dibungkus BEGIN...ROLLBACK.
+// Uji Task 16 (manager_resto, ita/kontrol_fnb) + Task 17 (accounting), DB
+// sungguhan lewat penyamaran RLS, dibungkus BEGIN...ROLLBACK.
+// Diperbarui 30 Agustus 2026 (migrasi 0036): form 'ita' dipecah jadi
+// 'thrifting'+'kontrol_fnb' -- view & gerbang di bawah ikut disesuaikan.
 //
 //  1. manager_resto scope 'outlet': 2 laporan (Indosteak+Indokopi) hari sama.
-//  2. v_manager_resto_untuk_ita: profil persis Ita (tanpa can_see_report ke
-//     manager_resto) lihat data terstruktur (stok_habis dkk.), field umpan
+//  2. v_manager_resto_untuk_kontrol_fnb: profil persis Ita (tanpa can_see_report
+//     ke manager_resto) lihat data terstruktur (stok_habis dkk.), field umpan
 //     "RAHASIA" di masalah_karyawan/dll TIDAK bocor.
 //  3. v_kebutuhan_pembangunan_accounting: profil persis Accounting
-//     (can_see_report accounting HANYA ke accounting/manager_resto/ita,
-//     BUKAN pembangunan/dti) lihat rollup budget, field umpan "RAHASIA" di
-//     kontraktor_bermasalah_masalah/dll TIDAK bocor.
+//     (can_see_report accounting HANYA ke accounting/manager_resto/thrifting/
+//     kontrol_fnb, BUKAN pembangunan/dti) lihat rollup budget, field umpan
+//     "RAHASIA" di kontraktor_bermasalah_masalah/dll TIDAK bocor.
 //  4. Accounting SUNGGUHAN (bukan cuma boleh_lihat_rekap) juga punya
-//     can_see_report row-level ke manager_resto & ita -- cek langsung.
+//     can_see_report row-level ke manager_resto & kontrol_fnb -- cek langsung.
 //  5. 3 baris `prioritas_pembayaran` -> 3 baris `decision` terpisah,
 //     urgensi 1/2/3, dengan nominal/deadline/dampak masing-masing.
 
@@ -63,7 +65,7 @@ try {
   await q(`insert into assignment (user_id, form_key, outlet_id) values ($1, 'manager_resto', $2);`, [managerIndosteak, indosteak]);
   const managerIndokopi = await buatProfilSementara('Manager Indokopi', ['karyawan'], []);
   await q(`insert into assignment (user_id, form_key, outlet_id) values ($1, 'manager_resto', $2);`, [managerIndokopi, indokopi]);
-  const ita = await buatProfilSementara('Ita', ['karyawan'], ['ita']);
+  const ita = await buatProfilSementara('Ita', ['karyawan'], ['kontrol_fnb']);
   const accounting = await buatProfilSementara('Accounting', ['accounting', 'karyawan'], ['accounting']);
   console.log(`Manager Indosteak=${managerIndosteak}  Manager Indokopi=${managerIndokopi}  Ita=${ita}  Accounting=${accounting}`);
 
@@ -93,10 +95,10 @@ try {
   const { rows: cek2Laporan } = await q(`select outlet_id from report where form_key='manager_resto' and tanggal=(now() at time zone 'Asia/Jakarta')::date;`);
   cek(cek2Laporan.length === 2, `2 laporan manager_resto terpisah hari ini, dapat ${cek2Laporan.length}`);
 
-  langkah('UJI 2 — sebagai Ita, SELECT * FROM v_manager_resto_untuk_ita (RAW OUTPUT)');
+  langkah('UJI 2 — sebagai Ita, SELECT * FROM v_manager_resto_untuk_kontrol_fnb (RAW OUTPUT)');
   await q('set local role authenticated;');
   await jadiSebagai(ita);
-  const { rows: hasilIta } = await q(`select * from v_manager_resto_untuk_ita order by outlet;`);
+  const { rows: hasilIta } = await q(`select * from v_manager_resto_untuk_kontrol_fnb order by outlet;`);
   console.log(JSON.stringify(hasilIta, null, 2));
   const bocorIta = JSON.stringify(hasilIta).includes('RAHASIA');
   cek(hasilIta.length === 2, `Ita lihat 2 baris (Indokopi+Indosteak), dapat ${hasilIta.length}`);
@@ -163,7 +165,7 @@ try {
   console.log(JSON.stringify(accountingLangsung));
   cek(accountingLangsung.length === 0, `Accounting akses langsung ke report pembangunan: 0 baris, dapat ${accountingLangsung.length}`);
 
-  langkah('UJI 6 — sebagai Accounting, can_see_report ROW-LEVEL ke manager_resto & ita (harus BISA, bukan lewat view)');
+  langkah('UJI 6 — sebagai Accounting, can_see_report ROW-LEVEL ke manager_resto & kontrol_fnb (harus BISA, bukan lewat view)');
   const { rows: accountingKeManager } = await q(`select id from report where form_key='manager_resto' and tanggal=(now() at time zone 'Asia/Jakarta')::date;`);
   cek(accountingKeManager.length === 2, `Accounting akses langsung ke report manager_resto: 2 baris, dapat ${accountingKeManager.length}`);
 
@@ -199,19 +201,19 @@ try {
   cek(decisionRows[1].deadline === null, 'baris dengan deadline tidak valid ("bukan-tanggal-valid") -> null, bukan tanggal salah');
   cek(Number(decisionRows[0].nominal) === 15000000, `nominal baris 1 = 15000000, dapat ${decisionRows[0].nominal}`);
 
-  langkah('UJI 8 — CEO/pusat TETAP bisa lihat v_manager_resto_untuk_ita & v_kebutuhan_pembangunan_accounting (has_role, bukan cuma assignment)');
+  langkah('UJI 8 — CEO/pusat TETAP bisa lihat v_manager_resto_untuk_kontrol_fnb & v_kebutuhan_pembangunan_accounting (has_role, bukan cuma assignment)');
   const { rows: putriRows } = await q(`select id from profile where nama='Putri';`);
   await jadiSebagai(putriRows[0].id);
-  const { rows: ceoLihatIta } = await q(`select outlet from v_manager_resto_untuk_ita;`);
+  const { rows: ceoLihatIta } = await q(`select outlet from v_manager_resto_untuk_kontrol_fnb;`);
   const { rows: ceoLihatAccounting } = await q(`select precast_dti from v_kebutuhan_pembangunan_accounting;`);
-  cek(ceoLihatIta.length === 2, `CEO (Putri) lewat v_manager_resto_untuk_ita: 2 baris, dapat ${ceoLihatIta.length}`);
+  cek(ceoLihatIta.length === 2, `CEO (Putri) lewat v_manager_resto_untuk_kontrol_fnb: 2 baris, dapat ${ceoLihatIta.length}`);
   cek(ceoLihatAccounting.length === 1, `CEO (Putri) lewat v_kebutuhan_pembangunan_accounting: 1 baris, dapat ${ceoLihatAccounting.length}`);
 
   langkah('UJI 9 — Toyib (karyawan polos) DITOLAK dari kedua view');
   await jadiSebagai(toyib);
-  const { rows: toyibIta } = await q(`select outlet from v_manager_resto_untuk_ita;`);
+  const { rows: toyibIta } = await q(`select outlet from v_manager_resto_untuk_kontrol_fnb;`);
   const { rows: toyibAccounting } = await q(`select precast_dti from v_kebutuhan_pembangunan_accounting;`);
-  cek(toyibIta.length === 0, `Toyib lewat v_manager_resto_untuk_ita: 0 baris, dapat ${toyibIta.length}`);
+  cek(toyibIta.length === 0, `Toyib lewat v_manager_resto_untuk_kontrol_fnb: 0 baris, dapat ${toyibIta.length}`);
   cek(toyibAccounting.length === 0, `Toyib lewat v_kebutuhan_pembangunan_accounting: 0 baris, dapat ${toyibAccounting.length}`);
 
   await q('rollback;');

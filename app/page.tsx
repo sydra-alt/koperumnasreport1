@@ -73,13 +73,13 @@ function DashboardCeo() {
           Silang-Cek Omzet Resto Hari Ini
         </p>
         {!selisihResto || selisihResto.length === 0 ? (
-          <p style={{ color: 'var(--kosong)' }}>Belum ada pasangan laporan Manager Resto + Ita hari ini.</p>
+          <p style={{ color: 'var(--kosong)' }}>Belum ada pasangan laporan Manager Resto + Kontrol F&amp;B hari ini.</p>
         ) : (
           <div className="flex flex-col gap-2">
             {selisihResto.map((r) => (
               <p key={r.outlet} className="text-sm" style={{ fontFamily: 'var(--mono)' }}>
-                <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{r.outlet}</b> -- Manager: {formatRupiah(r.versiManager ?? 0)} · Ita:{' '}
-                {formatRupiah(r.versiIta ?? 0)} ·{' '}
+                <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{r.outlet}</b> -- Manager: {formatRupiah(r.versiManager ?? 0)} · Kontrol F&amp;B:{' '}
+                {formatRupiah(r.versiKontrolFnb ?? 0)} ·{' '}
                 <span style={{ color: r.selisih ? 'var(--merah)' : 'var(--hijau)' }}>selisih {formatRupiah(r.selisih ?? 0)}</span>
               </p>
             ))}

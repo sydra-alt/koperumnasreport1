@@ -280,22 +280,28 @@ where form_key = 'accounting'
 
 ### 4.4 Silang-cek omzet resto
 
-**Diperbarui 30 Agustus 2026 (migrasi `0031_indosteak_dua_outlet.sql`):** Indosteak jadi DUA outlet (Cempaka & Pekansari), bukan satu -- pola kunci lama `'omzet_' || lower(nama outlet)` berhenti berfungsi begitu nama outlet berspasi ("Indosteak Cempaka") dan dua outlet berbagi awalan yang sama. Diganti kolom `outlet.slug` (identitas stabil, independen dari nama tampilan) -- kunci JSON sekarang `'omzet_' || outlet.slug`. Live sekarang sebagai fungsi berparameter tanggal (`selisih_resto_untuk_tanggal(p_tanggal)`, migrasi `0020`), bukan lagi view tetap -- bentuk di bawah dipertahankan sebagai gambaran logika, bukan SQL yang benar-benar dijalankan:
+**Diperbarui 30 Agustus 2026 (migrasi `0031_indosteak_dua_outlet.sql`), lalu diperbarui LAGI hari yang sama (migrasi `0036_pecah_ita.sql`):**
+
+- **0031** -- Indosteak jadi DUA outlet (Cempaka & Pekansari), bukan satu. Pola kunci lama `'omzet_' || lower(nama outlet)` berhenti berfungsi (nama berspasi, dua outlet berbagi awalan) -- diganti `outlet.slug` (`'omzet_' || outlet.slug`).
+- **0036** -- pola `outlet.slug` di dalam SATU laporan `ita` global ITU SENDIRI dihapus, bukan cuma diperbaiki lagi. Form `ita` (satu laporan menampung 3 outlet + thrifting sekaligus) dipecah jadi `thrifting` (`scope:'global'`, tetap satu laporan/hari, TIDAK berubah) dan `kontrol_fnb` (`scope:'outlet'`, SATU laporan PER OUTLET per hari -- bisa diisi lebih dari satu orang tanpa saling tabrak, mis. Ita di satu outlet, Rika di dua outlet lain). Karena `kontrol_fnb` sekarang terikat ke SATU outlet lewat `outlet_id` (persis pola `manager_resto`), kuncinya kembali polos `omzet_sistem` -- tidak ada lagi nama/slug outlet yang dijahit ke nama kolom SAMA SEKALI.
+
+Live sekarang sebagai fungsi berparameter tanggal (`selisih_resto_untuk_tanggal(p_tanggal)`, migrasi `0020`, kolom `versi_ita` diganti `versi_kontrol_fnb` di `0036`), bukan lagi view tetap -- bentuk di bawah dipertahankan sebagai gambaran logika, bukan SQL yang benar-benar dijalankan:
 
 ```sql
 create or replace view public.v_selisih_resto as
 select
-  o.nama                                       as outlet,
-  (mr.data->>'total_omzet')::bigint            as versi_manager,
-  (it.data->>('omzet_' || o.slug))::bigint     as versi_ita,
+  o.nama                                             as outlet,
+  (mr.data->>'total_omzet')::bigint                  as versi_manager,
+  (kf.data->>'omzet_sistem')::bigint                 as versi_kontrol_fnb,
   (mr.data->>'total_omzet')::bigint
-    - (it.data->>('omzet_' || o.slug))::bigint as selisih
+    - (kf.data->>'omzet_sistem')::bigint             as selisih
 from outlet o
 join report mr on mr.form_key = 'manager_resto'
               and mr.outlet_id = o.id
               and mr.tanggal = (now() at time zone 'Asia/Jakarta')::date
-join report it on it.form_key = 'ita'
-              and it.tanggal = (now() at time zone 'Asia/Jakarta')::date;
+join report kf on kf.form_key = 'kontrol_fnb'
+              and kf.outlet_id = o.id
+              and kf.tanggal = (now() at time zone 'Asia/Jakarta')::date;
 ```
 
 Kalau `selisih <> 0`, **kedua** laporan ditandai 🔴 di Papan Kontrol dan otomatis dibuatkan baris `decision` berurgensi 2.

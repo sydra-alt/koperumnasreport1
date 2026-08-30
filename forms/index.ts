@@ -10,7 +10,8 @@ import { f15Kendaraan } from './f15-kendaraan';
 import { f15Cs } from './f15-cs';
 import { f15Ga } from './f15-ga';
 import { f16ManagerResto } from './f16-manager-resto';
-import { f16Ita } from './f16-ita';
+import { f16Thrifting } from './f16-thrifting';
+import { f16KontrolFnb } from './f16-kontrol-fnb';
 import { f17Accounting } from './f17-accounting';
 import { f21Pusat } from './f21-pusat';
 import type { FormSchema } from './types';
@@ -28,7 +29,8 @@ export const formRegistry: Record<string, FormSchema> = {
   cs: f15Cs,
   ga: f15Ga,
   manager_resto: f16ManagerResto,
-  ita: f16Ita,
+  thrifting: f16Thrifting,
+  kontrol_fnb: f16KontrolFnb,
   accounting: f17Accounting,
   pusat: f21Pusat,
 };

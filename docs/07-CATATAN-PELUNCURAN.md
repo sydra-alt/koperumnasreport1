@@ -18,11 +18,11 @@ laporan keuangan:
 | # | Pertanyaan | Kenapa memblokir |
 |---|---|---|
 | 1 | ✅ **TERJAWAB (30 Agustus 2026) — Siapa Accounting?** **Shabita.** `scripts/akun.json` dan `profile.nama` produksi sudah diperbarui dari placeholder `"GANTI"`. | ~~Form `accounting` adalah satu-satunya laporan rahasia di seluruh sistem — salah kasih akun ini ke orang yang salah = kebocoran laporan keuangan sejak hari pertama.~~ Selesai. |
-| 2 | **Siapa manager Indosteak & Indokopi?** Ditebak Ryan & Toni karena disebut pertama di daftar. | Kalau tebakan salah, laporan restoran diisi orang yang tidak berwenang, dan manager sungguhan tidak punya akun. |
+| 2 | ✅ **TERJAWAB (30 Agustus 2026) — Siapa manager Indosteak & Indokopi?** Ryan & Toni **BUKAN** manager, tebakan dicabut CEO sendiri. Manager sungguhan: Erry → Indokopi Jatinegara, Dea → Indosteak Cempaka, Cuko → Indosteak Pekansari. | ~~Kalau tebakan salah, laporan restoran diisi orang yang tidak berwenang.~~ Selesai. |
 | 3 | ✅ **TERJAWAB (30 Agustus 2026) — "Inservice" itu apa?** BUKAN divisi tersendiri — Dedi & Yundi satpam (`security`), Fauzan OB (`ga`), Cahya dua-duanya, Masudin masih ditunda (bukan ditebak). `docs/DATA-KARYAWAN.md` §1 sudah diperbarui. | ~~Kelima orang ini akan login lalu tidak menemukan tugas apa pun.~~ Selesai untuk 4 dari 5 — Masudin masih perlu dijawab. |
-| 4 | **"Rukost" itu unit usaha sendiri?** Toyib sendirian, tanpa form. | Sama seperti di atas — satu orang tanpa tugas yang jelas. |
+| 4 | **"Rukost" itu unit usaha sendiri?** ✅ **TERJAWAB (30 Agustus 2026)** — bukan unit usaha, Toyib karyawan biasa penjaga kost, tidak butuh form sendiri, tetap wajib PTE seperti yang lain. | ~~Satu orang tanpa tugas yang jelas.~~ Selesai. |
 | 5 | **Lokasi perumahan cuma Tajur & Bekasi, atau ada lagi?** | Kalau ada lokasi lain tanpa PIC tercatat, laporan lokasi itu akan bolong tanpa ada yang bertugas. |
-| 6 | **Form `accounting`/`kendaraan`/`ga`/`ita` — siapa isinya?** | Kalau memang tidak ada orangnya, form itu **dicoret**, bukan dibiarkan jadi kartu "belum lapor" abadi di Papan Kontrol. |
+| 6 | ✅ **TERJAWAB (30 Agustus 2026) — Form `accounting`/`kendaraan`/`ga`/`ita`?** `accounting`→Shabita, `ga`→Fauzan+Cahya, `kendaraan`→Pak Tri (baru). `ita` sendiri sudah DIPECAH jadi `thrifting`+`kontrol_fnb` (Ita + Mba Rika, baru) — lihat `docs/DATA-KARYAWAN.md`. Assignment resminya masih **rencana**, menunggu CEO atur lewat tab Admin "Penugasan". | ~~Kalau memang tidak ada orangnya, form itu dicoret.~~ Selesai — semua form sekarang punya calon pengisi. |
 
 Ada juga tiga kemungkinan salah tulis nama (Ery vs Erry, Avril muncul di dua
 divisi, "Fur" nama lengkapnya apa) — kecil, tapi ikut menentukan berapa

@@ -68,11 +68,16 @@ export function useKeuanganRekapUntukTanggal(tanggal: string = tanggalWIB(), ena
   });
 }
 
-/** 03-CALC-SPEC.md §4.4 -- silang-cek omzet resto utk TANGGAL yang diminta, per outlet. */
+/**
+ * 03-CALC-SPEC.md §4.4 -- silang-cek omzet resto utk TANGGAL yang diminta,
+ * per outlet. Diperbarui 30 Agustus 2026 (migrasi 0036) -- `versiIta`
+ * diganti `versiKontrolFnb`, mengikuti form `ita` yang dipecah jadi
+ * `thrifting`+`kontrol_fnb`.
+ */
 export interface SelisihRestoRow {
   outlet: string;
   versiManager: number | null;
-  versiIta: number | null;
+  versiKontrolFnb: number | null;
   selisih: number | null;
 }
 
@@ -86,7 +91,7 @@ export function useSelisihRestoUntukTanggal(tanggal: string = tanggalWIB(), enab
       return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
         outlet: r.outlet as string,
         versiManager: r.versi_manager as number | null,
-        versiIta: r.versi_ita as number | null,
+        versiKontrolFnb: r.versi_kontrol_fnb as number | null,
         selisih: r.selisih as number | null,
       }));
     },

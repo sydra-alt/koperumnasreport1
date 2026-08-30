@@ -8,7 +8,8 @@
 //     dapat 4 angka; karyawan biasa (bukan ceo/pusat/accounting) 0 baris;
 //     kolom PERSIS 5 (tanggal/total_masuk/total_keluar/net/warna), tidak ada
 //     saldo bank/piutang/apa pun lain bocor lewat view ini.
-//  3. v_selisih_resto -- outlet dengan KEDUA laporan (manager_resto + ita)
+//  3. selisih_resto_untuk_tanggal() -- outlet dengan KEDUA laporan
+//     (manager_resto + kontrol_fnb, dulu "ita" sebelum dipecah migrasi 0036)
 //     hari ini tampil dengan selisih benar; outlet dengan cuma SATU laporan
 //     tidak tampil sama sekali.
 
@@ -84,9 +85,9 @@ try {
   );
   const ita = await buatProfilSementara('Ita Uji Dashboard', ['karyawan']);
   await q(
-    `insert into report (form_key, tanggal, author_id, status, data) values
-     ('ita', (now() at time zone 'Asia/Jakarta')::date, $1, 'terkirim', jsonb_build_object('omzet_' || $2::text, 4800000));`,
-    [ita, outletCempaka.slug],
+    `insert into report (form_key, tanggal, author_id, outlet_id, status, data) values
+     ('kontrol_fnb', (now() at time zone 'Asia/Jakarta')::date, $1, $2, 'terkirim', jsonb_build_object('omzet_sistem', 4800000));`,
+    [ita, outletCempaka.id],
   );
 
   const pusat = await buatProfilSementara('Pusat Uji Dashboard', ['pusat']);
