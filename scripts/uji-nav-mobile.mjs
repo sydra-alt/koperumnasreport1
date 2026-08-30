@@ -27,6 +27,7 @@ const TAB_TETAP = [
   { key: 'marketing', label: 'Marketing', href: '/marketing', peran: ['kontrol_marketing', 'ceo', 'pusat'] },
   { key: 'terpusat', label: 'Terpusat', href: '/terpusat', peran: ['pusat', 'ceo'] },
   { key: 'admin', label: 'Admin', href: '/admin', peran: 'ceo' },
+  { key: 'keuangan', label: 'Keuangan', href: '/keuangan', peran: ['accounting', 'ceo'] },
   { key: 'akun', label: 'Akun', href: '/akun', peran: null },
 ];
 
@@ -45,7 +46,7 @@ function tabTerlihat(roles, assignments, formRegistry, divisi = null) {
   return [...tetap, ...dinamis, ...tinjau];
 }
 
-const PRIORITAS_TENGAH = ['papan', 'terpusat', 'keputusan', 'absen-tinjau', 'lapor', 'riwayat', 'marketing', 'admin'];
+const PRIORITAS_TENGAH = ['papan', 'terpusat', 'keputusan', 'absen-tinjau', 'lapor', 'riwayat', 'marketing', 'admin', 'keuangan'];
 function prioritasDari(key) {
   const dasar = key.startsWith('lapor-dinamis-') ? 'lapor' : key;
   const idx = PRIORITAS_TENGAH.indexOf(dasar);
@@ -93,7 +94,7 @@ const bawahCeo = tabBawah(semuaCeo, true);
 cek(labelJoin(bawahCeo) === 'Beranda · Papan Kontrol · Terpusat · Akun', `dapat "${labelJoin(bawahCeo)}" -- Papan & Terpusat menang, PERSIS instruksi user`);
 const luapanCeo = tabLuapan(semuaCeo, true);
 cek(
-  labelJoin(luapanCeo) === 'Keputusan · Tinjau Absensi · Laporan Saya · Marketing · Admin',
+  labelJoin(luapanCeo) === 'Keputusan · Tinjau Absensi · Laporan Saya · Marketing · Admin · Keuangan',
   `Keputusan kalah prioritas, pindah ke Akun (dapat "${labelJoin(luapanCeo)}")`,
 );
 
@@ -132,5 +133,22 @@ console.log('\n════ Tinjau Absensi -- kadiv+HRD boleh, kadiv+divisi lain
 cek(tabTerlihat(['kadiv', 'karyawan'], [], FORM_REGISTRY, 'HRD').some((t) => t.key === 'absen-tinjau'), 'kadiv + divisi HRD -> tab Tinjau Absensi MUNCUL');
 cek(!tabTerlihat(['kadiv', 'karyawan'], [], FORM_REGISTRY, 'CS').some((t) => t.key === 'absen-tinjau'), 'kadiv + divisi CS (BUKAN HRD) -> tab Tinjau Absensi TIDAK muncul');
 cek(!tabTerlihat(['karyawan'], [], FORM_REGISTRY, 'HRD').some((t) => t.key === 'absen-tinjau'), 'karyawan biasa di divisi HRD (bukan kadiv) -> tab Tinjau Absensi TIDAK muncul');
+
+console.log('\n════ Shabita (accounting + karyawan, BELUM punya titik absen) -- Keuangan jadi kandidat, 3 slot cukup untuk semuanya ════');
+const semuaShabita = tabTerlihat(['accounting', 'karyawan'], [], FORM_REGISTRY);
+cek(semuaShabita.some((t) => t.key === 'keuangan'), 'tab Keuangan MUNCUL utk role accounting');
+const bawahShabita = tabBawah(semuaShabita, false); // belum ada penugasan_absen -> tanpa tombol bundar
+cek(
+  labelJoin(bawahShabita) === 'Beranda · Lapor · Laporan Saya · Keuangan · Akun',
+  `3 kandidat (lapor+riwayat+keuangan) semua muat di 3 slot (dapat "${labelJoin(bawahShabita)}")`,
+);
+
+console.log('\n════ CEO, PUNYA titik absen -- Keuangan TIDAK menggeser Papan/Terpusat (prioritas paling rendah) ════');
+const semuaCeoKeuangan = tabTerlihat(['ceo'], [], FORM_REGISTRY);
+cek(semuaCeoKeuangan.some((t) => t.key === 'keuangan'), 'tab Keuangan MUNCUL juga utk ceo (daftar lengkap)');
+cek(
+  labelJoin(tabBawah(semuaCeoKeuangan, true)) === 'Beranda · Papan Kontrol · Terpusat · Akun',
+  'nav bawah CEO TIDAK BERUBAH -- Keuangan kalah prioritas, ikut ke Akun bersama Keputusan/dll',
+);
 
 console.log(process.exitCode ? '\n❌ ADA YANG GAGAL' : '\n✅ SEMUA LOLOS');

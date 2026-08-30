@@ -40,6 +40,10 @@ const TAB_TETAP: TabTetapDef[] = [
   { key: 'marketing', label: 'Marketing', href: '/marketing', peran: ['kontrol_marketing', 'ceo', 'pusat'] },
   { key: 'terpusat', label: 'Terpusat', href: '/terpusat', peran: ['pusat', 'ceo'] },
   { key: 'admin', label: 'Admin', href: '/admin', peran: 'ceo' },
+  // Shabita (accounting) login lalu tidak punya jalan ke mana-mana selain
+  // form (ditemukan user, 30 Agustus 2026) -- 'keuangan' SATU-satunya tab
+  // tetap yang menyertakan 'accounting' di daftar perannya.
+  { key: 'keuangan', label: 'Keuangan', href: '/keuangan', peran: ['accounting', 'ceo'] },
   { key: 'akun', label: 'Akun', href: '/akun', peran: null },
 ];
 
@@ -79,8 +83,14 @@ export function tabTerlihat(
  * eksplisit user). Urutan sisanya (absen-tinjau/lapor/riwayat/marketing/
  * admin) TIDAK diubah dari sebelumnya -- minim disrupsi ke kombinasi peran
  * yang sudah diuji (Fauzy: Lapor+Riwayat tetap menang lawan Marketing).
+ *
+ * `keuangan` (30 Agustus 2026) DITARUH PALING BAWAH sengaja -- untuk
+ * Shabita (accounting, TANPA ceo/pusat) kandidatnya cuma lapor+riwayat+
+ * keuangan (persis 3), semuanya muat berapa pun urutannya; untuk CEO,
+ * menaruhnya rendah memastikan TIDAK PERNAH menggeser Papan/Terpusat yang
+ * sudah diuji sungguhan di HP.
  */
-const PRIORITAS_TENGAH = ['papan', 'terpusat', 'keputusan', 'absen-tinjau', 'lapor', 'riwayat', 'marketing', 'admin'];
+const PRIORITAS_TENGAH = ['papan', 'terpusat', 'keputusan', 'absen-tinjau', 'lapor', 'riwayat', 'marketing', 'admin', 'keuangan'];
 
 function prioritasDari(key: string): number {
   const dasar = key.startsWith('lapor-dinamis-') ? 'lapor' : key;
