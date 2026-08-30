@@ -51,10 +51,7 @@ Total: **36 orang**.
 
 ### 🔴 Memblokir — tanyakan sekarang
 
-**1. Siapa Accounting?** Tidak ada di daftar. Padahal:
-- Form `accounting` adalah satu-satunya laporan rahasia, inti dari seluruh desain hak akses
-- Uji nomor 1 di matriks Checkpoint 2 tidak bisa dijalankan tanpa akun ini
-- Di format laporan asli disebut **Bu Sabita** — apakah beliau ada dan hanya belum masuk daftar?
+**1. ✅ TERJAWAB (30 Agustus 2026) — Siapa Accounting?** **Shabita.** Akun uji `accounting@koperumnas.local` (`profile.nama`) sudah diperbarui dari placeholder `"GANTI"` ke nama asli ini, baik di database produksi maupun `scripts/akun.json` (sumber seed untuk 36 akun asli nanti).
 
 **2. Siapa manager Indosteak dan Indokopi?** Sementara saya tebak Ryan dan Toni karena disebut pertama. Kalau salah, laporan resto akan diisi orang yang tidak berwenang. Ini keliru yang mudah diperbaiki sekarang, sulit setelah jalan.
 
@@ -93,7 +90,7 @@ Jangan buat 36 akun sekarang. Pembuatan massal ada di Task 23 lewat Edge Functio
 |---|---|---|---|
 | `putri@koperumnas.local` | Putri | `ceo` | 2, 9 |
 | `sabrina@koperumnas.local` | Sabrina | `pusat`, `kadiv`, `karyawan` | 1, 3, 8 |
-| `accounting@koperumnas.local` | ❓ (isi nama asli) | `accounting`, `karyawan` | 1, 2, 3 |
+| `accounting@koperumnas.local` | Shabita | `accounting`, `karyawan` | 1, 2, 3 |
 | `dadang@koperumnas.local` | Dadang | `pic_lokasi`, `karyawan` | 6, 7 |
 | `fauzy@koperumnas.local` | Fauzy | `kontrol_marketing`, `karyawan` | 13 |
 | `toyib@koperumnas.local` | Toyib | `karyawan` | 4, 5, 10, 11 |
@@ -115,7 +112,7 @@ select u.id, v.nama, v.jabatan, v.divisi
 from (values
   ('putri@koperumnas.local',      'Putri',    'CEO',                'Direksi'),
   ('sabrina@koperumnas.local',    'Sabrina',  'Pusat Pelaporan',    'HRD'),
-  ('accounting@koperumnas.local', 'GANTI',    'Accounting',         'Keuangan'),
+  ('accounting@koperumnas.local', 'Shabita',  'Accounting',         'Keuangan'),
   ('dadang@koperumnas.local',     'Dadang',   'Humas / PIC Lokasi', 'Tajur'),
   ('fauzy@koperumnas.local',      'Fauzy',    'Kontrol Marketing',  'Marketing'),
   ('toyib@koperumnas.local',      'Toyib',    'Staf',               'Rukost'),

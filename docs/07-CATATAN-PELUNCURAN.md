@@ -17,7 +17,7 @@ laporan keuangan:
 
 | # | Pertanyaan | Kenapa memblokir |
 |---|---|---|
-| 1 | **Siapa Accounting?** Di format laporan asli disebut "Bu Sabita", tapi belum dikonfirmasi. | `scripts/akun.json` baris `accounting@koperumnas.local` masih bernama **`"GANTI"`** — literal placeholder. Form `accounting` adalah **satu-satunya laporan rahasia** di seluruh sistem (CLAUDE.md aturan #3). Salah kasih akun ini ke orang yang salah = kebocoran laporan keuangan sejak hari pertama. |
+| 1 | ✅ **TERJAWAB (30 Agustus 2026) — Siapa Accounting?** **Shabita.** `scripts/akun.json` dan `profile.nama` produksi sudah diperbarui dari placeholder `"GANTI"`. | ~~Form `accounting` adalah satu-satunya laporan rahasia di seluruh sistem — salah kasih akun ini ke orang yang salah = kebocoran laporan keuangan sejak hari pertama.~~ Selesai. |
 | 2 | **Siapa manager Indosteak & Indokopi?** Ditebak Ryan & Toni karena disebut pertama di daftar. | Kalau tebakan salah, laporan restoran diisi orang yang tidak berwenang, dan manager sungguhan tidak punya akun. |
 | 3 | **"Inservice" (5 orang) itu menangani apa?** Belum ada form untuknya — divisi terbesar kedua setelah Indosteak. | Kelima orang ini akan login lalu tidak menemukan tugas apa pun kalau dibiarkan begini. |
 | 4 | **"Rukost" itu unit usaha sendiri?** Toyib sendirian, tanpa form. | Sama seperti di atas — satu orang tanpa tugas yang jelas. |

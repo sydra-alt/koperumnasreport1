@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth/AuthProvider';
 import { formRegistry } from '../forms';
 import { tabTerlihat, tabBawah } from '../lib/navUtama';
 import { tanggalIndonesiaWIB } from '../lib/tanggal';
+import { NavIcon, ikonUntukTab } from './NavIcon';
 
 /**
  * Nav atas (layar lebar) dan nav bawah (layar sempit, §2
@@ -71,6 +72,8 @@ export function KopHalaman() {
         </nav>
       </header>
 
+      {/* Ikon + label kecil (bukan cuma tulisan, keluhan user 30 Agustus 2026)
+          -- hanya di sini, nav-atas (desktop) tetap teks seperti biasa. */}
       <nav className="nav-bawah" aria-label="Navigasi utama">
         {bawah.map((tab) => {
           const aktif = pathname === tab.href;
@@ -78,15 +81,17 @@ export function KopHalaman() {
             <Link
               key={tab.key}
               href={tab.href}
-              className="flex flex-1 flex-col items-center justify-center text-center text-xs"
+              className="flex flex-1 flex-col items-center justify-center gap-0.5 text-center"
               style={{
                 minHeight: 'var(--tinggi-nav-bawah)',
                 fontFamily: 'var(--display)',
                 fontWeight: 500,
+                fontSize: 10,
                 color: aktif ? 'var(--biru)' : 'var(--tinta)',
                 background: aktif ? 'var(--kertas)' : 'transparent',
               }}
             >
+              <NavIcon nama={ikonUntukTab(tab.key)} />
               {tab.label}
             </Link>
           );

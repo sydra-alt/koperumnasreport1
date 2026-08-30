@@ -422,6 +422,20 @@ User sendiri yang menulis token lama (`04-CATATAN-TEKNIS.md` §6, arah "cetak bi
 
 ---
 
+## Umpan balik lapangan pertama dari HP sungguhan (30 Agustus 2026)
+
+Setelah token desain di atas dipakai nyata di HP: nav bawah dirasa "masih tulisan" -- terlalu kaku dibanding maksud "ringan" yang baru disepakati. Accounting terjawab. Dua dari enam titik absen dikirim.
+
+**Ikon nav bawah.** `components/NavIcon.tsx` (baru) -- 11 ikon SVG tulis tangan (garis tipis, `currentColor`, TANPA library ikon -- CLAUDE.md §2 melarang "library ikon berat"), satu per tab (`beranda`/`absen`/`riwayat`/`lapor`/`papan`/`keputusan`/`marketing`/`terpusat`/`admin`/`akun`/`absen-tinjau`). `ikonUntukTab()` memetakan tab dinamis `lapor-dinamis-*` ke ikon "lapor" yang sama. **HANYA nav bawah (mobile) yang berubah** -- ikon + label kecil (10px) di bawahnya, bukan ikon saja (dipertimbangkan sengaja: 35 orang lapangan belum tentu langsung kenal ikonnya, label kecil tetap menjaga bisa dipelajari). Nav atas (desktop) TIDAK disentuh sama sekali, sesuai instruksi eksplisit user ("kecuali kita dalam desktop device"). **Belum diverifikasi visual sungguhan** -- sama seperti batch token desain sebelumnya, user yang akan mengecek langsung dari HP.
+
+**Accounting = Shabita (menjawab pertanyaan blocking §0 `docs/07-CATATAN-PELUNCURAN.md`).** Diperbarui di TIGA tempat -- `profile.nama` akun uji `accounting@koperumnas.local` di database produksi (`UPDATE` langsung, bukan lewat script), `scripts/akun.json` (sumber seed 36 akun asli), dan `docs/DATA-KARYAWAN.md` (§2/§3/§4, placeholder `"GANTI"`/`❓` diganti). `docs/07-CATATAN-PELUNCURAN.md` §0 baris 1 ditandai ✅ terjawab.
+
+**2 dari 6 titik absen masuk.** User mengirim dua koordinat tanpa label -- **ditanya dulu lewat `AskUserQuestion` yang itu titik mana** (bukan ditebak dari angkanya) sebelum disimpan, karena label yang salah pada koordinat presensi sungguhan = orang absen di tempat yang keliru tanpa sadar (persis risiko yang sudah dicatat di §3.1 dokumen). Jawaban: **Kantor Pusat** (`-6.159509598802398, 106.84286041754672`) dan **Indokopi Jatinegara** (`-6.218618166784612, 106.86853622283408`) -- dimasukkan langsung ke `lokasi_absen` (SQL langsung, bukan migrasi -- ini data operasional, bukan perubahan skema), baris `CONTOH` dinonaktifkan (`aktif=false`, bukan dihapus). **4 titik masih kosong**: Tajur, Bekasi, DTI, Indosteak (dugaan, belum dikonfirmasi) -- dicatat di "Utang WAJIB sebelum presensi dipakai sungguhan" di bawah. Belum ada `penugasan_absen` (siapa absen di titik mana) sama sekali -- langkah berikutnya lewat Admin setelah keenam titik lengkap.
+
+**Diverifikasi:** `tsc --noEmit` bersih untuk `NavIcon.tsx`/`KopHalaman.tsx`. Data Shabita & 2 koordinat dicek ulang lewat `select` langsung setelah `update`/`insert`.
+
+---
+
 ## §3 Presensi ber-radius (`docs/06-RENCANA-PRESENSI-MOBILE.md`, 29 Agustus 2026)
 
 Dikerjakan atas instruksi eksplisit **"jangan menunggu"** koordinat asli CEO (§5 dokumen belum terjawab) -- mekanismenya yang harus jadi dulu, satu baris `lokasi_absen` CONTOH (koordinat dari contoh dokumen sendiri, `-6.914744, 107.609810`, berlabel "CONTOH -- ganti dari halaman Admin") dipakai supaya halaman Absen tidak kosong/rusak saat pertama dicoba.
@@ -461,7 +475,7 @@ Dikerjakan atas instruksi eksplisit **"jangan menunggu"** koordinat asli CEO (§
 ## Utang WAJIB sebelum presensi dipakai sungguhan
 
 - 🔴 **Layar persetujuan privasi (§3.1 dokumen) belum dibangun.** UU Perlindungan Data Pribadi mengharuskan karyawan tahu data lokasi+foto apa yang direkam SEBELUM perekamannya mulai -- pengumuman WhatsApp TIDAK CUKUP sebagai bukti persetujuan (alasan eksplisit user, bukan formalitas). Perlu satu layar yang disetujui SEKALI seumur akun, tercatat tanggalnya. **Sampai ini ada, jangan nyalakan presensi untuk 36 orang sungguhan** -- mekanismenya sudah jalan (7 akun uji boleh dipakai untuk uji teknis), tapi pemakaian produksi menunggu ini.
-- Koordinat ASLI dari CEO (§5 dokumen, pertanyaan 1-3) masih belum ada -- satu baris CONTOH yang ada sekarang TIDAK BOLEH dianggap titik sungguhan oleh siapa pun.
+- **Koordinat titik absen -- 2 dari 6 sudah masuk (30 Agustus 2026):** Kantor Pusat (`-6.159509598802398, 106.84286041754672`) dan Indokopi Jatinegara (`-6.218618166784612, 106.86853622283408`) dimasukkan lewat SQL langsung (bukan halaman Admin -- Admin-nya sendiri sudah bisa dipakai untuk ini ke depannya), baris CONTOH dinonaktifkan (`aktif=false`, BUKAN dihapus -- gampang dipulihkan kalau ternyata perlu). **4 titik lagi masih kosong**: Tajur, Bekasi, DTI, Indosteak (dugaan nama-nama yang belum dikirim -- belum dikonfirmasi, jangan ditebak). Belum ada satu pun `penugasan_absen` (siapa absen di titik mana) dibuat -- itu langkah admin berikutnya setelah keenam titik lengkap.
 
 ---
 
