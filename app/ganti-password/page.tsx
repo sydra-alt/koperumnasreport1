@@ -9,6 +9,8 @@ export default function GantiPasswordPage() {
   const router = useRouter();
   const [baru, setBaru] = useState('');
   const [ulangi, setUlangi] = useState('');
+  const [lihatBaru, setLihatBaru] = useState(false);
+  const [lihatUlangi, setLihatUlangi] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mengirim, setMengirim] = useState(false);
 
@@ -69,26 +71,74 @@ export default function GantiPasswordPage() {
 
         <label className="flex flex-col gap-1">
           <span>Password baru</span>
-          <input
-            type="password"
-            required
-            value={baru}
-            onChange={(e) => setBaru(e.target.value)}
-            className="border px-2 py-2"
-            style={{ borderColor: 'var(--garis)', minHeight: 44, borderRadius: 'var(--radius-kecil)' }}
-          />
+          <div className="relative flex items-center">
+            <input
+              type={lihatBaru ? 'text' : 'password'}
+              required
+              value={baru}
+              onChange={(e) => setBaru(e.target.value)}
+              className="w-full border px-2 py-2 pr-11"
+              style={{ borderColor: 'var(--garis)', minHeight: 44, borderRadius: 'var(--radius-kecil)' }}
+            />
+            <button
+              type="button"
+              onClick={() => setLihatBaru(!lihatBaru)}
+              className="absolute right-0 flex items-center justify-center p-2 text-label hover:opacity-80"
+              style={{ minHeight: 44, minWidth: 44, color: 'var(--label)' }}
+              aria-label={lihatBaru ? 'Sembunyikan password baru' : 'Tampilkan password baru'}
+              title={lihatBaru ? 'Sembunyikan password baru' : 'Tampilkan password baru'}
+            >
+              {lihatBaru ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                  <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                  <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                  <line x1="2" y1="2" x2="22" y2="22" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )}
+            </button>
+          </div>
         </label>
 
         <label className="flex flex-col gap-1">
           <span>Ketik ulang password baru</span>
-          <input
-            type="password"
-            required
-            value={ulangi}
-            onChange={(e) => setUlangi(e.target.value)}
-            className="border px-2 py-2"
-            style={{ borderColor: 'var(--garis)', minHeight: 44, borderRadius: 'var(--radius-kecil)' }}
-          />
+          <div className="relative flex items-center">
+            <input
+              type={lihatUlangi ? 'text' : 'password'}
+              required
+              value={ulangi}
+              onChange={(e) => setUlangi(e.target.value)}
+              className="w-full border px-2 py-2 pr-11"
+              style={{ borderColor: 'var(--garis)', minHeight: 44, borderRadius: 'var(--radius-kecil)' }}
+            />
+            <button
+              type="button"
+              onClick={() => setLihatUlangi(!lihatUlangi)}
+              className="absolute right-0 flex items-center justify-center p-2 text-label hover:opacity-80"
+              style={{ minHeight: 44, minWidth: 44, color: 'var(--label)' }}
+              aria-label={lihatUlangi ? 'Sembunyikan ketik ulang password' : 'Tampilkan ketik ulang password'}
+              title={lihatUlangi ? 'Sembunyikan ketik ulang password' : 'Tampilkan ketik ulang password'}
+            >
+              {lihatUlangi ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                  <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                  <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                  <line x1="2" y1="2" x2="22" y2="22" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )}
+            </button>
+          </div>
         </label>
 
         <p className="text-sm" style={{ color: 'var(--kosong)' }}>
