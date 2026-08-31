@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { kompresGambar } from '../lib/gambar';
 import { jamWIB } from '../lib/tanggal';
 
-type Status = 'meminta' | 'siap' | 'ditolak' | 'gagal' | 'preview';
+type Status = 'meminta' | 'siap' | 'ditolak' | 'gagal' | 'tidak_didukung' | 'preview';
 
 export interface WatermarkAbsen {
   nama: string;
@@ -92,21 +92,51 @@ export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCapturePr
     // di badan efek sebagai potensi cascading render, sama pola dengan
     // yang sudah didokumentasikan di app/page.tsx Task 06).
     let batal = false;
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: 'user' }, audio: false })
-      .then((stream) => {
-        if (batal) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        streamRef.current = stream;
-        if (videoRef.current) videoRef.current.srcObject = stream;
-        setStatus('siap');
-      })
-      .catch((err) => {
-        if (batal) return;
-        setStatus(err?.name === 'NotAllowedError' ? 'ditolak' : 'gagal');
+
+    // BUG NYATA ditemukan 31 Agustus 2026 (laporan user langsung, "kamera
+    // tidak terbuka"): `navigator.mediaDevices` bernilai undefined di
+    // KONTEKS TIDAK AMAN (bukan https://, dan bukan literally "localhost")
+    // -- mis. dibuka lewat IP jaringan lokal (http://192.168.x.x:3000) saat
+    // dites dari HP sebelum dibagikan resmi. Memanggil
+    // `.getUserMedia(...)` pada `undefined` melempar TypeError SINKRON, DI
+    // LUAR promise chain -- `.catch()` di bawah TIDAK PERNAH menangkapnya,
+    // jadi layar macet selamanya di "Meminta izin kamera..." tanpa pesan
+    // apa pun. Dicegah dengan pengecekan eksplisit SEBELUM memanggil,
+    // dengan pesan yang menjelaskan sebab paling mungkin (bukan cuma
+    // "kamera gagal" generik) -- try/catch di sekeliling seluruhnya sebagai
+    // jaring pengaman kedua untuk kasus lempar sinkron lain yang belum
+    // ketahuan.
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        // setState dibungkus microtask -- sama pola dengan alasan yang
+        // sudah didokumentasikan di app/page.tsx Task 06 (react-hooks/set-
+        // state-in-effect): mencegah potensi cascading render kalau
+        // dipanggil LANGSUNG di badan efek, bukan menonaktifkan aturannya.
+        Promise.resolve().then(() => {
+          if (!batal) setStatus('tidak_didukung');
+        });
+        return;
+      }
+      navigator.mediaDevices
+        .getUserMedia({ video: { facingMode: 'user' }, audio: false })
+        .then((stream) => {
+          if (batal) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+          streamRef.current = stream;
+          if (videoRef.current) videoRef.current.srcObject = stream;
+          setStatus('siap');
+        })
+        .catch((err) => {
+          if (batal) return;
+          setStatus(err?.name === 'NotAllowedError' ? 'ditolak' : 'gagal');
+        });
+    } catch {
+      Promise.resolve().then(() => {
+        if (!batal) setStatus('gagal');
       });
+    }
 
     return () => {
       batal = true;
@@ -176,6 +206,17 @@ export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCapturePr
         <button type="button" onClick={() => setStatus('meminta')} className="border px-4" style={gayaTombol}>
           Coba Lagi
         </button>
+      </div>
+    );
+  }
+
+  if (status === 'tidak_didukung') {
+    return (
+      <div className="flex flex-col gap-2">
+        <p style={{ color: 'var(--merah)' }}>
+          Kamera tidak bisa diakses dari alamat ini. Pastikan alamat website diawali <b>https://</b> (bukan http://), lalu coba lagi. Kalau
+          masih gagal, hubungi Admin.
+        </p>
       </div>
     );
   }

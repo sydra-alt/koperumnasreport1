@@ -7,16 +7,19 @@
  * visual untuk sisi "sistem bermasalah"-nya. Beda dari pesan error field
  * (§17, ditempel dekat field) -- ini untuk SATU BAGIAN LAYAR yang gagal
  * dimuat (query gagal), dengan tombol coba lagi eksplisit.
+ *
+ * Redesign: memakai pola kartu-status rail-merah (DESIGN.md §4.2, §17)
+ * supaya konsisten dengan bahasa visual status di seluruh app.
  */
 export function KeadaanGagal({ pesan = 'Gagal memuat data.', onCoba }: { pesan?: string; onCoba: () => void }) {
   return (
-    <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--merah)', background: 'rgba(166,43,43,0.06)', borderRadius: 'var(--radius-besar)' }}>
-      <p style={{ color: 'var(--merah)' }}>{pesan}</p>
+    <div className="kartu-status rail-merah flex flex-col gap-2">
+      <p style={{ color: 'var(--merah)', fontFamily: 'var(--display)', fontWeight: 600 }}>{pesan}</p>
       <button
         type="button"
         onClick={onCoba}
-        className="w-fit border px-3 py-1"
-        style={{ borderColor: 'var(--merah)', color: 'var(--merah)', minHeight: 44, borderRadius: 'var(--radius-kecil)' }}
+        className="tombol-sekunder"
+        style={{ borderColor: 'var(--merah)', color: 'var(--merah)', alignSelf: 'flex-start' }}
       >
         Coba lagi
       </button>

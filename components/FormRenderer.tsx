@@ -85,16 +85,16 @@ function LayarKonfirmasiKirim({ schema, info, onUbah }: { schema: FormSchema; in
       </div>
 
       <div>
-        <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-progres)', fontWeight: 700, color: 'var(--biru)' }}>Laporan terkirim</p>
+        <p className="angka-kecil" style={{ color: 'var(--biru)' }}>Laporan terkirim</p>
         <p className="text-sm" style={{ color: 'var(--label)' }}>
           {schema.nama} · {tanggalIndonesiaWIB(d)} · pukul {jamWIB(d)}
         </p>
       </div>
 
       {terlambat && info.pesanTerlambat && (
-        <p className="border px-3 py-2 text-sm" style={{ borderColor: 'var(--kuning)', color: 'var(--kuning)', borderRadius: 'var(--radius-besar)' }}>
+        <div className="kartu-status rail-kuning text-sm text-left" style={{ maxWidth: '24rem' }}>
           {info.pesanTerlambat}
-        </p>
+        </div>
       )}
 
       {info.ringkasan && info.ringkasan.length > 0 && (
@@ -104,22 +104,13 @@ function LayarKonfirmasiKirim({ schema, info, onUbah }: { schema: FormSchema; in
       )}
 
       <div className="flex w-full max-w-sm flex-col gap-2">
-        <Link
-          href="/riwayat"
-          className="border px-4 py-3 text-center"
-          style={{ background: 'var(--biru)', color: 'var(--kertas-2)', minHeight: 48, borderRadius: 'var(--radius-kecil)' }}
-        >
+        <Link href="/riwayat" className="tombol-utama text-center">
           Lihat laporan saya
         </Link>
-        <button
-          type="button"
-          onClick={onUbah}
-          className="border px-4 py-3"
-          style={{ borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 48, borderRadius: 'var(--radius-kecil)' }}
-        >
+        <button type="button" onClick={onUbah} className="tombol-sekunder">
           Ubah laporan ini
         </button>
-        <Link href="/" className="px-4 py-3 text-center text-sm" style={{ color: 'var(--kosong)', minHeight: 44 }}>
+        <Link href="/" className="px-4 py-3 text-center text-sm" style={{ color: 'var(--label)', minHeight: 44 }}>
           Kembali ke beranda
         </Link>
       </div>
@@ -239,23 +230,25 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
     <FormProvider {...methods}>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col" style={{ gap: 'var(--jarak-bagian)' }}>
         {/* Peta kemajuan (§5.1) -- lihat semua bagian & status sebelum masuk detail. */}
-        <div className="flex flex-col gap-2 border p-4" style={{ borderColor: 'var(--garis)', borderRadius: 'var(--radius-besar)', background: 'var(--kertas-2)' }}>
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>Ringkasan pekerjaan hari ini</p>
+        <div className="flex flex-col gap-3 border p-4" style={{ borderColor: 'var(--garis)', borderRadius: 'var(--radius-besar)', background: 'var(--kertas-2)' }}>
+          <p className="judul-bagian">Ringkasan pekerjaan hari ini</p>
           {blokBerwajib.length > 0 && (
             <>
-              <p className="text-sm" style={{ color: 'var(--label)' }}>
-                {totalSelesai} dari {blokBerwajib.length} bagian wajib selesai · {blokBerwajib.length - totalSelesai} masih perlu diisi
-              </p>
-              <div style={{ height: 4, borderRadius: 'var(--radius-pil)', background: 'var(--garis)', overflow: 'hidden' }}>
+              <div className="flex items-baseline gap-2">
+                <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{totalSelesai}</span>
+                <span className="text-sm" style={{ color: 'var(--label)' }}>dari {blokBerwajib.length} bagian wajib selesai</span>
+              </div>
+              <div className="progres-bar">
                 <div
-                  style={{
-                    height: '100%',
-                    width: `${Math.round((totalSelesai / blokBerwajib.length) * 100)}%`,
-                    background: 'var(--biru)',
-                    borderRadius: 'var(--radius-pil)',
-                  }}
+                  className="progres-bar-isi"
+                  style={{ width: `${Math.round((totalSelesai / blokBerwajib.length) * 100)}%` }}
                 />
               </div>
+              {blokBerwajib.length - totalSelesai > 0 && (
+                <p className="text-sm" style={{ color: 'var(--label)' }}>
+                  {blokBerwajib.length - totalSelesai} masih perlu diisi
+                </p>
+              )}
             </>
           )}
           <div className="flex flex-col">
@@ -274,13 +267,14 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
                   key={block.id}
                   type="button"
                   onClick={() => bukaDanGulir(block.id)}
-                  className="flex items-center justify-between gap-2 py-1 text-left text-sm"
-                  style={{ minHeight: 32 }}
+                  className="flex items-center justify-between gap-2 py-2 text-left text-sm"
+                  style={{ minHeight: 44 }}
                 >
                   <span>
-                    <span style={{ fontFamily: 'var(--mono)', color: 'var(--kosong)' }}>{String(i + 1).padStart(2, '0')}</span> {block.judul}
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--kosong)' }}>{String(i + 1).padStart(2, '0')}</span>{' '}
+                    <span style={{ fontWeight: 500 }}>{block.judul}</span>
                   </span>
-                  <span style={{ color: bermasalah ? 'var(--merah)' : selesai === true ? 'var(--hijau)' : 'var(--kosong)' }}>{label}</span>
+                  <span className="status-teks" style={{ color: bermasalah ? 'var(--merah)' : selesai === true ? 'var(--hijau)' : 'var(--kosong)', flexShrink: 0 }}>{label}</span>
                 </button>
               );
             })}
@@ -298,19 +292,20 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
               id={`bagian-${block.id}`}
               className="flex flex-col border"
               style={{
-                borderColor: bermasalah ? 'var(--merah)' : 'var(--garis)',
-                borderLeftWidth: terbuka ? 3 : 1,
+                borderColor: bermasalah ? 'var(--merah-garis)' : 'var(--garis)',
+                borderLeftWidth: terbuka ? 'var(--lebar-rail)' : 1,
                 borderLeftColor: bermasalah ? 'var(--merah)' : terbuka ? 'var(--biru)' : 'var(--garis)',
                 borderRadius: 'var(--radius-besar)',
                 padding: 16,
-                gap: terbuka ? 'var(--jarak-field)' : 4,
+                gap: terbuka ? 'var(--jarak-field)' : 6,
+                background: bermasalah ? 'var(--merah-lembut)' : 'transparent',
               }}
             >
               <legend className="w-full px-1">
-                <button type="button" onClick={() => togel(block.id)} className="flex w-full items-start justify-between gap-2 text-left" style={{ minHeight: 32 }}>
+                <button type="button" onClick={() => togel(block.id)} className="flex w-full items-start justify-between gap-2 text-left" style={{ minHeight: 44 }}>
                   <span>
-                    <span style={{ fontFamily: 'var(--mono)', fontSize: 'var(--ukuran-label)', color: 'var(--kosong)' }}>{String(i + 1).padStart(2, '0')}</span>{' '}
-                    <span style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>{block.judul}</span>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--kosong)' }}>{String(i + 1).padStart(2, '0')}</span>{' '}
+                    <span className="judul-bagian">{block.judul}</span>
                   </span>
                   <span style={{ color: 'var(--kosong)', fontSize: 'var(--ukuran-label)' }}>{terbuka ? '▲' : '▼'}</span>
                 </button>
@@ -328,7 +323,7 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
               )}
 
               {!terbuka ? (
-                <button type="button" onClick={() => togel(block.id)} className="w-fit text-sm" style={{ color: 'var(--biru-3)', minHeight: 32 }}>
+                <button type="button" onClick={() => togel(block.id)} className="w-fit text-sm" style={{ color: 'var(--biru-3)', minHeight: 44, display: 'flex', alignItems: 'center' }}>
                   Buka bagian →
                 </button>
               ) : (
@@ -383,11 +378,11 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
             form personal_marketing 9 blok baru terlihat tombolnya kalau digulir sampai
             bawah tanpa ini; dengan sticky, selalu terlihat. Background solid wajib supaya
             konten yang lewat di baliknya tidak tembus pandang. */}
-        <div className="tombol-kirim-menempel" style={{ background: 'var(--kertas)' }}>
+        <div className="tombol-kirim-menempel flex flex-col gap-3" style={{ background: 'var(--kertas)', paddingTop: 12 }}>
           {pesanError.length > 0 && (
-            <div className="border p-3" style={{ borderColor: 'var(--merah)', background: 'rgba(166,43,43,0.08)', borderRadius: 'var(--radius-besar)' }}>
-              <p style={{ fontFamily: 'var(--display)', color: 'var(--merah)' }}>Periksa kembali sebelum mengirim:</p>
-              <ul className="list-disc pl-5">
+            <div className="kartu-status rail-merah">
+              <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--merah)' }}>Periksa kembali sebelum mengirim:</p>
+              <ul className="list-disc pl-5 text-sm" style={{ color: 'var(--merah)' }}>
                 {pesanError.map((e) => (
                   <li key={e.key}>{e.pesan}</li>
                 ))}
@@ -395,7 +390,7 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
             </div>
           )}
 
-          <button type="submit" className="w-full px-4 py-3" style={{ background: 'var(--biru)', color: 'var(--kertas-2)', minHeight: 48, borderRadius: 'var(--radius-kecil)' }}>
+          <button type="submit" className="tombol-utama w-full">
             Kirim
           </button>
         </div>

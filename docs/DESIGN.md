@@ -2,13 +2,13 @@
 
 > Sistem desain untuk aplikasi laporan harian internal PT Konsumen Perumahan Nasional (Koperumnas Group).
 >
-> **Prinsip utama:** aplikasi ini bukan “dashboard yang keren”. Ini adalah **alat kerja harian** yang harus bisa dipakai orang yang sedang berdiri, terburu-buru, memakai Android kelas menengah-bawah, dan tidak terbiasa dengan aplikasi kerja. Desain harus membantu pengguna tahu **apa yang harus dilakukan sekarang, apa yang sudah selesai, dan apa konsekuensinya** tanpa membuat mereka membaca banyak hal.
+> **Arah revisi penting:** desain tetap soft dan profesional, tetapi **lebih berwarna, lebih kontras, dan jauh lebih mudah dipindai**. Pengguna utama tidak boleh dipaksa membaca semua teks untuk menemukan laporan yang bermasalah. Warna dipakai sebagai alat orientasi dan prioritas, bukan sebagai dekorasi.
 
 ---
 
 ## 0. Konteks yang tidak boleh dilanggar
 
-Aplikasi digunakan oleh 39 orang; mayoritas memakai HP Android kelas menengah-bawah, dengan kemampuan teknologi rendah sampai sedang, sering di lokasi kerja dengan sinyal seadanya, dan membuka aplikasi setiap hari. Ukuran keberhasilan desain yang paling konkret adalah: **Elsa dapat menyelesaikan laporan hariannya dalam ±5 menit tanpa bertanya kepada siapa pun pada hari pertama.**
+Aplikasi digunakan oleh 39 orang; mayoritas memakai HP Android kelas menengah-bawah, dengan kemampuan teknologi rendah sampai sedang, sering di lokasi kerja dengan sinyal seadanya, dan membuka aplikasi setiap hari. Ukuran keberhasilan desain yang paling konkret adalah: **Elsa dapat menyelesaikan laporan hariannya dalam ±5 menit tanpa bertanya kepada siapa pun pada hari pertama.** Brief sumber juga menegaskan bahwa CEO berusia sekitar 51 tahun dan membutuhkan informasi yang sangat mudah dipindai. fileciteturn0file0L18-L37
 
 Peran yang harus selalu dipertimbangkan:
 
@@ -20,133 +20,154 @@ Peran yang harus selalu dipertimbangkan:
 
 ### Tujuan desain
 
-Setiap layar harus menjawab, dalam urutan ini:
+Setiap layar harus menjawab, dalam urutan berikut:
 
-1. **Apa yang harus saya lakukan?**
-2. **Apa yang sudah selesai?**
-3. **Apa yang masih kurang?**
-4. **Kalau belum selesai, apa akibatnya?**
+1. **Apa yang harus saya lihat lebih dulu?**
+2. **Apa yang harus saya kerjakan sekarang?**
+3. **Apa yang sudah selesai?**
+4. **Apa yang bermasalah dan perlu di-follow-up?**
+5. **Apa akibatnya kalau dibiarkan?**
 
-Jangan membebankan jawaban itu ke ikon, warna, atau tebakan pengguna.
+Jangan membebankan jawaban itu ke ikon atau tebakan pengguna.
 
 ---
 
-# 1. Arah visual: “tenang, profesional, terasa seperti alat kerja”
+# 1. Arah visual: “soft, berwarna, mudah dipindai”
 
-## 1.1 Karakter visual
+## 1.1 Perubahan arah dari versi sebelumnya
 
-Gunakan bahasa visual yang terasa:
+Versi sebelumnya terlalu takut memakai warna sehingga hampir semua elemen jatuh ke putih + abu + sedikit biru. Hasilnya memang aman, tetapi terlalu datar.
 
-- **soft tetapi bukan pastel**
-- bersih tetapi tidak steril
-- profesional tetapi tidak kaku
-- manusiawi tetapi tidak “aplikasi lifestyle”
-- mudah dipindai dalam 2–3 detik
+**Revisi:** gunakan warna secara sengaja pada tiga lapisan:
+
+- **Brand color** untuk orientasi dan tindakan utama.
+- **Soft semantic color** untuk menunjukkan keadaan laporan.
+- **Neutral surface** untuk semua informasi yang tidak membutuhkan perhatian.
+
+Jadi aplikasi boleh **terlihat lebih hidup**, tetapi bukan menjadi “dashboard AI” yang penuh bubble, gradient, dan badge.
 
 ### Analogi
 
-Bayangkan **clipboard kerja yang dirancang rapi**, bukan dashboard AI dan bukan aplikasi keuangan.
+Bayangkan **papan kontrol kantor yang dicetak dengan stabilo**:
 
-Clipboard kerja punya kertas putih, judul yang jelas, garis pembatas tipis, satu stabilo untuk hal penting, dan tanda status hanya ketika memang diperlukan. Ia tidak membutuhkan puluhan lingkaran berwarna.
+- putih = informasi biasa,
+- biru = area navigasi dan tindakan,
+- hijau = sudah aman,
+- kuning/amber = perlu diperhatikan,
+- merah = belum dilakukan / perlu segera ditindaklanjuti.
 
-## 1.2 Prinsip “soft tanpa menjadi AI-ish”
+Yang penting bukan membuat seluruh papan berwarna. Yang penting adalah **mata langsung menangkap bagian yang perlu perhatian**.
 
-Keluhan desain saat ini: terlalu banyak bentuk bulat, badge, dot status, dan kotak berwarna terasa seperti antarmuka AI generik.
+## 1.2 Prinsip visual baru
 
-Karena itu:
+### Prinsip A — “Warna menunjukkan prioritas”
 
-- **Jangan** menjadikan lingkaran kecil sebagai bahasa utama status.
-- **Jangan** memberi pill/badge pada setiap label.
-- **Jangan** membuat setiap kartu seperti “floating island”.
-- **Jangan** memakai gradient.
-- **Jangan** membuat semua elemen punya shadow.
-- **Jangan** menggunakan warna status sebagai dekorasi.
+Pada halaman CEO, laporan yang belum masuk **boleh memakai area merah muda lembut**. Laporan yang perlu follow-up memakai amber lembut. Laporan yang sudah selesai memakai hijau lembut.
 
-Sebagai gantinya, gunakan **hierarki melalui ukuran teks, ruang, garis, dan posisi**.
+Ini berbeda dari menjadikan setiap kartu sebagai lampu neon.
 
-### Bahasa bentuk
+### Prinsip B — “Bentuk tetap tenang”
 
-- Kartu utama: radius sedang.
-- Input: radius kecil–sedang.
-- Tombol utama: radius sedang, bukan kapsul penuh.
-- Status: **baris teks + penanda sempit** atau badge kecil hanya jika benar-benar membantu scanning.
-- Progress: garis horizontal tipis dengan ujung sedikit membulat; bukan lingkaran progress.
-- Ikon: kecil dan fungsional; selalu ditemani teks ketika fungsi tidak universal.
+Warna boleh lebih berani, tetapi bentuk tetap sederhana:
+
+- kartu rectangular dengan radius 14–16px,
+- garis pembatas tipis,
+- satu aksen vertikal 4px,
+- label status kecil berbentuk kapsul **hanya saat benar-benar membantu scanning**,
+- hindari kumpulan lingkaran status.
+
+### Prinsip C — “Jangan semua warna sekaligus”
+
+Satu viewport sebaiknya memiliki:
+
+- 1 warna brand utama,
+- 1–2 warna status yang sedang relevan,
+- neutral sebagai mayoritas area.
+
+Pada dashboard dengan banyak masalah, merah dan amber boleh muncul lebih sering karena **memang itulah data yang perlu dilihat**.
+
+### Prinsip D — “CEO melihat pola, bukan detail”
+
+Untuk pengguna seperti CEO, desain tidak boleh mengandalkan kemampuan membaca form panjang. Gunakan:
+
+> **warna → angka besar → kata status → detail kecil**
+
+Bukan:
+
+> detail panjang → pengguna membaca → pengguna menyimpulkan status.
 
 ---
 
-# 2. Token desain
+# 2. Sistem warna
 
-## 2.1 Catatan warna logo
+Brief menetapkan biru tua `#1A4FA0`, biru muda `#57ADE6`, emas `#EFA829`, dan putih sebagai referensi brand; serta menetapkan bahwa hijau, kuning, dan merah adalah warna status perusahaan yang tidak boleh dipakai sebagai dekorasi dasar. fileciteturn0file0L41-L56
 
-**Diperbarui 30 Agustus 2026 -- disampel LANGSUNG dari `public/logo-koperumnas.jpg` (1079×1079px), bukan lagi perkiraan dari screenshot.** Skrip sampling (`scripts/_sample-warna-logo.mjs`, sekali pakai, dihapus setelah dipakai) mengelompokkan seluruh piksel jadi bucket warna dan mengambil yang paling sering muncul, dipisah dari putih/abu netral:
-
-| Elemen | Hex sebenarnya | Perkiraan lama (brief/screenshot) |
-|---|---|---|
-| Biru tua (teks, setengah gelap ikon) | **`#0047AF`** | `#1A4FA0` (brief) / `#0048AE` (screenshot) -- sangat dekat, dikonfirmasi |
-| Biru muda (garis pentagon, setengah terang ikon) | **`#3FAAF2`** | `#57ADE6` (brief) / `#57A7DC` (screenshot) -- ternyata lebih jenuh/vivid dari kedua perkiraan |
-| Emas (dua bintang) | **`#F3AB23`** | `#EFA829` -- dekat, sedikit lebih oranye di aset asli |
-| Latar | `#FFFFFF` (putih solid) | sesuai brief |
-
-Token di §2.2 di bawah SUDAH diperbarui memakai nilai sebenarnya ini sebagai jangkar (700=biru tua, 500=biru muda, gold-500=emas) -- langkah ramp lain (950–800, 600, 100–50, gold-600/100) dihitung sebagai tint/shade dari dua jangkar itu, bukan disampel terpisah.
-
-## 2.2 CSS variables — siap ditempel
+## 2.1 CSS variables — versi revisi
 
 ```css
 :root {
   /* ================================
      BRAND
      ================================ */
-  --color-brand-950: #002e72;
-  --color-brand-900: #003789;
-  --color-brand-800: #00409e;
-  --color-brand-700: #0047af; /* disampel langsung dari logo -- lihat §2.1 */
-  --color-brand-600: #2079d1;
-  --color-brand-500: #3faaf2; /* disampel langsung dari logo -- lihat §2.1 */
-  --color-brand-100: #e8f5fd;
-  --color-brand-50:  #f4fafe;
-
-  /* Aksen logo — jangan pakai sebagai status */
-  --color-gold-600: #c78c1d;
-  --color-gold-500: #f3ab23; /* disampel langsung dari logo -- lihat §2.1 */
-  --color-gold-100: #fef7e9;
+  --color-brand-950: #0B2D63;
+  --color-brand-900: #103C7A;
+  --color-brand-800: #17478E;
+  --color-brand-700: #1A4FA0;
+  --color-brand-600: #2F7FC5;
+  --color-brand-500: #57ADE6;
+  --color-brand-200: #CDEBFA;
+  --color-brand-100: #E8F4FB;
+  --color-brand-50:  #F4F9FD;
 
   /* ================================
-     NEUTRAL
+     BRAND SUPPORT — DIPAKAI HEMAT
      ================================ */
-  --color-white: #ffffff;
-  --color-canvas: #f7f9fb;
-  --color-surface: #ffffff;
-  --color-surface-subtle: #f3f6f9;
-  --color-surface-muted: #edf2f6;
-  --color-border: #dfe6ed;
-  --color-border-strong: #cbd6e0;
+  --color-gold-600: #B9780B;
+  --color-gold-500: #EFA829;
+  --color-gold-200: #F9D98C;
+  --color-gold-100: #FFF5DD;
+
+  /* ================================
+     NETRAL
+     ================================ */
+  --color-white: #FFFFFF;
+  --color-canvas: #F6F8FB;
+  --color-surface: #FFFFFF;
+  --color-surface-subtle: #F1F5F9;
+  --color-surface-muted: #E9EFF5;
+  --color-border: #DCE4EC;
+  --color-border-strong: #C4D0DC;
   --color-text: #182334;
-  --color-text-secondary: #4f5e70;
-  --color-text-muted: #748297;
-  --color-text-disabled: #9aa6b5;
+  --color-text-secondary: #536174;
+  --color-text-muted: #738196;
+  --color-text-disabled: #9DA9B7;
 
   /* ================================
      STATUS — SEMANTIC ONLY
-     Jangan gunakan untuk dekorasi/background umum.
      ================================ */
-  --color-safe: #23845d;
-  --color-safe-bg: #eaf7f1;
-  --color-safe-border: #bde6d3;
+  --color-safe: #20825A;
+  --color-safe-soft: #EDF8F2;
+  --color-safe-border: #B9E1CC;
+  --color-safe-strong: #176542;
 
-  --color-watch: #a96b00;
-  --color-watch-bg: #fff5df;
-  --color-watch-border: #f0d79b;
+  --color-watch: #A46600;
+  --color-watch-soft: #FFF7E7;
+  --color-watch-border: #EBCF93;
+  --color-watch-strong: #7B4B00;
 
-  --color-urgent: #b42332;
-  --color-urgent-bg: #fcedef;
-  --color-urgent-border: #f1c0c6;
+  --color-urgent: #B32638;
+  --color-urgent-soft: #FFF0F2;
+  --color-urgent-border: #EDC1C8;
+  --color-urgent-strong: #8F1C2C;
+
+  /* Status “belum lapor” pada papan kontrol = urgent-soft.
+     Ini bukan dekorasi; ini adalah status pekerjaan. */
 
   /* ================================
-     FOCUS / INTERACTION
+     FOCUS
      ================================ */
-  --color-focus: #2f7fc5;
-  --focus-ring: 0 0 0 3px rgba(87, 173, 230, 0.24);
+  --color-focus: #2F7FC5;
+  --focus-ring: 0 0 0 3px rgba(87, 173, 230, 0.25);
 
   /* ================================
      TYPE
@@ -169,8 +190,7 @@ Token di §2.2 di bawah SUDAH diperbarui memakai nilai sebenarnya ini sebagai ja
   --leading-relaxed: 1.6;
 
   /* ================================
-     SPACE
-     Base unit = 4px
+     SPACE — BASE 4px
      ================================ */
   --space-1: 0.25rem;  /* 4 */
   --space-2: 0.5rem;   /* 8 */
@@ -191,15 +211,16 @@ Token di §2.2 di bawah SUDAH diperbarui memakai nilai sebenarnya ini sebagai ja
   --radius-md: 0.75rem;  /* 12 */
   --radius-lg: 1rem;     /* 16 */
   --radius-xl: 1.25rem;  /* 20 */
-  --radius-pill: 999px;  /* only for compact status/progress */
+  --radius-pill: 999px;  /* hanya status ringkas */
 
   /* ================================
-     SHADOW — SANGAT HEMAT
+     SHADOW — HALUS
      ================================ */
   --shadow-none: none;
-  --shadow-subtle: 0 1px 2px rgba(17, 35, 54, 0.04),
-                   0 4px 12px rgba(17, 35, 54, 0.04);
-  --shadow-nav: 0 -1px 8px rgba(17, 35, 54, 0.07);
+  --shadow-card: 0 1px 2px rgba(16, 32, 52, 0.03),
+                 0 6px 18px rgba(16, 32, 52, 0.04);
+  --shadow-floating: 0 8px 24px rgba(16, 32, 52, 0.10);
+  --shadow-nav: 0 -2px 10px rgba(16, 32, 52, 0.08);
 
   /* ================================
      SIZING
@@ -213,1382 +234,1031 @@ Token di §2.2 di bawah SUDAH diperbarui memakai nilai sebenarnya ini sebagai ja
 }
 ```
 
-### Kenapa token netral dominan?
+## 2.2 Rasio visual warna
 
-Karena status perusahaan sudah memiliki arti tetap: **aman / perlu dikawal / urgent**. Bila UI dasar juga sering memakai hijau, kuning, atau merah, mata pengguna tidak dapat lagi membedakan “status” dari “dekorasi”. Warna status harus memiliki **attention privilege**: warna yang paling jarang muncul justru menjadi yang paling mudah terlihat.
+Gunakan patokan kasar berikut:
+
+- **60–70%** neutral/surface putih dan `canvas`.
+- **20–30%** brand blue dan blue-soft.
+- **maks. 10%** semantic status / gold.
+
+Untuk layar CEO yang sedang penuh masalah, proporsi status boleh naik karena data memang membutuhkan perhatian.
+
+### Keputusan penting
+
+**Jangan membuat semua status berbentuk titik merah/hijau/kuning.**
+
+Gunakan **blok warna lembut + rail kiri + teks status**. Bentuk ini lebih tenang, tidak terasa seperti UI AI, dan lebih mudah dipindai oleh orang yang tidak punya kebiasaan membaca dashboard.
 
 ---
 
-# 3. Tipografi
+# 3. Tipografi untuk mata yang perlu scanning cepat
 
-Gunakan **Plus Jakarta Sans** melalui `next/font` karena sudah menjadi keputusan visual di versi berjalan dan cocok untuk teks antarmuka yang padat.
+Gunakan Plus Jakarta Sans melalui `next/font`.
 
-## 3.1 Skala
-
-| Peran | Ukuran | Tebal | Line-height | Aturan |
+| Peran | Ukuran | Tebal | Line-height | Catatan |
 |---|---:|---:|---:|---|
-| Judul halaman | 28 px | 700 | 1.2 | Maks. 2 baris di 360px |
-| Judul bagian | 20 px | 700 | 1.35 | Menjadi anchor utama tiap bagian |
-| Subjudul/keterangan | 14–16 px | 400–500 | 1.5 | Menjelaskan konsekuensi atau konteks |
-| Label field | 14 px | 600 | 1.35 | Kalimat biasa, bukan HURUF BESAR |
-| Isian/input | 16 px | 500 | 1.5 | Tidak boleh lebih kecil dari 16px untuk mencegah zoom iOS dan menjaga keterbacaan |
-| Placeholder | 15–16 px | 400 | 1.5 | Lebih redup dari isian, tetapi tetap terbaca |
-| Bantuan/error | 13–14 px | 500 | 1.45 | Dekat dengan field yang dijelaskan |
-| Angka ringkasan | 28–32 px | 700 | 1.1 | Hanya untuk angka yang perlu dipindai cepat |
-| Angka kecil/progress | 16–20 px | 700 | 1.2 | Untuk “12 dari 16”, “0 dari 2”, dsb. |
-| Nav label | 11–12 px | 600 | 1.2 | Tetap sertakan label teks |
+| Judul halaman | 28 px | 700 | 1.2 | Maks. 2 baris di 360 px |
+| Judul dashboard CEO | 26–28 px | 700 | 1.2 | Jangan terlalu dekoratif |
+| Judul bagian | 20 px | 700 | 1.3 | Menjadi anchor |
+| Judul kartu penting | 18 px | 700 | 1.35 | Dipakai untuk nama orang / laporan |
+| Label field | 14 px | 600 | 1.35 | Kalimat biasa |
+| Isian | 16 px | 500 | 1.5 | Tidak boleh diperkecil |
+| Bantuan | 14 px | 400–500 | 1.5 | Pendek |
+| Status | 13–14 px | 700 | 1.3 | Kata kerja/status harus mudah terlihat |
+| Angka utama | 28–32 px | 700 | 1.1 | `12 dari 16`, `0 dari 2` |
+| Angka kecil | 18–20 px | 700 | 1.2 | Ringkasan sekunder |
+| Nav label | 11–12 px | 600 | 1.2 | Selalu ada teks |
 
-### Alasan utama
+### Kenapa angka harus lebih besar?
 
-**Jangan mengecilkan teks demi memasukkan lebih banyak informasi.** Pada layar 360px, solusi untuk konten yang terlalu panjang adalah **mengurangi kepadatan sekaligus mengatur hierarki**, bukan membuat huruf kecil.
-
-### Aturan angka
-
-Angka penting harus diperlakukan sebagai **hasil**, bukan sebagai dekorasi.
-
-Contoh:
-
-> **12 dari 16 laporan sudah masuk**
->
-> 4 laporan masih ditunggu.
-
-Lebih baik daripada:
-
-> **12 / 16**
-
-Karena yang kedua memaksa pengguna menafsirkan sendiri.
+CEO tidak datang ke dashboard untuk membaca formulir. Ia datang untuk mengetahui **“berapa yang sudah masuk, siapa yang belum, dan apa yang perlu saya lakukan?”** Angka dan status harus bisa ditangkap dalam satu tatapan.
 
 ---
 
-# 4. Sistem layout
+# 4. Bahasa bentuk: lebih berwarna, lebih sedikit bubble
 
-## 4.1 Lebar mobile
+## 4.1 Bentuk utama
 
-Titik uji utama:
+- Kartu: radius 16 px.
+- Input: radius 10–12 px.
+- Tombol: radius 12–14 px.
+- Status tag: radius 999 px hanya jika pendek.
+- Progress bar: tinggi 8 px, radius penuh.
+- Tombol Absen tengah: lingkaran penuh karena memang menjadi tombol navigasi utama.
 
-- **360 px** — wajib lolos
-- 390–430 px — target nyaman
-- desktop — terutama CEO/admin
-
-Pada 360 px, gunakan horizontal padding:
-
-```css
-padding-inline: 16px;
-```
-
-Untuk layar > 640 px, dapat naik menjadi 20–24 px.
-
-## 4.2 Grid vertikal
-
-Gunakan ritme:
-
-- 8 px: hubungan sangat dekat
-- 12 px: hubungan dekat
-- 16 px: antar field
-- 20–24 px: antar subkelompok
-- 28–32 px: antar bagian
-- 40+ px: pemisahan konteks besar
-
-**Aturan penting:** jangan membuat setiap field punya margin yang sama dengan setiap section. Itulah salah satu penyebab semua elemen terlihat sama penting.
-
----
-
-# 5. Pola hierarki untuk form hingga 9 bagian
-
-Ini adalah masalah terbesar pada aplikasi saat ini.
-
-## 5.1 Jangan tampilkan 9 section sebagai 9 kartu setara
-
-Pola lama:
-
-> Kartu 1 → Kartu 2 → Kartu 3 → Kartu 4 → …
-
-Hasilnya terasa seperti dokumen panjang.
-
-Pola baru:
-
-> **Ringkasan pekerjaan hari ini**
->
-> 3 dari 9 bagian selesai · 6 masih perlu diisi
->
-> [bar tipis progress]
->
-> **01 — Absen** ✓ selesai
-> **02 — Target closing pribadi** 0 dari 2
-> **03 — Undangan konsumen** 0 dari 20
-> **04 — PTE hari ini** 2 dari 6
-> …
->
-> lalu detail section yang sedang aktif.
-
-### Analogi
-
-Form panjang harus bekerja seperti **checklist perjalanan**, bukan seperti gulungan kertas resep. Pengguna perlu melihat peta kecil sebelum masuk ke detail.
-
-## 5.2 Setiap section punya 4 lapisan visual
-
-### Lapisan A — indeks
+## 4.2 Gunakan “rail” sebagai pola visual utama
 
 Contoh:
 
-`02`  **Target closing pribadi**
-
-Nomor kecil membantu otak tahu posisi tanpa membuat nomor menjadi dekorasi besar.
-
-### Lapisan B — hasil/kemajuan
-
-Contoh:
-
-`0 dari 2 konsumen`
-
-atau
-
-`4 dari 6 kewajiban selesai`
-
-### Lapisan C — konsekuensi
-
-Contoh:
-
-`Belum memenuhi target bulanan.`
-
-atau:
-
-`Semua 6 kegiatan harus lengkap agar PTE dapat diajukan.`
-
-### Lapisan D — detail input
-
-Field hanya tampil setelah pengguna memahami “mengapa saya mengisinya”.
-
-## 5.3 Section tidak aktif boleh diringkas
-
-Di daftar/ringkasan:
-
 ```text
-02  Target closing pribadi
-    0 dari 2 konsumen
-    Belum memenuhi target
-    Buka bagian →
+┌─ merah 4px ─────────────────────────────┐
+│  BELUM ADA LAPORAN                      │
+│  Dadang · Tajur                          │
+│  Belum mengirim laporan hari ini        │
+│  [ Follow-up ]                           │
+└─────────────────────────────────────────┘
 ```
 
-Saat dibuka:
+Rail kiri menjadi bahasa status yang konsisten.
 
-```text
-02  Target closing pribadi
-    Target minimal 2 konsumen / bulan
+### Kenapa rail, bukan lingkaran?
 
-    Closing bulan ini
-    [ 0 ]
-
-    Data konsumen 1
-    [Nama konsumen]
-    [Lokasi proyek / blok]
-    [Status]
-
-    Data konsumen 2
-    ...
-```
-
-**Alasan:** pengguna tidak perlu terus melihat semua detail sekaligus. Yang perlu selalu terlihat adalah orientasi dan kemajuan.
-
-## 5.4 Hindari accordion yang menyembunyikan hal penting
-
-Accordion boleh dipakai sebagai **ringkasan section**, bukan untuk menyembunyikan peringatan kritis, hasil, atau status yang perlu tindakan segera.
+Rail tidak menambah “gelembung” visual dan tetap memberi sinyal warna kuat. Ia juga masih terlihat ketika kartu memanjang dan ketika jumlah data banyak.
 
 ---
 
-# 6. Kartu bagian form
+# 5. Pola hierarki untuk form sampai 9 bagian
 
-## Struktur
+Brief menyebut masalah utama saat ini: semua bagian terlihat sama penting, status sulit terlihat tanpa scroll, konsekuensi tidak langsung terlihat, form terasa tak berujung, dan tidak ada rasa kemajuan. fileciteturn0file0L71-L78
 
-```text
-[02]  Target closing pribadi
-      Target minimal 2 konsumen / bulan
+## 5.1 Form tidak boleh terasa seperti 9 kartu identik
 
-      0 dari 2 konsumen
-      ────────────────
-      Belum memenuhi target
-
-      [ detail field ... ]
-```
-
-### Spesifikasi
-
-- Background: `--color-surface`
-- Border: 1 px `--color-border`
-- Radius: `--radius-lg`
-- Padding mobile: 16 px
-- Padding desktop: 20–24 px
-- Shadow: none secara default
-- Section aktif dapat memakai border brand sedikit lebih kuat, bukan glow.
-
-### Penanda aktif
-
-Gunakan salah satu:
-
-- garis vertikal 3 px di sisi kiri; atau
-- border `--color-brand-500` 1 px.
-
-**Jangan** memakai halo biru, gradient, atau kartu yang “terbang”.
-
----
-
-# 7. Field — spesifikasi semua tipe
-
-## 7.1 Aturan umum field
-
-```text
-Label
-[ input ]
-Bantuan singkat / contoh
-Pesan error bila ada
-```
-
-- Tinggi minimum: 48 px.
-- Target sentuh: minimal 44 px.
-- Label terpisah dari placeholder.
-- Fokus: border brand + focus ring tipis.
-- Jangan mengandalkan warna untuk menunjukkan fokus/error.
-- Field wajib ditandai dengan `*` yang konsisten.
-
-## 7.2 Angka
-
-Contoh:
-
-`Undangan baru hari ini *`
-
-`[ 3 ] orang`
-
-Gunakan alignment angka yang rapi. Hindari input pendek yang sulit disentuh.
-
-## 7.3 Rupiah
-
-Contoh:
-
-`Nominal pengajuan *`
-
-`Rp 300.000`
-
-Tampilkan prefix `Rp` secara visual tetapi simpan nilai numerik bersih di schema.
-
-## 7.4 Teks satu baris
-
-Contoh:
-
-`Nama konsumen`
-
-`[ Nama lengkap konsumen ]`
-
-## 7.5 Teks panjang
-
-Contoh untuk laporan keamanan:
-
-`Kejadian hari ini`
-
-`[ 3–6 baris awal ]`
-
-Textarea tumbuh sampai batas wajar. Jangan membuat kotak sangat pendek yang memaksa scroll internal.
-
-## 7.6 Pilihan
-
-Gunakan select native/styled select hanya ketika pilihan banyak. Untuk 2–4 pilihan yang jelas, gunakan **segmented choice** atau radio list.
-
-Contoh:
-
-`Status laporan`
-
-`[ Aman ] [ Perlu dikawal ] [ Urgent ]`
-
-Status harus tetap memakai warna semantik, tetapi **warna hanya menjadi penguat**, bukan satu-satunya pembeda.
-
-## 7.7 Ya/Tidak
-
-Gunakan pilihan dua opsi yang eksplisit:
-
-`Sudah ditindaklanjuti?`
-
-`[ Ya ] [ Belum ]`
-
-Jangan gunakan switch jika konsekuensi aksinya belum jelas. Switch lebih cocok untuk setting on/off, bukan jawaban laporan.
-
-## 7.8 Tabel berulang
-
-Pada 360 px jangan gunakan tabel desktop yang dipaksa mengecil.
-
-Ubah menjadi kumpulan item berulang:
-
-```text
-Konsumen 1
-Nama           [ ... ]
-Lokasi         [ ... ]
-Status         [ ... ]
-```
-
-Jika jumlah item besar, tampilkan satu item per card ringan.
-
-## 7.9 Unggah lampiran
-
-Tombol utama:
-
-`Pilih foto` / `Pilih video`
-
-Setelah terpilih:
-
-```text
-✓ Foto bukti tersedia
-nama-file.jpg
-[ Ganti ]
-```
-
-Jangan mengandalkan “Choose File” bawaan browser karena terlalu teknis untuk pengguna non-teknis.
-
----
-
-# 8. Panel terisi otomatis
-
-Ini harus jelas berbeda dari input manual.
-
-## Pola
-
-```text
-Terisi otomatis
-Data diambil dari laporan hari ini
-
-Nama: Dadang
-Lokasi: Tajur
-Jumlah undangan: 8
-
-[ Tidak dapat diubah ]
-```
-
-### Visual
-
-- Background: `--color-brand-50`
-- Border: `--color-brand-100`
-- Ikon kecil + teks `Terisi otomatis`
-- Field tampil seperti data, **bukan seperti disabled input**.
-
-### Alasan
-
-Disabled input biasanya terlihat “rusak” atau seperti error. Pengguna perlu paham bahwa field memang **benar, berasal dari sistem, dan bukan tugas yang harus diisi**.
-
----
-
-# 9. Panel PTE — enam kewajiban harian
-
-Enam kewajiban:
-
-1. Live streaming
-2. Undangan konsumen baru
-3. Kesaksian/testimoni konsumen
-4. Google Review lokasi proyek
-5. Minimal 3 konten media sosial
-6. Video mentahan/progres kegiatan
-
-Semua wajib lengkap dan memiliki bukti.
-
-## 9.1 Jangan buat 6 kartu besar penuh warna
-
-Pakai satu daftar kompak:
-
-```text
-PTE hari ini                           4 dari 6 selesai
-──────────────────────────────────────────────────
-✓  Live streaming                      Bukti ada
-✓  Undangan konsumen baru              Bukti ada
-✓  Testimoni konsumen                  Bukti ada
-✓  Google Review                       Bukti ada
-!  3 konten media sosial               Bukti belum ada
-!  Video mentahan                      Bukti belum ada
-```
-
-## 9.2 Penanda status
-
-- Selesai: ikon centang kecil + teks `Selesai`
-- Belum: ikon garis/lingkaran sederhana + teks `Belum lengkap`
-- Jangan mewarnai seluruh baris.
-
-Status semantik dapat memakai warna di **ikon, label, atau garis kiri 3 px**.
-
-## 9.3 Contoh pada layar aktual
-
-Untuk form yang menunjukkan:
-
-> `PTE hari ini — wajib tanpa alasan`
->
-> Live: belum
-> Undangan: belum
-> Testimoni: belum
-> G-Review: belum
-> 3 konten: belum
-> Video mentahan: belum
-
-Jangan tampilkan enam simbol merah besar. Gunakan satu ringkasan utama:
-
-> **PTE belum lengkap**
->
-> 0 dari 6 kewajiban selesai.
->
-> Masih perlu: Live, Undangan, Testimoni, Google Review, 3 konten, Video mentahan.
-
-Lalu enam baris detail.
-
-### Kenapa?
-
-Satu keputusan visual cukup untuk memberi alarm. Enam alarm sekaligus membuat mata lelah dan menghilangkan prioritas.
-
----
-
-# 10. Beranda
-
-## 10.1 Tujuan
-
-Layar pertama harus menjawab:
-
-> **“Apa yang harus saya kerjakan sekarang?”**
-
-## 10.2 Urutan konten
-
-### 1. Sapaan singkat
-
-Contoh:
-
-> **Selamat pagi, Elsa.**
-> Hari ini ada 1 laporan yang perlu diselesaikan.
-
-Hindari sapaan marketing seperti “Semangat pagi!” sebagai elemen utama jika itu tidak memberi informasi.
-
-### 2. Tugas hari ini
-
-```text
-Hari ini
-
-● Absen                              Selesai
-  06.00–09.00
-
-● Laporan marketing                   Belum diisi
-  Batas hari ini
-
-● Laporan restoran                    —
-  Tidak ada tugas
-```
-
-Pisahkan **“Belum diisi”** dari **“Tidak ada tugas”**.
-
-### 3. Status absen
-
-Tampilkan ringkas:
-
-> **Absen masuk**
-> 06.03 · Dalam radius kantor
->
-> **Pulang**
-> Belum dilakukan
-
-Jangan memaksa pengguna masuk ke halaman absen hanya untuk melihat status.
-
-### 4. CEO/admin
-
-Untuk Ibu Putri/Ibu Sabrina, setelah tugas pribadi tampilkan area operasional:
-
-> **Papan kontrol hari ini**
-> 12 dari 16 laporan sudah masuk.
-
-Baris kecil, bukan grid dashboard warna-warni.
-
----
-
-# 11. Absen
-
-## Tujuan
-
-Absen harus terasa seperti **satu pekerjaan**, bukan mini-form.
-
-## Urutan
-
-1. Kamera
-2. Lokasi GPS
-3. Verifikasi radius
-4. Foto
-5. Kirim
-6. Hasil
-
-## Layout
-
-```text
-Absen masuk
-
-Kamera terhubung
-[ preview foto ]
-
-Lokasi Anda
-Jl. ...
-120 m dari titik kantor
-✓ Dalam radius
-
-[ Ambil foto absen ]
-```
-
-Setelah foto siap:
-
-```text
-Foto siap
-✓ Wajah terlihat
-✓ Lokasi sesuai
-✓ Waktu tercatat
-
-[ Kirim absen ]
-```
-
-### Status radius
-
-Jangan hanya berkata:
-
-> `GPS aktif`
-
-Gunakan:
-
-> **Dalam radius**
-> 120 m dari titik lokasi.
-
-atau:
-
-> **Di luar radius**
-> Anda 580 m dari titik lokasi. Pindah lebih dekat untuk melanjutkan.
-
-### Prinsip
-
-Status GPS harus menjelaskan **apa artinya bagi tindakan pengguna**, bukan kondisi teknis perangkat.
-
----
-
-# 12. Papan Kontrol
-
-Untuk pusat pelaporan / admin.
-
-## Ringkasan atas
+Gunakan struktur:
 
 ```text
 Laporan hari ini
 
-12 dari 16 sudah masuk
-██████████████░░░░
-4 laporan masih ditunggu
+4 dari 9 bagian selesai
+████████████──────
+
+⚠ 2 bagian perlu dilengkapi
+
+01  Absen                      ✓ Selesai
+02  Target closing             0 dari 2
+03  Undangan                   8 dari 20
+04  PTE                        4 dari 6
+...
+
+[ Lanjutkan laporan ]
 ```
 
-Gunakan progress bar tipis. Jangan gunakan donut chart.
+**Bagian ringkasan ini harus tetap terlihat di awal halaman.**
 
-## Kartu laporan
+## 5.2 Setiap section punya satu “headline outcome”
 
-Kartu minimal:
+Contoh:
 
-```text
-Dadang
-Humas · Tajur
+> **Target closing pribadi**
+> **0 dari 2 konsumen**
+> Masih perlu 2 konsumen untuk memenuhi target bulan ini.
 
-Masuk 06.17
-✓ Lengkap
+Bukan hanya:
 
-[ Buka laporan ]
-```
-
-Jika kosong:
-
-```text
-Elsa
-Restoran
-
-Belum ada laporan hari ini
-Terakhir masuk: kemarin, 17.03
-
-[ Kirim pengingat ]
-```
-
-### Warna
-
-- Default: netral.
-- Aman: garis kiri + label kecil.
-- Perlu dikawal: garis kiri + label kecil.
-- Urgent: garis kiri + label kecil.
-
-**Jangan** menjadikan seluruh kartu hijau/kuning/merah.
-
----
-
-# 13. Antrean keputusan CEO
-
-Setiap item harus memberikan **alasan untuk memutuskan**, bukan sekadar angka.
-
-## Struktur
-
-```text
-Permintaan dana
-
-Rp 3.500.000
-Tenggat: hari ini, 15.00
-
-Dampak
-Pengecoran tidak dapat dimulai tanpa dana ini.
-
-Diajukan oleh
-Dadang · Tajur
-
-[ Setujui ]   [ Tunda ]
-[ Cicil ]     [ Tolak ]
-```
-
-### Urutan informasi
-
-1. Nominal
-2. Tenggat
-3. Dampak
-4. Pengaju
-5. Tindakan
+> Target closing pribadi
+> 0 / 2
 
 ### Alasan
 
-CEO mengambil keputusan dalam waktu singkat. Nominal saja tidak cukup untuk menentukan prioritas.
+Angka mentah tidak selalu dipahami dengan cepat. Kalimat “masih perlu 2” mengubah angka menjadi tindakan.
 
----
+## 5.3 Detail hanya setelah ringkasan
 
-# 14. Kartu ringkasan angka
-
-Digunakan untuk angka yang memang perlu dibaca cepat:
-
-- 12 dari 16 laporan
-- 0 dari 2 closing
-- 4 dari 6 PTE
-- 3 undangan besok
-
-## Aturan
-
-Satu kartu = **satu pertanyaan**.
-
-Contoh yang baik:
-
-> **Laporan masuk**
-> **12 dari 16**
-> 4 masih ditunggu
-
-Contoh yang buruk:
-
-> **12 / 16 / 4 / 0 / 100** dalam satu kartu.
-
-Jangan memakai skor 0–100 sebagai penilaian karyawan. Itu tidak memiliki dasar pada aturan perusahaan menurut brief.
-
----
-
-# 15. Nav bawah 5 tombol
-
-Lima item:
-
-1. Beranda
-2. Laporan
-3. **Absen** — tengah dan menonjol
-4. Riwayat
-5. Menu
-
-## Posisi tombol Absen
-
-Buat tombol tengah menonjol **melalui bentuk dan posisi**, bukan melalui warna neon.
-
-Contoh visual:
-
-```text
-┌─────────────────────────────────┐
-│  Beranda  Laporan   Absen  Riwayat  Menu │
-│                     ●              │
-└─────────────────────────────────┘
-```
-
-Tombol tengah dapat berada sedikit di atas baseline nav, dengan radius penuh karena ini satu-satunya bentuk bulat yang memiliki alasan fungsional jelas: **menjadi target sentuh utama**.
-
-### Aturan
-
-- Area nav: minimal 48 px per target sentuh.
-- Tinggi nav total sekitar 72 px.
-- Label teks selalu ada.
-- Tombol tengah: diameter sekitar 52–56 px.
-- Gunakan shadow sangat tipis bila diperlukan untuk memisahkan tombol dari nav.
-
-### Kenapa satu bulatan boleh?
-
-Karena ia menjadi **tanda tangan navigasi**, bukan bahasa visual seluruh aplikasi. Bila semua status dan kartu juga bulat, makna bentuknya hilang.
-
----
-
-# 16. Keadaan kosong
-
-Keadaan kosong harus menjawab: **“Apakah ini memang kosong, atau sistem bermasalah?”**
-
-Contoh Riwayat:
-
-```text
-Belum ada laporan tersimpan
-
-Laporan yang Anda kirim akan muncul di sini.
-
-[ Buat laporan hari ini ]
-```
-
-Contoh Papan Kontrol:
-
-```text
-Belum ada laporan masuk
-
-Belum ada anggota tim yang mengirim laporan hari ini.
-```
-
-Jangan gunakan ilustrasi besar atau ikon abu-abu raksasa sebagai pengganti penjelasan.
-
----
-
-# 17. Pesan error
-
-## Formula
-
-**Apa yang salah → apa yang harus dilakukan.**
-
-Contoh:
-
-Buruk:
-
-> `Validation failed.`
-
-Baik:
-
-> **Foto belum dipilih.**
-> Ambil atau pilih foto absen terlebih dahulu.
-
-Buruk:
-
-> `Invalid GPS radius.`
-
-Baik:
-
-> **Lokasi belum sesuai.**
-> Anda masih di luar radius yang diizinkan.
-
-Buruk:
-
-> `Required field.`
-
-Baik:
-
-> **Nama konsumen belum diisi.**
-
-## Penempatan
-
-Error ditempatkan **sedekat mungkin dengan field sumbernya**, lalu tambahkan ringkasan di bagian atas hanya bila banyak error.
-
----
-
-# 18. Pola status 🟢 🟡 🔴 tanpa membuat layar penuh warna
-
-## 18.1 Status semantic
-
-| Status | Makna | Cara visual |
-|---|---|---|
-| Aman | Tidak perlu tindakan khusus | Ikon kecil + teks + garis kiri |
-| Perlu dikawal | Ada hal yang perlu diperhatikan | Ikon kecil + teks + garis kiri |
-| Urgent | Perlu ditangani segera | Ikon kecil + teks + garis kiri; boleh sedikit lebih kontras |
-
-### Warna status
-
-Gunakan warna yang disediakan token semantic hanya di:
-
-- ikon status,
-- label status,
-- border kiri 3 px,
-- background sangat tipis pada pesan yang benar-benar perlu disorot.
-
-**Jangan** menggunakan status sebagai fill seluruh kartu.
-
-## 18.2 Status kelengkapan berbeda dari status bisnis
-
-Jangan campurkan:
-
-- `Lengkap / Belum lengkap` = keadaan data/form.
-- `Aman / Perlu dikawal / Urgent` = kondisi bisnis.
-
-Contoh:
-
-> **Laporan lengkap** · **Perlu dikawal**
-
-Keduanya dapat muncul bersamaan karena menjawab dua pertanyaan berbeda.
-
----
-
-# 19. Aturan penulisan (Bahasa Indonesia)
-
-## 19.1 Nada
-
-Gunakan Bahasa Indonesia yang:
-
-- langsung,
-- sopan,
-- pendek,
-- tidak teknis,
-- tidak menggurui.
-
-### Gunakan
-
-- “Belum diisi”
-- “Belum lengkap”
-- “Pilih foto”
-- “Kirim laporan”
-- “Dalam radius”
-- “Di luar radius”
-- “Masih perlu 2 lagi”
-
-### Hindari
-
-- “Submit”
-- “Upload”
-- “Validation”
-- “Sync”
-- “Payload”
-- “Field”
-- “Database”
-- nama tabel/kolom internal
-
-## 19.2 Label
-
-Gunakan bentuk benda/tindakan yang alami:
-
-> `Jumlah undangan hari ini`
->
-> `Nama konsumen`
->
-> `Bukti Google Review`
-
-Bukan:
-
-> `INPUT UNDANGAN KONSUMEN`
-
-## 19.3 Bantuan
-
-Satu kalimat maksimal jika tidak dibutuhkan lebih.
-
-Contoh:
-
-> `Masukkan jumlah orang baru yang Anda undang hari ini.`
-
-## 19.4 Konfirmasi
-
-Contoh:
-
-> **Laporan tersimpan.**
-> Data hari ini sudah tercatat.
-
-Untuk tindakan tidak dapat dibatalkan:
-
-> **Kirim laporan sekarang?**
-> Setelah dikirim, data akan tercatat sebagai laporan hari ini.
->
-> `[ Kirim laporan ]` `[ Kembali ]`
-
----
-
-# 20. Contoh nyata dari layar aplikasi
-
-## 20.1 Beranda — kasus Diki/IT
-
-Masalah layar saat ini: sapaan besar dan panel marketing tampil lebih kuat daripada pertanyaan “apa yang harus dilakukan”.
-
-Pola yang disarankan:
-
-```text
-Selamat siang, Diki
-
-Yang perlu diselesaikan hari ini
-
-✓ Absen masuk
-  12.04 · Dalam radius
-
-! Laporan marketing pribadi
-  Belum diisi
-  6 kegiatan PTE + bukti
-
-Target bulan ini
-
-Closing            0 dari 2
-Undangan           0 dari 20
-
-[ Isi laporan marketing ]
-```
-
-Tujuan: tombol tindakan muncul setelah konteks, bukan setelah dekorasi.
-
-## 20.2 Form target closing
-
-Saat ini layar menunjukkan `0 / 2`, lalu field konsumen 1 dan 2 tanpa konsekuensi yang cukup jelas.
-
-Pola baru:
+Section aktif:
 
 ```text
 Target closing pribadi
-
 0 dari 2 konsumen
-Belum memenuhi target bulanan.
+Masih perlu 2 konsumen.
 
 Closing bulan ini *
 [ 0 ]
 
 Konsumen 1
-[ Nama konsumen ]
-[ Lokasi proyek / blok ]
-[ Status ]
-
-Konsumen 2
-[ Nama konsumen ]
-[ Lokasi proyek / blok ]
-[ Status ]
+[ ... ]
 ```
 
-## 20.3 Panel PTE
+Section lain cukup berupa summary row.
 
-Saat ini enam item muncul sebagai enam kotak dengan simbol merah. Itu membuat layar terasa seperti alarm.
+## 5.4 “Tinggal berapa lagi” wajib
 
-Pola baru:
+Setiap target harus dapat diterjemahkan menjadi salah satu:
+
+- `Tinggal 2`
+- `Masih menunggu 4`
+- `Semua sudah lengkap`
+- `Perlu 1 bukti lagi`
+
+Ini adalah cara termudah menciptakan rasa kemajuan.
+
+---
+
+# 6. Beranda — prioritas tindakan
+
+Beranda harus menjawab “apa yang harus dikerjakan sekarang?”. Brief menjadikan Beranda sebagai layar pertama dan meminta sapaan, daftar laporan belum dikirim beserta jam batasnya, serta status absen. fileciteturn0file0L82-L98
+
+## 6.1 Struktur visual
 
 ```text
-PTE hari ini
+Selamat pagi, Diki
+Ada 2 hal yang perlu Anda selesaikan.
 
-0 dari 6 kewajiban selesai
-Masih ada 6 kegiatan yang perlu dilengkapi.
+┌────────────────────────────────────┐
+│ ABsen                              │
+│ ✓ Selesai · 06.04 WIB              │
+└────────────────────────────────────┘
 
-○ Live streaming                 Belum lengkap
-○ Undangan konsumen baru         Belum lengkap
-○ Testimoni konsumen             Belum lengkap
-○ Google Review                  Belum lengkap
-○ 3 konten media sosial          Belum lengkap
-○ Video mentahan                 Belum lengkap
+┌─ amber ────────────────────────────┐
+│ LAPORAN MARKETING                  │
+│ Belum dikirim                      │
+│ 6 kegiatan PTE perlu dilaporkan   │
+│ [ Isi sekarang ]                   │
+└────────────────────────────────────┘
+
+Target bulan ini
+┌─────────────┐  ┌─────────────────┐
+│ 0 dari 2    │  │ 0 dari 20       │
+│ Closing     │  │ Undangan        │
+└─────────────┘  └─────────────────┘
 ```
 
-## 20.4 Bukti PTE
+### Warna
 
-Satu item dapat dibuka menjadi:
+- Absen selesai → neutral + green rail kecil.
+- Laporan belum dibuat → **amber atau merah tergantung tingkat urgensi**.
+- Target → blue-soft.
+
+Jangan membuat kedua target sama-sama berwarna merah hanya karena belum mencapai angka target. **Belum mencapai target ≠ urgent.**
+
+---
+
+# 7. CEO dashboard — “warna sebagai alat baca”
+
+Ini area yang **boleh lebih berwarna** daripada form karyawan.
+
+## 7.1 Ringkasan teratas
+
+Buat tiga kartu ringkas dengan status yang langsung terlihat:
 
 ```text
-Google Review
+Laporan hari ini
 
-Jumlah: 2 review
+12 / 16
+Sudah masuk
 
-Bukti
-[ Pilih screenshot ]
-atau
-[ Tempel tautan Google Maps ]
+4
+Belum lapor
 
-✓ Bukti tersedia
+2
+Perlu follow-up
 ```
 
-Pengguna tidak perlu melihat semua uploader sekaligus.
+Visual:
 
-## 20.5 Absen
+- `12 / 16` → blue.
+- `4 Belum lapor` → red-soft + red rail.
+- `2 Perlu follow-up` → amber-soft + amber rail.
 
-Dari screenshot terlihat kamera, GPS, watermark dan foto masuk/pulang. Hierarki sebaiknya:
+### Kenapa boleh merah?
+
+Karena CEO memang membutuhkan **exception reporting**: yang perlu diperhatikan muncul lebih kuat daripada yang normal.
+
+## 7.2 Papan kontrol
+
+Brief secara eksplisit meminta kartu setiap laporan yang ditunggu, status sesuai warna, kartu kosong jika belum lapor, dan bar seperti “12 dari 16 sudah melapor”. fileciteturn0file0L92-L98
+
+### Kartu normal
+
+```text
+┌─ green 4px ─────────────────────────────┐
+│ Dadang                                  │
+│ Humas · Tajur                           │
+│                                         │
+│ ✓ Sudah melapor                         │
+│ 06.17 WIB                               │
+│                                         │
+│ [ Buka laporan ]                        │
+└─────────────────────────────────────────┘
+```
+
+### Kartu belum lapor
+
+```text
+┌─ red 4px ───────────────────────────────┐
+│ Elsa                                    │
+│ Indosteak · Restoran                    │
+│                                         │
+│ ● BELUM LAPOR                            │
+│ Belum ada laporan hari ini              │
+│ Batas: 17.00 WIB                        │
+│                                         │
+│ [ Follow-up ]                            │
+└─────────────────────────────────────────┘
+```
+
+**Seluruh kartu boleh mendapat background `urgent-soft`, bukan merah solid.**
+
+### 7.3 Follow-up harus menjadi aksi utama
+
+Jangan tampilkan “Belum lapor” tanpa tindakan.
+
+Gunakan:
+
+> **Belum lapor**
+> [ Follow-up ]
+
+Bukan:
+
+> **Belum lapor**
+> [ Detail ]
+
+Karena pekerjaan CEO/admin bukan hanya melihat masalah, tetapi memutuskan tindakan.
+
+---
+
+# 8. Status: 3 tingkat + 1 status kelengkapan
+
+## 8.1 Status bisnis
+
+| Status | Warna | Visual | Contoh |
+|---|---|---|---|
+| Aman | Hijau | rail + ikon + teks | `Sudah lapor` |
+| Perlu dikawal | Amber | rail + ikon + teks | `Follow-up diperlukan` |
+| Urgent | Merah | rail + ikon + teks + soft fill | `Belum lapor` / tenggat dekat |
+
+## 8.2 Status kelengkapan
+
+Status kelengkapan harus terpisah:
+
+- `Lengkap`
+- `Belum lengkap`
+- `Belum diisi`
+
+Jangan menyamakan “belum target” dengan “urgent”.
+
+Contoh:
+
+> **Lengkap** · **Perlu dikawal**
+
+Artinya data sudah lengkap, tetapi isi laporannya membutuhkan perhatian.
+
+## 8.3 Status tidak boleh hanya mengandalkan warna
+
+Selalu sertakan:
+
+1. teks status,
+2. ikon kecil atau simbol sederhana,
+3. rail warna.
+
+Jangan hanya:
+
+> `[ merah ]`
+
+Harus:
+
+> `● Belum lapor`
+
+## 8.4 Penggunaan merah yang tepat
+
+Merah boleh tampil pada area yang memang membutuhkan perhatian:
+
+- belum lapor,
+- tenggat terlewat,
+- pengajuan urgent,
+- bukti wajib belum ada ketika pengiriman akan gagal.
+
+Merah **tidak** boleh tampil untuk:
+
+- background aplikasi,
+- header umum,
+- kartu target yang sekadar belum tercapai,
+- tombol biasa.
+
+---
+
+# 9. Panel PTE — enam kewajiban
+
+Brief menetapkan enam kewajiban harian: live, undangan konsumen, kesaksian/testimoni, Google Review, minimal tiga konten, dan video mentahan; masing-masing harus memiliki bukti. fileciteturn0file0L88-L90
+
+## 9.1 Bentuk final
+
+Di desktop/CEO:
+
+```text
+PTE hari ini                             4 dari 6 selesai
+██████████████░░
+
+✓  Live streaming                  Bukti ada
+✓  Undangan konsumen               Bukti ada
+✓  Testimoni konsumen              Bukti ada
+✓  Google Review                   Bukti ada
+!  3 konten media sosial           Bukti belum ada
+!  Video mentahan                  Bukti belum ada
+```
+
+Di mobile, tiap baris menjadi kartu ringan dengan **rail kiri**.
+
+### Alasan
+
+Boleh ada lebih banyak warna di PTE karena enam item memang berisi status pekerjaan. Warna tetap dipasang pada rail/status, bukan 6 kotak penuh warna.
+
+## 9.2 Ringkasan saat semuanya belum lengkap
+
+Jangan tampilkan 6 ikon merah besar.
+
+Gunakan:
+
+```text
+┌─ red 4px ────────────────────────────┐
+│ PTE belum lengkap                    │
+│ 0 dari 6 kewajiban selesai           │
+│ Tinggal 6 kegiatan + bukti.          │
+└──────────────────────────────────────┘
+```
+
+Detail di bawahnya tetap netral/soft.
+
+---
+
+# 10. Form field
+
+## Aturan umum
+
+- Tinggi minimum 48 px.
+- Sasaran sentuh minimal 44 px.
+- Label 14 px, semibold.
+- Isi 16 px.
+- Error dekat dengan field.
+- Focus memakai border brand + focus ring tipis.
+- Placeholder tidak boleh lebih dominan daripada nilai aktual.
+
+## 10.1 Angka
+
+```text
+Undangan baru hari ini *
+[ 3 ] orang
+```
+
+Tambahkan satuan di luar input bila memungkinkan supaya pengguna tidak perlu mengetik “orang”.
+
+## 10.2 Rupiah
+
+```text
+Nominal pengajuan *
+[ Rp 300.000 ]
+```
+
+## 10.3 Teks
+
+```text
+Nama konsumen
+[ Nama lengkap konsumen ]
+```
+
+## 10.4 Teks panjang
+
+Gunakan tinggi awal 96–120 px, dapat tumbuh sesuai isi.
+
+## 10.5 Pilihan status
+
+Untuk tiga status:
+
+```text
+Status laporan
+
+[ Aman ] [ Perlu dikawal ] [ Urgent ]
+```
+
+Saat satu dipilih, opsi lain tetap netral. Warna muncul pada pilihan aktif saja.
+
+## 10.6 Ya/tidak
+
+Gunakan pilihan dua tombol yang jelas:
+
+```text
+Sudah ditindaklanjuti?
+[ Ya ] [ Belum ]
+```
+
+## 10.7 Tabel berulang
+
+Pada 360 px ubah menjadi list item.
+
+## 10.8 Unggah bukti
+
+Gunakan bahasa manusia:
+
+> `Pilih foto bukti`
+
+bukan:
+
+> `Choose File`
+
+Setelah file ada:
+
+```text
+✓ Foto bukti tersedia
+bukti-review.jpg
+[ Ganti foto ]
+```
+
+---
+
+# 11. Panel terisi otomatis
+
+Data otomatis harus terlihat **lebih informatif, bukan seperti disabled input**.
+
+```text
+┌─ blue-soft ────────────────────────────┐
+│ Data dari laporan hari ini             │
+│                                       │
+│ Nama              Dadang               │
+│ Lokasi            Tajur                │
+│ Undangan          8 orang              │
+│                                       │
+│ Terisi otomatis · tidak perlu diubah  │
+└────────────────────────────────────────┘
+```
+
+### Kenapa biru-soft?
+
+Biru adalah warna identitas dan paling aman untuk informasi sistem. Jangan menggunakan abu-abu terlalu pucat karena pengguna 51 tahun atau pengguna di bawah sinar matahari bisa menganggap datanya tidak aktif/terbaca.
+
+---
+
+# 12. Absen
+
+Brief meminta tombol besar, GPS, kamera, foto, titik lokasi, jarak, dan status berhasil/di luar radius. fileciteturn0file0L90-L94
+
+## Urutan layar
 
 ```text
 Absen masuk
 
-1. Lokasi
+Lokasi Anda
 ✓ Dalam radius
 120 m dari Kantor Pusat
 
-2. Foto
-[ preview kamera ]
+Kamera
+[ preview ]
 
-Wajah harus terlihat jelas.
+Pastikan wajah terlihat jelas.
 
 [ Ambil foto absen ]
 ```
 
-Setelah foto berhasil:
+Setelah foto:
 
 ```text
-✓ Foto tersimpan
+✓ Foto siap
 ✓ Lokasi sesuai
-✓ Waktu 06.04 WIB
+06.04 WIB
 
 [ Kirim absen ]
 ```
 
----
+### Status GPS
 
-# 21. Progress dan “rasa kemajuan”
+Gunakan warna semantik:
 
-Setiap pekerjaan berulang perlu satu indikator “tinggal berapa lagi”.
+- hijau-soft: `Dalam radius`
+- merah-soft: `Di luar radius`
+- amber-soft: `Lokasi sedang diperiksa`
 
-Gunakan formula:
-
-> **sudah / target + kalimat manusia**
-
-Contoh:
-
-- `12 dari 16 laporan sudah masuk — 4 masih ditunggu.`
-- `0 dari 2 closing — masih perlu 2 konsumen.`
-- `4 dari 6 PTE selesai — tinggal 2 bukti.`
-- `3 undangan besok — sesuai rencana.`
-
-Hindari hanya:
-
-- `12/16`
-- `0/2`
-- `66%`
-
-Persentase boleh menjadi informasi sekunder, bukan bahasa utama.
+Jangan gunakan pesan teknis seperti “GPS error 403”.
 
 ---
 
-# 22. Responsive behavior 360 px
+# 13. Antrean keputusan CEO
 
-## 22.1 Aturan keras
+Brief meminta nominal, tenggat, dampak, dan tombol Setujui / Cicil / Tunda / Tolak. fileciteturn0file0L94-L98
 
-Pada 360 px:
+## Struktur visual
 
-- tidak boleh ada horizontal scroll,
-- tombol utama tidak boleh terpotong,
-- label field tidak boleh bertabrakan dengan ikon,
-- angka penting tidak boleh membungkus secara aneh,
-- tombol aksi tetap mudah disentuh satu tangan,
-- nav tidak boleh mempunyai target yang terlalu rapat.
+```text
+┌─ amber 4px ────────────────────────────┐
+│ Permintaan dana                        │
+│ Rp 3.500.000                           │
+│                                        │
+│ Tenggat       Hari ini, 15.00         │
+│ Dampak        Pengecoran tertunda     │
+│ Pengaju       Dadang · Tajur          │
+│                                        │
+│ [ Setujui ] [ Cicil ]                 │
+│ [ Tunda ]  [ Tolak ]                  │
+└────────────────────────────────────────┘
+```
 
-## 22.2 Field panjang
+### Tombol
 
-Label panjang boleh 2 baris.
+- `Setujui` = brand blue, primary.
+- `Cicil` = amber-soft/outlined.
+- `Tunda` = neutral outlined.
+- `Tolak` = urgent outline, bukan tombol merah solid yang mendominasi.
 
-Contoh:
+### Alasan
 
-> `3. Video mentahan / progres kegiatan lapangan`
-
-Lebih baik label 2 baris daripada memperkecil font.
-
-## 22.3 Button
-
-Gunakan tinggi 48 px pada tombol utama.
-
-Untuk tombol sekunder berdampingan di 360 px, pastikan setiap tombol tetap minimal 44 px tinggi dan memiliki padding horizontal cukup. Bila tidak cukup lebar, **susun vertikal**, jangan mengecilkan teks.
+Tindakan utama harus mudah terlihat, tetapi keputusan destruktif seperti “Tolak” tidak boleh lebih mencolok daripada “Setujui”.
 
 ---
 
-# 23. Aturan ikon SVG inline
+# 14. Kartu ringkasan angka
 
-Karena tidak boleh ada pustaka ikon:
+Satu kartu = satu pertanyaan.
 
-- gunakan SVG inline,
-- bentuk sederhana,
-- stroke konsisten,
-- hindari ikon dekoratif yang tidak menambah arti.
+Contoh CEO:
 
-Ikon hanya membantu label, bukan menggantikan label.
+```text
+Laporan masuk
+12 dari 16
+4 masih ditunggu
+```
+
+```text
+Belum lapor
+4 orang
+Follow-up diperlukan
+```
+
+```text
+PTE
+4 dari 6
+2 bukti belum ada
+```
+
+### Warna
+
+- Informasi = blue.
+- Masalah = red-soft.
+- Perlu tindak lanjut = amber-soft.
+- Selesai = green-soft.
+
+Ini adalah salah satu tempat utama untuk memberi “warna” tanpa membuat UI terasa ramai.
+
+---
+
+# 15. Riwayat
+
+Gunakan filter bulan/tahun seperti tampilan sekarang, tetapi hasil harus menunjukkan status langsung:
+
+```text
+Agustus 2026
+
+30 Agustus
+Laporan marketing
+✓ Lengkap · 12.04 WIB
+
+29 Agustus
+Laporan marketing
+✓ Lengkap · 17.10 WIB
+```
+
+Untuk laporan belum lengkap:
+
+```text
+28 Agustus
+Laporan marketing
+! Belum lengkap
+2 bukti PTE belum ada
+```
+
+Jangan hanya menampilkan tanggal dan judul; status membantu pengguna menemukan masalah lama tanpa membuka satu per satu.
+
+---
+
+# 16. Keadaan kosong
+
+Keadaan kosong harus menjawab tiga hal:
+
+1. apakah memang belum ada data,
+2. kenapa belum ada,
+3. apa yang dapat dilakukan.
 
 Contoh:
 
 ```text
-[ikon kamera] Absen
+Belum ada laporan hari ini
+Belum ada laporan yang masuk sampai sekarang.
+
+[ Lihat papan kontrol ]
 ```
 
-bukan:
+Riwayat:
 
 ```text
-[ikon kamera saja]
+Belum ada laporan di bulan ini
+Laporan yang sudah dikirim akan muncul di sini.
+
+[ Buat laporan hari ini ]
 ```
 
-### Gaya ikon
-
-- ukuran umum 20–22 px,
-- tombol nav 22–24 px,
-- stroke 1.8–2 px,
-- bentuk sedikit geometris, tidak kartun.
+Jangan gunakan ilustrasi besar; gunakan whitespace dan satu ikon sederhana bila perlu.
 
 ---
 
-# 24. Bayangan, border, dan depth
+# 17. Pesan error
 
-Gunakan **border sebagai pemisah utama** dan shadow hanya untuk hubungan layer.
+Formula:
 
-### Gunakan shadow pada:
-
-- bottom navigation,
-- tombol Absen tengah jika perlu terlihat melayang di atas nav,
-- modal/dialog.
-
-### Jangan gunakan shadow pada:
-
-- setiap field,
-- setiap kartu bagian,
-- setiap badge,
-- setiap panel.
-
-### Kenapa?
-
-Jika semua elemen tampak melayang, tidak ada yang terasa benar-benar penting.
-
----
-
-# 25. Sistem komponen untuk renderer schema TypeScript
-
-Semua form harus dirender dari satu schema generik. Karena itu desain tidak boleh bergantung pada nama form tertentu.
-
-Contoh konsep schema:
-
-```ts
-type FieldType =
-  | "number"
-  | "currency"
-  | "text"
-  | "textarea"
-  | "choice"
-  | "boolean"
-  | "repeatable"
-  | "attachment"
-  | "status";
-
-interface FieldSchema {
-  id: string;
-  label: string;
-  type: FieldType;
-  required?: boolean;
-  help?: string;
-  placeholder?: string;
-  readOnly?: boolean;
-  source?: "manual" | "automatic";
-  statusMeaning?: "safe" | "watch" | "urgent";
-}
-```
-
-Renderer harus memilih **varian komponen**, bukan membuat CSS baru per form.
+> **Apa yang salah → tindakan yang harus dilakukan.**
 
 Contoh:
 
+> **Foto belum dipilih.**
+> Ambil foto absen terlebih dahulu.
+
+> **Lokasi belum sesuai.**
+> Anda masih 580 m dari titik lokasi yang diizinkan.
+
+> **Bukti PTE belum lengkap.**
+> Lengkapi 2 bukti sebelum mengirim laporan.
+
+### Error summary di form panjang
+
+Di bagian atas form tampilkan satu baris ringkasan:
+
 ```text
-Schema
-  ↓
-FormSection
-  ↓
-FieldRenderer
-  ├─ NumberField
-  ├─ CurrencyField
-  ├─ TextField
-  ├─ TextareaField
-  ├─ ChoiceField
-  ├─ BooleanField
-  ├─ RepeatableField
-  ├─ AttachmentField
-  └─ StatusField
+┌─ red 4px ─────────────────────────────┐
+│ Ada 3 bagian yang belum lengkap       │
+│ Gulir ke bagian yang ditandai merah.  │
+└────────────────────────────────────────┘
 ```
 
-Semua varian memakai token yang sama.
-
-### Prinsip agent AI
-
-Jika ditemukan kasus baru yang tidak tertulis di dokumen, agent harus memilih komponen berdasarkan **makna interaksi**, bukan membuat style baru:
-
-> “Apakah user memasukkan nilai?” → field standar.
->
-> “Apakah user hanya membaca hasil sistem?” → panel otomatis.
->
-> “Apakah data harus terlihat sebagai satu dari beberapa pilihan?” → choice.
->
-> “Apakah status ini memiliki makna bisnis tetap?” → semantic status.
+Lalu setiap error tetap ditaruh di field asalnya.
 
 ---
 
-# 26. Aturan prioritas visual
+# 18. Tombol dan tindakan
 
-Gunakan urutan berikut dalam satu layar:
+## Primary
 
-### P1 — Tugas yang harus dilakukan sekarang
+Biru brand, tinggi 48 px.
 
-Tombol, laporan yang belum selesai, bukti yang kurang.
+Contoh:
 
-### P2 — Konteks
+`Simpan laporan`
+`Kirim absen`
+`Follow-up`
 
-Judul halaman, section, siapa/apa yang sedang dikerjakan.
+## Secondary
 
-### P3 — Hasil
+Putih + border biru/neutral.
 
-Progress, angka, status.
+## Danger
 
-### P4 — Penjelasan
+Gunakan merah hanya jika tindakan atau keadaan memang urgent.
 
-Bantuan, kebijakan, detail tambahan.
+Contoh:
 
-### P5 — Dekorasi
+`Tolak permintaan`
 
-Hampir tidak perlu.
+Boleh memakai border merah + teks merah, tetapi jangan membuat semua tombol error berwarna merah.
 
-Jika sebuah elemen tidak membantu P1–P4, pertanyakan apakah elemen itu perlu ada.
+## Tindakan utama harus terlihat dalam 1 viewport bila memungkinkan
 
----
+Terutama:
 
-# 27. Apa yang secara eksplisit dilarang
-
-- Gradient.
-- Shadow tebal.
-- Animasi berlebihan.
-- HURUF BESAR SEMUA untuk label.
-- Font mono untuk UI umum.
-- Latar abu-kehijauan redup.
-- Skor otomatis 0–100 sebagai penilaian karyawan.
-- Istilah teknis kepada pengguna.
-- Kartu warna-warni yang semuanya ingin menonjol.
-- Ikon tanpa label teks pada fungsi non-universal.
-- Menyembunyikan informasi penting hanya karena ingin tampilan bersih.
-- Menggunakan hijau/kuning/merah sebagai warna dasar antarmuka.
-- Membuat semua elemen berbentuk kapsul/pill.
-- Membuat setiap section seperti kartu dashboard yang terpisah jauh.
-- Menyelesaikan masalah kepadatan dengan mengecilkan font.
+- Isi laporan
+- Kirim absen
+- Follow-up
+- Setujui
 
 ---
 
-# 28. Definition of Done — mobile
+# 19. Nav bawah 5 tombol
 
-Sebelum sebuah layar dianggap selesai, verifikasi di **360 px**:
+Lima tombol:
 
-### Layout
+1. Beranda
+2. Laporan
+3. **Absen** — tengah
+4. Riwayat
+5. Menu
+
+### Visual
+
+```text
+┌─────────────────────────────────────┐
+│ Beranda  Laporan   ( ABsen )  Riwayat Menu │
+│                    ●                 │
+└─────────────────────────────────────┘
+```
+
+Tombol Absen satu-satunya lingkaran besar yang menonjol. Semua tombol lain menggunakan ikon + label biasa.
+
+### Kenapa ini berbeda?
+
+Karena lingkaran tersebut memiliki fungsi navigasi yang sangat spesifik. Jangan ulangi bahasa bentuk itu pada status.
+
+---
+
+# 20. Pola warna per jenis layar
+
+| Layar | Warna dominan | Warna status |
+|---|---|---|
+| Beranda karyawan | Putih + biru | Hijau/amber seperlunya |
+| Form harian | Putih + blue-soft | Status hanya pada bagian terkait |
+| PTE | Putih + blue-soft | Status pada item PTE |
+| Absen | Putih + biru | Hijau/merah GPS |
+| Papan kontrol CEO | Putih + blue | Hijau/amber/merah lebih terlihat |
+| Antrean keputusan | Putih + blue | Amber/merah sesuai urgensi |
+| Riwayat | Putih + blue-soft | Status pada laporan |
+
+### Aturan paling penting
+
+**Semakin banyak keputusan yang perlu dibuat pengguna, semakin banyak warna status yang boleh terlihat.**
+
+Karyawan yang sedang mengisi form tidak perlu melihat 10 kartu merah. CEO yang melihat 16 laporan justru perlu melihat 4 laporan merah dengan jelas.
+
+---
+
+# 21. Contoh redesign langsung dari screenshot saat ini
+
+## 21.1 “Target closing 0 / 2”
+
+### Lama
+
+> `0 / 2` lalu field konsumen.
+
+### Baru
+
+```text
+Target closing pribadi
+
+0 dari 2 konsumen
+Masih perlu 2 konsumen untuk memenuhi target.
+
+Closing bulan ini
+[ 0 ]
+```
+
+Tambahkan **bar progress biru** tepat di bawah angka bila ruang memungkinkan.
+
+## 21.2 “Target undangan 0 / 20”
+
+Jangan tampilkan progress abu-abu kosong.
+
+```text
+Target undangan
+0 dari 20
+Masih perlu 20 undangan bulan ini.
+
+████────────────────
+```
+
+Progress awal tetap blue-soft + blue, bukan abu-abu total.
+
+## 21.3 PTE 0 / 6
+
+### Lama
+
+Enam tanda silang merah membuat layar seperti error.
+
+### Baru
+
+```text
+PTE hari ini
+
+0 dari 6 selesai
+Masih perlu 6 kegiatan.
+
+○ Live                         Belum lengkap
+○ Undangan                     Belum lengkap
+○ Testimoni                    Belum lengkap
+○ Google Review                Belum lengkap
+○ 3 konten                     Belum lengkap
+○ Video mentahan               Belum lengkap
+```
+
+Hanya ringkasan utama menggunakan red-soft. Detail memakai neutral + status text.
+
+## 21.4 Papan kontrol CEO
+
+Inilah tempat menggunakan warna lebih kuat:
+
+```text
+Laporan hari ini
+12 dari 16 sudah masuk
+
+[ BLUE ] 12 Sudah masuk
+[ RED  ]  4 Belum lapor
+[ AMBER]  2 Perlu follow-up
+
+-----------------------
+
+Dadang   ✓ Sudah lapor
+Elsa     ! Belum lapor   [ Follow-up ]
+Kasam    ✓ Sudah lapor
+...
+```
+
+Ini jauh lebih mudah dipindai daripada 16 kartu putih yang semuanya sama.
+
+---
+
+# 22. Mobile-first dan usia pengguna
+
+Brief menetapkan 360 px sebagai lebar uji, sasaran sentuh minimal 44 px, 48 px untuk nav, dan kebutuhan keterbacaan di HP murah/sinar matahari. fileciteturn0file0L102-L113
+
+## 22.1 Jangan menggunakan abu-abu terlalu pucat
+
+Placeholder boleh lebih ringan, tetapi:
+
+- teks isi harus gelap,
+- status harus kontras,
+- border harus tetap terlihat,
+- label jangan memakai gray yang terlalu tipis.
+
+## 22.2 Jangan membuat informasi penting bergantung pada hover
+
+Semua status harus terlihat tanpa hover.
+
+## 22.3 Jangan mengandalkan warna saja
+
+CEO atau pengguna lain bisa melihat warna di bawah sinar berbeda. Selalu ada teks status.
+
+## 22.4 Gunakan ukuran yang “lega”
+
+Pada layar CEO, lebih baik menampilkan 4 kartu penting yang nyaman dibaca daripada 8 kartu kecil yang memerlukan konsentrasi.
+
+---
+
+# 23. Hal yang tetap dilarang
+
+Brief melarang HURUF BESAR SEMUA, sudut siku, font mono di luar angka, latar suram, skor karyawan 0–100 yang tidak berdasar, istilah teknis, terlalu banyak kotak berwarna, gradient, shadow tebal, animasi berlebihan, dan ikon tanpa label. fileciteturn0file0L117-L135
+
+Secara khusus, **jangan menerjemahkan “lebih berwarna” menjadi:**
+
+- 20 badge warna-warni dalam satu layar,
+- lingkaran merah/hijau/kuning di setiap item,
+- gradient biru ke ungu,
+- shadow besar,
+- kartu mengambang di atas kartu lain,
+- ilustrasi AI generik.
+
+“Lebih berwarna” berarti **status dan prioritas lebih mudah terlihat**.
+
+---
+
+# 24. Aturan untuk agent AI saat membuat komponen baru
+
+Ketika menemukan komponen/halaman baru yang belum dijelaskan di dokumen, gunakan urutan keputusan berikut:
+
+### 1. Apakah elemen ini menunjukkan status?
+
+Jika ya → gunakan semantic color + teks status.
+
+### 2. Apakah elemen ini menunjukkan tindakan utama?
+
+Jika ya → gunakan brand blue.
+
+### 3. Apakah ini informasi biasa?
+
+Jika ya → gunakan neutral surface.
+
+### 4. Apakah pengguna perlu perhatian segera?
+
+Jika ya → red-soft + red rail + tindakan jelas.
+
+### 5. Apakah pengguna hanya perlu tahu bahwa sesuatu selesai?
+
+Jika ya → green-soft atau green rail, jangan full green card kecuali konteks benar-benar membutuhkan scanning cepat.
+
+### 6. Apakah ini hanya dekorasi?
+
+Jika ya → **hapus**. Warna bukan dekorasi di aplikasi ini; warna adalah bahasa informasi.
+
+---
+
+# 25. Checklist mobile 360 px
+
+Sebelum sebuah halaman dianggap selesai:
+
+## Keterbacaan
+
+- [ ] Judul halaman minimal 24–28 px dan tidak pecah aneh.
+- [ ] Isian minimal 16 px.
+- [ ] Status dapat terbaca tanpa memperbesar layar.
+- [ ] Tidak ada teks abu-abu yang terlalu tipis.
+
+## Warna
+
+- [ ] Merah hanya menunjukkan keadaan yang memang urgent/belum dilakukan.
+- [ ] Amber hanya menunjukkan perlu perhatian/follow-up.
+- [ ] Hijau hanya menunjukkan keadaan aman/selesai.
+- [ ] Warna status selalu disertai teks.
+- [ ] Tidak ada layar yang tampak seperti kumpulan bubble AI.
+
+## Hierarki
+
+- [ ] Pengguna tahu apa tugas utama dalam 3 detik pertama.
+- [ ] Angka penting lebih besar daripada detail.
+- [ ] “Tinggal berapa lagi” terlihat.
+- [ ] Tindakan utama terlihat tanpa harus mencari-cari.
+
+## Sentuh
+
+- [ ] Target sentuh minimal 44 px.
+- [ ] Nav minimal 48 px.
+- [ ] Tombol berdampingan tidak terlalu rapat.
+- [ ] Tidak ada kontrol yang hanya mengandalkan ikon.
+
+## Layout
 
 - [ ] Tidak ada horizontal scroll.
-- [ ] Padding kiri/kanan konsisten.
-- [ ] Judul halaman terbaca dalam maksimal 2–3 baris.
-- [ ] Section tidak terlihat sebagai 9 kartu yang semuanya sama penting.
+- [ ] Tidak ada field yang terpotong.
+- [ ] Tidak ada angka yang membungkus dengan aneh.
+- [ ] Error berada dekat sumber masalah.
+- [ ] Papan kontrol masih mudah dipindai satu tangan.
 
-### Interaksi
+## CEO
 
-- [ ] Semua target sentuh minimal 44 px.
-- [ ] Target nav minimal 48 px.
-- [ ] Tombol aksi utama dapat ditemukan tanpa mencari.
-- [ ] Fokus keyboard terlihat.
-- [ ] Error bisa ditemukan tanpa menebak field mana yang salah.
-
-### Keterbacaan
-
-- [ ] Isian tidak lebih kecil dari 16 px.
-- [ ] Teks bantuan masih terbaca di layar murah.
-- [ ] Kontras teks cukup untuk kondisi luar ruangan.
-- [ ] Status dapat dipahami tanpa melihat warna saja.
-
-### Hirarki
-
-- [ ] Dalam 2–3 detik pengguna tahu apa yang harus dilakukan.
-- [ ] Progress/kelengkapan terlihat tanpa membuka semua detail.
-- [ ] Konsekuensi angka dijelaskan dekat angka.
-- [ ] Informasi otomatis dapat dibedakan dari input manual.
-
-### Status
-
-- [ ] Hijau/kuning/merah hanya muncul pada status yang bermakna.
-- [ ] Tidak ada kartu penuh warna status tanpa alasan kuat.
-- [ ] `Lengkap/Belum lengkap` tidak tercampur dengan `Aman/Perlu dikawal/Urgent`.
-
-### Copy
-
-- [ ] Tidak ada istilah Inggris teknis.
-- [ ] Tidak ada “Submit”, “Upload”, “Validation failed”, dan istilah sejenis.
-- [ ] Pesan error menjelaskan masalah dan tindakan.
-- [ ] Keadaan kosong menjelaskan apakah memang tidak ada data.
+- [ ] Dalam satu viewport dapat diketahui: total masuk, belum lapor, perlu follow-up.
+- [ ] Laporan merah terlihat tanpa membaca detail.
+- [ ] Tombol Follow-up terlihat pada laporan yang belum masuk.
+- [ ] Informasi normal tidak mengalahkan informasi yang perlu tindakan.
 
 ---
 
-# 29. Snapshot untuk agent AI
+# 26. Teaching snapshot — aturan yang harus diingat agent
 
-> **Bangun aplikasi yang terasa seperti alat kerja manusia, bukan dashboard AI.**
->
-> Gunakan putih + biru sebagai lingkungan netral. Simpan hijau, kuning, dan merah untuk status bisnis. Gunakan gold sangat hemat. Gunakan hierarchy melalui **teks + ruang + garis**, bukan melalui banyak badge/lingkaran/kartu berwarna.
->
-> Setiap pekerjaan harus punya jawaban langsung untuk: **apa yang harus dilakukan, berapa yang sudah selesai, berapa yang masih kurang, dan apa akibatnya.**
->
-> Form 9 bagian tidak boleh terasa seperti 9 kartu setara. Tampilkan **peta kemajuan** di atas, lalu detail. Jangan mengecilkan font untuk memuat lebih banyak.
->
-> Komponen harus generik karena form berasal dari schema TypeScript. Bila ada kasus baru, gunakan komponen berdasarkan makna interaksi, jangan membuat style khusus per form.
->
-> **Satu warna mencolok = satu pesan penting.**
->
-> **Satu bentuk menonjol = satu fungsi penting.**
->
-> Untuk mobile 360px, selalu pilih keterbacaan dan ketepatan tindakan daripada kepadatan informasi.
+> **Netral untuk hal biasa. Biru untuk tindakan dan orientasi. Hijau untuk aman. Amber untuk perlu dikawal. Merah untuk belum/urgent. Gunakan soft fill + rail, bukan kumpulan lingkaran. Besarkan angka dan status. Tulis “tinggal berapa”.**
+
+Kalau harus memilih antara:
+
+- membuat layar terlihat lebih minimal, atau
+- membuat masalah lebih mudah ditemukan,
+
+**pilih masalah lebih mudah ditemukan.**
+
+Aplikasi ini dipakai setiap hari oleh orang yang sibuk dan tidak ingin “belajar aplikasi”. Desain terbaik adalah desain yang membuat mereka **tahu ke mana harus melihat sebelum mereka mulai membaca.**
 
 ---
 
-# 30. Ringkasan keputusan penting dan alasannya
+# 27. Warna status butuh pembanding (koreksi 31 Agustus 2026)
 
-| Keputusan | Alasan |
-|---|---|
-| Netral putih + biru sebagai dasar | Menjaga UI tenang dan membuat status tetap mencolok |
-| Status bukan fill seluruh kartu | Menghindari layar terasa seperti alarm |
-| Progress berupa angka + kalimat | Mengurangi kebutuhan interpretasi pengguna |
-| Form diawali ringkasan kemajuan | Mengatasi rasa “form tak berujung” |
-| Section dapat diringkas | Pengguna melihat peta tanpa kehilangan detail ketika bekerja |
-| Field minimal 48 px | Aman untuk sentuh sambil berdiri/bergerak |
-| Input 16 px | Keterbacaan dan menghindari zoom yang tidak diinginkan |
-| Border sebagai pemisah utama | Soft tanpa terlihat seperti kumpulan kartu melayang |
-| Shadow hanya untuk layer | Menjaga hierarki depth tetap bermakna |
-| Ikon + teks | Banyak pengguna tidak mengenali ikon sendirian |
-| Bahasa Indonesia sederhana | Menyesuaikan pengguna dengan kemampuan teknologi rendah–sedang |
-| Panel otomatis berbeda secara visual | Mencegah pengguna mencoba mengedit data yang memang bukan tugasnya |
-| Tidak ada skor 0–100 | Tidak ada dasar aturan perusahaan untuk menilai karyawan dengan skor tersebut |
-| Tombol Absen tengah menonjol | Absen adalah tindakan frekuensi tinggi yang harus ditemukan cepat |
-| Gold sangat hemat | Dekat dengan makna kuning/status; mudah mengaburkan semantik |
+Ditemukan lewat kasus nyata: Papan Kontrol menampilkan 37 kartu merah "belum lapor" padahal sistemnya BELUM PERNAH dibagikan ke satu pun dari 40 akun -- tidak ada yang tahu passwordnya. Datanya benar (memang belum ada laporan), tapi warnanya salah kesan: merah di sini terbaca sebagai "orang tidak bekerja", padahal yang sebenarnya terjadi adalah "sistem belum menyala".
 
----
+## Aturan
 
-## Appendix — contoh microcopy siap pakai
+**Warna status (hijau/kuning/merah) hanya berarti sesuatu kalau ada PEMBANDING** -- sebagian sudah, sebagian belum. Tanpa pembanding, keadaan yang benar bukan "buruk", tapi **"belum ada data"**.
 
-### Beranda
+| Keadaan | Contoh | Perlakuan |
+|---|---|---|
+| Sebagian sudah, sebagian belum | 12 dari 16 sudah lapor | Merah untuk yang belum SAH dipakai -- itu memang tertinggal dibanding yang lain. |
+| Nol dari semua | 0 dari 37 sudah lapor | BUKAN merah. Ini "belum mulai", bukan "semua tertinggal" -- tampilkan keadaan kosong netral. |
+| Semua sudah | 16 dari 16 sudah lapor | Hijau, tidak perlu warna lain. |
 
-- `Selamat pagi, Kasam.`
-- `Ada 1 tugas yang belum selesai.`
-- `Semua laporan hari ini sudah dikirim.`
+## Kenapa "nol dari semua" beda dari "sebagian tertinggal"
 
-### Absen
+"Tertinggal" hanya masuk akal kalau ADA yang tidak tertinggal untuk dibandingkan. Kalau tidak satu pun sudah lapor, kemungkinan besar bukan berarti 100% orang bermasalah pada saat bersamaan -- lebih mungkin sistemnya belum dipakai (baru diluncurkan, akun belum dibagikan, atau memang hari itu belum waktunya). Menampilkan wall merah dalam keadaan begini membuat kesan pertama CEO salah total: dia akan mengira staf tidak bekerja, padahal stafnya belum pernah login.
 
-- `Dalam radius`
-- `Di luar radius`
-- `Wajah belum terlihat jelas.`
-- `Foto absen sudah siap.`
-- `Absen berhasil dicatat.`
+## Pola tampilan
 
-### Laporan
+Keadaan kosong yang jujur (bukan wall merah):
 
-- `Belum diisi`
-- `Belum lengkap`
-- `Sudah dikirim hari ini`
-- `Laporan tersimpan.`
-- `Periksa 2 bagian yang masih kurang.`
+```text
+Belum ada laporan hari ini
+37 laporan ditunggu dari 40 orang.
+Kartu akan berubah warna begitu laporan mulai masuk.
 
-### PTE
+[ Lihat daftar yang ditunggu ]
+```
 
-- `4 dari 6 selesai`
-- `Masih perlu 2 bukti.`
-- `Bukti tersedia`
-- `Bukti belum ada`
+Kalau tombol itu ditekan, daftar boleh muncul -- tapi kartunya **netral** (rail abu-abu, bukan rail merah), karena belum ada pembanding yang membuat "belum lapor" berarti "tertinggal".
 
-### Papan kontrol
+Begitu SATU laporan pertama masuk, keadaan berubah jadi "sebagian tertinggal" -- barulah sisanya boleh merah, karena sekarang ada pembanding sungguhan: sebagian orang sudah menunjukkan itu mungkin dilakukan hari itu, sebagian belum.
 
-- `12 dari 16 laporan sudah masuk.`
-- `4 laporan masih ditunggu.`
-- `Belum ada laporan hari ini.`
+## Implementasi rujukan
 
-### Keputusan CEO
-
-- `Menunggu keputusan`
-- `Tenggat hari ini`
-- `Dampak bila ditunda`
-- `Setujui`
-- `Cicil`
-- `Tunda`
-- `Tolak`
-
----
-
-# 31. Koreksi 30 Agustus 2026 (sebelum penerapan dimulai)
-
-Empat koreksi eksplisit dari CEO atas draf di atas, diterapkan mulai dari Beranda + form `personal_marketing` (`components/FormRenderer.tsx`, `app/page.tsx`). Berlaku untuk SELURUH dokumen ini, bukan cuma bagian yang disebut namanya.
-
-**1. Bagian tertutup WAJIB terbuka saat ada galat.** §5.3 ("Section tidak aktif boleh diringkas") TIDAK berlaku kalau bagian itu punya galat validasi. Pengguna tidak boleh kehilangan galatnya di balik bagian yang tertutup -- kalau ada field bermasalah di dalamnya, bagian itu terbuka paksa, terlepas dari status togel manualnya. Diimplementasikan sebagai union: `terbuka = bermasalah || togelManual`.
-
-**2. Absen BUKAN bagian form.** Contoh §10.2 yang mencampur "● Absen ... Selesai" ke dalam daftar bertitik bersama laporan-laporan lain SALAH DIIKUTI -- itu justru yang dikoreksi. Absen tidak pernah lewat mekanisme `assignment`/`form_key`, presensinya sistem yang sama sekali berbeda (lihat `app/absen/page.tsx`). Di Beranda, Absen SELALU section terpisah sendiri (§10.2.3 "Status absen"), tidak pernah masuk hitungan/daftar "Yang perlu dikerjakan hari ini" (§10.2.2, forms saja).
-
-**3. Tidak ada emas di palet UI.** §2.2 mendefinisikan `--color-gold-*` dan bilang "Gold sangat hemat" -- ternyata bahkan "hemat" pun tidak boleh. Emas/kuning logo HANYA dipakai untuk merender logo itu sendiri (`public/logo-koperumnas.jpg`, dua bintang), TIDAK PERNAH sebagai warna UI (bukan aksen, bukan status, bukan dekorasi apa pun). Implementasi live (`app/tokens.css`) tidak punya token gold sama sekali -- token biru (`--biru`/`--biru-2`/`--biru-3`) memakai nilai ASLI hasil sampling logo (§2.1: `#0047AF`/`#1C74CD`/`#3FAAF2`), bukan nama token `--color-brand-*` dari draf ini.
-
-**4. Pola "keadaan gagal" (baru, tidak ada di draf awal).** §16 cuma membahas "keadaan kosong" (memang tidak ada data). Kalau QUERY-nya sendiri GAGAL (jaringan/server), itu HARUS terlihat beda dari kosong -- keduanya kalau disamakan, pengguna tidak pernah tahu bedanya "memang belum ada tugas" vs "sistemnya lagi bermasalah". Komponen: `components/KeadaanGagal.tsx` -- pesan warna `--merah`, tombol "Coba lagi" eksplisit yang memanggil ulang query yang gagal (`refetch()`). Dipakai pertama kali di `DaftarTugas`/`StatusAbsenHariIni` (`app/page.tsx`).
+`app/papan/page.tsx` (`belumMulai = totalSemua > 0 && totalSudah === 0`) dan `components/PapanKartu.tsx` (prop `netral`). Prinsip yang sama berlaku di mana pun ada agregasi status serupa (bukan cuma Papan Kontrol) -- kalau menemukan kasus baru "0 dari N", jangan tebak, terapkan pola yang sama: keadaan kosong netral dulu, warna status menyusul begitu ada pembanding sungguhan.

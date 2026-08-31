@@ -24,6 +24,19 @@
   --merah:     #A62B2B;
   --kosong:    #8A968F;
 
+  /* ================================
+     STATUS — SOFT BACKGROUND (DESIGN.md §2.1, §4.2)
+     Warna latar lembut untuk kartu/baris status. Dipakai BERSAMA rail kiri,
+     bukan sebagai pengganti. Jangan jadikan solid fill.
+     ================================ */
+  --merah-lembut:  #FFF0F2;  /* urgent / belum lapor */
+  --merah-garis:   #EDC1C8;  /* border kartu urgent */
+  --kuning-lembut: #FFF7E7;  /* perlu dikawal / perlu perhatian */
+  --kuning-garis:  #EBCF93;  /* border kartu perlu dikawal */
+  --biru-lembut:   #E8F4FB;  /* informasi / tindakan */
+  --biru-garis:    #BDD8EE;  /* border kartu informasi */
+  --hijau-garis:   #B9E1CC;  /* border kartu aman */
+
   /* Huruf -- SATU keluarga untuk seluruh antarmuka (dulu dua: Barlow
      Condensed + IBM Plex Sans). --display/--body dipertahankan sebagai
      ALIAS ke keluarga yang sama -- supaya kode yang sudah menulis
@@ -34,16 +47,26 @@
   --body:    var(--font);
   --mono:    var(--font-mono), monospace; /* HANYA rupiah, jam, koordinat -- tidak untuk label/judul/tombol */
 
-  /* Skala */
-  --ukuran-judul: 17px; /* judul bagian, weight 500 */
+  /* Skala -- DESIGN.md §3 */
+  --ukuran-judul: 20px; /* judul bagian (DESIGN.md: 20px, 700, 1.3) -- diperbarui dari 17px */
   --ukuran-label: 13px; /* label field */
   --ukuran-isi:   16px; /* isian/nilai field */
   --ukuran-progres: 20px; /* angka progres bagian ("0 dari 2 konsumen"), FormRenderer -- DESIGN.md §3.1 */
+  --ukuran-angka-besar: 28px; /* angka utama CEO: "12 dari 16" (DESIGN.md §3: 28–32px, 700, 1.1) */
+  --ukuran-angka-kecil: 20px; /* ringkasan sekunder (DESIGN.md §3: 18–20px, 700, 1.2) */
 
   /* Bentuk */
   --radius-kecil: 8px;  /* input, tombol */
   --radius-besar: 12px; /* kartu */
   --radius-pil:   999px; /* tombol lampirkan */
+
+  /* Rail & progress (DESIGN.md §4.2, §4.1) */
+  --lebar-rail:     4px;  /* aksen vertikal kiri pada kartu status */
+  --tinggi-progres: 8px;  /* progress bar (DESIGN.md §4.1: tinggi 8px, radius penuh) */
+
+  /* Bayangan halus (DESIGN.md §2.1) */
+  --bayangan-kartu: 0 1px 2px rgba(16, 32, 52, 0.03),
+                    0 6px 18px rgba(16, 32, 52, 0.04);
 
   /* Jarak & tinggi sentuh */
   --jarak-field:  16px; /* antar field dalam satu bagian */

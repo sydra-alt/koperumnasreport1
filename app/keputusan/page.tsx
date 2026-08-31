@@ -50,26 +50,16 @@ function KeputusanIsi() {
         <button
           type="button"
           onClick={() => setTab('menunggu')}
-          className="border px-3 py-2"
-          style={{
-            borderColor: 'var(--biru)',
-            background: tab === 'menunggu' ? 'var(--biru)' : 'transparent',
-            color: tab === 'menunggu' ? 'var(--kertas-2)' : 'var(--biru)',
-            minHeight: 44,
-          }}
+          className={tab === 'menunggu' ? 'tombol-utama' : 'tombol-sekunder'}
+          style={{ fontSize: 14, padding: '8px 16px', minHeight: 44 }}
         >
           Menunggu
         </button>
         <button
           type="button"
           onClick={() => setTab('riwayat')}
-          className="border px-3 py-2"
-          style={{
-            borderColor: 'var(--biru)',
-            background: tab === 'riwayat' ? 'var(--biru)' : 'transparent',
-            color: tab === 'riwayat' ? 'var(--kertas-2)' : 'var(--biru)',
-            minHeight: 44,
-          }}
+          className={tab === 'riwayat' ? 'tombol-utama' : 'tombol-sekunder'}
+          style={{ fontSize: 14, padding: '8px 16px', minHeight: 44 }}
         >
           Riwayat
         </button>
@@ -79,14 +69,14 @@ function KeputusanIsi() {
         <>
           {!bolehMemutuskan && (
             <div className="flex items-center gap-2 text-sm">
-              <span>Urutkan:</span>
+              <span style={{ color: 'var(--label)' }}>Urutkan:</span>
               {(['urgensi', 'deadline', 'nominal'] as const).map((u) => (
                 <button
                   key={u}
                   type="button"
                   onClick={() => setUrutan(u)}
-                  className="border px-2 py-1"
-                  style={{ borderColor: 'var(--garis)', background: urutan === u ? 'var(--kertas-2)' : 'transparent', minHeight: 44 }}
+                  className={urutan === u ? 'tombol-utama' : 'tombol-sekunder'}
+                  style={{ fontSize: 13, padding: '6px 12px', minHeight: 44 }}
                 >
                   {u}
                 </button>
@@ -128,7 +118,7 @@ export default function KeputusanPage() {
   return (
     <Terlindungi peran={['ceo', 'pusat']}>
       <main className="flex flex-col gap-4 p-6">
-        <h1 className="text-2xl" style={{ color: 'var(--biru)' }}>
+        <h1 style={{ fontSize: 'var(--ukuran-angka-besar)', lineHeight: 1.2 }}>
           Antrean Keputusan
         </h1>
         <KeputusanIsi />

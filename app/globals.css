@@ -42,7 +42,7 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font);
-  font-weight: 500;
+  font-weight: 700; /* DESIGN.md §3: judul 700, bukan 500 -- hierarki lewat ketebalan + warna */
   color: var(--biru); /* judul tetap warna biru -- hierarki lewat warna, bukan cuma ukuran */
 }
 
@@ -63,6 +63,127 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   line-height: 1.6;
   color: var(--label);
   font-size: var(--ukuran-label);
+}
+
+/* ================================
+   KARTU STATUS — pola visual utama (DESIGN.md §4.2, §7.2)
+   Rail kiri 4px + soft background + border lembut.
+   Dipakai oleh PapanKartu, AntreanKartu, beranda, dll.
+   Warna diatur lewat modifier class (.rail-merah, .rail-kuning, dll).
+   ================================ */
+.kartu-status {
+  position: relative;
+  border: 1px solid var(--garis);
+  border-left: var(--lebar-rail) solid var(--garis);
+  border-radius: var(--radius-besar);
+  padding: 12px 16px;
+}
+.kartu-status.rail-merah {
+  border-left-color: var(--merah);
+  background: var(--merah-lembut);
+  border-color: var(--merah-garis);
+  border-left-color: var(--merah);
+}
+.kartu-status.rail-kuning {
+  border-left-color: var(--kuning);
+  background: var(--kuning-lembut);
+  border-color: var(--kuning-garis);
+  border-left-color: var(--kuning);
+}
+.kartu-status.rail-hijau {
+  border-left-color: var(--hijau);
+  background: var(--hijau-lembut);
+  border-color: var(--hijau-garis);
+  border-left-color: var(--hijau);
+}
+.kartu-status.rail-biru {
+  border-left-color: var(--biru);
+  background: var(--biru-lembut);
+  border-color: var(--biru-garis);
+  border-left-color: var(--biru);
+}
+.kartu-status.rail-netral {
+  border-left-color: var(--garis);
+  background: var(--kertas);
+}
+
+/* Angka besar untuk CEO scanning (DESIGN.md §3, §14) */
+.angka-besar {
+  font-family: var(--display);
+  font-size: var(--ukuran-angka-besar);
+  font-weight: 700;
+  line-height: 1.1;
+}
+.angka-kecil {
+  font-family: var(--display);
+  font-size: var(--ukuran-angka-kecil);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* Progress bar (DESIGN.md §4.1: tinggi 8px, radius penuh) */
+.progres-bar {
+  height: var(--tinggi-progres);
+  border-radius: var(--radius-pil);
+  background: var(--garis);
+  overflow: hidden;
+}
+.progres-bar-isi {
+  height: 100%;
+  border-radius: var(--radius-pil);
+  background: var(--biru);
+  transition: width 0.3s ease;
+}
+
+/* Tombol utama (DESIGN.md §18) */
+.tombol-utama {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--biru);
+  color: var(--kertas-2);
+  border: none;
+  border-radius: var(--radius-kecil);
+  padding: 12px 20px;
+  min-height: 48px;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: var(--ukuran-isi);
+  cursor: pointer;
+  text-decoration: none;
+}
+.tombol-sekunder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--biru);
+  border: 1px solid var(--biru);
+  border-radius: var(--radius-kecil);
+  padding: 12px 20px;
+  min-height: 44px;
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: var(--ukuran-isi);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+/* Judul bagian (DESIGN.md §3: 20px, 700, 1.3) */
+.judul-bagian {
+  font-family: var(--display);
+  font-size: var(--ukuran-judul);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--biru);
+}
+
+/* Label status ringkas (DESIGN.md §8.1) -- teks + warna, bukan bulatan */
+.status-teks {
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 /* Nav bawah (§2 06-RENCANA-PRESENSI-MOBILE.md): layar sempit (<768px) pakai
@@ -104,3 +225,4 @@ body { padding-bottom: calc(var(--tinggi-nav-bawah) + var(--tambahan-fab-absen) 
 @media (min-width: 768px) {
   .tombol-kirim-menempel { position: static; }
 }
+

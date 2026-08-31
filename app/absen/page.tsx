@@ -33,8 +33,7 @@ type Layar =
   | 'mengirim'
   | 'berhasil';
 
-const gayaTombolUtama = { borderColor: 'var(--biru)', background: 'var(--biru)', color: 'var(--kertas-2)', minHeight: 48 } as const;
-const gayaTombolBiasa = { borderColor: 'var(--garis)', color: 'var(--tinta)', minHeight: 48 } as const;
+
 
 export default function AbsenPage() {
   const { session, profile } = useAuth();
@@ -234,11 +233,11 @@ export default function AbsenPage() {
 
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 p-6">
-      <h1 className="text-2xl" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
+      <h1 style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-angka-besar)', lineHeight: 1.2, color: 'var(--biru)' }}>
         Absen
       </h1>
       {profile?.divisi && (
-        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+        <p className="text-sm" style={{ color: 'var(--label)' }}>
           {profile.divisi}
         </p>
       )}
@@ -251,45 +250,57 @@ export default function AbsenPage() {
       )}
 
       {layar === 'tidak_ada_titik' && (
-        <p style={{ color: 'var(--merah)' }}>Kamu belum punya titik absen yang ditugaskan. Hubungi Admin.</p>
+        <div className="kartu-status rail-merah">
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--merah)' }}>Tidak ada titik absen</p>
+          <p className="text-sm" style={{ color: 'var(--label)' }}>Kamu belum punya titik absen yang ditugaskan. Hubungi Admin.</p>
+        </div>
       )}
 
       {layar === 'mencari_lokasi' && <p>Mencari lokasimu…</p>}
 
       {layar === 'gps_ditolak' && (
-        <PesanGagal
-          teks="Butuh izin lokasi untuk absen. Browser memblokirnya. Buka Pengaturan → Situs → izinkan Lokasi, lalu coba lagi."
-          onCoba={() => tipeAktif && mulaiAbsen(tipeAktif)}
-        />
+        <div className="kartu-status rail-merah flex flex-col gap-2">
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--merah)' }}>Izin lokasi ditolak</p>
+          <p className="text-sm">Butuh izin lokasi untuk absen. Buka Pengaturan → Situs → izinkan Lokasi, lalu coba lagi.</p>
+          <button type="button" onClick={() => tipeAktif && mulaiAbsen(tipeAktif)} className="tombol-utama" style={{ alignSelf: 'flex-start' }}>
+            Coba Lagi
+          </button>
+        </div>
       )}
 
       {layar === 'gps_gagal' && (
-        <PesanGagal
-          teks="Tidak bisa mendapatkan lokasi. Periksa GPS HP kamu aktif, lalu coba lagi."
-          onCoba={() => tipeAktif && mulaiAbsen(tipeAktif)}
-        />
+        <div className="kartu-status rail-merah flex flex-col gap-2">
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--merah)' }}>GPS tidak tersedia</p>
+          <p className="text-sm">Periksa GPS HP kamu aktif, lalu coba lagi.</p>
+          <button type="button" onClick={() => tipeAktif && mulaiAbsen(tipeAktif)} className="tombol-utama" style={{ alignSelf: 'flex-start' }}>
+            Coba Lagi
+          </button>
+        </div>
       )}
 
       {layar === 'gps_lemah' && (
-        <PesanGagal
-          teks={`Sinyal GPS lemah (akurasi ±${Math.round(akurasiTerakhir ?? 0)} meter). Coba keluar ruangan atau dekat jendela, lalu ulangi.`}
-          onCoba={() => tipeAktif && mulaiAbsen(tipeAktif)}
-        />
+        <div className="kartu-status rail-kuning flex flex-col gap-2">
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--kuning)' }}>Sinyal GPS lemah</p>
+          <p className="text-sm">Akurasi ±{Math.round(akurasiTerakhir ?? 0)} meter. Coba keluar ruangan atau dekat jendela, lalu ulangi.</p>
+          <button type="button" onClick={() => tipeAktif && mulaiAbsen(tipeAktif)} className="tombol-utama" style={{ alignSelf: 'flex-start' }}>
+            Coba Lagi
+          </button>
+        </div>
       )}
 
       {layar === 'konfirmasi_titik' && titikDipilih && (
         <div className="flex flex-col gap-3">
-          <div className="border p-3" style={{ borderColor: 'var(--garis)' }}>
-            <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>{titikDipilih.nama}</p>
-            <p style={{ fontFamily: 'var(--mono)', color: 'var(--kosong)' }}>{Math.round(titikDipilih.jarakMeter)} meter</p>
+          <div className="kartu-status rail-biru">
+            <p className="judul-bagian">{titikDipilih.nama}</p>
+            <p className="text-sm mt-1" style={{ fontFamily: 'var(--mono)', color: 'var(--label)' }}>{Math.round(titikDipilih.jarakMeter)} meter dari lokasi Anda</p>
           </div>
           <div className="flex gap-2">
             {titikTerurut.length > 1 && (
-              <button type="button" onClick={() => setLayar('pilih_titik')} className="border px-4" style={gayaTombolBiasa}>
+              <button type="button" onClick={() => setLayar('pilih_titik')} className="tombol-sekunder">
                 Ganti
               </button>
             )}
-            <button type="button" onClick={lanjutkanSetelahKonfirmasi} className="flex-1 border px-4" style={gayaTombolUtama}>
+            <button type="button" onClick={lanjutkanSetelahKonfirmasi} className="tombol-utama flex-1">
               Lanjutkan
             </button>
           </div>
@@ -306,39 +317,40 @@ export default function AbsenPage() {
                 setTitikDipilih(t);
                 setLayar('konfirmasi_titik');
               }}
-              className="flex items-center justify-between border p-3 text-left"
-              style={{ borderColor: 'var(--garis)', minHeight: 48 }}
+              className="kartu-status rail-netral flex items-center justify-between text-left"
             >
-              <span>{t.nama}</span>
-              <span style={{ fontFamily: 'var(--mono)', color: 'var(--kosong)' }}>{Math.round(t.jarakMeter)} m</span>
+              <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>{t.nama}</span>
+              <span className="text-sm" style={{ fontFamily: 'var(--mono)', color: 'var(--label)' }}>{Math.round(t.jarakMeter)} m</span>
             </button>
           ))}
         </div>
       )}
 
       {layar === 'luar_radius_tolak' && titikDipilih && (
-        <div className="flex flex-col gap-3">
-          <p style={{ color: 'var(--merah)' }}>
+        <div className="kartu-status rail-merah flex flex-col gap-3">
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--merah)' }}>Di luar jangkauan</p>
+          <p className="text-sm">
             Kamu {Math.round(titikDipilih.jarakMeter)} meter dari {titikDipilih.nama} (radius {titikDipilih.radiusMeter} meter). Absen cuma
             bisa dilakukan di lokasi penugasan. Kalau kamu yakin ini keliru, hubungi HRD.
           </p>
-          <button type="button" onClick={() => setLayar('konfirmasi_titik')} className="border px-4" style={gayaTombolBiasa}>
+          <button type="button" onClick={() => setLayar('konfirmasi_titik')} className="tombol-sekunder" style={{ alignSelf: 'flex-start' }}>
             Coba Lagi
           </button>
         </div>
       )}
 
       {layar === 'luar_radius_tanda' && titikDipilih && (
-        <div className="flex flex-col gap-3">
-          <p style={{ color: 'var(--kuning)' }}>
-            Kamu {Math.round(titikDipilih.jarakMeter)} meter dari {titikDipilih.nama} — di luar jangkauan. Absen tetap bisa dilakukan, tapi
-            akan ditandai 🟡 untuk diperiksa HRD.
+        <div className="kartu-status rail-kuning flex flex-col gap-3">
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--kuning)' }}>Di luar jangkauan</p>
+          <p className="text-sm">
+            Kamu {Math.round(titikDipilih.jarakMeter)} meter dari {titikDipilih.nama}. Absen tetap bisa dilakukan, tapi
+            akan ditandai untuk diperiksa HRD.
           </p>
           <div className="flex gap-2">
-            <button type="button" onClick={() => setLayar('konfirmasi_titik')} className="border px-4" style={gayaTombolBiasa}>
+            <button type="button" onClick={() => setLayar('konfirmasi_titik')} className="tombol-sekunder">
               Batal
             </button>
-            <button type="button" onClick={() => setLayar('kamera')} className="flex-1 border px-4" style={gayaTombolUtama}>
+            <button type="button" onClick={() => setLayar('kamera')} className="tombol-utama flex-1">
               Lanjutkan Absen
             </button>
           </div>
@@ -360,21 +372,21 @@ export default function AbsenPage() {
       {layar === 'mengirim' && <p>Mengirim…</p>}
 
       {layar === 'belum_terkirim' && draftPending && (
-        <div className="flex flex-col gap-3">
-          <p style={{ color: 'var(--kuning)' }}>Belum terkirim — coba lagi.</p>
+        <div className="kartu-status rail-kuning flex flex-col gap-3">
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--kuning)' }}>Belum terkirim</p>
           {pesanError && (
             <p className="text-sm" style={{ color: 'var(--merah)' }}>
               {pesanError}
             </p>
           )}
-          <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+          <p className="text-sm" style={{ color: 'var(--label)' }}>
             {draftPending.tipe === 'masuk' ? 'Absen masuk' : 'Absen pulang'} · {draftPending.lokasiNama} · {Math.round(draftPending.jarak)} meter
           </p>
           <div className="flex gap-2">
-            <button type="button" onClick={batalDraft} className="border px-4" style={gayaTombolBiasa}>
+            <button type="button" onClick={batalDraft} className="tombol-sekunder">
               Batal, mulai ulang
             </button>
-            <button type="button" onClick={cobaKirimUlang} className="flex-1 border px-4" style={gayaTombolUtama}>
+            <button type="button" onClick={cobaKirimUlang} className="tombol-utama flex-1">
               Coba Kirim Lagi
             </button>
           </div>
@@ -382,12 +394,15 @@ export default function AbsenPage() {
       )}
 
       {layar === 'berhasil' && hasilBerhasil && (
-        <div className="flex flex-col gap-3">
-          <p style={{ color: hasilBerhasil.keteranganLuarRadius ? 'var(--kuning)' : 'var(--hijau)' }}>
-            {hasilBerhasil.keteranganLuarRadius ? '🟡' : '✅'} Absen {tipeAktif} {hasilBerhasil.label}
+        <div className={`kartu-status ${hasilBerhasil.keteranganLuarRadius ? 'rail-kuning' : 'rail-hijau'} flex flex-col gap-3`}>
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: hasilBerhasil.keteranganLuarRadius ? 'var(--kuning)' : 'var(--hijau)' }}>
+            Absen {tipeAktif} berhasil
+          </p>
+          <p className="text-sm" style={{ color: 'var(--label)' }}>
+            {hasilBerhasil.label}
             {hasilBerhasil.keteranganLuarRadius ? ' — di luar radius, akan diperiksa HRD.' : ''}
           </p>
-          <button type="button" onClick={() => setLayar('ringkasan')} className="border px-4" style={gayaTombolBiasa}>
+          <button type="button" onClick={() => setLayar('ringkasan')} className="tombol-sekunder" style={{ alignSelf: 'flex-start' }}>
             Kembali
           </button>
         </div>
@@ -407,16 +422,22 @@ function BarisAbsen({
 }) {
   if (data) {
     const jam = new Date(data.waktu).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
+    const luarRadius = data.status === 'di_luar_radius';
     return (
-      <div className="border p-3" style={{ borderColor: 'var(--garis)' }}>
-        <p>
-          Absen {label.toLowerCase()}: {jam} · {data.status === 'di_luar_radius' ? '🟡 di luar radius' : 'dalam radius'}
+      <div className={`kartu-status ${luarRadius ? 'rail-kuning' : 'rail-hijau'}`}>
+        <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Absen {label.toLowerCase()}</p>
+        <p className="text-sm">
+          <span style={{ fontFamily: 'var(--mono)' }}>{jam}</span>
+          {' · '}
+          <span className="status-teks" style={{ color: luarRadius ? 'var(--kuning)' : 'var(--hijau)' }}>
+            {luarRadius ? 'Di luar radius' : 'Dalam radius'}
+          </span>
         </p>
       </div>
     );
   }
   return (
-    <button type="button" onClick={onTekan} className="border p-3 text-left" style={gayaTombolUtama}>
+    <button type="button" onClick={onTekan} className="tombol-utama w-full text-left">
       Absen {label}
     </button>
   );
@@ -469,22 +490,11 @@ function PersetujuanPrivasi({
         type="button"
         disabled={sedangMenyimpan}
         onClick={() => void onSetuju()}
-        className="border px-4"
-        style={{ ...gayaTombolUtama, borderRadius: 'var(--radius-pil)' }}
+        className="tombol-utama"
+        style={{ borderRadius: 'var(--radius-pil)' }}
       >
         {sedangMenyimpan ? 'Menyimpan…' : 'Saya mengerti dan setuju'}
       </button>
     </main>
-  );
-}
-
-function PesanGagal({ teks, onCoba }: { teks: string; onCoba: () => void }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <p style={{ color: 'var(--merah)' }}>{teks}</p>
-      <button type="button" onClick={onCoba} className="border px-4" style={gayaTombolUtama}>
-        Coba Lagi
-      </button>
-    </div>
   );
 }

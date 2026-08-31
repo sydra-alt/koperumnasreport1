@@ -31,7 +31,59 @@ import { debounce } from '../lib/debounce';
 import { formRegistry } from '../forms';
 import { FormRenderer, type LaporanTerkirim } from './FormRenderer';
 
-const IKON: Record<'hijau' | 'kuning' | 'merah', string> = { hijau: '🟢', kuning: '🟡', merah: '🔴' };
+// Label PENCAPAIAN TARGET (closing/undangan bulanan) -- SENGAJA beda dari
+// label "belum lapor" (PapanKartu dkk.). DESIGN.md §6.1: "Belum mencapai
+// target ≠ urgent" -- menyamakan keduanya jadi "Belum lapor" salah, karena
+// ini bukan soal ada/tidaknya laporan terkirim, tapi seberapa dekat dengan
+// target bulanan.
+const LABEL_CAPAIAN_TARGET: Record<'hijau' | 'kuning' | 'merah', { teks: string; warna: string }> = {
+  hijau: { teks: 'Tercapai', warna: 'var(--hijau)' },
+  kuning: { teks: 'Perlu dikejar', warna: 'var(--kuning)' },
+  merah: { teks: 'Jauh dari target', warna: 'var(--merah)' },
+};
+
+type StatusPteItem = 'selesai' | 'perlu_bukti' | 'belum';
+interface ItemPte {
+  key: string;
+  label: string;
+  status: StatusPteItem;
+  keterangan: string;
+}
+
+/**
+ * Panel PTE (DESIGN.md §9) -- daftar 6 kewajiban jadi baris, bukan grid
+ * ✅/❌. TIDAK mengubah aturan bisnis: syarat "selesai" per item SAMA PERSIS
+ * dengan `ringkasanPteHariIni()` (lib/api/pte.ts) -- fungsi ini cuma
+ * memecah hasil boolean itu jadi 3 keadaan (belum diisi / sudah diisi
+ * tapi bukti belum ada / lengkap) supaya keterangannya lebih jelas
+ * ("Belum diisi" vs "Belum ada bukti"), bukan logika baru.
+ */
+function itemsPteHariIni(data: Record<string, unknown>, kontenMinimal: number): ItemPte[] {
+  const bukti = (data._bukti as Record<string, unknown[]> | undefined) ?? {};
+  const adaBukti = (kunci: string) => (bukti[kunci]?.length ?? 0) > 0;
+
+  function baris(key: string, label: string, terisi: boolean, buktiKunci: string, keteranganSelesai: string): ItemPte {
+    if (!terisi) return { key, label, status: 'belum', keterangan: 'Belum diisi' };
+    if (!adaBukti(buktiKunci)) return { key, label, status: 'perlu_bukti', keterangan: 'Belum ada bukti' };
+    return { key, label, status: 'selesai', keterangan: keteranganSelesai };
+  }
+
+  const undangJumlah = Number(data.undang_jumlah) || 0;
+  const kontenJumlah = Number(data.konten_jumlah) || 0;
+
+  return [
+    baris('live', 'Live', data.live === 'ya', 'live', 'Sudah ada bukti'),
+    baris('undang', 'Undangan', undangJumlah > 0, 'undang', `${undangJumlah} orang`),
+    baris('kesaksian', 'Kesaksian / Testimoni', Number(data.kesaksian_jumlah) > 0, 'kesaksian', 'Sudah ada bukti'),
+    baris('review', 'Google Review', Number(data.review_jumlah) > 0, 'review', 'Sudah ada bukti'),
+    baris('konten', `${kontenMinimal} Konten`, kontenJumlah >= kontenMinimal, 'konten', `${kontenJumlah} konten`),
+    baris('mentahan', 'Video Mentahan', Number(data.mentahan_jumlah) > 0, 'mentahan', 'Sudah ada bukti'),
+  ];
+}
+
+const SIMBOL_STATUS_PTE: Record<StatusPteItem, string> = { selesai: '✓', perlu_bukti: '!', belum: '○' };
+const RAIL_STATUS_PTE: Record<StatusPteItem, string> = { selesai: 'rail-hijau', perlu_bukti: 'rail-kuning', belum: 'rail-netral' };
+const WARNA_STATUS_PTE: Record<StatusPteItem, string> = { selesai: 'var(--hijau)', perlu_bukti: 'var(--kuning)', belum: 'var(--kosong)' };
 
 interface KombinasiScope {
   lokasiId: string | null;
@@ -367,25 +419,27 @@ export function LaporForm({ formKey }: { formKey: string }) {
         }
       : null;
 
+  const itemsPte = formKey === 'personal_marketing' && policy ? itemsPteHariIni(nilaiUntukPratinjau, Number(policy.pte_konten_minimal)) : null;
+  const pteSelesaiCount = itemsPte ? itemsPte.filter((it) => it.status === 'selesai').length : 0;
+  const pteBerlaku = infoBonus?.berlaku ?? false;
+
   return (
     <main className="flex flex-col gap-6 p-6">
-      <h1 className="text-2xl" style={{ color: 'var(--biru)' }}>
-        {schema.nama}
-      </h1>
+      <h1 style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-angka-besar)', lineHeight: 1.2 }}>{schema.nama}</h1>
 
       {formKey === 'personal_marketing' && profile && (
-        <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>Identitas</p>
-          <p>
+        <div className="kartu-status rail-netral">
+          <p className="text-sm" style={{ color: 'var(--label)' }}>Identitas</p>
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>
             {profile.nama} · {profile.divisi ?? '—'} · {profile.jabatan ?? '—'}
           </p>
         </div>
       )}
 
       {formKey !== 'personal_marketing' && profile && (
-        <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }} suppressHydrationWarning>
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>Identitas</p>
-          <p>
+        <div className="kartu-status rail-netral" suppressHydrationWarning>
+          <p className="text-sm" style={{ color: 'var(--label)' }}>Identitas</p>
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>
             {tanggalIndonesiaWIB()}
             {kombinasiAktif ? ` · ${labelKombinasi(kombinasiAktif)}` : ''} · PIC: {profile.nama}
           </p>
@@ -397,48 +451,85 @@ export function LaporForm({ formKey }: { formKey: string }) {
           FormRenderer) -- tidak diulang di sini lagi. Undangan belum
           disentuh batch ini (satu bagian dulu, instruksi eksplisit user). */}
       {formKey === 'personal_marketing' && progres && invitTarget !== null && (
-        <div className="flex flex-wrap gap-4 border p-3" style={{ borderColor: 'var(--garis)', borderRadius: 'var(--radius-besar)', fontFamily: 'var(--mono)' }}>
-          <span>
-            Undangan bulan ini: {progres.undangan} / {invitTarget}
-          </span>
+        <div className="kartu-status rail-biru flex flex-col gap-1">
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--biru)' }}>Target undangan</p>
+          <div className="flex items-baseline gap-2">
+            <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{progres.undangan}</span>
+            <span className="text-sm" style={{ color: 'var(--label)' }}>dari {invitTarget} bulan ini</span>
+          </div>
         </div>
       )}
 
       {formKey === 'personal_marketing' && progres && invitTarget !== null && closingTarget !== null && (
-        <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>Status Personal Marketing</p>
-          <p>
-            {IKON[statusClosing(progres.closing, closingTarget)]} Closing · {IKON[statusUndangan(progres.undangan, invitTarget)]}{' '}
-            Undangan {invitTarget} orang · {ringkasanPte ? (ringkasanPte.lengkap ? '🟢 PTE lengkap' : '🔴 PTE tidak lengkap') : '— PTE'}
-          </p>
+        <div className="kartu-status rail-netral flex flex-col gap-2">
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Status Personal Marketing</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            <span className="status-teks" style={{ color: LABEL_CAPAIAN_TARGET[statusClosing(progres.closing, closingTarget)].warna }}>
+              Closing: {LABEL_CAPAIAN_TARGET[statusClosing(progres.closing, closingTarget)].teks}
+            </span>
+            <span className="status-teks" style={{ color: LABEL_CAPAIAN_TARGET[statusUndangan(progres.undangan, invitTarget)].warna }}>
+              Undangan: {LABEL_CAPAIAN_TARGET[statusUndangan(progres.undangan, invitTarget)].teks}
+            </span>
+            <span className="status-teks" style={{ color: ringkasanPte ? (ringkasanPte.lengkap ? 'var(--hijau)' : 'var(--merah)') : 'var(--kosong)' }}>
+              PTE: {ringkasanPte ? (ringkasanPte.lengkap ? 'Lengkap' : 'Belum lengkap') : '—'}
+            </span>
+          </div>
         </div>
       )}
 
-      {formKey === 'personal_marketing' && ringkasanPte && (
-        <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>Status PTE Rp500.000 (pratinjau hari ini)</p>
-          <p>
-            {ringkasanPte.live ? '✅' : '❌'} Live · {ringkasanPte.undang ? '✅' : '❌'} Undang ·{' '}
-            {ringkasanPte.kesaksian ? '✅' : '❌'} Kesaksian · {ringkasanPte.review ? '✅' : '❌'} Review ·{' '}
-            {ringkasanPte.konten ? '✅' : '❌'} Konten · {ringkasanPte.mentahan ? '✅' : '❌'} Mentahan
-          </p>
-          <p>{ringkasanPte.lengkap ? 'LENGKAP' : 'TIDAK LENGKAP'}</p>
-          <p>
-            {!infoBonus || !infoBonus.berlaku
-              ? 'Belum berlaku'
-              : infoBonus.layak
-                ? `Layak bonus Rp${infoBonus.nominal?.toLocaleString('id-ID')}`
-                : 'Bonus hangus bulan ini'}
-          </p>
+      {/* Panel PTE (DESIGN.md §9) -- daftar 6 kewajiban, rail per baris,
+          bukan grid ✅/❌. Ringkasan di atas TETAP netral/soft kalau
+          pte_mulai_berlaku belum diisi (bukan diperlakukan sebagai "gagal"). */}
+      {formKey === 'personal_marketing' && itemsPte && ringkasanPte && (
+        <div className="flex flex-col gap-3">
+          <div className={`kartu-status ${!pteBerlaku ? 'rail-netral' : ringkasanPte.lengkap ? 'rail-hijau' : 'rail-merah'} flex flex-col gap-2`}>
+            <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>PTE hari ini</p>
+            <div className="flex items-baseline gap-2">
+              <span className="angka-kecil" style={{ color: !pteBerlaku ? 'var(--tinta)' : ringkasanPte.lengkap ? 'var(--hijau)' : 'var(--merah)' }}>
+                {pteSelesaiCount}
+              </span>
+              <span className="text-sm" style={{ color: 'var(--label)' }}>dari 6 kewajiban selesai</span>
+            </div>
+            <div className="progres-bar">
+              <div className="progres-bar-isi" style={{ width: `${Math.round((pteSelesaiCount / 6) * 100)}%` }} />
+            </div>
+            <p className="text-sm" style={{ color: 'var(--label)' }}>
+              {!pteBerlaku
+                ? 'Ketentuan belum berlaku.'
+                : ringkasanPte.lengkap
+                  ? infoBonus?.layak
+                    ? `Layak bonus Rp${infoBonus.nominal?.toLocaleString('id-ID')}.`
+                    : 'Semua kewajiban lengkap.'
+                  : `Tinggal ${6 - pteSelesaiCount} kegiatan + bukti.`}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {itemsPte.map((item) => (
+              <div key={item.key} className={`kartu-status ${RAIL_STATUS_PTE[item.status]} flex items-center justify-between gap-2`}>
+                <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>
+                  <span aria-hidden style={{ color: WARNA_STATUS_PTE[item.status] }}>
+                    {SIMBOL_STATUS_PTE[item.status]}
+                  </span>{' '}
+                  {item.label}
+                </span>
+                <span className="status-teks" style={{ color: WARNA_STATUS_PTE[item.status], flexShrink: 0 }}>
+                  {item.keterangan}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
       {perluRollupMarketing && progres && invitTarget !== null && closingTarget !== null && (
-        <div className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>Laporan Personal Marketing</p>
-          <p>
-            Laporan personal sudah dikirim: {laporanMarketingHariIni?.status && laporanMarketingHariIni.status !== 'draft' ? '✅' : '❌'} · Undangan
-            bulan ini: {progres.undangan} / {invitTarget} · Closing bulan ini: {progres.closing} / {closingTarget}
+        <div className="kartu-status rail-netral flex flex-col gap-1">
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Laporan Personal Marketing</p>
+          <p className="status-teks" style={{ color: laporanMarketingHariIni?.status && laporanMarketingHariIni.status !== 'draft' ? 'var(--hijau)' : 'var(--merah)' }}>
+            {laporanMarketingHariIni?.status && laporanMarketingHariIni.status !== 'draft' ? 'Sudah dikirim' : 'Belum dikirim'}
+          </p>
+          <p className="text-sm" style={{ color: 'var(--label)' }}>
+            Undangan bulan ini: {progres.undangan} / {invitTarget} · Closing bulan ini: {progres.closing} / {closingTarget}
           </p>
         </div>
       )}
