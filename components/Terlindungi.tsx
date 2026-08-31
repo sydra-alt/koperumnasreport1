@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { useAuth } from '../lib/auth/AuthProvider';
+import { KerangkaTeks } from './Kerangka';
 
 interface TerlindungiProps {
   peran: string | string[];
@@ -20,7 +21,7 @@ export function Terlindungi({ peran, boleh, children }: TerlindungiProps) {
   const peranDiizinkan = Array.isArray(peran) ? peran : [peran];
 
   if (loading) {
-    return <div className="p-6">Memuat…</div>;
+    return <div className="p-6"><KerangkaTeks /></div>;
   }
 
   const berhak = peranDiizinkan.some((p) => roles.includes(p)) || boleh === true;

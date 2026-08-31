@@ -226,6 +226,29 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   to   { opacity: 1; }
 }
 
+/* Bagian form membuka (DESIGN-MODERN.md §M4) -- tinggi + opasitas beranimasi.
+   SATU dari 5 gerakan yang diizinkan. Content wrapper ditogel lewat class
+   .bagian-isi-terbuka / default (tertutup). Tinggi pakai `grid-template-rows`
+   trick (lebih terjamin dari `max-height` yang butuh tebak angka).
+   Opasitas isi berubah BERSAMAAN, bukan terpisah, supaya terasa satu tarikan. */
+.bagian-isi {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows var(--gerak-normal), opacity var(--gerak-normal);
+}
+.bagian-isi > div {
+  overflow: hidden;
+}
+.bagian-isi-terbuka {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+/* Fieldset border-left-width + gap juga beranimasi supaya tidak melompat */
+.bagian-form {
+  transition: border-left-width var(--gerak-normal), gap var(--gerak-normal), background var(--gerak-normal);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

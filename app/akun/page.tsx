@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import { formRegistry } from '../../forms';
 import { tabTerlihat, tabLuapan } from '../../lib/navUtama';
+import { KerangkaPresensiRingkas } from '../../components/Kerangka';
 import { useTitikAbsenSaya, usePresensiSayaUntukBulan } from '../../lib/api/absensi';
 import { jamWIB, tanggalIndonesiaDariYmd, tanggalWIB } from '../../lib/tanggal';
 
@@ -53,7 +54,7 @@ export default function AkunPage() {
             Presensi saya bulan ini
           </p>
           {presensiLoading ? (
-            <p>Memuat…</p>
+            <KerangkaPresensiRingkas />
           ) : !presensiSaya || presensiSaya.length === 0 ? (
             <p className="teks-penjelasan">Belum ada presensi bulan ini.</p>
           ) : (

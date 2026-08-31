@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Terlindungi } from '../../../components/Terlindungi';
 import { PemilihTanggal } from '../../../components/PemilihTanggal';
 import { TombolEkspor } from '../../../components/TombolEkspor';
+import { KerangkaDaftarKartu } from '../../../components/Kerangka';
 import { useAuth } from '../../../lib/auth/AuthProvider';
 import { usePolicy } from '../../../lib/api/policy';
 import {
@@ -269,7 +270,7 @@ function TinjauAbsenIsi() {
       <TombolEkspor path="/api/ekspor/absensi" label="Rekap absensi bulanan" />
 
       {isLoading ? (
-        <p>Memuat…</p>
+        <KerangkaDaftarKartu jumlah={4} />
       ) : (baris ?? []).length === 0 ? (
         <p style={{ color: 'var(--kosong)' }}>Belum ada orang dengan titik absen yang ditugaskan.</p>
       ) : (

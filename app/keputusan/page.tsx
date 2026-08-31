@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Terlindungi } from '../../components/Terlindungi';
 import { AntreanKartu } from '../../components/AntreanKartu';
+import { KerangkaDaftarKartu } from '../../components/Kerangka';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import { useAntreanKeputusan, useMemutuskan, useRiwayatKeputusan, type KeputusanRow } from '../../lib/api/decision';
 
@@ -83,7 +84,7 @@ function KeputusanIsi() {
               ))}
             </div>
           )}
-          {memuatAntrean && <p>Memuat…</p>}
+          {memuatAntrean && <KerangkaDaftarKartu />}
           {!memuatAntrean && antreanTerurut.length === 0 && <p style={{ color: 'var(--kosong)' }}>Tidak ada yang menunggu keputusan.</p>}
           <div className="flex flex-col gap-3">
             {antreanTerurut.map((b) => (
@@ -101,7 +102,7 @@ function KeputusanIsi() {
 
       {tab === 'riwayat' && (
         <>
-          {memuatRiwayat && <p>Memuat…</p>}
+          {memuatRiwayat && <KerangkaDaftarKartu />}
           {!memuatRiwayat && (riwayat ?? []).length === 0 && <p style={{ color: 'var(--kosong)' }}>Belum ada riwayat keputusan.</p>}
           <div className="flex flex-col gap-3">
             {(riwayat ?? []).map((b) => (

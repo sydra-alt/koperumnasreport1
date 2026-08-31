@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRiwayatSaya } from '../../lib/api/riwayat';
+import { KerangkaDaftarKartu } from '../../components/Kerangka';
 import { formRegistry } from '../../forms';
 import { jamWIB, tanggalIndonesiaDariYmd } from '../../lib/tanggal';
 
@@ -30,7 +31,7 @@ export default function RiwayatPage() {
         Laporan yang sudah Anda kirim, 30 hari terakhir.
       </p>
 
-      {isLoading && <p>Memuat…</p>}
+      {isLoading && <KerangkaDaftarKartu />}
 
       {!isLoading && (daftar ?? []).length === 0 && (
         <div className="kartu-status rail-netral">

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Terlindungi } from '../../components/Terlindungi';
 import { PapanKartu } from '../../components/PapanKartu';
 import { PemilihTanggal } from '../../components/PemilihTanggal';
+import { KerangkaPapan } from '../../components/Kerangka';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import { usePolicy } from '../../lib/api/policy';
 import { usePapanUntukTanggal, useTagihLaporan, type PapanRow } from '../../lib/api/papan';
@@ -75,7 +76,7 @@ function PapanKontrolIsi() {
       />
 
       {!policy || isLoading ? (
-        <p>Memuat…</p>
+        <KerangkaPapan />
       ) : tanggalBukanHariKerja ? (
         <div className="kartu-status rail-netral p-6 text-center">
           <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--kosong)' }}>Bukan hari kerja</p>

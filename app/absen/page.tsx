@@ -7,6 +7,7 @@ import { useTitikAbsenSaya, useAbsenHariIni, useKirimAbsen, useSetujuiPrivasiPre
 import { urutkanTitikTerdekat, hitungTerlambatMenit, statusDariJarak, type TitikDenganJarak } from '../../lib/absen';
 import { jamWIB, tanggalWIB } from '../../lib/tanggal';
 import { CameraCapture } from '../../components/CameraCapture';
+import { KerangkaAbsen } from '../../components/Kerangka';
 import {
   simpanAbsenPending,
   muatAbsenPending,
@@ -77,7 +78,7 @@ export default function AbsenPage() {
   }, [userId]);
 
   if (!session || titikLoading || absenLoading || !policy || layar === 'memuat') {
-    return <main className="p-6">Memuat…</main>;
+    return <main className="p-6"><KerangkaAbsen /></main>;
   }
 
   if (!sudahSetujuiPrivasi) {

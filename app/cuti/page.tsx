@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import { useAjukanCuti, useCutiSaya, useSignedUrlCuti, type CutiJenis } from '../../lib/api/cuti';
+import { KerangkaDaftarKartu } from '../../components/Kerangka';
 import { tanggalIndonesiaDariYmd, tanggalWIB } from '../../lib/tanggal';
 
 const LABEL_JENIS: Record<CutiJenis, string> = { cuti: 'Cuti', sakit: 'Sakit', izin: 'Izin' };
@@ -142,7 +143,7 @@ export default function CutiPage() {
         <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
           Pengajuan Saya
         </p>
-        {isLoading && <p>Memuat…</p>}
+        {isLoading && <KerangkaDaftarKartu jumlah={2} />}
         {!isLoading && (riwayat ?? []).length === 0 && <p style={{ color: 'var(--kosong)' }}>Belum ada pengajuan.</p>}
         {(riwayat ?? []).map((r) => (
           <div key={r.id} className="border p-3 text-sm" style={{ borderColor: 'var(--garis)', borderRadius: 'var(--radius-besar)' }}>

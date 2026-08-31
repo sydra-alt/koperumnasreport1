@@ -13,6 +13,7 @@ import { hitungTugasHariIni, sapaanWaktu } from '../lib/tugasHariIni';
 import { hariISOWIB, jamWIB } from '../lib/tanggal';
 import { AngkaGrid } from '../components/AngkaGrid';
 import { KeadaanGagal } from '../components/KeadaanGagal';
+import { KerangkaBeranda, KerangkaDaftarKartu } from '../components/Kerangka';
 import { usePembangunanUntukTanggal, useKeuanganRekapUntukTanggal, useSelisihRestoUntukTanggal } from '../lib/api/dashboard';
 import { useLaporanAccountingHariIni, hitungRingkasanKeuanganCeo } from '../lib/api/accounting';
 import { formatRupiah } from '../lib/rupiah';
@@ -137,7 +138,7 @@ function DaftarTugas() {
   }
 
   if (!policy || isLoading) {
-    return <p>Memuat…</p>;
+    return <KerangkaDaftarKartu />;
   }
 
   const namaLokasi = (id: string) => lokasi?.find((l) => l.id === id)?.nama ?? id;
@@ -327,7 +328,7 @@ export default function Home() {
   return (
     <main className="flex min-h-svh flex-col gap-6 p-6">
       {loading ? (
-        <p>Memuat…</p>
+        <KerangkaBeranda />
       ) : (
         <>
           <h1 style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-angka-besar)', lineHeight: 1.2, color: 'var(--biru)' }}>

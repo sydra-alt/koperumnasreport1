@@ -290,7 +290,7 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
             <fieldset
               key={block.id}
               id={`bagian-${block.id}`}
-              className="flex flex-col border"
+              className="bagian-form flex flex-col border"
               style={{
                 borderColor: bermasalah ? 'var(--merah-garis)' : 'var(--garis)',
                 borderLeftWidth: terbuka ? 'var(--lebar-rail)' : 1,
@@ -322,12 +322,18 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
                 </p>
               )}
 
-              {!terbuka ? (
-                <button type="button" onClick={() => togel(block.id)} className="w-fit text-sm" style={{ color: 'var(--biru-3)', minHeight: 44, display: 'flex', alignItems: 'center' }}>
-                  Buka bagian →
-                </button>
-              ) : (
-                <>
+              {/* Konten bagian — beranimasi buka/tutup lewat .bagian-isi
+                  (DESIGN-MODERN.md §M4: tinggi + opasitas). Semua anak
+                  SELALU di-render (bukan kondisional) supaya transisi
+                  height:0→auto berjalan mulus. */}
+              <div className={`bagian-isi${terbuka ? ' bagian-isi-terbuka' : ''}`}>
+                <div className="flex flex-col" style={{ gap: terbuka ? 'var(--jarak-field)' : 0 }}>
+                  {!terbuka && (
+                    <button type="button" onClick={() => togel(block.id)} className="w-fit text-sm" style={{ color: 'var(--biru-3)', minHeight: 44, display: 'flex', alignItems: 'center' }}>
+                      Buka bagian →
+                    </button>
+                  )}
+
                   {block.catatan && <p className="teks-penjelasan">{block.catatan}</p>}
                   {block.fields.map((field) => {
                     const bermasalahField = Boolean(errors[field.key]);
@@ -368,8 +374,8 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
                       </label>
                     );
                   })}
-                </>
-              )}
+                </div>
+              </div>
             </fieldset>
           );
         })}

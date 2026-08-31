@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { FieldValues } from 'react-hook-form';
+import { KerangkaForm } from './Kerangka';
 import { useAuth } from '../lib/auth/AuthProvider';
 import { usePolicy } from '../lib/api/policy';
 import { statusClosing, statusUndangan, useProgresBulananSaya } from '../lib/api/marketing';
@@ -242,7 +243,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
   if (memuatReport) {
     return (
       <main className="p-6">
-        <p>Memuat…</p>
+        <KerangkaForm />
       </main>
     );
   }

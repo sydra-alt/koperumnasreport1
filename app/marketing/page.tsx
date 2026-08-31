@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Terlindungi } from '../../components/Terlindungi';
+import { KerangkaTabel, KerangkaTeks } from '../../components/Kerangka';
 import { usePolicy } from '../../lib/api/policy';
 import {
   useMarketingBulananSemua,
@@ -39,7 +40,7 @@ function KalenderKaryawan({ userId }: { userId: string }) {
     return kalenderPteBulanIni(`${tahun}-${bulan}`, workdays, pteMulaiBerlaku, mulaiKerja ?? null, hariIni, pteBulanIni ?? []);
   }, [policy, tahun, bulan, pteMulaiBerlaku, mulaiKerja, hariIni, pteBulanIni]);
 
-  if (!policy) return <p>Memuat kalender…</p>;
+  if (!policy) return <KerangkaTeks baris={2} />;
 
   return (
     <div className="flex flex-col gap-2">
@@ -98,7 +99,7 @@ function Isi() {
     return baris;
   }, [semua, divisiFilter, urutan]);
 
-  if (isLoading || !policy) return <p>Memuat…</p>;
+  if (isLoading || !policy) return <KerangkaTabel baris={5} kolom={7} />;
 
   return (
     <div className="flex flex-col gap-4">

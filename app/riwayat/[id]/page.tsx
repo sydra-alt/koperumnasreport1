@@ -4,6 +4,7 @@ import { use } from 'react';
 import Link from 'next/link';
 import { useLaporanDetail, useLampiranLaporan } from '../../../lib/api/riwayat';
 import { LaporanBacaSaja } from '../../../components/LaporanBacaSaja';
+import { KerangkaDetailLaporan } from '../../../components/Kerangka';
 import { formRegistry } from '../../../forms';
 import { tanggalIndonesiaDariYmd, jamWIB } from '../../../lib/tanggal';
 
@@ -21,7 +22,7 @@ export default function RiwayatDetailPage({ params }: { params: Promise<{ id: st
         ← Kembali ke Laporan Saya
       </Link>
 
-      {isLoading && <p>Memuat…</p>}
+      {isLoading && <KerangkaDetailLaporan />}
 
       {!isLoading && !laporan && (
         <p style={{ color: 'var(--kosong)' }}>Laporan tidak ditemukan, atau bukan milik Anda.</p>

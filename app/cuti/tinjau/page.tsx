@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Terlindungi } from '../../../components/Terlindungi';
+import { KerangkaDaftarKartu } from '../../../components/Kerangka';
 import { useAuth } from '../../../lib/auth/AuthProvider';
 import { useAntreanTinjauCuti, usePutuskanCuti, useSignedUrlCuti, type CutiTinjau } from '../../../lib/api/cuti';
 import { tanggalIndonesiaDariYmd } from '../../../lib/tanggal';
@@ -86,7 +87,7 @@ function Baris({ item }: { item: CutiTinjau }) {
 function Isi() {
   const { data: antrean, isLoading } = useAntreanTinjauCuti();
 
-  if (isLoading) return <p>Memuat…</p>;
+  if (isLoading) return <KerangkaDaftarKartu />;
 
   if (!antrean || antrean.length === 0) {
     return <p style={{ color: 'var(--kosong)' }}>Tidak ada pengajuan yang menunggu persetujuan.</p>;
