@@ -104,6 +104,18 @@ Brief menetapkan biru tua `#1A4FA0`, biru muda `#57ADE6`, emas `#EFA829`, dan pu
 
 ## 2.1 CSS variables — versi revisi
 
+> ⚠️ **KOREKSI 31 Agustus 2026** — Nilai `--color-brand-700/600/500` di bawah
+> tadinya PERKIRAAN (`#1A4FA0`/`#2F7FC5`/`#57ADE6`), ditulis sebelum warna asli
+> logo disampel. Sudah diganti ke warna ASLI (disampel langsung dari
+> `public/logo-koperumnas.jpg`) — SAMA PERSIS dengan yang sungguh berjalan di
+> `app/tokens.css`: `--biru: #0047AF` (biru tua, dipakai judul), `--biru-2:
+> #1C74CD` (tengah), `--biru-3: #3FAAF2` (biru muda). Kalau menulis CSS baru,
+> pakai TIGA token nyata itu (`--biru`/`--biru-2`/`--biru-3`) — bukan skema
+> penamaan `--color-brand-*` di bawah, itu cuma ilustrasi dari draf awal dan
+> tidak pernah diimplementasikan penuh sebagai skala 9 tingkat. Tingkat lain
+> di skala ini (950/900/800/200/100/50) TETAP nilai perkiraan lama, belum ada
+> padanan aslinya di app — jangan dianggap sudah tersampel juga.
+
 ```css
 :root {
   /* ================================
@@ -112,9 +124,9 @@ Brief menetapkan biru tua `#1A4FA0`, biru muda `#57ADE6`, emas `#EFA829`, dan pu
   --color-brand-950: #0B2D63;
   --color-brand-900: #103C7A;
   --color-brand-800: #17478E;
-  --color-brand-700: #1A4FA0;
-  --color-brand-600: #2F7FC5;
-  --color-brand-500: #57ADE6;
+  --color-brand-700: #0047AF; /* = --biru asli app/tokens.css (sebelumnya keliru #1A4FA0, perkiraan) */
+  --color-brand-600: #1C74CD; /* = --biru-2 asli app/tokens.css (sebelumnya keliru #2F7FC5, perkiraan) */
+  --color-brand-500: #3FAAF2; /* = --biru-3 asli app/tokens.css (sebelumnya keliru #57ADE6, perkiraan) */
   --color-brand-200: #CDEBFA;
   --color-brand-100: #E8F4FB;
   --color-brand-50:  #F4F9FD;
@@ -1262,3 +1274,125 @@ Begitu SATU laporan pertama masuk, keadaan berubah jadi "sebagian tertinggal" --
 ## Implementasi rujukan
 
 `app/papan/page.tsx` (`belumMulai = totalSemua > 0 && totalSudah === 0`) dan `components/PapanKartu.tsx` (prop `netral`). Prinsip yang sama berlaku di mana pun ada agregasi status serupa (bukan cuma Papan Kontrol) -- kalau menemukan kasus baru "0 dari N", jangan tebak, terapkan pola yang sama: keadaan kosong netral dulu, warna status menyusul begitu ada pembanding sungguhan.
+
+---
+
+# BAGIAN TAMBAHAN — Revisi dari ChatGPT, ditinjau ulang (31 Agustus 2026)
+
+CEO memasukkan sebuah draf redesign baru dari ChatGPT yang SEMPAT MENIMPA seluruh file ini. Seluruh isi §0–27 di atas sudah **dipulihkan utuh** dari git -- itu tetap sistem desain yang berlaku, lahir dari masalah nyata aplikasi ini, bukan teori. Bagian di bawah ini adalah **arahan TAMBAHAN** dari draf ChatGPT yang dinilai berguna dan TIDAK bertentangan dengan apa pun di atas atau dengan CLAUDE.md -- ditambahkan sebagai pelengkap, bukan pengganti.
+
+**Aturan baca**: kalau bagian di bawah ini bentrok dengan §0–27 di atas, §0–27 YANG BERLAKU. Draf ChatGPT ditulis tanpa melihat kode aplikasi ini, jadi beberapa bagiannya keliru/generik -- yang keliru itu **dibuang total di sini, bukan cuma ditandai**:
+
+- **Font Manrope** (draf ChatGPT mengganti seluruh font ke Manrope) -- **DIBUANG**. CLAUDE.md #10 mengunci Plus Jakarta Sans untuk seluruh antarmuka, dan `app/tokens.css` sudah berjalan dengannya. Tidak ada alasan untuk ganti.
+- **Larangan tanda `--`/`—`/`·`/`→` "sebagai pengganti struktur layout"** (muncul dua kali di draf ChatGPT: §18.3 dan checklist Definition of Done) -- **DIBUANG**. Ini bentrok langsung dengan UI yang SUDAH BERJALAN di seluruh aplikasi (mis. `jamWIB` dipisah `·` di `PapanKartu`/`riwayat`/Tinjau Absensi -- "Masuk 09:23 · jam masuk 08:00 · toleransi 15 menit → terlambat 68 menit" -- pola yang baru saja diverifikasi & disetujui). Draf ChatGPT tidak melihat kode ini saat menulis aturan tsb.
+- **"[Cetak / Ekspor PDF]"** di contoh Laporan Terpusat -- **dikoreksi jadi cuma "Unduh Excel"**. Aplikasi ini tidak punya (dan tidak pernah diminta punya) ekspor PDF, cuma `.xlsx` lewat `TombolEkspor`.
+
+## T.1 Perbedaan "laporan masuk, nilai 0" vs "belum lapor" (BUKAN duplikat §27)
+
+Ini aturan yang BERBEDA dari §27 di atas, walau kedengarannya mirip -- keduanya soal "jangan otomatis menganggap nol itu buruk", tapi di level yang berbeda:
+
+- **§27 (di atas)** bicara soal AGREGAT lintas-orang di satu papan: "0 dari 37 SUDAH LAPOR" (belum ada satu pun laporan masuk sama sekali hari itu) -- itu netral, "belum mulai", karena tidak ada pembanding.
+- **T.1 (di sini)** bicara soal ISI satu laporan yang SUDAH masuk: satu orang sudah lapor, dan salah satu ANGKA di laporannya kebetulan 0 (mis. "Satpam hadir: 0 orang" adalah jawaban sah, bukan tanda laporan kosong/belum lengkap).
+
+Kedua aturan berlaku BERSAMAAN, di tempat berbeda -- jangan dianggap salah satu menggantikan yang lain.
+
+**Belum lapor** (tidak ada laporan masuk sama sekali): rail kiri merah, latar merah-lembut, label "Belum lapor", aksi utama "Follow-up".
+
+**Laporan masuk, nilai 0** (laporan sah sudah masuk, kebetulan nilainya 0): netral/hijau seperti laporan lain, angka tetap ditampilkan kuat, boleh ada label "Laporan diterima". Jangan pernah membuat angka 0 di DALAM laporan yang sudah masuk otomatis terlihat seperti error.
+
+## T.2 Empat tingkat perhatian per layar
+
+Kesalahan paling sering: membuat semua bagian di satu layar terlihat sama penting. Setiap layar (terutama form panjang & dashboard) sebaiknya mengikuti urutan:
+
+1. **Orientasi** -- Apa halaman ini? (mis. "Laporan Hari Ini, Senin 31 Agustus 2026")
+2. **Kondisi utama** -- Apa status saya sekarang? (mis. "12 dari 16 sudah melapor · 4 belum lapor · 3 perlu dikawal")
+3. **Aksi** -- Apa yang harus dilakukan? (mis. "4 PIC belum melapor [Follow-up]")
+4. **Detail** -- Baru di sini data rinci/bagian laporan ditampilkan.
+
+Penjelasan metadata ("data ini berasal dari laporan Security seluruh lokasi & shift") jangan ditaruh sebagai paragraf panjang di ATAS data -- taruh sebagai baris kecil "Sumber data / Laporan Security / Seluruh lokasi & shift" SETELAH angka utama, bukan sebelum.
+
+## T.3 Level permukaan (surface)
+
+Maksimal empat level, jangan bikin 8–10 variasi abu-abu cuma untuk kesan "depth":
+
+1. **Canvas** -- latar halaman.
+2. **Surface** -- kartu/panel utama.
+3. **Surface soft** -- field, sub-panel, area input.
+4. **Semantic soft** -- area status merah/kuning/hijau (`--merah-lembut`/`--kuning-lembut`/`--biru-lembut` di `app/tokens.css`).
+
+Kartu biasa cukup border lembut, TANPA shadow besar. Shadow (`--bayangan-kartu`) cuma untuk nav bawah, tombol mengambang Absen, dan panel yang sungguh mengambang -- bukan kartu biasa.
+
+## T.4 Laporan Terpusat (belum ada spesifikasi tersendiri di atas)
+
+```text
+Laporan Terpusat
+
+[Ringkasan status hari ini]
+
+[Perlu ditindaklanjuti]
+
+Semua bagian laporan
+1. Data Konsumen / Sistem
+2. CS & Masalah Konsumen
+3. Operasional Kantor
+...
+15. Rekap Status PIC Lokasi
+
+[Unduh Excel]
+```
+
+Section yang datanya belum tersedia: jangan bikin pengguna menebak-nebak. Pakai pola sama dengan keadaan kosong (§16): "**Belum ada laporan HRD hari ini.** Pastikan PIC terkait sudah mengirim laporan. [Follow-up PIC]" -- bukan cuma "Belum ada laporan HRD pada tanggal ini."
+
+## T.5 Copywriting / aturan bahasa
+
+Bahasa: langsung, pendek, manusiawi, sopan, tidak teknis.
+
+Hindari bahasa sistem:
+- Jangan "Validasi gagal." → "**Data belum lengkap.** Isi bagian yang masih kosong lalu coba kirim lagi."
+- Jangan "Submission berhasil." → "**Laporan sudah dikirim.**"
+- Jangan "Tidak ada data." → "**Belum ada laporan hari ini.** Belum ada data yang diterima dari PIC terkait."
+
+Hindari nada "AI menjelaskan database":
+- Jangan "Data ini berasal dari rekap laporan divisi lain dan tidak dapat diedit oleh pengguna karena merupakan hasil agregasi otomatis." → "**Terisi otomatis** — Data ini berasal dari laporan divisi lain."
+
+(Bagian soal larangan tanda `--`/`—`/`·` yang ada di draf asli SENGAJA tidak dipindahkan ke sini -- lihat catatan pembuka bagian tambahan ini.)
+
+## T.6 Warna berwarna tapi tidak norak
+
+**Boleh**: soft red/amber/green surface, blue CTA, blue accent pada judul, tinted input background, angka berwarna status, rail kiri.
+
+**Jangan**: gradient, neon, satu layar penuh 5 warna sekaligus, 10 badge pill berbeda, setiap baris diberi ikon warna berbeda, shadow tebal, glassmorphism, status dot berulang-ulang.
+
+## T.7 Arsitektur komponen — pola ilustratif, BUKAN nama komponen sungguhan
+
+Draf ChatGPT mengusulkan pohon komponen generik (`AppShell/TopBar/PageHeader/StatusSummary/SectionCard/StatusPanel/FollowUpCard/EmptyState/ErrorState/SuccessState/BottomNav`). **Ini cuma ilustrasi lapisan konsep** (shell → header → status → section → kartu → empty/error/success → nav) -- BUKAN nama komponen yang sungguh ada. Komponen SUNGGUHAN di aplikasi ini sudah ada dan harus dipakai ulang, bukan dibuat versi generiknya lagi: `FormRenderer` (form schema-driven, CLAUDE.md #6 -- jangan menulis komponen per form), `PapanKartu`, `AntreanKartu`, `CameraCapture`, `Terlindungi` (guard peran), `KeadaanGagal`, `PemilihTanggal`, `TombolEkspor`, `AngkaGrid`. Kalau butuh komponen baru, cek dulu apakah salah satu ini sudah cukup digeneralisasi sebelum menulis yang baru.
+
+## T.8 Urutan prioritas -- draf awal, SUDAH BANYAK YANG SELESAI
+
+Draf ChatGPT menulis urutan pengerjaan dari nol (tokens → shell → dashboard → ... → riwayat) dengan asumsi belum ada yang dibangun. **Itu tidak sesuai kenyataan** -- lihat `docs/PROGRESS.md` untuk status sungguhan: Panel PTE, Papan Kontrol (termasuk §27), Antrean Keputusan, Absen, Riwayat semuanya SUDAH direvisi. Jangan pakai urutan draf ini sebagai checklist "belum dikerjakan" -- cek PROGRESS.md dulu sebelum mengasumsikan sesuatu belum disentuh.
+
+## T.9 Definition of Done (checklist tambahan, bukan pengganti §25 lama)
+
+Redesign/perubahan visual baru dianggap selesai kalau, SELAIN checklist §25 di atas:
+
+- Font tetap Plus Jakarta Sans (BUKAN "terasa modern" generik -- ganti font tidak termasuk definisi selesai di sini).
+- UI terasa seperti aplikasi mobile modern, bukan aplikasi admin lama.
+- Warna tetap punya makna (bukan sekadar lebih berwarna).
+- Dashboard CEO bisa dipindai 3-5 detik.
+- "Belum lapor" jelas terlihat sebagai masalah, "angka 0 di laporan yang sudah masuk" TIDAK disalahartikan sebagai belum lapor (lihat T.1).
+- Teks abu-abu tetap terbaca.
+- Tidak ada paragraf metadata bernada "AI menjelaskan database" (lihat T.5).
+- Tidak ada bubble/pill berlebihan.
+- Form panjang terasa terstruktur dan punya progres.
+- Status PTE dipahami sekilas.
+- Absen mudah dilakukan satu tangan.
+- Semua layar tetap terbaca di 360px.
+- Tidak ada UI kit atau library ikon tambahan (CLAUDE.md).
+
+(Item "strip `--`/`—`/`·` tidak dipakai sebagai struktur layout" dari draf asli SENGAJA dihapus dari checklist ini -- lihat catatan pembuka bagian tambahan.)
+
+## T.10 Golden rule
+
+> **Buat pengguna melihat hal yang penting sebelum mereka membacanya.**
+>
+> Gunakan warna untuk prioritas, tipografi untuk hierarki, spacing untuk pengelompokan, dan teks untuk memastikan makna. Jangan menggunakan dekorasi untuk menggantikan struktur informasi.

@@ -148,51 +148,11 @@ export function useKirimAbsen(userId: string | undefined) {
 }
 
 // ─── Tinjau Absensi (HRD/pusat/ceo) ────────────────────────────────────
-export interface AbsensiTinjau {
-  id: string;
-  userNama: string;
-  tanggal: string;
-  tipe: 'masuk' | 'pulang';
-  waktu: string;
-  jarakMeter: number | null;
-  akurasiMeter: number | null;
-  lokasiNama: string | null;
-  fotoPath: string;
-  keputusanHrd: 'diterima' | 'ditolak' | null;
-  catatan: string | null;
-}
-
-export function useAntreanTinjauAbsen() {
-  return useQuery({
-    queryKey: ['absen-tinjau'],
-    queryFn: async (): Promise<AbsensiTinjau[]> => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('absensi')
-        .select(
-          'id, tanggal, tipe, waktu, jarak_meter, akurasi_meter, foto_path, keputusan_hrd, catatan, user:user_id(nama), lokasi_absen:lokasi_absen_id(nama)',
-        )
-        .eq('status', 'di_luar_radius')
-        .is('keputusan_hrd', null)
-        .order('waktu', { ascending: false });
-      if (error) throw error;
-      return (data ?? []).map((r) => ({
-        id: r.id,
-        userNama: (r.user as unknown as { nama: string } | null)?.nama ?? '—',
-        tanggal: r.tanggal,
-        tipe: r.tipe,
-        waktu: r.waktu,
-        jarakMeter: r.jarak_meter,
-        akurasiMeter: r.akurasi_meter,
-        lokasiNama: (r.lokasi_absen as unknown as { nama: string } | null)?.nama ?? null,
-        fotoPath: r.foto_path,
-        keputusanHrd: r.keputusan_hrd,
-        catatan: r.catatan,
-      }));
-    },
-  });
-}
-
+// Antrean 🟡 di luar radius dulu daftar TERPISAH (`useAntreanTinjauAbsen`) --
+// digantikan `usePresensiUntukTanggal` di atas, yang menampilkan SEMUA
+// orang (bukan cuma yang di luar radius) sekaligus membuka keputusan
+// Terima/Tolak per baris lewat detail-nya (app/absen/tinjau/page.tsx,
+// instruksi eksplisit user 31 Agustus 2026).
 export function usePutuskanAbsensi() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -201,7 +161,7 @@ export function usePutuskanAbsensi() {
       const { error } = await supabase.rpc('putuskan_absensi', { p_id: id, p_diterima: diterima, p_catatan: catatan });
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['absen-tinjau'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['presensi-untuk-tanggal'] }),
   });
 }
 
@@ -223,6 +183,110 @@ export function useSignedUrlAbsensi() {
       const { data, error } = await supabase.storage.from('absensi').createSignedUrl(path, umurDetik);
       if (error) throw error;
       return data.signedUrl;
+    },
+  });
+}
+
+// ─── Daftar presensi harian (Tinjau Absensi, ceo/pusat/HRD) ───────────────
+// Satu baris per ORANG per TANGGAL (migrasi 0041 `presensi_untuk_tanggal`),
+// termasuk yang BELUM absen sama sekali (jam_masuk null) -- instruksi
+// eksplisit user, 31 Agustus 2026: "justru itu yang paling perlu dilihat
+// HRD, jangan hilang dari daftar".
+export interface PresensiHarianRow {
+  userId: string;
+  nama: string;
+  titikNama: string | null;
+  masukId: string | null;
+  jamMasuk: string | null;
+  /** Jam masuk yang DIPAKAI menghitung `terlambatMenit` -- per-orang (penugasan_absen.jam_masuk) atau default policy. 'HH:mm'. */
+  masukJamEfektif: string | null;
+  terlambatMenit: number | null;
+  statusMasuk: 'valid' | 'di_luar_radius' | 'manual_hrd' | null;
+  masukFotoPath: string | null;
+  masukLat: number | null;
+  masukLon: number | null;
+  masukJarakMeter: number | null;
+  masukAkurasiMeter: number | null;
+  masukKeputusanHrd: 'diterima' | 'ditolak' | null;
+  masukCatatan: string | null;
+  pulangId: string | null;
+  jamPulang: string | null;
+  statusPulang: 'valid' | 'di_luar_radius' | 'manual_hrd' | null;
+  pulangFotoPath: string | null;
+  pulangLat: number | null;
+  pulangLon: number | null;
+  pulangJarakMeter: number | null;
+  pulangAkurasiMeter: number | null;
+  pulangKeputusanHrd: 'diterima' | 'ditolak' | null;
+  pulangCatatan: string | null;
+}
+
+export function usePresensiUntukTanggal(tanggal: string) {
+  return useQuery({
+    queryKey: ['presensi-untuk-tanggal', tanggal],
+    queryFn: async (): Promise<PresensiHarianRow[]> => {
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc('presensi_untuk_tanggal', { p_tanggal: tanggal });
+      if (error) throw error;
+      return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+        userId: r.user_id as string,
+        nama: r.nama as string,
+        titikNama: r.titik_nama as string | null,
+        masukId: r.masuk_id as string | null,
+        jamMasuk: r.jam_masuk as string | null,
+        masukJamEfektif: r.masuk_jam_efektif as string | null,
+        terlambatMenit: r.terlambat_menit as number | null,
+        statusMasuk: r.status_masuk as PresensiHarianRow['statusMasuk'],
+        masukFotoPath: r.masuk_foto_path as string | null,
+        masukLat: r.masuk_lat as number | null,
+        masukLon: r.masuk_lon as number | null,
+        masukJarakMeter: r.masuk_jarak_meter as number | null,
+        masukAkurasiMeter: r.masuk_akurasi_meter as number | null,
+        masukKeputusanHrd: r.masuk_keputusan_hrd as PresensiHarianRow['masukKeputusanHrd'],
+        masukCatatan: r.masuk_catatan as string | null,
+        pulangId: r.pulang_id as string | null,
+        jamPulang: r.jam_pulang as string | null,
+        statusPulang: r.status_pulang as PresensiHarianRow['statusPulang'],
+        pulangFotoPath: r.pulang_foto_path as string | null,
+        pulangLat: r.pulang_lat as number | null,
+        pulangLon: r.pulang_lon as number | null,
+        pulangJarakMeter: r.pulang_jarak_meter as number | null,
+        pulangAkurasiMeter: r.pulang_akurasi_meter as number | null,
+        pulangKeputusanHrd: r.pulang_keputusan_hrd as PresensiHarianRow['pulangKeputusanHrd'],
+        pulangCatatan: r.pulang_catatan as string | null,
+      }));
+    },
+  });
+}
+
+// ─── Riwayat presensi milik SENDIRI (halaman Akun, semua karyawan) ────────
+export interface PresensiSayaRow {
+  tanggal: string;
+  titikNama: string | null;
+  jamMasuk: string | null;
+  terlambatMenit: number | null;
+  statusMasuk: 'valid' | 'di_luar_radius' | 'manual_hrd' | null;
+  jamPulang: string | null;
+  statusPulang: 'valid' | 'di_luar_radius' | 'manual_hrd' | null;
+}
+
+export function usePresensiSayaUntukBulan(bulan: string, aktif: boolean) {
+  return useQuery({
+    queryKey: ['presensi-saya-untuk-bulan', bulan],
+    enabled: aktif,
+    queryFn: async (): Promise<PresensiSayaRow[]> => {
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc('presensi_saya_untuk_bulan', { p_bulan: bulan });
+      if (error) throw error;
+      return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+        tanggal: r.tanggal as string,
+        titikNama: r.titik_nama as string | null,
+        jamMasuk: r.jam_masuk as string | null,
+        terlambatMenit: r.terlambat_menit as number | null,
+        statusMasuk: r.status_masuk as PresensiSayaRow['statusMasuk'],
+        jamPulang: r.jam_pulang as string | null,
+        statusPulang: r.status_pulang as PresensiSayaRow['statusPulang'],
+      }));
     },
   });
 }

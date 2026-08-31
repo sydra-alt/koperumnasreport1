@@ -2,7 +2,15 @@
   /* Latar & garis (30 Agustus 2026 -- "ringan, bukan resmi", 04-CATATAN-TEKNIS.md §6) */
   --kertas:    #FBFBF9;
   --kertas-2:  #F3F1EA;
-  --garis:     #E4E0D3;
+  --garis:     #E4E0D3; /* TETAP dipakai -- input, kotak unggah, tabel, pemisah daftar (DESIGN-MODERN.md §M2 koreksi 31 Agustus 2026: garis TIDAK dilarang, cuma bukan lagi pembatas kartu utama) */
+
+  /* Permukaan (DESIGN-MODERN.md §M2, 31 Agustus 2026) -- latar halaman jadi
+     abu muda, kartu UTAMA jadi putih polos supaya "terangkat" lewat beda
+     warna permukaan, BUKAN lewat garis dekoratif di sekelilingnya. Rail kiri
+     4px (--lebar-rail di bawah) TETAP bahasa status utama -- tidak berubah. */
+  --halaman:     #F4F6F8; /* latar halaman/body -- ganti dari --kertas untuk kartu status */
+  --permukaan:   #FFFFFF; /* kartu utama -- polos putih, TANPA garis pembatas */
+  --permukaan-2: #F8FAFB; /* kartu di dalam kartu (kalau perlu bersarang) */
 
   /* Teks */
   --tinta:     #1F2A33; /* teks isi -- dihangatkan dari #10202E, kontras terlalu keras di atas kertas baru untuk dibaca lama */
@@ -47,12 +55,20 @@
   --body:    var(--font);
   --mono:    var(--font-mono), monospace; /* HANYA rupiah, jam, koordinat -- tidak untuk label/judul/tombol */
 
-  /* Skala -- DESIGN.md §3 */
+  /* Skala -- DESIGN.md §3, diperbesar lompatannya DESIGN-MODERN.md §M3 (31
+     Agustus 2026): label naik 13->14px, tingkat baru --ukuran-angka-hero
+     (32px) DIPISAH dari --ukuran-angka-besar (28px, tetap dipakai h1 judul
+     halaman di banyak file -- TIDAK diubah nilainya supaya tidak perlu
+     menyentuh tiap halaman, cukup .angka-besar yang pindah ke tingkat hero
+     yang baru). FONT TETAP Plus Jakarta Sans (var(--font) di bawah) --
+     §M3 cuma mengubah ukuran/ketebalan/line-height/letter-spacing, BUKAN
+     keluarga huruf. */
   --ukuran-judul: 20px; /* judul bagian (DESIGN.md: 20px, 700, 1.3) -- diperbarui dari 17px */
-  --ukuran-label: 13px; /* label field */
+  --ukuran-label: 14px; /* label field -- DESIGN-MODERN.md §M3: naik dari 13px, terlalu kecil utk pengguna 50-an di HP murah */
   --ukuran-isi:   16px; /* isian/nilai field */
   --ukuran-progres: 20px; /* angka progres bagian ("0 dari 2 konsumen"), FormRenderer -- DESIGN.md §3.1 */
-  --ukuran-angka-besar: 28px; /* angka utama CEO: "12 dari 16" (DESIGN.md §3: 28–32px, 700, 1.1) */
+  --ukuran-angka-besar: 28px; /* judul halaman (h1) DAN dulu juga angka CEO -- sekarang KHUSUS h1, angka CEO pindah ke --ukuran-angka-hero */
+  --ukuran-angka-hero: 32px; /* DESIGN-MODERN.md §M3 --teks-hero: angka utama CEO ".angka-besar" ("12 dari 16"), SATU tingkat lebih besar dari judul halaman -- lompatan nyata, bukan sama besar */
   --ukuran-angka-kecil: 20px; /* ringkasan sekunder (DESIGN.md §3: 18–20px, 700, 1.2) */
 
   /* Bentuk */
@@ -85,4 +101,12 @@
      Dipakai bareng `--tinggi-nav-bawah`, BUKAN pengganti -- lihat
      `components/AbsenFab.tsx` dan pemakaiannya di app/globals.css. */
   --tambahan-fab-absen: 28px;
+
+  /* Gerakan (DESIGN-MODERN.md §M4, 31 Agustus 2026) -- BATAS KETAT, cuma 5
+     hal boleh bergerak: tombol ditekan, bagian form membuka, lembar bawah
+     naik, kartu baru muncul di daftar, bilah kemajuan. TIDAK PERNAH: apa pun
+     saat halaman pertama dimuat, ikon, dekorasi, angka menghitung naik. */
+  --gerak-cepat:  120ms cubic-bezier(.2,.8,.3,1);   /* tekan tombol */
+  --gerak-normal: 200ms cubic-bezier(.2,.8,.3,1);   /* buka-tutup bagian form, kartu baru muncul */
+  --gerak-lembar: 280ms cubic-bezier(.32,.72,0,1);  /* lembar bawah naik (M6, token disiapkan di sini) */
 }

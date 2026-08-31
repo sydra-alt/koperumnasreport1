@@ -34,7 +34,7 @@ td.border, th.border {
 body {
   margin: 0;
   min-height: 100svh;
-  background: var(--kertas);
+  background: var(--halaman); /* DESIGN-MODERN.md §M2 (31 Agustus 2026): latar halaman abu muda, ganti dari --kertas -- kartu utama (putih, var(--permukaan)) terangkat lewat beda permukaan, bukan garis */
   color: var(--tinta);
   font-family: var(--font);
   line-height: 1.5;
@@ -44,6 +44,9 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font);
   font-weight: 700; /* DESIGN.md §3: judul 700, bukan 500 -- hierarki lewat ketebalan + warna */
   color: var(--biru); /* judul tetap warna biru -- hierarki lewat warna, bukan cuma ukuran */
+}
+h1 {
+  letter-spacing: -0.02em; /* DESIGN-MODERN.md §M3 (31 Agustus 2026): judul halaman, huruf besar dirapatkan sedikit -- FONT TETAP Plus Jakarta Sans, cuma spacing yang berubah */
 }
 
 /* Tinggi minimal 44px + ukuran huruf isian (16px) untuk semua isian --
@@ -67,13 +70,22 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea {
 
 /* ================================
    KARTU STATUS — pola visual utama (DESIGN.md §4.2, §7.2)
-   Rail kiri 4px + soft background + border lembut.
-   Dipakai oleh PapanKartu, AntreanKartu, beranda, dll.
-   Warna diatur lewat modifier class (.rail-merah, .rail-kuning, dll).
+   Rail kiri 4px + soft background. Dipakai oleh PapanKartu, AntreanKartu,
+   beranda, dll. Warna diatur lewat modifier class (.rail-merah, dll).
+
+   DESIGN-MODERN.md §M2 (31 Agustus 2026, KOREKSI): garis pembatas 1px DI
+   SEKELILING kartu (kartu utama) DIHAPUS -- diganti latar putih polos
+   (--permukaan) di atas halaman abu (--halaman) + bayangan sangat tipis,
+   supaya kartu "terangkat" lewat beda permukaan, bukan garis dekoratif.
+   Rail kiri 4px TETAP -- itu bahasa status utama, TIDAK berubah, TIDAK
+   diganti badge/bubble/lingkaran. Garis (--garis) TIDAK dilarang secara
+   umum -- tetap dipakai di input/kotak unggah/tabel/pemisah daftar, cuma
+   bukan lagi pembatas kartu status ini.
    ================================ */
 .kartu-status {
   position: relative;
-  border: 1px solid var(--garis);
+  background: var(--permukaan);
+  box-shadow: var(--bayangan-kartu);
   border-left: var(--lebar-rail) solid var(--garis);
   border-radius: var(--radius-besar);
   padding: 12px 16px;
@@ -107,18 +119,25 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   background: var(--kertas);
 }
 
-/* Angka besar untuk CEO scanning (DESIGN.md §3, §14) */
+/* Angka besar untuk CEO scanning (DESIGN.md §3, §14). Ukuran naik ke tingkat
+   "hero" (32px, DESIGN-MODERN.md §M3) -- SATU tingkat lebih besar dari judul
+   halaman (28px, h1) supaya lompatannya nyata, bukan sama besar.
+   font-variant-numeric: tabular-nums (§M3) -- angka rata lebarnya, tidak
+   bergoyang saat berubah (mis. 9 -> 10). Font TETAP var(--display), yang
+   ujungnya Plus Jakarta Sans -- §M3 cuma mengubah ukuran, bukan huruf. */
 .angka-besar {
   font-family: var(--display);
-  font-size: var(--ukuran-angka-besar);
+  font-size: var(--ukuran-angka-hero);
   font-weight: 700;
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 .angka-kecil {
   font-family: var(--display);
   font-size: var(--ukuran-angka-kecil);
   font-weight: 700;
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Progress bar (DESIGN.md §4.1: tinggi 8px, radius penuh) */
@@ -132,10 +151,12 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   height: 100%;
   border-radius: var(--radius-pil);
   background: var(--biru);
-  transition: width 0.3s ease;
+  transition: width var(--gerak-normal); /* DESIGN-MODERN.md §M4: bilah kemajuan, salah satu dari 5 gerakan yang diizinkan */
 }
 
-/* Tombol utama (DESIGN.md §18) */
+/* Tombol utama (DESIGN.md §18). Ditekan -> scale(.97) (DESIGN-MODERN.md §M4:
+   "tombol saat ditekan", satu dari 5 gerakan yang diizinkan -- beri rasa
+   tertekan, bukan dekorasi). */
 .tombol-utama {
   display: inline-flex;
   align-items: center;
@@ -151,6 +172,7 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   font-size: var(--ukuran-isi);
   cursor: pointer;
   text-decoration: none;
+  transition: transform var(--gerak-cepat);
 }
 .tombol-sekunder {
   display: inline-flex;
@@ -167,6 +189,49 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   font-size: var(--ukuran-isi);
   cursor: pointer;
   text-decoration: none;
+  transition: transform var(--gerak-cepat);
+}
+.tombol-utama:active:not(:disabled), .tombol-sekunder:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* ================================
+   KERANGKA MUAT — skeleton loading (DESIGN-MODERN.md §M5, 31 Agustus 2026)
+   Ganti SEMUA "Memuat..."/pemutar dengan kerangka berbentuk isi yang akan
+   datang -- lihat components/Kerangka.tsx. Gradient di sini SATU-SATUNYA
+   pengecualian yang diizinkan dari larangan gradient umum (DESIGN.md §23,
+   §T.6) -- HANYA untuk animasi ini, tidak untuk latar/tombol/kartu/rail lain.
+   ================================ */
+.kerangka {
+  background: linear-gradient(90deg, #EEF1F4 25%, #F6F8F9 37%, #EEF1F4 63%);
+  background-size: 400% 100%;
+  border-radius: 6px;
+  animation: kerangka-geser 1.4s ease infinite;
+}
+@keyframes kerangka-geser {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* Kartu baru muncul di daftar (DESIGN-MODERN.md §M4) -- memudar masuk, TANPA
+   geser. Dipasang lewat class .kartu-muncul HANYA untuk baris yang benar-
+   benar baru SETELAH muatan pertama selesai (lihat app/papan/page.tsx) --
+   TIDAK PERNAH dipasang unconditional, supaya tidak ikut "bergerak saat
+   halaman pertama dimuat" (larangan tegas §M4). */
+.kartu-muncul {
+  animation: kartu-muncul var(--gerak-normal);
+}
+@keyframes kartu-muncul {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Judul bagian (DESIGN.md §3: 20px, 700, 1.3) */

@@ -34,6 +34,22 @@ function muatLogoWatermark(): Promise<HTMLImageElement> {
   });
 }
 
+/**
+ * Potong teks yang lebih lebar dari `lebarMaks` (px, di font `ctx` yang
+ * SUDAH di-set sebelum dipanggil) jadi "...", supaya nama titik panjang
+ * (mis. "Lokasi Uji -- BUKAN kantor perusahaan, cuma untuk coba dari HP")
+ * tidak meluber terpotong mentah di luar tepi foto (laporan user, 31
+ * Agustus 2026: "jangan terlihat rusak").
+ */
+function potongTeks(ctx: CanvasRenderingContext2D, teks: string, lebarMaks: number): string {
+  if (ctx.measureText(teks).width <= lebarMaks) return teks;
+  let potongan = teks;
+  while (potongan.length > 1 && ctx.measureText(`${potongan}…`).width > lebarMaks) {
+    potongan = potongan.slice(0, -1);
+  }
+  return `${potongan}…`;
+}
+
 /** Bar semi-transparan di bawah foto: logo kecil + nama/jam/titik/koordinat. Gagal muat logo TIDAK boleh menggagalkan absen -- teks tetap dibubuhkan. */
 async function bubuhkanWatermark(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, w: WatermarkAbsen) {
   const tinggiBar = Math.round(canvas.height * 0.16);
@@ -63,11 +79,17 @@ async function bubuhkanWatermark(ctx: CanvasRenderingContext2D, canvas: HTMLCanv
   ctx.fillStyle = '#ffffff';
   ctx.textBaseline = 'middle';
 
+  const lebarTeksTersedia = canvas.width - xTeks - paddingKiri;
+
   ctx.font = `700 ${ukuranFontBesar}px sans-serif`;
-  ctx.fillText(`${w.nama} · ${jamWIB()} WIB`, xTeks, y0 + tinggiBar * 0.35);
+  ctx.fillText(potongTeks(ctx, `${w.nama} · ${jamWIB()} WIB`, lebarTeksTersedia), xTeks, y0 + tinggiBar * 0.35);
 
   ctx.font = `400 ${ukuranFontKecil}px sans-serif`;
-  ctx.fillText(`${w.titikNama} · ${w.lat.toFixed(6)}, ${w.lon.toFixed(6)}`, xTeks, y0 + tinggiBar * 0.72);
+  ctx.fillText(
+    potongTeks(ctx, `${w.titikNama} · ${w.lat.toFixed(6)}, ${w.lon.toFixed(6)}`, lebarTeksTersedia),
+    xTeks,
+    y0 + tinggiBar * 0.72,
+  );
 }
 
 /**
@@ -84,10 +106,6 @@ export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCapturePr
   const [status, setStatus] = useState<Status>('meminta');
   const [fotoBlob, setFotoBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  // Diagnosa SEMENTARA (31 Agustus 2026, instruksi eksplisit user) --
-  // dihapus lagi setelah bug kamera sungguhan ketutup di HP asli. Lihat
-  // <DiagnosaKamera> di bawah.
-  const [diag, setDiag] = useState({ mediaDevicesAda: 'belum dicek', getUserMedia: 'belum dicek', videoDim: '—', readyState: '—' });
 
   useEffect(() => {
     // `status` sudah berawal 'meminta' (useState di atas) -- efek ini
@@ -117,16 +135,10 @@ export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCapturePr
         // state-in-effect): mencegah potensi cascading render kalau
         // dipanggil LANGSUNG di badan efek, bukan menonaktifkan aturannya.
         Promise.resolve().then(() => {
-          if (!batal) {
-            setDiag((d) => ({ ...d, mediaDevicesAda: 'TIDAK ADA' }));
-            setStatus('tidak_didukung');
-          }
+          if (!batal) setStatus('tidak_didukung');
         });
         return;
       }
-      Promise.resolve().then(() => {
-        if (!batal) setDiag((d) => ({ ...d, mediaDevicesAda: 'ada' }));
-      });
       navigator.mediaDevices
         .getUserMedia({ video: { facingMode: 'user' }, audio: false })
         .then((stream) => {
@@ -135,7 +147,6 @@ export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCapturePr
             return;
           }
           streamRef.current = stream;
-          setDiag((d) => ({ ...d, getUserMedia: 'berhasil' }));
           // BUG NYATA ditemukan 31 Agustus 2026 (laporan user langsung,
           // kotak kamera kosong TANPA galat -- BUKAN kasus http:// yang
           // sebelumnya salah diduga sebagai penyebab, user memakai https://
@@ -154,7 +165,6 @@ export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCapturePr
         })
         .catch((err) => {
           if (batal) return;
-          setDiag((d) => ({ ...d, getUserMedia: `GAGAL: ${err?.name ?? 'tidak diketahui'} -- ${err?.message ?? ''}` }));
           setStatus(err?.name === 'NotAllowedError' ? 'ditolak' : 'gagal');
         });
     } catch {
@@ -185,19 +195,6 @@ export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCapturePr
       // gagal play() TIDAK fatal -- browser lain kadang menolak play()
       // terprogram tapi tetap menampilkan frame pertama lewat autoplay asli.
     });
-
-    function perbaruiDiag() {
-      setDiag((d) => ({ ...d, videoDim: `${video.videoWidth}×${video.videoHeight}`, readyState: String(video.readyState) }));
-    }
-    perbaruiDiag();
-    video.addEventListener('loadedmetadata', perbaruiDiag);
-    video.addEventListener('playing', perbaruiDiag);
-    const interval = setInterval(perbaruiDiag, 500);
-    return () => {
-      video.removeEventListener('loadedmetadata', perbaruiDiag);
-      video.removeEventListener('playing', perbaruiDiag);
-      clearInterval(interval);
-    };
   }, [status]);
 
   async function ambil() {
@@ -232,26 +229,9 @@ export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCapturePr
 
   const gayaTombol = { borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 48 } as const;
 
-  // Panel diagnosa SEMENTARA (31 Agustus 2026) -- HAPUS setelah bug kamera
-  // sungguhan ketutup di HP asli. Instruksi eksplisit user: "berhenti
-  // menebak dari sisiku, kamera palsu di lingkunganku tidak akan pernah
-  // mereproduksi ini" -- panel ini menampilkan data NYATA dari perangkat
-  // yang benar-benar dipakai, supaya tidak menebak lagi kalau perbaikan
-  // ini pun ternyata belum cukup.
-  const panelDiagnosa = (
-    <div className="border p-2 text-sm" style={{ borderColor: 'var(--kuning)', background: '#FFF7E7', fontFamily: 'var(--mono)' }}>
-      <p style={{ fontWeight: 700 }}>DIAGNOSA SEMENTARA (hapus setelah bug tertutup)</p>
-      <p>navigator.mediaDevices: {diag.mediaDevicesAda}</p>
-      <p>getUserMedia: {diag.getUserMedia}</p>
-      <p>video width×height: {diag.videoDim}</p>
-      <p>video readyState: {diag.readyState}</p>
-    </div>
-  );
-
   if (status === 'meminta') {
     return (
       <div className="flex flex-col gap-2">
-        {panelDiagnosa}
         <p>Meminta izin kamera…</p>
       </div>
     );
@@ -260,7 +240,6 @@ export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCapturePr
   if (status === 'ditolak') {
     return (
       <div className="flex flex-col gap-2">
-        {panelDiagnosa}
         <p style={{ color: 'var(--merah)' }}>
           Butuh izin kamera untuk foto absen. Buka Pengaturan → Situs → izinkan Kamera, lalu coba lagi.
         </p>
@@ -279,7 +258,6 @@ export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCapturePr
   if (status === 'gagal') {
     return (
       <div className="flex flex-col gap-2">
-        {panelDiagnosa}
         <p style={{ color: 'var(--merah)' }}>Kamera tidak bisa dibuka di perangkat ini. Coba lagi, atau pakai HP lain.</p>
         <button type="button" onClick={() => setStatus('meminta')} className="border px-4" style={gayaTombol}>
           Coba Lagi
@@ -291,7 +269,6 @@ export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCapturePr
   if (status === 'tidak_didukung') {
     return (
       <div className="flex flex-col gap-2">
-        {panelDiagnosa}
         <p style={{ color: 'var(--merah)' }}>
           Kamera tidak bisa diakses dari alamat ini. Pastikan alamat website diawali <b>https://</b> (bukan http://), lalu coba lagi. Kalau
           masih gagal, hubungi Admin.
@@ -324,7 +301,6 @@ export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCapturePr
 
   return (
     <div className="flex flex-col gap-2">
-      {panelDiagnosa}
       <video ref={videoRef} autoPlay playsInline muted className="w-full border" style={{ borderColor: 'var(--garis)', transform: 'scaleX(-1)' }} />
       <div className="flex gap-2">
         <button type="button" onClick={onBatal} className="border px-4" style={{ borderColor: 'var(--garis)', color: 'var(--tinta)', minHeight: 48 }}>

@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import { formRegistry } from '../../forms';
 import { tabTerlihat, tabLuapan } from '../../lib/navUtama';
-import { useTitikAbsenSaya } from '../../lib/api/absensi';
+import { useTitikAbsenSaya, usePresensiSayaUntukBulan } from '../../lib/api/absensi';
+import { jamWIB, tanggalIndonesiaDariYmd, tanggalWIB } from '../../lib/tanggal';
 
 /**
  * Halaman "Akun" -- slot terakhir nav bawah (§2 06-RENCANA-PRESENSI-MOBILE.md).
@@ -26,6 +27,9 @@ export default function AkunPage() {
   // nav bawah supaya daftar "kalah prioritas" di sini cocok persis.
   const { data: titikSaya } = useTitikAbsenSaya(session?.user.id);
   const luapan = tabLuapan(semua, (titikSaya?.length ?? 0) > 0);
+  const punyaTitikAbsen = (titikSaya?.length ?? 0) > 0;
+  const bulanIni = tanggalWIB().slice(0, 7);
+  const { data: presensiSaya, isLoading: presensiLoading } = usePresensiSayaUntukBulan(bulanIni, punyaTitikAbsen);
 
   return (
     <main className="flex flex-col gap-6 p-6">
@@ -42,6 +46,36 @@ export default function AkunPage() {
           Peran: {roles.length > 0 ? roles.join(', ') : '—'}
         </p>
       </div>
+
+      {punyaTitikAbsen && (
+        <div className="flex flex-col gap-2">
+          <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
+            Presensi saya bulan ini
+          </p>
+          {presensiLoading ? (
+            <p>Memuat…</p>
+          ) : !presensiSaya || presensiSaya.length === 0 ? (
+            <p className="teks-penjelasan">Belum ada presensi bulan ini.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {presensiSaya.map((p) => (
+                <div key={p.tanggal} className="border p-3" style={{ borderColor: 'var(--garis)' }}>
+                  <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>{tanggalIndonesiaDariYmd(p.tanggal)}</p>
+                  <p className="text-sm" style={{ color: 'var(--label)' }}>{p.titikNama ?? '—'}</p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm mt-1" style={{ fontFamily: 'var(--mono)', color: 'var(--label)' }}>
+                    <span>Masuk {p.jamMasuk ? jamWIB(new Date(p.jamMasuk)) : '—'}</span>
+                    <span>Pulang {p.jamPulang ? jamWIB(new Date(p.jamPulang)) : '—'}</span>
+                    {p.terlambatMenit ? <span style={{ color: 'var(--merah)' }}>Terlambat {p.terlambatMenit} menit</span> : null}
+                    {p.statusMasuk === 'di_luar_radius' || p.statusPulang === 'di_luar_radius' ? (
+                      <span style={{ color: 'var(--kuning)' }}>Di luar radius</span>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {luapan.length > 0 && (
         <div className="flex flex-col gap-2">

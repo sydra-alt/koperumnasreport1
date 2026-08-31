@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { periksaPeranEkspor, rentangBulan } from '../../../../lib/ekspor/otorisasi';
 import { bukaWorkbook, buatSheet, responsXlsx } from '../../../../lib/ekspor/workbook';
+import { jamUntukExcel } from '../../../../lib/tanggal';
 
 /**
  * Rekap Absensi Bulanan (§4 06-RENCANA-PRESENSI-MOBILE.md, prioritas #1
@@ -36,6 +37,20 @@ export async function GET(request: Request) {
     .order('user_id');
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // "Terlambat 68 menit" membingungkan tanpa konteks toleransi -- user
+  // sendiri sempat salah hitung manual (lupa toleransi 15 menit), lalu
+  // menegaskan angka yang menyentuh penilaian orang harus bisa ditelusuri
+  // tanpa bertanya (31 Agustus 2026). Diambil dari `policy`, BUKAN ditulis
+  // mati (CLAUDE.md #4) -- kalau CEO mengubah kebijakan lewat Admin, judul
+  // kolom & keterangan ekspor bulan berikutnya otomatis ikut berubah.
+  const { data: policyRows, error: errPolicy } = await supabase
+    .from('policy')
+    .select('key, value')
+    .in('key', ['jam_masuk', 'toleransi_terlambat_menit']);
+  if (errPolicy) return NextResponse.json({ error: errPolicy.message }, { status: 500 });
+  const jamMasukKebijakan = String(policyRows?.find((p) => p.key === 'jam_masuk')?.value ?? '08:00');
+  const toleransiMenit = Number(policyRows?.find((p) => p.key === 'toleransi_terlambat_menit')?.value ?? 15);
+
   // Pivot: satu baris per (user_id, tanggal), gabung tipe masuk+pulang.
   interface BarisPivot {
     nama: string;
@@ -55,27 +70,40 @@ export async function GET(request: Request) {
     const baris = pivot.get(kunci) ?? { nama, tanggal: r.tanggal, titik, jamMasuk: null, terlambatMenit: null, statusMasuk: null, jamPulang: null, statusPulang: null };
     const statusLabel = r.status === 'di_luar_radius' ? 'Di luar radius' : r.status === 'manual_hrd' ? 'Dicatat manual HRD' : 'Dalam radius';
     if (r.tipe === 'masuk') {
-      baris.jamMasuk = new Date(r.waktu);
+      baris.jamMasuk = jamUntukExcel(r.waktu);
       baris.terlambatMenit = r.terlambat_menit;
       baris.statusMasuk = statusLabel;
     } else {
-      baris.jamPulang = new Date(r.waktu);
+      baris.jamPulang = jamUntukExcel(r.waktu);
       baris.statusPulang = statusLabel;
     }
     pivot.set(kunci, baris);
   }
 
-  const workbook = bukaWorkbook();
-  const sheet = buatSheet(workbook, `Absensi ${bulan}`, [
+  const kolom = [
     { header: 'Nama', key: 'nama', width: 22 },
     { header: 'Tanggal', key: 'tanggal', width: 13, numFmt: 'dd/mm/yyyy' },
     { header: 'Titik Absen', key: 'titik', width: 20 },
     { header: 'Jam Masuk', key: 'jamMasuk', width: 12, numFmt: 'hh:mm' },
-    { header: 'Terlambat (menit)', key: 'terlambatMenit', width: 16, numFmt: '#,##0' },
+    { header: `Terlambat (menit, setelah toleransi ${toleransiMenit} menit)`, key: 'terlambatMenit', width: 24, numFmt: '#,##0' },
     { header: 'Status Masuk', key: 'statusMasuk', width: 16 },
     { header: 'Jam Pulang', key: 'jamPulang', width: 12, numFmt: 'hh:mm' },
     { header: 'Status Pulang', key: 'statusPulang', width: 16 },
+  ];
+  const workbook = bukaWorkbook();
+  const sheet = buatSheet(workbook, `Absensi ${bulan}`, kolom);
+
+  // Keterangan di atas tabel (baris 1, header digeser ke baris 2) -- supaya
+  // jam masuk & toleransi yang berlaku terlihat tanpa harus bertanya siapa
+  // pun. Jam masuk PER ORANG bisa beda lewat pengaturan Admin (Titik
+  // Absen -> jam kerja) -- ini nilai DEFAULT kebijakan, dicatat jelas
+  // sebagai default, bukan mengklaim berlaku untuk semua baris.
+  sheet.spliceRows(1, 0, [
+    `Keterangan: jam masuk kebijakan ${jamMasukKebijakan} WIB, toleransi ${toleransiMenit} menit sebelum dihitung terlambat (default -- jam kerja per orang bisa diatur beda lewat Admin).`,
   ]);
+  sheet.mergeCells(1, 1, 1, kolom.length);
+  sheet.getCell('A1').font = { italic: true };
+  sheet.views = [{ state: 'frozen', ySplit: 2 }];
 
   for (const baris of Array.from(pivot.values()).sort((a, b) => a.nama.localeCompare(b.nama) || a.tanggal.localeCompare(b.tanggal))) {
     sheet.addRow({

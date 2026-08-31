@@ -55,3 +55,31 @@ export function tanggalIndonesiaWIB(d = new Date()): string {
   // → 'Jumat, 21 Agustus 2026'
   return tanggalIndonesiaDariYmd(tanggalWIB(d));
 }
+
+/**
+ * Ubah sebuah INSTANT (timestamptz, mis. `absensi.waktu`) jadi `Date` yang
+ * getter-UTC-nya berisi jam-dinding WIB -- SATU-SATUNYA cara aman memberi
+ * jam ke ExcelJS (`numFmt: 'hh:mm'`/`'dd/mm/yyyy hh:mm'`). ExcelJS
+ * menyerialkan `Date` lewat `getUTC*()`, TANPA konsep zona waktu -- kalau
+ * instant WIB dikirim mentah (`new Date(r.waktu)`), Excel menulis jam UTC
+ * (mundur 7 jam dari yang tampil di layar). Ini jebakan yang sama dengan
+ * CLAUDE.md #2 / 04-CATATAN-TEKNIS §7 poin 1, muncul lagi di jalur ekspor
+ * (dilaporkan user 31 Agustus 2026).
+ *
+ * JANGAN pakai hasilnya untuk aritmetika waktu atau dibandingkan dengan
+ * instant lain -- nilainya BUKAN instant yang benar, cuma "kontainer" angka
+ * Y/M/D/H/M/S WIB yang dibaca lewat getter UTC. Hanya untuk sel Excel.
+ */
+export function jamUntukExcel(instant: Date | string): Date {
+  const d = typeof instant === 'string' ? new Date(instant) : instant;
+  const bagian = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).formatToParts(d);
+  const ambil = (tipe: string) => Number(bagian.find((p) => p.type === tipe)?.value);
+  return new Date(Date.UTC(
+    ambil('year'), ambil('month') - 1, ambil('day'),
+    ambil('hour'), ambil('minute'), ambil('second'),
+  ));
+}
