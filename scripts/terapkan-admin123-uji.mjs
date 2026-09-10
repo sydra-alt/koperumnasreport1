@@ -1,13 +1,19 @@
 #!/usr/bin/env node
-// Terapkan password seragam 'admin123' ke 7 akun uji (instruksi eksplisit
-// user, item 6, 30 Agustus 2026) -- SAMA seperti 39 akun asli nanti.
-// profile.harus_ganti_password sudah otomatis true untuk ketujuhnya lewat
+// ⚠️ Terapkan password seragam 'admin123' ke SEMUA akun di scripts/akun.json
+// -- akun.json sekarang berisi 40+ KARYAWAN SUNGGUHAN, bukan "7 akun uji"
+// seperti header ini sebelumnya menyebut (istilah dari 30 Agustus 2026, saat
+// rosternya masih 7 akun uji coba-coba -- DIPERBAIKI 7 September 2026 karena
+// komentar salah lebih berbahaya daripada tidak ada komentar: orang
+// berikutnya bisa percaya ini scoped ke segelintir akun lalu menjalankannya
+// tanpa pikir panjang, padahal menyamakan password SEMUA karyawan sekaligus
+// ke satu nilai yang diketahui bersama).
+// profile.harus_ganti_password sudah otomatis true untuk setiap akun lewat
 // DEFAULT kolom (migrasi 0034_paksa_ganti_password.sql, diverifikasi
 // terpisah) -- skrip ini CUMA menyamakan passwordnya, bukan mengubah flag
 // (sudah benar dari migrasi).
 //
 // Password SEBELUM ini (dari scripts/set-password.mjs, unik per akun) tidak
-// berlaku lagi untuk ketujuhnya setelah ini dijalankan.
+// berlaku lagi setelah ini dijalankan.
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';

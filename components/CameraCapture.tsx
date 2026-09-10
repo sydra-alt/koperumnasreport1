@@ -2,22 +2,27 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { kompresGambar } from '../lib/gambar';
-import { jamWIB } from '../lib/tanggal';
 
 type Status = 'meminta' | 'siap' | 'ditolak' | 'gagal' | 'tidak_didukung' | 'preview';
 
-export interface WatermarkAbsen {
-  nama: string;
-  titikNama: string;
-  lat: number;
-  lon: number;
+/**
+ * Digeneralisasi (6 September 2026) supaya bisa dipakai ulang Laporan
+ * Kebersihan, bukan cuma Absen -- dulu bentuknya tetap {nama, titikNama,
+ * lat, lon} khusus absen. Sekarang pemanggil yang menyusun teksnya sendiri
+ * (baris1 = besar/tebal, baris2 = kecil, opsional) -- absen menulis "nama ·
+ * jam WIB" / "titik · koordinat", kebersihan menulis "outlet · jam WIB" /
+ * "nama slot". Fungsi ini cuma tahu cara MENGGAMBARnya, bukan APA isinya.
+ */
+export interface WatermarkOpsi {
+  baris1: string;
+  baris2?: string;
 }
 
 interface CameraCaptureProps {
   onGunakan: (blob: Blob) => void;
   onBatal: () => void;
-  /** Kalau diisi, dibubuhkan ke foto sebagai watermark (instruksi eksplisit user, 30 Agustus 2026) -- nama, jam WIB SAAT DIAMBIL, koordinat, nama titik. */
-  watermark?: WatermarkAbsen;
+  /** Kalau diisi, dibubuhkan ke foto sebagai watermark (instruksi eksplisit user, 30 Agustus 2026). */
+  watermark?: WatermarkOpsi;
 }
 
 let logoWatermarkCache: HTMLImageElement | null = null;
@@ -50,8 +55,8 @@ function potongTeks(ctx: CanvasRenderingContext2D, teks: string, lebarMaks: numb
   return `${potongan}…`;
 }
 
-/** Bar semi-transparan di bawah foto: logo kecil + nama/jam/titik/koordinat. Gagal muat logo TIDAK boleh menggagalkan absen -- teks tetap dibubuhkan. */
-async function bubuhkanWatermark(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, w: WatermarkAbsen) {
+/** Bar semi-transparan di bawah foto: logo kecil + baris1 (besar/tebal) + baris2 (kecil, opsional). Gagal muat logo TIDAK boleh menggagalkan pengiriman -- teks tetap dibubuhkan. */
+async function bubuhkanWatermark(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, w: WatermarkOpsi) {
   const tinggiBar = Math.round(canvas.height * 0.16);
   const y0 = canvas.height - tinggiBar;
   ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
@@ -82,14 +87,12 @@ async function bubuhkanWatermark(ctx: CanvasRenderingContext2D, canvas: HTMLCanv
   const lebarTeksTersedia = canvas.width - xTeks - paddingKiri;
 
   ctx.font = `700 ${ukuranFontBesar}px sans-serif`;
-  ctx.fillText(potongTeks(ctx, `${w.nama} · ${jamWIB()} WIB`, lebarTeksTersedia), xTeks, y0 + tinggiBar * 0.35);
+  ctx.fillText(potongTeks(ctx, w.baris1, lebarTeksTersedia), xTeks, y0 + tinggiBar * (w.baris2 ? 0.35 : 0.5));
 
-  ctx.font = `400 ${ukuranFontKecil}px sans-serif`;
-  ctx.fillText(
-    potongTeks(ctx, `${w.titikNama} · ${w.lat.toFixed(6)}, ${w.lon.toFixed(6)}`, lebarTeksTersedia),
-    xTeks,
-    y0 + tinggiBar * 0.72,
-  );
+  if (w.baris2) {
+    ctx.font = `400 ${ukuranFontKecil}px sans-serif`;
+    ctx.fillText(potongTeks(ctx, w.baris2, lebarTeksTersedia), xTeks, y0 + tinggiBar * 0.72);
+  }
 }
 
 /**

@@ -5,15 +5,21 @@
 // (Emulation.setGeolocationOverride via CDP) -- instruksi eksplisit user,
 // diminta dua kali sebelumnya, belum pernah dijawab dengan bukti nyata.
 //
-// Dadang dipakai (penugasan_absen di "Lokasi Uji", migrasi 0032,
-// -6.982980702734919, 107.63522500320248) -- posisi PALSU digeser ~150 km
-// ke utara (1 derajat lintang ~= 111.32 km).
+// AKUN UJI - Tanpa Peran (uji5@koperumnas.local) dipakai -- BUKAN Dadang
+// sungguhan lagi (diganti 7 September 2026, insiden Qasim/Ryan: skrip uji
+// tidak boleh pernah menyentuh akun orang sungguhan, lihat
+// docs/04-CATATAN-TEKNIS.md §7 dan scripts/buat-akun-uji.mjs). uji5 diberi
+// penugasan_absen di "Lokasi Uji" (migrasi 0032,
+// -6.982980702734919, 107.63522500320248) persis untuk uji ini -- posisi
+// PALSU digeser ~150 km ke utara (1 derajat lintang ~= 111.32 km).
 //
 // Dua skenario, policy.absen_di_luar_radius DIUBAH SEMENTARA lalu
 // DIKEMBALIKAN (transaksi terpisah, bukan BEGIN/ROLLBACK karena Playwright
 // perlu koneksi HTTP nyata ke server yang membaca policy dari koneksi LAIN):
 //   1. 'izinkan_dengan_tanda' (NILAI PRODUKSI SAAT INI) -- harap DITANDAI
-//      🟡, TIDAK diterima diam-diam tanpa peringatan.
+//      (layar "Di luar jangkauan" + "ditandai", rail kuning -- BUKAN emoji
+//      di teks, koreksi 7 September 2026), TIDAK diterima diam-diam tanpa
+//      peringatan.
 //   2. 'tolak' -- harap DITOLAK KERAS, tidak bisa lanjut sama sekali.
 
 import path from 'node:path';
@@ -28,11 +34,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
 
 const BASE_URL = process.env.UJI_BASE_URL ?? 'http://localhost:3000';
-const EMAIL = 'dadang@koperumnas.local';
-const DADANG_ID = 'f43d8ddb-beb1-4597-8906-ada139e7327b';
+const EMAIL = 'uji5@koperumnas.local';
+const db0 = new Client({ connectionString: process.env.SUPABASE_DB_URL });
+await db0.connect();
+const { rows: uji5Rows } = await db0.query("select id from auth.users where email = $1", [EMAIL]);
+if (uji5Rows.length === 0) throw new Error(`${EMAIL} tidak ditemukan -- jalankan scripts/buat-akun-uji.mjs dulu.`);
+const AKUN_UJI_ID = uji5Rows[0].id;
+await db0.end();
 // Password SEMENTARA khusus uji ini -- BUKAN admin123, supaya tidak
-// tertukar dengan kredensial 7 akun uji yang sebenarnya. Dikembalikan
-// (password + harus_ganti_password) ke keadaan semula di blok finally.
+// tertukar dengan kredensial akun uji standar. Dikembalikan (password +
+// harus_ganti_password) ke keadaan semula di blok finally, DIBUKTIKAN lewat
+// baca ulang DB (bukan dipercaya dari nilai kembalian) -- pelajaran insiden
+// Qasim/Ryan.
 const PASSWORD_UJI = 'uji-radius-sementara-2026';
 
 // Lokasi Uji (migrasi 0032) + ~150 km ke utara (murni offset lintang).
@@ -53,14 +66,14 @@ const { rows: policyAsli } = await db.query(`select value from policy where key 
 const nilaiAsli = policyAsli[0].value.replace(/"/g, '');
 console.log(`policy.absen_di_luar_radius SAAT INI (produksi): "${nilaiAsli}"\n`);
 
-// Set password uji sementara untuk Dadang lewat Auth Admin API (satu-satunya
+// Set password uji sementara utk AKUN UJI lewat Auth Admin API (satu-satunya
 // jalur resmi -- lihat scripts/set-password.mjs) supaya Playwright bisa
 // login sungguhan lewat /masuk, bukan penyamaran JWT.
 {
-  const { error } = await admin.auth.admin.updateUserById(DADANG_ID, { password: PASSWORD_UJI });
-  if (error) throw new Error(`Gagal set password uji Dadang: ${error.message}`);
-  await db.query(`update profile set harus_ganti_password = false where id = $1;`, [DADANG_ID]);
-  console.log('Password uji sementara Dadang berhasil diset, harus_ganti_password dikosongkan sementara.\n');
+  const { error } = await admin.auth.admin.updateUserById(AKUN_UJI_ID, { password: PASSWORD_UJI });
+  if (error) throw new Error(`Gagal set password uji: ${error.message}`);
+  await db.query(`update profile set harus_ganti_password = false where id = $1;`, [AKUN_UJI_ID]);
+  console.log('Password uji sementara berhasil diset, harus_ganti_password dikosongkan sementara.\n');
 }
 
 const hasil = [];
@@ -76,7 +89,11 @@ async function jalankanSkenario(nomorUji, labelPolicy) {
   try {
     await page.goto(`${BASE_URL}/masuk`);
     await page.getByLabel('Email').fill(EMAIL);
-    await page.getByLabel('Kata sandi').fill(PASSWORD_UJI);
+    // getByLabel('Kata sandi') mulai bentrok dengan tombol "Tampilkan kata
+    // sandi" (fitur show/hide password ditambah belakangan, di luar cakupan
+    // sisir skrip ini) -- selector persis type=password, ditemukan saat
+    // verifikasi migrasi akun uji 7 September 2026.
+    await page.locator('input[type="password"]').fill(PASSWORD_UJI);
     await page.getByRole('button', { name: 'Masuk' }).click();
     await page.waitForURL(`${BASE_URL}/`, { timeout: 15000 });
 
@@ -117,11 +134,19 @@ async function jalankanSkenario(nomorUji, labelPolicy) {
     console.log(`[${labelPolicy}] Screenshot: ${path.join(os.tmpdir(), `uji-radius-${labelPolicy}.png`)}`);
 
     if (labelPolicy === 'izinkan_dengan_tanda') {
-      const ditandai = teksSetelah.includes('🟡') && /luar jangkauan|di luar radius|ditandai/i.test(teksSetelah);
+      // Uji ini SEBELUMNYA mengharap literal emoji 🟡 di teks layar -- UI
+      // TIDAK PERNAH menulis emoji itu (status "ditandai" disampaikan lewat
+      // warna `rail-kuning`, bukan karakter di teks), jadi assertion lama
+      // ini gagal walau UI-nya benar. Diperbaiki 7 September 2026 (instruksi
+      // eksplisit user: "perbaiki ujinya, jangan UI-nya") -- cek teks NYATA
+      // yang ditulis app/absen/page.tsx layar 'luar_radius_tanda': judul "Di
+      // luar jangkauan", badan "akan ditandai untuk diperiksa HRD", dan
+      // tombol "Lanjutkan Absen" (BUKAN langsung ke kamera tanpa peringatan).
+      const ditandai = /di luar jangkauan/i.test(teksSetelah) && /ditandai/i.test(teksSetelah) && teksSetelah.includes('Lanjutkan Absen');
       catat(
         nomorUji,
-        `[izinkan_dengan_tanda] Absen dari posisi ~150km (jarak dihitung ${jarakMeter}m) -- HARUS ditandai 🟡, bukan diterima diam-diam`,
-        'layar menampilkan 🟡 + peringatan luar radius, tombol "Lanjutkan Absen" (bukan langsung ke kamera tanpa peringatan)',
+        `[izinkan_dengan_tanda] Absen dari posisi ~150km (jarak dihitung ${jarakMeter}m) -- HARUS ditandai, bukan diterima diam-diam`,
+        'layar menampilkan "Di luar jangkauan" + "ditandai" + tombol "Lanjutkan Absen" (bukan langsung ke kamera tanpa peringatan)',
         `jarak=${jarakMeter}m; teks="${teksSetelah.slice(0, 200)}..."`,
         jarakMeter !== null && jarakMeter > 100000 && ditandai,
       );
@@ -154,13 +179,22 @@ try {
   const { rows: cekKembali } = await db.query(`select value from policy where key = 'absen_di_luar_radius';`);
   console.log(`policy.absen_di_luar_radius DIKEMBALIKAN ke nilai produksi: ${cekKembali[0].value}`);
 
-  // Kembalikan Dadang ke keadaan semula -- password admin123 seragam +
-  // harus_ganti_password=true, sama seperti 6 akun uji lainnya (batch
-  // keamanan password sebelumnya).
-  const { error: errPw } = await admin.auth.admin.updateUserById(DADANG_ID, { password: 'admin123' });
-  if (errPw) console.error(`GAGAL mengembalikan password Dadang ke admin123: ${errPw.message}`);
-  await db.query(`update profile set harus_ganti_password = true where id = $1;`, [DADANG_ID]);
-  console.log('Akun Dadang dikembalikan: password admin123, harus_ganti_password = true.');
+  // Kembalikan AKUN UJI ke keadaan semula -- password admin123 seragam +
+  // harus_ganti_password=true. DIBUKTIKAN lewat baca ulang dari DB, bukan
+  // dipercaya dari nilai kembalian -- persis kegagalan senyap yang membuat
+  // Qasim & Ryan (akun SUNGGUHAN, dipakai skrip uji SEBELUM aturan ini)
+  // nyaris tidak bisa masuk kerja, 7 September 2026.
+  const { error: errPw } = await admin.auth.admin.updateUserById(AKUN_UJI_ID, { password: 'admin123' });
+  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke admin123: ${errPw.message}`);
+  await db.query(`update profile set harus_ganti_password = true where id = $1;`, [AKUN_UJI_ID]);
+  const { rows: cekAkun } = await db.query(
+    `select p.harus_ganti_password, u.updated_at, u.last_sign_in_at from public.profile p join auth.users u on u.id = p.id where p.id = $1`,
+    [AKUN_UJI_ID],
+  );
+  const pulihSempurna = cekAkun[0]?.harus_ganti_password === true && new Date(cekAkun[0].updated_at) > new Date(cekAkun[0].last_sign_in_at);
+  console.log(pulihSempurna
+    ? 'AKUN UJI dikembalikan: password admin123 (dibuktikan lewat updated_at > last_sign_in_at), harus_ganti_password = true.'
+    : `🛑 AKUN UJI BELUM PULIH SEPENUHNYA -- ${JSON.stringify(cekAkun[0])}. Jalankan ulang pemulihan manual sebelum akun ini dipakai lagi.`);
 
   await db.end();
 }

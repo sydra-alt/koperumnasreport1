@@ -1,18 +1,20 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '../../lib/auth/AuthProvider';
+import { createClient } from '../../lib/supabase/client';
 
 const PASSWORD_AWAL = 'admin123';
 
 export default function GantiPasswordPage() {
-  const router = useRouter();
+  const { session } = useAuth();
   const [baru, setBaru] = useState('');
   const [ulangi, setUlangi] = useState('');
   const [lihatBaru, setLihatBaru] = useState(false);
   const [lihatUlangi, setLihatUlangi] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mengirim, setMengirim] = useState(false);
+  const [berhasil, setBerhasil] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -44,15 +46,67 @@ export default function GantiPasswordPage() {
         setMengirim(false);
         return;
       }
-      // router.push (App Router) tetap membuat permintaan server untuk rute
-      // baru -- proxy.ts ikut berjalan lagi & membaca profile.harus_ganti_
-      // password yang baru saja berubah, bukan state lama yang di-cache.
-      router.push('/');
-      router.refresh();
+
+      // KRUSIAL, ditemukan 10 September 2026 lewat uji berulang (bukan
+      // sekadar dugaan): /api/ganti-password mengganti password lewat Auth
+      // Admin API (service_role, server-side) -- ini TIDAK memperbarui sesi
+      // browser sama sekali. Supabase mencabut sesi/refresh-token LAMA
+      // begitu password berubah, jadi cookie sesi yang sedang dipakai
+      // browser ini langsung mati -- navigasi APA PUN sesudahnya (router.push
+      // ATAUPUN window.location.assign, sudah dibuktikan keduanya gagal
+      // sama) akan ditendang proxy.ts balik ke /masuk karena getUser()
+      // gagal. Perbaikannya BUKAN soal cara pindah halaman -- harus login
+      // ULANG di klien dengan password BARU supaya cookie sesi yang valid
+      // benar-benar tertulis, SEBELUM menampilkan/meninggalkan layar ini.
+      if (!session?.user.email) {
+        setError('Password berhasil diganti, tapi sesi tidak bisa diperbarui otomatis. Tutup dan masuk ulang lewat halaman Masuk dengan password baru.');
+        setMengirim(false);
+        return;
+      }
+      const supabase = createClient();
+      const { error: errLoginUlang } = await supabase.auth.signInWithPassword({ email: session.user.email, password: baru });
+      if (errLoginUlang) {
+        setError('Password berhasil diganti, tapi masuk ulang otomatis gagal. Tutup dan masuk ulang lewat halaman Masuk dengan password baru.');
+        setMengirim(false);
+        return;
+      }
+
+      // Tampilkan layar konfirmasi DULU (instruksi eksplisit user, 10
+      // September 2026) -- jangan langsung pindah halaman, supaya orang
+      // sungguh sadar passwordnya sudah berubah sebelum layar berikutnya
+      // muncul. Navigasi (di tombol "Lanjutkan" di bawah) pakai window.
+      // location.assign, BUKAN router.push -- alasan sama seperti
+      // app/masuk/page.tsx (race cookie sesi lama vs baru, lihat komentar
+      // di sana) -- sesi yang dipakai sekarang sudah sesi BARU dari login
+      // ulang di atas, bukan sesi lama yang sudah dicabut.
+      setMengirim(false);
+      setBerhasil(true);
     } catch {
       setError('Gagal mengganti password. Coba lagi.');
       setMengirim(false);
     }
+  }
+
+  if (berhasil) {
+    return (
+      <main className="flex min-h-svh flex-col items-center justify-center p-6" style={{ background: 'var(--kertas)' }}>
+        <div className="kartu-status rail-hijau flex w-full max-w-sm flex-col gap-4 p-6" style={{ borderRadius: 'var(--radius-besar)' }}>
+          <h1 className="text-2xl" style={{ fontFamily: 'var(--display)', color: 'var(--hijau)' }}>
+            Kata sandi berhasil diganti
+          </h1>
+          <p className="text-sm">Simpan baik-baik, kalau lupa hubungi admin.</p>
+          <button
+            type="button"
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- sengaja, sama alasan app/masuk/page.tsx (race cookie sesi)
+            onClick={() => window.location.assign('/')}
+            className="px-4 py-3"
+            style={{ background: 'var(--biru)', color: 'var(--kertas-2)', minHeight: 44, borderRadius: 'var(--radius-pil)' }}
+          >
+            Lanjutkan
+          </button>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -75,6 +129,7 @@ export default function GantiPasswordPage() {
             <input
               type={lihatBaru ? 'text' : 'password'}
               required
+              autoComplete="new-password"
               value={baru}
               onChange={(e) => setBaru(e.target.value)}
               className="w-full border px-2 py-2 pr-11"
@@ -111,6 +166,7 @@ export default function GantiPasswordPage() {
             <input
               type={lihatUlangi ? 'text' : 'password'}
               required
+              autoComplete="new-password"
               value={ulangi}
               onChange={(e) => setUlangi(e.target.value)}
               className="w-full border px-2 py-2 pr-11"

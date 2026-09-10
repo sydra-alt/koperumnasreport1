@@ -5,16 +5,26 @@ import { createClient } from '../supabase/client';
 import { tanggalWIB } from '../tanggal';
 
 /**
- * Satu laporan GLOBAL untuk TANGGAL yang diminta (ga/hrd/perizinan/dti/
- * kendaraan/it/pembangunan) -- masing-masing form_key itu paling banyak SATU
- * baris per hari (`scope:'global'`), jadi query biasa cukup, TIDAK butuh
- * view/RPC. Pusat/CEO sudah berhak baca lewat `can_see_report()` (form_key
- * selain 'accounting'), sama seperti `useOmzetRestoHariIni` (Task 17).
- * Default `tanggal` = hari ini WIB -- pemanggil yang belum ikut pemilih
- * tanggal (kalau ada) tetap dapat perilaku lama tanpa berubah.
- *
- * `cs` TIDAK lagi lewat sini sejak 30 Agustus 2026 -- lihat
- * `useLaporanCsHariIni` di bawah.
+ * Fungsi Laporan Terpusat yang MASIH DIPAKAI (docs/RENCANA-PROYEK-BARU.md
+ * §3 poin 3, 3 September 2026) -- `useLaporanCsHariIni`, `useStkUntukTanggal`,
+ * `usePicLokasiUntukTanggal` (form `cs`/`pic_lokasi`, DIBUANG) sudah
+ * dipindah ke lib/api/terpusat-form-perumahan.ts supaya gampang dihapus
+ * sekaligus nanti. `useSecurityUntukTanggal` (form `security`) TETAP DI
+ * SINI, TIDAK disentuh -- CEO sedang memutuskan apakah form itu masih
+ * dipakai untuk resto/thrifting.
+ */
+
+/**
+ * Satu laporan GLOBAL untuk TANGGAL yang diminta -- dulu dipakai
+ * ga/hrd/perizinan/dti/kendaraan/it/pembangunan (masing-masing form_key itu
+ * paling banyak SATU baris per hari, `scope:'global'`, jadi query biasa
+ * cukup, TIDAK butuh view/RPC). SEKARANG cuma `hrd` yang masih relevan --
+ * enam pemanggil lain (di app/terpusat/page.tsx) terikat form yang DIBUANG,
+ * ikut hilang saat halaman itu ditulis ulang (§3 poin 4). Fungsi generiknya
+ * sendiri TETAP DI SINI karena `hrd` masih memakainya, bukan dipindah --
+ * bukan fungsi ini yang dibuang, cuma sebagian besar PEMANGGILNYA.
+ * Pusat/CEO sudah berhak baca lewat `can_see_report()` (form_key selain
+ * 'accounting'), sama seperti `useOmzetRestoHariIni` (Task 17).
  */
 export function useLaporanHariIni(formKey: string, tanggal: string = tanggalWIB(), enabled = true) {
   return useQuery({
@@ -31,42 +41,6 @@ export function useLaporanHariIni(formKey: string, tanggal: string = tanggalWIB(
       if (error) throw error;
       if (!data) return null;
       return { data: data.data as Record<string, unknown>, submittedAt: data.submitted_at };
-    },
-    enabled,
-  });
-}
-
-/**
- * §2 CS -- sejak Koreksi 2 (30 Agustus 2026) form `cs` bisa punya sampai 7
- * pengisi sekaligus dalam satu hari (Avril/Anne/Fur + 4 inservice
- * security/GA yang juga bertugas CS kalau ada konsumen datang), jadi TIDAK
- * bisa lagi diasumsikan satu baris per hari seperti `useLaporanHariIni`.
- * Kembalikan daftar per pengisi -- pemanggil yang menjumlahkan angka &
- * menampilkan masalah urgent per orang.
- */
-export interface LaporanCsHariIni {
-  penulisNama: string;
-  submittedAt: string | null;
-  data: Record<string, unknown>;
-}
-
-export function useLaporanCsHariIni(tanggal: string = tanggalWIB(), enabled = true) {
-  return useQuery({
-    queryKey: ['laporan-cs-hari-ini-terpusat', tanggal],
-    queryFn: async (): Promise<LaporanCsHariIni[]> => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('report')
-        .select('data, submitted_at, author:author_id(nama)')
-        .eq('form_key', 'cs')
-        .eq('tanggal', tanggal)
-        .neq('status', 'draft');
-      if (error) throw error;
-      return (data ?? []).map((r) => ({
-        penulisNama: (r.author as unknown as { nama: string } | null)?.nama ?? '—',
-        submittedAt: r.submitted_at,
-        data: r.data as Record<string, unknown>,
-      }));
     },
     enabled,
   });
@@ -93,35 +67,6 @@ export function useSecurityUntukTanggal(tanggal: string = tanggalWIB(), enabled 
         tamuDatang: Number(baris?.tamu_datang ?? 0),
         konsumenDatang: Number(baris?.konsumen_datang ?? 0),
         jumlahKejadian: Number(baris?.jumlah_kejadian ?? 0),
-      };
-    },
-    enabled,
-  });
-}
-
-/** §9 STK -- RPC `stk_untuk_tanggal` (migrasi 0020), SUM lintas lokasi utk tanggal yang diminta. */
-export interface StkHariIni {
-  total: number;
-  sudahDitempati: number;
-  belumDitempati: number;
-  rumahKosong: number;
-  perluMaintenance: number;
-}
-
-export function useStkUntukTanggal(tanggal: string = tanggalWIB(), enabled = true) {
-  return useQuery({
-    queryKey: ['stk-untuk-tanggal', tanggal],
-    queryFn: async (): Promise<StkHariIni> => {
-      const supabase = createClient();
-      const { data, error } = await supabase.rpc('stk_untuk_tanggal', { p_tanggal: tanggal }).single();
-      if (error) throw error;
-      const baris = data as Record<string, unknown> | null;
-      return {
-        total: Number(baris?.stk_total ?? 0),
-        sudahDitempati: Number(baris?.sudah_ditempati ?? 0),
-        belumDitempati: Number(baris?.belum_ditempati ?? 0),
-        rumahKosong: Number(baris?.rumah_kosong ?? 0),
-        perluMaintenance: Number(baris?.perlu_maintenance ?? 0),
       };
     },
     enabled,
@@ -180,35 +125,6 @@ export function useKaryawanTertinggal(enabled = true) {
         .order('nama');
       if (error) throw error;
       return (data ?? []).map((r) => ({ nama: r.nama, undangan: Number(r.undangan), closing: Number(r.closing) }));
-    },
-    enabled,
-  });
-}
-
-/** §8 Kontrol Per Lokasi -- listing langsung (bukan agregasi) utk tanggal yang diminta, pusat/ceo sudah berhak baca baris `pic_lokasi`. */
-export interface PicLokasiHariIni {
-  lokasi: string;
-  picNama: string;
-  data: Record<string, unknown>;
-}
-
-export function usePicLokasiUntukTanggal(tanggal: string = tanggalWIB(), enabled = true) {
-  return useQuery({
-    queryKey: ['pic-lokasi-untuk-tanggal', tanggal],
-    queryFn: async (): Promise<PicLokasiHariIni[]> => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('report')
-        .select('data, lokasi:lokasi_id(nama), author:author_id(nama)')
-        .eq('form_key', 'pic_lokasi')
-        .eq('tanggal', tanggal)
-        .neq('status', 'draft');
-      if (error) throw error;
-      return (data ?? []).map((r) => ({
-        lokasi: (r.lokasi as unknown as { nama: string } | null)?.nama ?? '—',
-        picNama: (r.author as unknown as { nama: string } | null)?.nama ?? '—',
-        data: r.data as Record<string, unknown>,
-      }));
     },
     enabled,
   });

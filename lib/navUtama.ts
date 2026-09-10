@@ -69,13 +69,19 @@ export function tabTerlihat(
   // alasan dengan `is_hrd_kadiv()` di RLS, lihat migrasi 0022_presensi.sql).
   const bolehTinjauAbsen = roles.includes('ceo') || roles.includes('pusat') || (roles.includes('kadiv') && divisi === 'HRD');
   const tinjau: TabNav[] = bolehTinjauAbsen ? [{ key: 'absen-tinjau', label: 'Tinjau Absensi', href: '/absen/tinjau' }] : [];
+  // "Tinjau Kebersihan" -- gerbang SAMA PERSIS dengan Tinjau Absensi (CEO,
+  // 6 September 2026: "ceo, pusat, dan is_hrd_kadiv()") -- reuse
+  // `bolehTinjauAbsen`, bukan dihitung ulang.
+  const tinjauKebersihan: TabNav[] = bolehTinjauAbsen
+    ? [{ key: 'kebersihan-tinjau', label: 'Tinjau Kebersihan', href: '/kebersihan/tinjau' }]
+    : [];
   // "Tinjau Cuti" -- gerbang SENGAJA BEDA dari absen-tinjau di atas: ceo +
   // is_hrd_kadiv() SAJA, TANPA 'pusat' (instruksi eksplisit user, koreksi 1,
   // 30 Agustus 2026 -- lihat komentar sama di app/cuti/tinjau/page.tsx dan
   // policy cuti_select, migrasi 0025_cuti.sql).
   const bolehTinjauCuti = roles.includes('ceo') || (roles.includes('kadiv') && divisi === 'HRD');
   const tinjauCuti: TabNav[] = bolehTinjauCuti ? [{ key: 'cuti-tinjau', label: 'Tinjau Cuti', href: '/cuti/tinjau' }] : [];
-  return [...tetap, ...dinamis, ...tinjau, ...tinjauCuti];
+  return [...tetap, ...dinamis, ...tinjau, ...tinjauKebersihan, ...tinjauCuti];
 }
 
 /**
@@ -101,7 +107,7 @@ export function tabTerlihat(
  * menaruhnya rendah memastikan TIDAK PERNAH menggeser Papan/Terpusat yang
  * sudah diuji sungguhan di HP.
  */
-const PRIORITAS_TENGAH = ['papan', 'terpusat', 'keputusan', 'absen-tinjau', 'lapor', 'riwayat', 'marketing', 'admin', 'keuangan'];
+const PRIORITAS_TENGAH = ['papan', 'terpusat', 'keputusan', 'absen-tinjau', 'kebersihan-tinjau', 'lapor', 'riwayat', 'marketing', 'admin', 'keuangan'];
 
 function prioritasDari(key: string): number {
   const dasar = key.startsWith('lapor-dinamis-') ? 'lapor' : key;

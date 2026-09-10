@@ -1,4 +1,15 @@
 #!/usr/bin/env node
+// ⚠️ HANYA UNTUK PEMBUATAN AWAL -- JANGAN DIJALANKAN ULANG SEUTUHNYA
+// (dicatat eksplisit 6 September 2026, docs/PROGRESS.md). Langkah 3 di
+// bawah ("Isi profile + role") menulis ULANG nama/jabatan/divisi SEMUA
+// akun di akun.json lewat `on conflict (id) do update` -- akun.json cuma
+// SNAPSHOT satu waktu, bukan sumber kebenaran yang hidup. Menjalankan ulang
+// skrip ini akan MENIMPA perubahan yang sudah terjadi lewat migrasi lain
+// (divisi, `aktif`, dst.) dengan data basi di file ini. Kalau perlu
+// menambah SATU akun baru, tulis skrip kecil tersendiri yang cuma
+// menyentuh akun itu (lihat pola di riwayat migrasi untuk akun admin@,
+// 6 September 2026) -- jangan menjalankan file ini lagi.
+//
 // Cikal bakal Task 23 (halaman admin, "buat user baru lewat Edge Function/Route
 // Handler karena butuh service_role"). Skrip ini adalah versi CLI-nya dulu —
 // app/api/admin/user/route.ts nanti akan memakai logika createUser + isi

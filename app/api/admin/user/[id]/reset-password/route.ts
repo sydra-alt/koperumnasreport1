@@ -61,9 +61,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   // Agustus 2026, migrasi 0034_paksa_ganti_password.sql): siapa pun yang
   // pegang password baru ini (CEO sendiri, atau siapa pun yang menerimanya)
   // WAJIB menggantinya sendiri sebelum bisa membuka halaman apa pun.
+  //
+  // KALAU penulisan ini gagal, SELURUH permintaan HARUS gagal (bukan
+  // sekadar dicatat ke console lalu lanjut) -- sama seperti
+  // app/api/ganti-password/route.ts. Kalau tidak, orang bisa berakhir
+  // dengan password baru yang SUDAH aktif tapi TIDAK PERNAH dipaksa
+  // diganti -- password yang diketahui siapa pun yang menyampaikannya,
+  // aktif selamanya. Ditemukan lewat sisir kegagalan-senyap 7 September
+  // 2026 (lihat docs/04-CATATAN-TEKNIS.md §7, docs/PROGRESS.md).
   const { error: errFlag } = await admin.from('profile').update({ harus_ganti_password: true }).eq('id', targetId);
   if (errFlag) {
-    console.error('Gagal menyalakan harus_ganti_password setelah reset:', errFlag.message);
+    return NextResponse.json({ error: errFlag.message }, { status: 500 });
   }
 
   const { error: errLog } = await admin.from('reset_password_log').insert({ actor_id: user.id, target_id: targetId });

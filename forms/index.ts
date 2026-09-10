@@ -13,6 +13,7 @@ import { f16ManagerResto } from './f16-manager-resto';
 import { f16Thrifting } from './f16-thrifting';
 import { f16KontrolFnb } from './f16-kontrol-fnb';
 import { f17Accounting } from './f17-accounting';
+import { f18Kebersihan } from './f18-kebersihan';
 import { f21Pusat } from './f21-pusat';
 import type { FormSchema } from './types';
 
@@ -32,5 +33,6 @@ export const formRegistry: Record<string, FormSchema> = {
   thrifting: f16Thrifting,
   kontrol_fnb: f16KontrolFnb,
   accounting: f17Accounting,
+  kebersihan: f18Kebersihan,
   pusat: f21Pusat,
 };

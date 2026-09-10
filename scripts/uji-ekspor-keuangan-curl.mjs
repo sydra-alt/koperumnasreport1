@@ -1,10 +1,18 @@
 #!/usr/bin/env node
-// Uji HTTP SUNGGUHAN (bukan penyamaran RLS di Postgres) -- Sabrina (pusat,
-// BUKAN ceo/accounting) memanggil endpoint ekspor keuangan langsung lewat
-// HTTP, harus ditolak 403 OLEH KODE ROUTE HANDLER-nya sendiri (bukan cuma
+// Uji HTTP SUNGGUHAN (bukan penyamaran RLS di Postgres) -- AKUN UJI - HRD
+// Kadiv (uji4@koperumnas.local, role kadiv + divisi HRD -- BUKAN
+// ceo/accounting) memanggil endpoint ekspor keuangan langsung lewat HTTP,
+// harus ditolak 403 OLEH KODE ROUTE HANDLER-nya sendiri (bukan cuma
 // tombolnya disembunyikan di layar). Instruksi eksplisit user, bukan
 // dilonggarkan ke penyamaran RLS seperti skrip lain sesi ini -- kasus ini
 // butuh sesi cookie sungguhan.
+//
+// Diganti dari Sabrina sungguhan ke uji4 (7 September 2026, insiden
+// Qasim/Ryan -- skrip uji tidak boleh menyentuh akun orang sungguhan, lihat
+// docs/04-CATATAN-TEKNIS.md §7). Versi Sabrina SEBELUMNYA tidak pernah
+// mengembalikan passwordnya sama sekali -- tidak ada blok finally, cuma
+// komentar "password lama tidak berlaku lagi" -- pelanggaran ganda (akun
+// sungguhan + tidak ada pemulihan) yang baru ketahuan lewat sisir skrip ini.
 //
 // Kenapa ini baru bisa dikerjakan sekarang (skrip serupa di Task 23/reset-
 // password selalu ditunda ke CHECKPOINT 4, "butuh replikasi cookie
@@ -14,11 +22,9 @@
 // memory) untuk login sungguhan lalu MENANGKAP persis Set-Cookie yang
 // ditulisnya -- bukan hasil reka-reka format.
 //
-// Password Sabrina di-reset SEKALI di sini (scoped ke SATU akun, bukan
-// ketujuh-tujuhnya seperti scripts/set-password.mjs) supaya skrip ini
-// bisa login -- password lama Sabrina (kalau ada yang sedang dipakai)
-// otomatis tidak berlaku setelah ini, sama seperti efek set-password.mjs
-// biasa.
+// Password AKUN UJI di-reset di sini lalu DIKEMBALIKAN ke admin123 +
+// harus_ganti_password=true di blok finally, DIBUKTIKAN lewat baca ulang
+// dari DB -- bukan dipercaya dari nilai kembalian.
 
 import crypto from 'node:crypto';
 import path from 'node:path';
@@ -45,61 +51,79 @@ if (!supabaseUrl || !anonKey || !serviceRoleKey || !dbUrl) {
 const db = new PgClient({ connectionString: dbUrl });
 await db.connect();
 
-const { rows } = await db.query("select id from auth.users where email = 'sabrina@koperumnas.local'");
+const { rows } = await db.query("select id from auth.users where email = 'uji4@koperumnas.local'");
 if (rows.length === 0) {
-  console.error('Akun sabrina@koperumnas.local tidak ditemukan.');
+  console.error('Akun uji4@koperumnas.local tidak ditemukan -- jalankan scripts/buat-akun-uji.mjs dulu.');
   process.exit(1);
 }
-const idSabrina = rows[0].id;
-await db.end();
+const idPenguji = rows[0].id;
 
-// 1) Reset password Sabrina SAJA (bukan 7 akun) -- pola sama set-password.mjs.
 const admin = createAdminClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
-const passwordBaru = crypto.randomBytes(12).toString('base64url').slice(0, 16);
-const { error: errReset } = await admin.auth.admin.updateUserById(idSabrina, { password: passwordBaru });
-if (errReset) {
-  console.error('Gagal reset password Sabrina:', errReset.message);
-  process.exit(1);
-}
-console.log('Password Sabrina direset sementara utk uji ini (tidak dicetak -- tidak perlu diingat siapa pun, cuma dipakai sekali di sini).');
+let hasil = [];
+let semuaLolos = false;
 
-// 2) Login sungguhan lewat createServerClient dgn cookie jar in-memory --
-//    tangkap PERSIS Set-Cookie yang ditulis library, jangan ditebak sendiri.
-const jar = new Map();
-const supabase = createServerClient(supabaseUrl, anonKey, {
-  cookies: {
-    getAll: () => Array.from(jar.entries()).map(([name, value]) => ({ name, value })),
-    setAll: (cookiesToSet) => {
-      for (const { name, value } of cookiesToSet) jar.set(name, value);
+try {
+  // 1) Reset password AKUN UJI SAJA, matikan harus_ganti_password sementara
+  //    supaya middleware tidak mengalihkan panggilan API ini ke
+  //    /ganti-password (kolom defaultnya true).
+  const passwordBaru = crypto.randomBytes(12).toString('base64url').slice(0, 16);
+  const { error: errReset } = await admin.auth.admin.updateUserById(idPenguji, { password: passwordBaru });
+  if (errReset) throw new Error(`Gagal reset password AKUN UJI: ${errReset.message}`);
+  await db.query('update public.profile set harus_ganti_password = false where id = $1;', [idPenguji]);
+  console.log('Password AKUN UJI direset sementara utk uji ini.');
+
+  // 2) Login sungguhan lewat createServerClient dgn cookie jar in-memory --
+  //    tangkap PERSIS Set-Cookie yang ditulis library, jangan ditebak sendiri.
+  const jar = new Map();
+  const supabase = createServerClient(supabaseUrl, anonKey, {
+    cookies: {
+      getAll: () => Array.from(jar.entries()).map(([name, value]) => ({ name, value })),
+      setAll: (cookiesToSet) => {
+        for (const { name, value } of cookiesToSet) jar.set(name, value);
+      },
     },
-  },
-});
+  });
 
-const { error: errLogin } = await supabase.auth.signInWithPassword({ email: 'sabrina@koperumnas.local', password: passwordBaru });
-if (errLogin) {
-  console.error('Login Sabrina gagal:', errLogin.message);
-  process.exit(1);
+  const { error: errLogin } = await supabase.auth.signInWithPassword({ email: 'uji4@koperumnas.local', password: passwordBaru });
+  if (errLogin) throw new Error(`Login AKUN UJI gagal: ${errLogin.message}`);
+  const cookieHeader = Array.from(jar.entries()).map(([name, value]) => `${name}=${value}`).join('; ');
+  console.log(`OK -- login AKUN UJI sungguhan berhasil, ${jar.size} cookie sesi ditangkap.`);
+
+  // 3) Panggil endpoint keuangan SEBAGAI AKUN UJI lewat HTTP sungguhan.
+  async function panggil(nama, path) {
+    const res = await fetch(`${BASE_URL}${path}`, { headers: { Cookie: cookieHeader }, redirect: 'manual' });
+    return { nama, status: res.status, contentType: res.headers.get('content-type') };
+  }
+
+  const keuangan = await panggil('Ekspor KEUANGAN (harus DITOLAK)', '/api/ekspor/keuangan?bulan=2026-08');
+  hasil.push({ ...keuangan, harapan: '403', lolos: keuangan.status === 403 });
+
+  // Kontrol positif -- AKUN UJI (kadiv+HRD) SEHARUSNYA BISA ekspor absensi,
+  // membuktikan sesi/cookie-nya sungguh valid (bukan kebetulan selalu ditolak
+  // krn cookie salah format sama sekali).
+  const absensi = await panggil('Kontrol -- Ekspor absensi (harus BOLEH, kadiv+HRD)', '/api/ekspor/absensi?bulan=2026-08');
+  hasil.push({ ...absensi, harapan: '200', lolos: absensi.status === 200 && absensi.contentType?.includes('spreadsheetml') });
+
+  console.table(hasil.map((h) => ({ skenario: h.nama, harapan: h.harapan, 'status nyata': h.status, 'content-type': h.contentType, 'lolos?': h.lolos ? 'LOLOS' : 'GAGAL' })));
+  semuaLolos = hasil.every((h) => h.lolos);
+  console.log(semuaLolos ? '\n✅ SEMUA LOLOS -- endpoint keuangan menolak AKUN UJI sungguhan lewat HTTP, endpoint lain tetap bisa (bukan salah cookie).' : '\n🛑 ADA YANG GAGAL');
+} finally {
+  // Kembalikan AKUN UJI ke keadaan semula -- password admin123 seragam +
+  // harus_ganti_password=true, DIBUKTIKAN lewat baca ulang DB (versi
+  // sebelumnya TIDAK PERNAH memulihkan Sabrina sama sekali -- ditemukan
+  // lewat sisir skrip 7 September 2026, lihat docs/04-CATATAN-TEKNIS.md §7).
+  const { error: errPw } = await admin.auth.admin.updateUserById(idPenguji, { password: 'admin123' });
+  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke admin123: ${errPw.message}`);
+  await db.query('update public.profile set harus_ganti_password = true where id = $1;', [idPenguji]);
+  const { rows: cekAkun } = await db.query(
+    `select p.harus_ganti_password, u.updated_at, u.last_sign_in_at from public.profile p join auth.users u on u.id = p.id where p.id = $1`,
+    [idPenguji],
+  );
+  const pulihSempurna = cekAkun[0]?.harus_ganti_password === true && new Date(cekAkun[0].updated_at) > new Date(cekAkun[0].last_sign_in_at);
+  console.log(pulihSempurna
+    ? 'AKUN UJI dikembalikan: password admin123 (dibuktikan lewat updated_at > last_sign_in_at), harus_ganti_password = true.'
+    : `🛑 AKUN UJI BELUM PULIH SEPENUHNYA -- ${JSON.stringify(cekAkun[0])}.`);
+  await db.end();
 }
-const cookieHeader = Array.from(jar.entries()).map(([name, value]) => `${name}=${value}`).join('; ');
-console.log(`OK -- login Sabrina sungguhan berhasil, ${jar.size} cookie sesi ditangkap.`);
 
-// 3) Panggil endpoint keuangan SEBAGAI SABRINA lewat HTTP sungguhan.
-const hasil = [];
-async function panggil(nama, path) {
-  const res = await fetch(`${BASE_URL}${path}`, { headers: { Cookie: cookieHeader }, redirect: 'manual' });
-  return { nama, status: res.status, contentType: res.headers.get('content-type') };
-}
-
-const keuangan = await panggil('Ekspor KEUANGAN (harus DITOLAK)', '/api/ekspor/keuangan?bulan=2026-08');
-hasil.push({ ...keuangan, harapan: '403', lolos: keuangan.status === 403 });
-
-// Kontrol positif -- Sabrina (pusat) SEHARUSNYA BISA ekspor absensi & marketing,
-// membuktikan sesi/cookie-nya sungguh valid (bukan kebetulan selalu ditolak
-// krn cookie salah format sama sekali).
-const absensi = await panggil('Kontrol -- Ekspor absensi (harus BOLEH, pusat)', '/api/ekspor/absensi?bulan=2026-08');
-hasil.push({ ...absensi, harapan: '200', lolos: absensi.status === 200 && absensi.contentType?.includes('spreadsheetml') });
-
-console.table(hasil.map((h) => ({ skenario: h.nama, harapan: h.harapan, 'status nyata': h.status, 'content-type': h.contentType, 'lolos?': h.lolos ? 'LOLOS' : 'GAGAL' })));
-const semuaLolos = hasil.every((h) => h.lolos);
-console.log(semuaLolos ? '\n✅ SEMUA LOLOS -- endpoint keuangan menolak Sabrina sungguhan lewat HTTP, endpoint lain tetap bisa (bukan salah cookie).' : '\n🛑 ADA YANG GAGAL');
 process.exit(semuaLolos ? 0 : 1);

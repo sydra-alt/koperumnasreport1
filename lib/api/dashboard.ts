@@ -5,39 +5,13 @@ import { createClient } from '../supabase/client';
 import { tanggalWIB } from '../tanggal';
 
 /**
- * Task 20 -- 03-CALC-SPEC.md §4.2, dijumlahkan dari `pic_lokasi` utk TANGGAL
- * yang diminta. RPC `pembangunan_untuk_tanggal` (migrasi 0020 -- dulu view
- * `v_pembangunan_hari_ini`, diubah jadi fungsi supaya Laporan Terpusat bisa
- * memilih tanggal mundur; default tetap hari ini utk pemanggil lama seperti
- * dashboard CEO di Beranda). SELALU tepat 1 baris (sum tanpa GROUP BY) walau
- * 0 laporan pada tanggal itu -- kolomnya NULL, di-coalesce ke 0 di sini
- * supaya dashboard tampil "0", bukan `NaN`.
+ * Fungsi campuran YANG DIBAWA (docs/RENCANA-PROYEK-BARU.md §3 poin 3, 3
+ * September 2026) -- dulu file ini juga punya `usePembangunanUntukTanggal`
+ * (form `pembangunan`, DIBUANG), sekarang dipindah ke lib/api/pembangunan.ts
+ * supaya file itu bisa dihapus utuh nanti tanpa mencari-cari fungsi yang
+ * masih dipakai. Kedua fungsi di bawah ini INTI sistem baru (keuangan +
+ * silang-cek omzet resto), tetap dipakai.
  */
-export interface PembangunanHariIni {
-  sedangDibangun: number;
-  finishing: number;
-  selesaiHariIni: number;
-  belumMulai: number;
-}
-
-export function usePembangunanUntukTanggal(tanggal: string = tanggalWIB(), enabled = true) {
-  return useQuery({
-    queryKey: ['pembangunan-untuk-tanggal', tanggal],
-    queryFn: async (): Promise<PembangunanHariIni> => {
-      const supabase = createClient();
-      const { data, error } = await supabase.rpc('pembangunan_untuk_tanggal', { p_tanggal: tanggal }).single();
-      if (error) throw error;
-      const baris = data as Record<string, unknown> | null;
-      return {
-        sedangDibangun: Number(baris?.sedang_dibangun ?? 0),
-        finishing: Number(baris?.finishing ?? 0),
-        selesaiHariIni: Number(baris?.selesai_hari_ini ?? 0),
-        belumMulai: Number(baris?.belum_mulai ?? 0),
-      };
-    },
-    enabled,
-  });
-}
 
 /** 03-CALC-SPEC.md §4.3 -- empat angka mutlak utk TANGGAL yang diminta, sama yang dilihat Sabrina (Task 21 Bagian 11). */
 export interface KeuanganRekap {

@@ -2,12 +2,10 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth/AuthProvider';
 
 export default function MasukPage() {
   const { signIn } = useAuth();
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [lihatPassword, setLihatPassword] = useState(false);
@@ -19,13 +17,23 @@ export default function MasukPage() {
     setError(null);
     setMengirim(true);
     const hasil = await signIn(email, password);
-    setMengirim(false);
     if (hasil.error) {
+      setMengirim(false);
       setError(hasil.error);
       return;
     }
-    router.push('/');
-    router.refresh();
+    // BUKAN router.push (App Router) -- ditemukan 10 September 2026 (bug
+    // "kadang gagal login, refresh baru bisa"): signInWithPassword menulis
+    // cookie sesi lewat storage adapter @supabase/ssr, tapi router.push bisa
+    // menavigasi (atau menyajikan cache Router yang sudah ada dari SEBELUM
+    // login) sebelum proxy.ts sungguh membaca cookie baru itu -- proxy.ts
+    // menendang balik ke /masuk karena masih menganggap belum login. Navigasi
+    // PENUH (bukan client-side) memaksa permintaan baru dengan cookie yang
+    // benar-benar sudah tersimpan di `document.cookie`, tidak bergantung pada
+    // timing internal Next Router/GoTrue sama sekali. Dibuktikan lewat
+    // scripts/uji-login-berulang.mjs (20-50x login-logout beruntun).
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- sengaja, router.push justru penyebab bug di atas
+    window.location.assign('/');
   }
 
   return (
@@ -41,6 +49,7 @@ export default function MasukPage() {
           <input
             type="email"
             required
+            autoComplete="username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="border px-2 py-2"
@@ -54,6 +63,7 @@ export default function MasukPage() {
             <input
               type={lihatPassword ? 'text' : 'password'}
               required
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full border px-2 py-2 pr-11"

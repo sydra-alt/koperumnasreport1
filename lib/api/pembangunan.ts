@@ -73,3 +73,41 @@ export function useRekapPembangunanPerLokasi(enabled = true, tanggal: string = t
     enabled,
   });
 }
+
+/**
+ * Pindah dari lib/api/dashboard.ts (docs/RENCANA-PROYEK-BARU.md §3 poin 3,
+ * 3 September 2026) -- dashboard.ts isinya CAMPUR fungsi yang dibawa
+ * (keuangan, selisih resto) dan yang dibuang (pembangunan, form perumahan).
+ * Dipindah ke sini SUPAYA gampang dihapus sekaligus nanti bareng seluruh
+ * file ini, bukan dicari-cari lagi di file yang isinya campuran.
+ *
+ * Task 20 -- 03-CALC-SPEC.md §4.2, dijumlahkan dari `pic_lokasi` utk TANGGAL
+ * yang diminta. RPC `pembangunan_untuk_tanggal` (migrasi 0020) SELALU tepat
+ * 1 baris (sum tanpa GROUP BY) walau 0 laporan pada tanggal itu -- kolomnya
+ * NULL, di-coalesce ke 0 di sini supaya dashboard tampil "0", bukan `NaN`.
+ */
+export interface PembangunanHariIni {
+  sedangDibangun: number;
+  finishing: number;
+  selesaiHariIni: number;
+  belumMulai: number;
+}
+
+export function usePembangunanUntukTanggal(tanggal: string = tanggalWIB(), enabled = true) {
+  return useQuery({
+    queryKey: ['pembangunan-untuk-tanggal', tanggal],
+    queryFn: async (): Promise<PembangunanHariIni> => {
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc('pembangunan_untuk_tanggal', { p_tanggal: tanggal }).single();
+      if (error) throw error;
+      const baris = data as Record<string, unknown> | null;
+      return {
+        sedangDibangun: Number(baris?.sedang_dibangun ?? 0),
+        finishing: Number(baris?.finishing ?? 0),
+        selesaiHariIni: Number(baris?.selesai_hari_ini ?? 0),
+        belumMulai: Number(baris?.belum_mulai ?? 0),
+      };
+    },
+    enabled,
+  });
+}

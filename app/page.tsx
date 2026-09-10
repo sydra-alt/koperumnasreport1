@@ -14,7 +14,8 @@ import { hariISOWIB, jamWIB } from '../lib/tanggal';
 import { AngkaGrid } from '../components/AngkaGrid';
 import { KeadaanGagal } from '../components/KeadaanGagal';
 import { KerangkaBeranda, KerangkaDaftarKartu } from '../components/Kerangka';
-import { usePembangunanUntukTanggal, useKeuanganRekapUntukTanggal, useSelisihRestoUntukTanggal } from '../lib/api/dashboard';
+import { usePembangunanUntukTanggal } from '../lib/api/pembangunan';
+import { useKeuanganRekapUntukTanggal, useSelisihRestoUntukTanggal } from '../lib/api/dashboard';
 import { useLaporanAccountingHariIni, hitungRingkasanKeuanganCeo } from '../lib/api/accounting';
 import { formatRupiah } from '../lib/rupiah';
 

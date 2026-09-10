@@ -364,7 +364,10 @@ export default function AbsenPage() {
           onBatal={() => setLayar('konfirmasi_titik')}
           watermark={
             titikDipilih && posisi
-              ? { nama: profile?.nama ?? '', titikNama: titikDipilih.nama, lat: posisi.lat, lon: posisi.lon }
+              ? {
+                  baris1: `${profile?.nama ?? ''} · ${jamWIB()} WIB`,
+                  baris2: `${titikDipilih.nama} · ${posisi.lat.toFixed(6)}, ${posisi.lon.toFixed(6)}`,
+                }
               : undefined
           }
         />

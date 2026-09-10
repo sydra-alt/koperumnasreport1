@@ -1,11 +1,21 @@
 #!/usr/bin/env node
-// Reset password ketujuh akun uji (scripts/akun.json) ke password ACAK
-// BERBEDA per orang, lewat supabase.auth.admin.updateUserById() -- SATU-
-// SATUNYA jalur resmi yang didukung Supabase untuk mengubah password orang
-// lain. TIDAK PERNAH `update auth.users set encrypted_password = ...`
-// langsung -- itu menyentuh format internal GoTrue yang tidak dijamin
-// stabil lintas versi, dan bukan API yang didukung (instruksi user,
-// 24 Agustus 2026, setelah versi SQL sebelumnya ditolak).
+// ⚠️ Reset password SEMUA akun di scripts/akun.json ke password ACAK
+// BERBEDA per orang -- akun.json sekarang berisi 40+ KARYAWAN SUNGGUHAN
+// (bukan lagi "7 akun uji" seperti header lama ini sebelum 7 September
+// 2026 -- komentar itu ditulis 24 Agustus, saat rosternya masih 7 akun uji
+// coba-coba; DIPERBAIKI karena komentar salah lebih berbahaya daripada
+// tidak ada komentar sama sekali -- orang berikutnya bisa percaya ini cuma
+// menyentuh 7 akun lalu menjalankannya kapan saja tanpa pikir panjang,
+// padahal memutar ulang password SEMUA karyawan sekaligus). Jalankan
+// SENGAJA, bukan iseng -- setiap akun yang sedang dipakai orang akan
+// langsung tidak bisa login dengan password lamanya.
+//
+// Lewat supabase.auth.admin.updateUserById() -- SATU-SATUNYA jalur resmi
+// yang didukung Supabase untuk mengubah password orang lain. TIDAK PERNAH
+// `update auth.users set encrypted_password = ...` langsung -- itu
+// menyentuh format internal GoTrue yang tidak dijamin stabil lintas versi,
+// dan bukan API yang didukung (instruksi user, 24 Agustus 2026, setelah
+// versi SQL sebelumnya ditolak).
 //
 // Password dicetak SEKALI ke layar. TIDAK DITULIS ke file, log, atau commit
 // mana pun -- salin ke pengelola password kamu SEKARANG. Kalau terlewat,

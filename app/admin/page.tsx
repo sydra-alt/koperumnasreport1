@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Terlindungi } from '../../components/Terlindungi';
+import { useAuth } from '../../lib/auth/AuthProvider';
 import { usePolicy } from '../../lib/api/policy';
 import { pesanKesalahanDb } from '../../lib/pesanErrorDb';
 import {
@@ -11,6 +12,7 @@ import {
   useDaftarOutletAdmin,
   useTambahOutlet,
   useUbahAktifOutlet,
+  useUbahJamBukaOutlet,
   useDaftarAssignmentAdmin,
   useTambahAssignment,
   useHapusAssignment,
@@ -32,7 +34,7 @@ import {
   useTambahShift,
   useUbahShift,
   useUbahWajibPte,
-  DAFTAR_ROLE,
+  daftarRoleUntuk,
 } from '../../lib/api/admin';
 
 type Tab = 'lokasi' | 'outlet' | 'assignment' | 'policy' | 'pengguna' | 'titik-absen' | 'shift';
@@ -85,6 +87,7 @@ function TabOutlet() {
   const { data: daftar } = useDaftarOutletAdmin();
   const tambah = useTambahOutlet();
   const ubahAktif = useUbahAktifOutlet();
+  const ubahJamBuka = useUbahJamBukaOutlet();
   const [nama, setNama] = useState('');
 
   return (
@@ -103,18 +106,36 @@ function TabOutlet() {
       </div>
       {tambah.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(tambah.error, 'menambah outlet')}</p>}
       {ubahAktif.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubahAktif.error, 'mengubah status outlet')}</p>}
-      <ul className="flex flex-col gap-1">
+      {ubahJamBuka.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubahJamBuka.error, 'mengubah jam buka')}</p>}
+      <ul className="flex flex-col gap-2">
         {(daftar ?? []).map((o) => (
-          <li key={o.id} className="flex items-center justify-between border p-2 text-sm" style={{ borderColor: 'var(--garis)' }}>
-            <span>{o.nama}</span>
-            <button
-              type="button"
-              onClick={() => ubahAktif.mutate({ id: o.id, aktif: !o.aktif })}
-              className="border px-2 py-1"
-              style={{ borderColor: o.aktif ? 'var(--hijau)' : 'var(--kosong)', color: o.aktif ? 'var(--hijau)' : 'var(--kosong)', minHeight: 44 }}
-            >
-              {o.aktif ? 'Aktif' : 'Nonaktif'}
-            </button>
+          <li key={o.id} className="flex flex-col gap-1 border p-2 text-sm" style={{ borderColor: 'var(--garis)' }}>
+            <div className="flex items-center justify-between">
+              <span>{o.nama}</span>
+              <button
+                type="button"
+                onClick={() => ubahAktif.mutate({ id: o.id, aktif: !o.aktif })}
+                className="border px-2 py-1"
+                style={{ borderColor: o.aktif ? 'var(--hijau)' : 'var(--kosong)', color: o.aktif ? 'var(--hijau)' : 'var(--kosong)', minHeight: 44 }}
+              >
+                {o.aktif ? 'Aktif' : 'Nonaktif'}
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm" style={{ color: 'var(--label)' }}>Jam buka (Laporan Kebersihan):</label>
+              <input
+                type="time"
+                value={o.jamBuka ? o.jamBuka.slice(0, 5) : ''}
+                onChange={(e) => ubahJamBuka.mutate({ id: o.id, jamBuka: e.target.value || null })}
+                className="border p-1"
+                style={gayaInput}
+              />
+            </div>
+            {!o.jamBuka && (
+              <p className="text-sm" style={{ color: 'var(--merah)' }}>
+                Jam buka belum diisi -- Laporan Kebersihan outlet ini TIDAK PUNYA batas kirim sampai diisi.
+              </p>
+            )}
           </li>
         ))}
       </ul>
@@ -393,6 +414,12 @@ function TabPolicy() {
 }
 
 function TabPengguna() {
+  const { roles: rolesSaya } = useAuth();
+  // Daftar putih (migrasi 0050) -- ceo lihat semua role, admin biasa cuma
+  // yang tidak terkunci (ceo/accounting/admin) -- RLS `boleh_kelola_role()`
+  // yang benar-benar menahan, ini cuma supaya tidak disodori pilihan yang
+  // PASTI ditolak backend.
+  const daftarRole = daftarRoleUntuk(rolesSaya);
   const { data: daftar } = useDaftarProfilDenganRole();
   const tambahRole = useTambahRole();
   const hapusRole = useHapusRole();
@@ -421,7 +448,7 @@ function TabPengguna() {
         <input value={jabatan} onChange={(e) => setJabatan(e.target.value)} placeholder="Jabatan (opsional)" className="border p-2" style={gayaInput} />
         <input value={divisi} onChange={(e) => setDivisi(e.target.value)} placeholder="Divisi (opsional)" className="border p-2" style={gayaInput} />
         <div className="flex flex-wrap gap-2">
-          {DAFTAR_ROLE.map((r) => (
+          {daftarRole.map((r) => (
             <label key={r} className="flex items-center gap-1 text-sm">
               <input
                 type="checkbox"
@@ -464,7 +491,7 @@ function TabPengguna() {
               {p.nama} {p.jabatan ? `-- ${p.jabatan}` : ''} {p.divisi ? `(${p.divisi})` : ''}
             </p>
             <div className="mt-1 flex flex-wrap gap-2">
-              {DAFTAR_ROLE.map((r) => {
+              {daftarRole.map((r) => {
                 const aktif = p.roles.includes(r);
                 return (
                   <button

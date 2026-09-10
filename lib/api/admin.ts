@@ -62,6 +62,7 @@ export interface OutletRowAdmin {
   id: string;
   nama: string;
   aktif: boolean;
+  jamBuka: string | null;
 }
 
 export function useDaftarOutletAdmin() {
@@ -69,10 +70,28 @@ export function useDaftarOutletAdmin() {
     queryKey: ['admin-outlet'],
     queryFn: async (): Promise<OutletRowAdmin[]> => {
       const supabase = createClient();
-      const { data, error } = await supabase.from('outlet').select('id, nama, aktif').order('nama');
+      const { data, error } = await supabase.from('outlet').select('id, nama, aktif, jam_buka').order('nama');
       if (error) throw error;
-      return data;
+      return data.map((o) => ({ id: o.id, nama: o.nama, aktif: o.aktif, jamBuka: o.jam_buka }));
     },
+  });
+}
+
+/**
+ * `outlet.jam_buka` (migrasi 0053) -- dasar batas kirim Laporan Kebersihan
+ * (jam_buka + kebersihan_toleransi_menit). Kalau kosong: laporan outlet itu
+ * TIDAK PUNYA batas sama sekali (instruksi eksplisit CEO) -- TabOutlet
+ * menampilkan peringatan untuk outlet yang belum diisi.
+ */
+export function useUbahJamBukaOutlet() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, jamBuka }: { id: string; jamBuka: string | null }) => {
+      const supabase = createClient();
+      const { error } = await supabase.from('outlet').update({ jam_buka: jamBuka }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-outlet'] }),
   });
 }
 
@@ -352,8 +371,20 @@ export function useUbahWajibPte() {
   });
 }
 
-const DAFTAR_ROLE = ['ceo', 'admin', 'pusat', 'accounting', 'kontrol_marketing', 'kadiv', 'pic_lokasi', 'manager_resto', 'karyawan'] as const;
-export { DAFTAR_ROLE };
+const DAFTAR_ROLE_LENGKAP = ['ceo', 'admin', 'pusat', 'accounting', 'kontrol_marketing', 'kadiv', 'pic_lokasi', 'manager_resto', 'karyawan'] as const;
+
+// Daftar putih (6 Sept 2026) -- role yang HANYA boleh diberikan/dicabut ceo,
+// sama persis dengan syarat RLS `boleh_kelola_role()` (migrasi 0050). Dijaga
+// SENGAJA di DUA lapisan: RLS (satu-satunya yang benar-benar menahan, REST
+// langsung tanpa UI tetap kena) dan di sini (UI) -- supaya admin biasa tidak
+// disodori pilihan yang PASTI ditolak backend, bukan pengganti RLS.
+const ROLE_TERKUNCI_UNTUK_CEO = ['ceo', 'accounting', 'admin'] as const;
+
+/** Daftar role yang boleh diatur PENGGUNA INI (dilihat dari role-nya sendiri) di halaman Admin -- ceo lihat semua, selain ceo cuma yang tidak terkunci. */
+export function daftarRoleUntuk(rolesSaya: string[]): readonly (typeof DAFTAR_ROLE_LENGKAP)[number][] {
+  if (rolesSaya.includes('ceo')) return DAFTAR_ROLE_LENGKAP;
+  return DAFTAR_ROLE_LENGKAP.filter((r) => !ROLE_TERKUNCI_UNTUK_CEO.includes(r as (typeof ROLE_TERKUNCI_UNTUK_CEO)[number]));
+}
 
 export function useTambahRole() {
   const queryClient = useQueryClient();

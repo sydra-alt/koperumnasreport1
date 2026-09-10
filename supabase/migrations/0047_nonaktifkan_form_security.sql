@@ -1,0 +1,14 @@
+-- CEO menjawab (docs/RENCANA-PROYEK-BARU.md, 6 September 2026): laporan
+-- satpam DIBUANG -- diganti Laporan Kebersihan berfoto (belum dibangun,
+-- pekerjaan terpisah) dan bukan dipertahankan dalam bentuk apa pun.
+--
+-- Pola SAMA PERSIS dengan migrasi 0045 (9 form perumahan): nonaktifkan
+-- lewat penghapusan baris `assignment`, BUKAN hapus schema form
+-- (`forms/f14-security.ts`, `forms/index.ts`) atau data `report` historis
+-- form ini -- form berhenti muncul di Beranda/Papan Kontrol/nav Lapor
+-- tanpa kehilangan riwayat, sama seperti 9 form sebelumnya.
+--
+-- Kelima orang yang sebelumnya ditugaskan (Cahya, Dedi, Kasam, Syahbudin,
+-- Yundi) SEMUANYA sudah dinonaktifkan lewat migrasi 0046 (tidak ada di
+-- daftar 12 orang CEO) -- konsisten, tidak ada kejutan.
+delete from public.assignment where form_key = 'security';

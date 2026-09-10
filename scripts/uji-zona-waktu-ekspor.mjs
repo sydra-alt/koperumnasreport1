@@ -7,16 +7,23 @@
 // app/api/ekspor/absensi/route.ts).
 //
 // Uji ini SUNGGUHAN lewat HTTP (bukan simulasi unit) -- lihat pola
-// uji-ekspor-keuangan-curl.mjs: login sungguhan sebagai Sabrina (pusat),
-// panggil endpoint ekspor absensi sungguhan, baca file .xlsx yang
-// dikembalikan dengan ExcelJS, lalu bandingkan nilai di sel Excel dengan
-// nilai yang akan tampil di layar (`jamWIB`) untuk INSTANT WIB yang SAMA
-// PERSIS -- harus sama persis, sesuai permintaan eksplisit user.
+// uji-ekspor-keuangan-curl.mjs: login sungguhan sebagai AKUN UJI - HRD Kadiv
+// (uji4@koperumnas.local, role kadiv + divisi HRD -- lolos gerbang
+// `bolehKadivHrd` yang sama dipakai Sabrina sungguhan), panggil endpoint
+// ekspor absensi sungguhan, baca file .xlsx yang dikembalikan dengan
+// ExcelJS, lalu bandingkan nilai di sel Excel dengan nilai yang akan tampil
+// di layar (`jamWIB`) untuk INSTANT WIB yang SAMA PERSIS -- harus sama
+// persis, sesuai permintaan eksplisit user.
 //
-// Baris absensi dibuat SEMENTARA untuk satu karyawan yang belum absen hari
-// ini (dicari otomatis, supaya tidak bentrok dgn baris sungguhan), lalu
-// DIHAPUS di blok finally lewat `id`-nya sendiri (bukan sapuan user+tanggal)
-// -- tidak menyentuh data presensi sungguhan siapa pun.
+// Diganti dari Sabrina sungguhan ke uji4 (7 September 2026, insiden
+// Qasim/Ryan -- skrip uji tidak boleh menyentuh akun orang sungguhan, lihat
+// docs/04-CATATAN-TEKNIS.md §7).
+//
+// Baris absensi dibuat SEMENTARA untuk AKUN UJI - Karyawan Resto
+// (uji2@koperumnas.local, BUKAN dicari otomatis dari karyawan sungguhan
+// lagi -- alasan sama di atas), lalu DIHAPUS di blok finally lewat `id`-nya
+// sendiri (bukan sapuan user+tanggal) -- tidak menyentuh data presensi
+// siapa pun yang sungguhan.
 
 import crypto from 'node:crypto';
 import path from 'node:path';
@@ -48,26 +55,19 @@ await db.connect();
 const JAM_WIB = { jam: 9, menit: 23, detik: 44 };
 
 let idBaris = null;
-let idSabrina = null;
+let idPenguji = null;
 let admin = null;
 try {
-  // 1) Cari satu karyawan aktif yang BELUM absen hari ini, supaya baris uji
-  //    tidak bentrok/bercampur dgn baris sungguhan di Map pivot (kunci
-  //    user_id|tanggal di app/api/ekspor/absensi/route.ts).
-  const { rows: kandidat } = await db.query(`
-    select p.id, p.nama
-    from public.profile p
-    where p.aktif = true
-      and p.id not in (select user_id from public.absensi where tanggal = (now() at time zone 'Asia/Jakarta')::date)
-    order by p.nama
-    limit 1;
-  `);
-  if (kandidat.length === 0) {
-    console.error('Tidak ada karyawan aktif tanpa absensi hari ini -- tidak bisa membuat baris uji yang aman tanpa bentrok.');
-    process.exit(1);
-  }
-  const user = kandidat[0];
-  console.log(`Pakai karyawan uji: ${user.nama} (belum absen hari ini, aman dari bentrok).`);
+  // 1) AKUN UJI - Karyawan Resto (uji2@koperumnas.local) -- bukan karyawan
+  //    sungguhan yang dicari otomatis lagi (diganti 7 September 2026, lihat
+  //    catatan di atas). Buang dulu baris absensi uji lama miliknya hari
+  //    ini kalau ada (sisa run sebelumnya yang gagal), supaya tidak bentrok
+  //    dgn Map pivot (kunci user_id|tanggal di app/api/ekspor/absensi/route.ts).
+  const { rows: penggunaRows } = await db.query("select id, nama from public.profile where nama = 'AKUN UJI - Karyawan Resto'");
+  if (penggunaRows.length === 0) throw new Error('AKUN UJI - Karyawan Resto tidak ditemukan -- jalankan scripts/buat-akun-uji.mjs dulu.');
+  const user = penggunaRows[0];
+  await db.query(`delete from public.absensi where user_id = $1 and tanggal = (now() at time zone 'Asia/Jakarta')::date`, [user.id]);
+  console.log(`Pakai AKUN UJI: ${user.nama} (baris absensi uji lama miliknya hari ini, kalau ada, sudah dibuang).`);
 
   const { rows: tglRows } = await db.query(`select (now() at time zone 'Asia/Jakarta')::date as t`);
   const tanggalWib = tglRows[0].t.toISOString().slice(0, 10);
@@ -87,20 +87,23 @@ try {
   idBaris = insertRows[0].id;
   console.log(`Baris absensi uji dibuat (id=${idBaris}), waktu=${waktuUtc.toISOString()} (=${JAM_WIB.jam}:${String(JAM_WIB.menit).padStart(2, '0')} WIB).`);
 
-  // 3) Login sungguhan sebagai Sabrina (pusat) -- pola sama uji-ekspor-keuangan-curl.mjs.
-  const { rows: sabrinaRows } = await db.query("select id from auth.users where email = 'sabrina@koperumnas.local'");
-  if (sabrinaRows.length === 0) throw new Error('Akun sabrina@koperumnas.local tidak ditemukan.');
-  idSabrina = sabrinaRows[0].id;
+  // 3) Login sungguhan sebagai AKUN UJI - HRD Kadiv (uji4@koperumnas.local,
+  //    lolos gerbang `bolehKadivHrd` yang sama dipakai Sabrina sungguhan) --
+  //    BUKAN Sabrina lagi (diganti 7 September 2026, lihat catatan di atas).
+  const { rows: pengujiRows } = await db.query("select id from auth.users where email = 'uji4@koperumnas.local'");
+  if (pengujiRows.length === 0) throw new Error('Akun uji4@koperumnas.local tidak ditemukan -- jalankan scripts/buat-akun-uji.mjs dulu.');
+  idPenguji = pengujiRows[0].id;
 
   admin = createAdminClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const passwordSementara = crypto.randomBytes(12).toString('base64url').slice(0, 16);
-  const { error: errReset } = await admin.auth.admin.updateUserById(idSabrina, { password: passwordSementara });
-  if (errReset) throw new Error(`Gagal reset password Sabrina: ${errReset.message}`);
-  // Reset password lewat admin API otomatis menyalakan harus_ganti_password
-  // (trigger) -- middleware akan mengalihkan SEMUA request ke /ganti-password
-  // selagi itu true, termasuk panggilan API ini. Matikan sementara, pola sama
-  // uji-radius-gps-palsu.mjs; dikembalikan ke true di blok finally.
-  await db.query('update public.profile set harus_ganti_password = false where id = $1;', [idSabrina]);
+  const { error: errReset } = await admin.auth.admin.updateUserById(idPenguji, { password: passwordSementara });
+  if (errReset) throw new Error(`Gagal reset password AKUN UJI: ${errReset.message}`);
+  // profile.harus_ganti_password default TRUE (kolom, bukan trigger --
+  // dicek langsung 7 September 2026, TIDAK ADA trigger apa pun di
+  // auth.users) -- dimatikan sementara di sini supaya middleware tidak
+  // mengalihkan panggilan API ini ke /ganti-password, dikembalikan ke true
+  // di blok finally dan DIBUKTIKAN lewat baca ulang DB.
+  await db.query('update public.profile set harus_ganti_password = false where id = $1;', [idPenguji]);
 
   const jar = new Map();
   const supabase = createServerClient(supabaseUrl, anonKey, {
@@ -109,8 +112,8 @@ try {
       setAll: (cookiesToSet) => { for (const { name, value } of cookiesToSet) jar.set(name, value); },
     },
   });
-  const { error: errLogin } = await supabase.auth.signInWithPassword({ email: 'sabrina@koperumnas.local', password: passwordSementara });
-  if (errLogin) throw new Error(`Login Sabrina gagal: ${errLogin.message}`);
+  const { error: errLogin } = await supabase.auth.signInWithPassword({ email: 'uji4@koperumnas.local', password: passwordSementara });
+  if (errLogin) throw new Error(`Login AKUN UJI gagal: ${errLogin.message}`);
   const cookieHeader = Array.from(jar.entries()).map(([name, value]) => `${name}=${value}`).join('; ');
 
   // 4) Panggil endpoint ekspor absensi SUNGGUHAN lewat HTTP, baca file .xlsx sungguhan.
@@ -174,13 +177,22 @@ try {
     await db.query('delete from public.absensi where id = $1', [idBaris]);
     console.log(`\nBaris absensi uji (id=${idBaris}) dihapus.`);
   }
-  // Kembalikan Sabrina ke keadaan semula -- password admin123 seragam +
-  // harus_ganti_password=true, sama seperti pola uji-radius-gps-palsu.mjs.
-  if (idSabrina && admin) {
-    const { error: errPw } = await admin.auth.admin.updateUserById(idSabrina, { password: 'admin123' });
-    if (errPw) console.error(`GAGAL mengembalikan password Sabrina ke admin123: ${errPw.message}`);
-    await db.query('update public.profile set harus_ganti_password = true where id = $1;', [idSabrina]);
-    console.log('Akun Sabrina dikembalikan: password admin123, harus_ganti_password = true.');
+  // Kembalikan AKUN UJI ke keadaan semula -- password admin123 seragam +
+  // harus_ganti_password=true, DIBUKTIKAN lewat baca ulang DB (bukan
+  // dipercaya dari nilai kembalian -- pelajaran insiden Qasim/Ryan, 7
+  // September 2026, lihat docs/04-CATATAN-TEKNIS.md §7).
+  if (idPenguji && admin) {
+    const { error: errPw } = await admin.auth.admin.updateUserById(idPenguji, { password: 'admin123' });
+    if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke admin123: ${errPw.message}`);
+    await db.query('update public.profile set harus_ganti_password = true where id = $1;', [idPenguji]);
+    const { rows: cekAkun } = await db.query(
+      `select p.harus_ganti_password, u.updated_at, u.last_sign_in_at from public.profile p join auth.users u on u.id = p.id where p.id = $1`,
+      [idPenguji],
+    );
+    const pulihSempurna = cekAkun[0]?.harus_ganti_password === true && new Date(cekAkun[0].updated_at) > new Date(cekAkun[0].last_sign_in_at);
+    console.log(pulihSempurna
+      ? 'AKUN UJI dikembalikan: password admin123 (dibuktikan lewat updated_at > last_sign_in_at), harus_ganti_password = true.'
+      : `🛑 AKUN UJI BELUM PULIH SEPENUHNYA -- ${JSON.stringify(cekAkun[0])}.`);
   }
   await db.end();
 }
