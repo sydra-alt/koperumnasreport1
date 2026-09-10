@@ -35,25 +35,27 @@ keduanya sudah pernah tercampur di `docs/PROGRESS.md` sebelumnya.
 
 Ini daftar paling penting untuk dicoba duluan sebelum dipakai 15-26 orang sehari-hari.
 
-- **Laporan Kebersihan, seluruh alurnya** (`/lapor/kebersihan`, `/kebersihan/tinjau`) —
-  outlet dengan >1 penugasan (Toni/Fikri/Fadil) memaksa memilih outlet, 5 foto lewat
-  kamera langsung (tanpa galeri), laporan dibagi bersama siapa pun yang bertugas di
-  outlet itu, batas kirim dari `outlet.jam_buka`. **Diuji menyeluruh lewat HTTP/RPC
-  sungguhan dan Playwright** (dua orang berbagi satu laporan, batas kirim tiga skenario,
-  Admin bisa mengisi jam buka) — **belum pernah dicoba dari HP fisik sama sekali**. Ini
-  yang eksplisit kamu sebut tertunda karena insiden login.
-  - **Catatan yang harus diketahui sebelum dicoba**: `outlet.jam_buka` MASIH KOSONG
-    untuk keempat outlet (Indosteak Cempaka, Indosteak Pekansari, Indokopi Jatinegara,
-    Indokopi Lite Kemayoran) — artinya sampai diisi lewat Admin, Laporan Kebersihan
-    TIDAK PUNYA batas kirim sama sekali (sengaja, bukan bug — lihat migrasi 0053). Isi
-    dulu lewat Admin → Outlet kalau mau menguji perilaku "terlambat".
-- **Perbaikan login hari ini** (window.location.assign menggantikan router.push, login
-  ulang otomatis setelah ganti password, layar konfirmasi, `autocomplete` di kedua
-  form) — diuji 20-50× beruntun lewat Playwright, 0 gagal. **Belum dicoba dari HP
-  fisik** — cara paling meyakinkan menutup insiden ini adalah kamu sendiri mengulang
-  persis langkah yang tadinya gagal (admin123 → ganti password → logout → login lagi)
-  dari HP.
-- **Admin → Outlet, input jam buka + peringatan kalau kosong** — diuji Playwright saja.
+- **Laporan Kebersihan** (`/lapor/kebersihan`) — ✅ **DIUJI DARI HP SUNGGUHAN, BERHASIL**
+  (10 September 2026): satu laporan Indosteak Cempaka diisi Dea (Bar) DAN Qasim
+  (Toilet) — laporan milik outlet, bukan milik orang, terbukti jalan di perangkat
+  nyata. Ditemukan dari uji itu juga: kamera terkunci ke depan (salah untuk memotret
+  ruangan) — **diperbaiki hari ini** (default kamera belakang + tombol balik kamera,
+  facingMode jadi prop wajib komponen `CameraCapture`) tapi **perbaikan kamera INI
+  SENDIRI belum dicoba dari HP fisik** — baru diuji Playwright (Chromium sungguhan,
+  kamera palsu). `/kebersihan/tinjau` (review CEO/HRD) masih belum pernah dicoba dari
+  HP sama sekali.
+  - Batas kirim sekarang dari `jadwal_operasional` (mengganti `outlet.jam_buka`,
+    lihat §4) — **sudah diisi CEO lewat Admin** untuk keempat outlet (09:00-22:00
+    Indosteak, 09:00-03:00 + 24 jam akhir pekan Indokopi), jadi perilaku "terlambat"
+    sekarang bisa langsung diuji dari HP tanpa perlu isi apa pun dulu.
+- **Perbaikan login** (window.location.assign menggantikan router.push, login ulang
+  otomatis setelah ganti password, layar konfirmasi, `autocomplete` di kedua form) —
+  diuji 20-50× beruntun lewat Playwright, 0 gagal. **Belum dicoba dari HP fisik** —
+  cara paling meyakinkan menutup insiden ini adalah kamu sendiri mengulang persis
+  langkah yang tadinya gagal (admin123 → ganti password → logout → login lagi) dari HP.
+- **Admin → Outlet → "Atur jadwal"** (7 baris per outlet, ganti input jam buka
+  tunggal lama) — diuji Playwright saja (termasuk satu bug nyata yang sempat
+  ditemukan & diperbaiki di jalur ini sebelum dipakai CEO — lihat §4).
 - **Bilah progres unggah foto per file, dan kompresi gambar (`kompresGambar`, canvas)** —
   dicatat SEJAK Task 11 (akhir Agustus) sebagai "belum diverifikasi di device sungguhan
   dengan foto asli berukuran besar" — tidak pernah ditutup sejak itu, tetap terbuka.
@@ -101,18 +103,21 @@ dst.) **sudah tidak relevan** — form-nya masih ada di kode (sengaja tidak diha
 cuma dinonaktifkan lewat migrasi 0045) tapi nol orang ditugaskan ke situ sekarang.
 Yang MASIH berarti:
 
-- **"Lokasi Uji" (titik absen GPS-testing) masih AKTIF di produksi**, dengan 3 orang
-  ditugaskan ke situ (termasuk `uji5`, sengaja, dan Putri, historis). Dicatat sejak
-  31 Agustus sebagai "HARUS dihapus/dinonaktifkan sebelum dibagikan lebih luas" —
-  **masih belum dikerjakan**.
+- ✅ **SELESAI (10 September 2026) — "Lokasi Uji" dibersihkan.** Koordinat diganti
+  0,0, dinonaktifkan, ketiga penugasan dicabut (Putri sudah punya titik lain,
+  "Kantor Pusat"; `badar`/`uji5` tidak butuh titik pengganti — bukan staf sungguhan).
+  Baris tabelnya TIDAK dihapus (2 riwayat presensi asli Putri terikat lewat FK) —
+  lihat `docs/PROGRESS.md`.
 - **PIC `kontrol_fnb` untuk outlet Indokopi Lite Kemayoran belum ditentukan.** Mba Rika
   memegang kontrol_fnb kedua outlet Indosteak; Kemayoran belum ada yang ditugaskan.
   Saat ini cuma 2 orang total punya assignment `kontrol_fnb` di seluruh sistem.
   Belum ditebak, sesuai instruksi sebelumnya.
-- **`outlet.jam_buka` kosong untuk keempat outlet** (lihat §2) — bukan "utang lama"
-  yang tercatat sebelumnya, tapi konsekuensi langsung dari fitur Kebersihan yang baru
-  dibangun minggu ini: sampai Admin mengisinya, TIDAK ADA outlet yang punya batas
-  kirim Kebersihan.
+- ✅ **SELESAI (10 September 2026) — jadwal operasional keempat outlet sudah diisi.**
+  `outlet.jam_buka` (kolom tunggal lama) DIGANTI tabel `jadwal_operasional` (per hari,
+  migrasi 0055) karena kebutuhannya ternyata beda per hari (kafe tutup dini hari,
+  buka 24 jam akhir pekan) — lihat `docs/PROGRESS.md`. Sudah diisi CEO lewat Admin
+  untuk ketujuh hari, keempat outlet — Laporan Kebersihan sekarang punya batas kirim
+  yang benar setiap hari, tidak perlu diisi apa pun lagi sebelum diuji dari HP.
 - **`policy.absen_di_luar_radius` sengaja masih `izinkan_dengan_tanda`** — keputusan
   CEO 30 Agustus, ditinjau ulang lagi setelah terkumpul data presensi minimal satu
   bulan sejak roster (dulu 39/40, sekarang 26) benar-benar dipakai harian. Belum

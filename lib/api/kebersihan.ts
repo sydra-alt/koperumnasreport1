@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '../supabase/client';
-import { tanggalWIB, jamWIB } from '../tanggal';
+import { tanggalWIB, jamWIB, hariISOWIB } from '../tanggal';
 
 /**
  * Lima slot Laporan Kebersihan (CEO, 6 September 2026) -- TETAP, bukan
@@ -22,7 +22,6 @@ export type SlotKebersihan = (typeof SLOT_KEBERSIHAN)[number]['key'];
 export interface OutletKebersihan {
   id: string;
   nama: string;
-  jamBuka: string | null;
 }
 
 /**
@@ -41,27 +40,64 @@ export function useOutletKebersihanSaya(userId: string | undefined) {
       const supabase = createClient();
       const { data, error } = await supabase
         .from('assignment')
-        .select('outlet:outlet_id(id, nama, jam_buka)')
+        .select('outlet:outlet_id(id, nama)')
         .eq('user_id', userId as string)
         .eq('form_key', 'kebersihan');
       if (error) throw error;
       return (data ?? [])
-        .map((r) => r.outlet as unknown as { id: string; nama: string; jam_buka: string | null } | null)
-        .filter((o): o is { id: string; nama: string; jam_buka: string | null } => o !== null)
-        .map((o) => ({ id: o.id, nama: o.nama, jamBuka: o.jam_buka }));
+        .map((r) => r.outlet as unknown as OutletKebersihan | null)
+        .filter((o): o is OutletKebersihan => o !== null);
+    },
+  });
+}
+
+export interface JadwalKebersihanHariIni {
+  jamBuka: string | null;
+  buka24Jam: boolean;
+}
+
+/**
+ * Jadwal operasional HARI INI (migrasi 0055) untuk outlet ini -- Laporan
+ * Kebersihan selalu untuk hari berjalan, jadi cuma perlu SATU baris
+ * (`hari_iso` dari `hariISOWIB()`), bukan seluruh minggu (itu urusan Admin,
+ * lihat `useDaftarJadwalOperasional`). `null` kalau jadwal hari ini belum
+ * diatur sama sekali.
+ */
+export function useJadwalKebersihanHariIni(outletId: string | null) {
+  return useQuery({
+    queryKey: ['jadwal-kebersihan-hari-ini', outletId, tanggalWIB()],
+    enabled: Boolean(outletId),
+    queryFn: async (): Promise<JadwalKebersihanHariIni | null> => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('jadwal_operasional')
+        .select('jam_buka, buka_24_jam')
+        .eq('outlet_id', outletId as string)
+        .eq('hari_iso', hariISOWIB())
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return { jamBuka: data.jam_buka, buka24Jam: data.buka_24_jam };
     },
   });
 }
 
 /**
- * Batas kirim "HH:mm" WIB = outlet.jam_buka + kebersihan_toleransi_menit.
- * `null` kalau outlet BELUM diisi jam_buka -- TIDAK ADA batas sama sekali
- * (instruksi eksplisit CEO, 6 September 2026: jangan jatuh ke
- * deadline_default, laporan pagi akan tercatat "tepat waktu" secara palsu).
+ * Batas kirim "HH:mm" WIB hari ini. Tiga kasus, ketiganya jujur (TIDAK ADA
+ * fallback diam-diam ke default yang menyesatkan -- instruksi eksplisit CEO,
+ * 6 September 2026):
+ *   - jadwal hari ini belum diatur sama sekali -> `null`, tidak ada batas.
+ *   - `buka_24_jam` -> `batas24Jam` (dari `policy.kebersihan_batas_24jam`,
+ *     migrasi 0055) -- "jam buka" tidak berarti apa-apa untuk outlet yang
+ *     tidak pernah tutup.
+ *   - jadwal biasa -> `jamBuka + toleransiMenit`, atau `null` kalau
+ *     `jamBuka` sendiri belum diisi utk hari itu.
  */
-export function hitungBatasKebersihan(jamBuka: string | null, toleransiMenit: number): string | null {
-  if (!jamBuka) return null;
-  const [jamStr, menitStr] = jamBuka.split(':');
+export function hitungBatasKebersihan(jadwal: JadwalKebersihanHariIni | null, toleransiMenit: number, batas24Jam: string | null): string | null {
+  if (!jadwal) return null;
+  if (jadwal.buka24Jam) return batas24Jam;
+  if (!jadwal.jamBuka) return null;
+  const [jamStr, menitStr] = jadwal.jamBuka.split(':');
   const totalMenit = (Number(jamStr) * 60 + Number(menitStr) + toleransiMenit) % (24 * 60);
   const jam = Math.floor(totalMenit / 60);
   const menit = totalMenit % 60;

@@ -62,7 +62,6 @@ export interface OutletRowAdmin {
   id: string;
   nama: string;
   aktif: boolean;
-  jamBuka: string | null;
 }
 
 export function useDaftarOutletAdmin() {
@@ -70,28 +69,78 @@ export function useDaftarOutletAdmin() {
     queryKey: ['admin-outlet'],
     queryFn: async (): Promise<OutletRowAdmin[]> => {
       const supabase = createClient();
-      const { data, error } = await supabase.from('outlet').select('id, nama, aktif, jam_buka').order('nama');
+      const { data, error } = await supabase.from('outlet').select('id, nama, aktif').order('nama');
       if (error) throw error;
-      return data.map((o) => ({ id: o.id, nama: o.nama, aktif: o.aktif, jamBuka: o.jam_buka }));
+      return data;
     },
   });
 }
 
+// ─── Jadwal operasional (per outlet, per hari) ──────────────────────────
 /**
- * `outlet.jam_buka` (migrasi 0053) -- dasar batas kirim Laporan Kebersihan
- * (jam_buka + kebersihan_toleransi_menit). Kalau kosong: laporan outlet itu
- * TIDAK PUNYA batas sama sekali (instruksi eksplisit CEO) -- TabOutlet
- * menampilkan peringatan untuk outlet yang belum diisi.
+ * Mengganti `outlet.jam_buka` (migrasi 0053, satu jam untuk seluruh minggu)
+ * -- CEO butuh jam beda per HARI (migrasi 0055, 10 September 2026): kafe
+ * tutup 03:00 dini hari, buka 24 jam akhir pekan, resto jam biasa. Model
+ * PER HARI (bukan "dasar + pengecualian") -- disetujui CEO, paling mudah
+ * dimengerti, dan tidak perlu konsep "hari akhir pekan" sama sekali: admin
+ * cukup isi baris Sabtu/Minggu beda dari hari lain.
+ *
+ * `jamTutup <= jamBuka` berarti tutup di HARI BERIKUTNYA (09:00-03:00 BUKAN
+ * salah ketik) -- lihat docs/04-CATATAN-TEKNIS.md §7. Aturan ini BELUM
+ * dipakai untuk hitung apa pun di kode manapun sekarang -- Kebersihan cuma
+ * pernah butuh jam buka, tidak pernah jam tutup.
  */
-export function useUbahJamBukaOutlet() {
+export interface JadwalHariAdmin {
+  hariIso: number; // 1=Senin ... 7=Minggu
+  jamBuka: string | null;
+  jamTutup: string | null;
+  buka24Jam: boolean;
+}
+
+export function useDaftarJadwalOperasional(outletId: string) {
+  return useQuery({
+    queryKey: ['admin-jadwal-operasional', outletId],
+    enabled: Boolean(outletId),
+    queryFn: async (): Promise<JadwalHariAdmin[]> => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('jadwal_operasional')
+        .select('hari_iso, jam_buka, jam_tutup, buka_24_jam')
+        .eq('outlet_id', outletId);
+      if (error) throw error;
+      const peta = new Map(data.map((r) => [r.hari_iso, r]));
+      return Array.from({ length: 7 }, (_, i) => {
+        const hariIso = i + 1;
+        const baris = peta.get(hariIso);
+        return {
+          hariIso,
+          jamBuka: baris?.jam_buka ?? null,
+          jamTutup: baris?.jam_tutup ?? null,
+          buka24Jam: baris?.buka_24_jam ?? false,
+        };
+      });
+    },
+  });
+}
+
+export function useUbahJadwalOperasional() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, jamBuka }: { id: string; jamBuka: string | null }) => {
+    mutationFn: async (baris: { outletId: string; hariIso: number; jamBuka: string | null; jamTutup: string | null; buka24Jam: boolean }) => {
       const supabase = createClient();
-      const { error } = await supabase.from('outlet').update({ jam_buka: jamBuka }).eq('id', id);
+      const { error } = await supabase.from('jadwal_operasional').upsert(
+        {
+          outlet_id: baris.outletId,
+          hari_iso: baris.hariIso,
+          jam_buka: baris.buka24Jam ? null : baris.jamBuka,
+          jam_tutup: baris.buka24Jam ? null : baris.jamTutup,
+          buka_24_jam: baris.buka24Jam,
+        },
+        { onConflict: 'outlet_id,hari_iso' },
+      );
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-outlet'] }),
+    onSuccess: (_data, variables) => queryClient.invalidateQueries({ queryKey: ['admin-jadwal-operasional', variables.outletId] }),
   });
 }
 

@@ -162,6 +162,8 @@ pemilik (
 
 `barang.pemilik_id` boleh kosong. **Kosong berarti milik toko sendiri** — seluruh hasil jadi milik toko.
 
+**Jawaban CEO (10 September 2026):** pemilik titipan sekarang **4 orang**, ke depan bisa **10+**. **Jangan terpaku pada kode 2-huruf gaya "SS"** — itu kebetulan cocok untuk Salma, tidak akan cukup/jelas begitu pemiliknya lebih banyak. **Layar "Tambah Pemilik" harus ada di Admin SEJAK AWAL** (bukan menyusul) — CEO/admin menambah pemilik baru sendiri kapan pun tanpa perlu developer, persis pola tab Admin yang sudah ada untuk Outlet/Lokasi/dst di sistem laporan ini.
+
 ### Yang berubah di layar
 
 **Saat memasukkan barang:** tombol pemilik muncul di layar cepat, dan **nilainya bertahan ke barang berikutnya** — karena satu karung titipan biasanya dari satu orang. Itu penghematan waktu terbesar untuk sesi 150 barang.
@@ -169,6 +171,8 @@ pemilik (
 Kode pemilik tidak perlu lagi diketik ke dalam nama barang. Cukup pilih sekali, sistem yang mencatat.
 
 **Saat terjual:** sistem mencatat sendiri berapa bagian pemilik dan berapa bagian toko, dihitung dari `persen_bagi` yang berlaku **saat itu**. Simpan angkanya di baris transaksi, jangan dihitung ulang belakangan — kalau persentasenya diubah bulan depan, transaksi lama tidak boleh ikut berubah.
+
+**Jawaban CEO (10 September 2026) soal KAPAN dibayar:** **BULANAN, saat tutup buku** — bukan per transaksi. Konsekuensinya bagi rancangan: **tidak perlu hitung/bayar per transaksi saat itu juga** — cukup baris transaksi menyimpan bagian pemilik (sesuai `persen_bagi` saat itu, seperti di atas), lalu **rekap BULANAN per pemilik** menjumlahkannya, dengan satu tombol **"Sudah Dibayar"** per rekap bulanan (bukan per transaksi/per barang).
 
 ### Laporan bagi hasil
 
@@ -195,10 +199,27 @@ Kalau barang titipan **tidak laku berbulan-bulan**, apa yang terjadi? Dikembalik
 
 ---
 
+## §8 · Kasir dan shift — BUKAN cuma Ita
+
+**Koreksi CEO (10 September 2026) atas catatan risiko sebelumnya** ("kasir dijaga Ita sendirian"): **keliru**. Toko buka `09:00`–`03:00` mengikuti jam kafe (lihat jadwal operasional Indokopi di sistem laporan), tapi Ita pulang `18:00`. Itu berarti **sembilan dari delapan belas jam buka** — lebih dari separuh — kasirnya dijaga orang LAIN (CEO sendiri atau staf lain), bukan pengecualian sesekali. Catatan risiko di `docs/PROGRESS.md` diperbaiki jadi "Ita cuma menjaga 9 dari 18 jam buka", bukan "dijaga sendirian".
+
+Konsekuensi langsung untuk rancangan kasir thrifting di `pos-fnb`:
+
+1. **BUKAN satu akun kasir untuk toko.** Harus ada lebih dari satu orang yang bisa membuka kas (login kasir) — minimal Ita dan siapa pun yang menggantikannya sore/malam. Login per-orang, bukan satu kredensial bersama yang dipakai bergiliran (kalau `pos-fnb` sudah punya pola multi-kasir dari sisi F&B, thrifting tinggal memakainya — ini salah satu hal yang perlu dicek saat membaca kodenya).
+
+2. **Serah terima shift WAJIB menghitung uang saat itu juga, bukan digabung sampai tutup.** Ita buka `09:00`, serah terima ke penggantinya `18:00` — kas dihitung & ditutup PADA JAM SERAH TERIMA itu, bukan ditunda sampai toko tutup `03:00`. Kalau ada selisih, harus jelas **shift siapa** yang menghasilkan selisih itu (bukan digabung jadi satu selisih besar per hari yang tidak bisa ditelusuri ke shift mana). Ini berarti toko butuh **lebih dari satu periode shift per hari** (bukan satu shift `09:00`–`03:00` penuh) — berapa shift dan jam potongnya perlu dipastikan ke CEO (kemungkinan mengikuti jam pulang tiap penjaga, bukan jam tetap).
+
+3. **Siapa yang melayani TIDAK PERLU jadi catatan manual baru.** `pos-fnb` (sisi F&B) sudah mencatat kasir per transaksi — kasir thrifting memakai mekanisme yang SAMA (satu lagi alasan untuk baca kodenya dulu sebelum membangun apa pun baru), bukan menciptakan kolom/tabel "siapa melayani" terpisah untuk thrifting.
+
+**Yang masih perlu dipastikan ke CEO** (ditambahkan ke §6): berapa shift per hari untuk toko thrifting, dan jam potongnya masing-masing — jawaban ini akan langsung menentukan bentuk RENCANA-PEMBANGUNAN-KASIR-THRIFTING.md (lihat dokumen itu untuk urutan kerja lengkapnya).
+
+---
+
 ## §6 · Yang masih perlu ditanyakan
 
-1. **Ada berapa pemilik titipan sekarang?** Baru terlihat satu kode: SS (Salma).
+1. ✅ **TERJAWAB (10 September 2026) — Ada berapa pemilik titipan sekarang?** **4 orang**, ke depan bisa **10+** — lihat §7 (jangan terpaku kode 2-huruf, layar Tambah Pemilik wajib ada di Admin sejak awal).
 2. **Persentase 60/40 sama untuk semua**, atau berbeda per orang?
 3. **Barang titipan yang tidak laku berbulan-bulan** — dikembalikan, atau didiskon dengan izin pemiliknya?
-4. **Bagi hasil dibayarkan kapan** — tiap barang terjual, mingguan, atau bulanan?
+4. ✅ **TERJAWAB (10 September 2026) — Bagi hasil dibayarkan kapan?** **Bulanan, saat tutup buku** — lihat §7 ("Laporan bagi hasil").
 5. **Data barang di Bestie Thrift** perlu dipindahkan semua, atau cukup yang belum terjual?
+6. **Berapa shift per hari untuk toko thrifting, dan jam potongnya masing-masing?** — lihat §8. Toko buka 18 jam (`09:00`–`03:00`), Ita cuma 9 jam pertama — perlu tahu titik potong shift berikutnya (jam pulang siapa selanjutnya), bukan diasumsikan.

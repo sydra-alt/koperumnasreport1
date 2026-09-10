@@ -23,6 +23,18 @@ interface CameraCaptureProps {
   onBatal: () => void;
   /** Kalau diisi, dibubuhkan ke foto sebagai watermark (instruksi eksplisit user, 30 Agustus 2026). */
   watermark?: WatermarkOpsi;
+  /**
+   * WAJIB diisi eksplisit oleh pemanggil (BUKAN default diam-diam) --
+   * instruksi eksplisit user, 10 September 2026, setelah Laporan
+   * Kebersihan (dipakai di HP sungguhan) ternyata terkunci ke kamera
+   * DEPAN: foto kebersihan memotret meja/toilet/bar, bukan wajah, dan
+   * kamera depan kualitasnya lebih rendah + sudutnya sempit. Absen tetap
+   * 'user' (perlu wajah utk verifikasi), Kebersihan 'environment'.
+   * Komponen ini dipakai lebih dari satu fitur -- mewajibkan prop ini
+   * (bukan default) supaya fitur BERIKUTNYA yang memakainya juga harus
+   * sadar memilih, bukan diam-diam mewarisi default yang salah.
+   */
+  facingMode: 'user' | 'environment';
 }
 
 let logoWatermarkCache: HTMLImageElement | null = null;
@@ -96,19 +108,36 @@ async function bubuhkanWatermark(ctx: CanvasRenderingContext2D, canvas: HTMLCanv
 }
 
 /**
- * Kamera depan sungguhan lewat `getUserMedia({facingMode:'user'})` (§3.4
+ * Kamera sungguhan lewat `getUserMedia({facingMode})` (§3.4
  * 06-RENCANA-PRESENSI-MOBILE.md) -- BUKAN `<input type=file capture>` seperti
- * `LampiranInput.tsx` (Task 11). Beda sengaja: presensi butuh JAMINAN kamera
- * DEPAN (selfie, bukan galeri/kamera belakang) untuk verifikasi wajah --
- * atribut `capture` pada input file tidak konsisten memaksa itu lintas
- * browser, `getUserMedia` + `facingMode:'user'` yang benar-benar menjaminnya.
+ * `LampiranInput.tsx` (Task 11). Beda sengaja: kedua fitur yang memakai
+ * komponen ini butuh JAMINAN kamera TERTENTU (bukan galeri) -- absen kamera
+ * depan untuk verifikasi wajah, Kebersihan kamera belakang untuk memotret
+ * ruangan -- atribut `capture` pada input file tidak konsisten memaksa itu
+ * lintas browser, `getUserMedia` + `facingMode` yang benar-benar menjaminnya.
+ *
+ * Konstrain `facingMode` yang dikirim SENGAJA bukan `{exact: ...}` --
+ * `exact` melempar `OverconstrainedError` di perangkat yang kameranya tidak
+ * mendeklarasikan facingMode sama sekali (banyak webcam desktop, termasuk
+ * kamera palsu Playwright/Chromium yang dipakai skrip uji sesi ini) --
+ * bisa mematahkan uji otomatis DAN perangkat sungguhan yang sebenarnya baik-
+ * baik saja. Konstrain "ideal" (default, tanpa `exact`) tidak pernah gagal
+ * karena ketidakcocokan -- browser diam-diam memberi kamera lain kalau yang
+ * diminta tidak ada. Makanya "beri tahu kalau fallback" (instruksi eksplisit
+ * user) TIDAK bisa dideteksi dari galat -- dibaca dari
+ * `track.getSettings().facingMode` SETELAH stream didapat: kalau nilainya
+ * diketahui (tidak semua kamera melaporkan ini) dan BEDA dari yang diminta,
+ * itu tandanya browser diam-diam memberi kamera lain.
  */
-export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCaptureProps) {
+export function CameraCapture({ onGunakan, onBatal, watermark, facingMode }: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [status, setStatus] = useState<Status>('meminta');
   const [fotoBlob, setFotoBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [facingAktif, setFacingAktif] = useState<'user' | 'environment'>(facingMode);
+  const [catatanKamera, setCatatanKamera] = useState<string | null>(null);
+  const [membalik, setMembalik] = useState(false);
 
   useEffect(() => {
     // `status` sudah berawal 'meminta' (useState di atas) -- efek ini
@@ -143,13 +172,27 @@ export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCapturePr
         return;
       }
       navigator.mediaDevices
-        .getUserMedia({ video: { facingMode: 'user' }, audio: false })
+        .getUserMedia({ video: { facingMode }, audio: false })
         .then((stream) => {
           if (batal) {
             stream.getTracks().forEach((t) => t.stop());
             return;
           }
           streamRef.current = stream;
+          // Konstrain "ideal" tidak pernah gagal karena ketidakcocokan --
+          // browser diam-diam memberi kamera lain kalau yang diminta tidak
+          // ada. Baca APA YANG SUNGGUH DIDAPAT dari track-nya sendiri; kalau
+          // browser melaporkannya (tidak semua kamera melakukan ini) dan
+          // beda dari yang diminta, beritahu di layar -- JANGAN diam-diam.
+          const facingSungguhan = stream.getVideoTracks()[0]?.getSettings().facingMode;
+          if (facingSungguhan && facingSungguhan !== facingMode) {
+            setFacingAktif(facingSungguhan === 'environment' ? 'environment' : 'user');
+            setCatatanKamera(
+              facingMode === 'environment'
+                ? 'Kamera belakang tidak tersedia di perangkat ini -- memakai kamera depan.'
+                : 'Kamera depan tidak tersedia di perangkat ini -- memakai kamera belakang.',
+            );
+          }
           // BUG NYATA ditemukan 31 Agustus 2026 (laporan user langsung,
           // kotak kamera kosong TANPA galat -- BUKAN kasus http:// yang
           // sebelumnya salah diduga sebagai penyebab, user memakai https://
@@ -181,7 +224,11 @@ export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCapturePr
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
-  }, []);
+    // `facingMode` sengaja jadi dependency (dipakai di badan efek) tapi
+    // secara praktik cuma jalan sekali -- pemanggil mengirim nilai TETAP
+    // per pemakaian (lihat komentar prop), tidak pernah berubah di tengah
+    // satu sesi kamera terbuka.
+  }, [facingMode]);
 
   // Efek TERPISAH, berjalan SETELAH render -- begitu `status` jadi 'siap',
   // elemen <video> SUDAH pasti ada di DOM (efek jalan setelah commit),
@@ -199,6 +246,51 @@ export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCapturePr
       // terprogram tapi tetap menampilkan frame pertama lewat autoplay asli.
     });
   }, [status]);
+
+  /**
+   * Tombol "Balik Kamera" -- instruksi eksplisit user, 10 September 2026:
+   * "harus mengganti stream, bukan mencerminkan gambar." Ini SUNGGUH minta
+   * stream kamera fisik yang lain lewat `getUserMedia` baru, BUKAN cuma
+   * membalik tampilan `<video>` lewat CSS -- foto yang diambil sesudahnya
+   * benar-benar berasal dari sensor kamera yang berbeda, bukan gambar yang
+   * sama dicerminkan.
+   *
+   * Stream LAMA baru dihentikan SETELAH stream baru berhasil didapat --
+   * kalau baris ini dibalik (hentikan dulu, baru minta baru) dan permintaan
+   * baru gagal, pengguna kehilangan kamera yang tadinya sudah jalan.
+   */
+  async function balikKamera() {
+    if (!navigator.mediaDevices?.getUserMedia || membalik) return;
+    const facingBaru = facingAktif === 'user' ? 'environment' : 'user';
+    setMembalik(true);
+    try {
+      const trackLama = streamRef.current?.getVideoTracks()[0];
+      const deviceIdLama = trackLama?.getSettings().deviceId;
+
+      const streamBaru = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facingBaru }, audio: false });
+      const trackBaru = streamBaru.getVideoTracks()[0];
+      const deviceIdBaru = trackBaru?.getSettings().deviceId;
+      const facingSungguhan = trackBaru?.getSettings().facingMode;
+
+      // Kamera fisik yang SAMA dikembalikan (device id identik, atau
+      // facingMode yang dilaporkan tidak berubah) -- berarti tidak ada
+      // kamera lain untuk dipindah, BUKAN kegagalan diam-diam.
+      const tidakAdaKameraLain = (deviceIdLama && deviceIdBaru && deviceIdLama === deviceIdBaru) || facingSungguhan === facingAktif;
+
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = streamBaru;
+      if (videoRef.current) {
+        videoRef.current.srcObject = streamBaru;
+        videoRef.current.play().catch(() => {});
+      }
+      setFacingAktif(facingSungguhan === 'environment' ? 'environment' : facingSungguhan === 'user' ? 'user' : facingBaru);
+      setCatatanKamera(tidakAdaKameraLain ? 'Tidak ditemukan kamera lain di perangkat ini.' : null);
+    } catch {
+      setCatatanKamera(`Kamera ${facingBaru === 'environment' ? 'belakang' : 'depan'} tidak bisa dibuka -- tetap memakai kamera semula.`);
+    } finally {
+      setMembalik(false);
+    }
+  }
 
   async function ambil() {
     const video = videoRef.current;
@@ -304,7 +396,39 @@ export function CameraCapture({ onGunakan, onBatal, watermark }: CameraCapturePr
 
   return (
     <div className="flex flex-col gap-2">
-      <video ref={videoRef} autoPlay playsInline muted className="w-full border" style={{ borderColor: 'var(--garis)', transform: 'scaleX(-1)' }} />
+      <div className="relative">
+        {/* Cermin CSS HANYA untuk kamera depan (selfie, wajar dicerminkan
+            supaya terasa seperti cermin) -- kamera belakang TIDAK PERNAH
+            dicerminkan, memotret ruangan yang dicerminkan akan membingungkan
+            (teks di foto jadi terbalik, dst). */}
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full border"
+          style={{ borderColor: 'var(--garis)', transform: facingAktif === 'user' ? 'scaleX(-1)' : undefined }}
+        />
+        <button
+          type="button"
+          onClick={() => void balikKamera()}
+          disabled={membalik}
+          aria-label="Balik kamera"
+          title="Balik kamera"
+          className="absolute flex items-center justify-center"
+          style={{ top: 8, right: 8, minHeight: 44, minWidth: 44, borderRadius: 999, background: 'rgba(0,0,0,0.55)', color: '#fff' }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M17 2.1l4 4-4 4" />
+            <path d="M3 12.2v-2a4 4 0 0 1 4-4h14" />
+            <path d="M7 21.9l-4-4 4-4" />
+            <path d="M21 11.8v2a4 4 0 0 1-4 4H3" />
+          </svg>
+        </button>
+      </div>
+      {catatanKamera && (
+        <p className="text-sm" style={{ color: 'var(--kuning)' }}>{catatanKamera}</p>
+      )}
       <div className="flex gap-2">
         <button type="button" onClick={onBatal} className="border px-4" style={{ borderColor: 'var(--garis)', color: 'var(--tinta)', minHeight: 48 }}>
           Batal

@@ -12,7 +12,9 @@ import {
   useDaftarOutletAdmin,
   useTambahOutlet,
   useUbahAktifOutlet,
-  useUbahJamBukaOutlet,
+  useDaftarJadwalOperasional,
+  useUbahJadwalOperasional,
+  type JadwalHariAdmin,
   useDaftarAssignmentAdmin,
   useTambahAssignment,
   useHapusAssignment,
@@ -83,12 +85,122 @@ function TabLokasi() {
   );
 }
 
+const NAMA_HARI = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']; // indeks 0 = hari_iso 1, dst -- SAMA persis lib/tanggal.ts hariISOWIB()
+
+/**
+ * Jadwal operasional 7 hari untuk SATU outlet (migrasi 0055, 10 September
+ * 2026) -- mengganti input "jam buka" tunggal lama, karena kebutuhannya
+ * beda per HARI (kafe tutup 03:00 dini hari, buka 24 jam akhir pekan).
+ * Model per-hari (bukan "dasar + pengecualian") -- CEO memilih ini karena
+ * paling gampang dimengerti, bukan paling sedikit datanya: admin cukup isi
+ * baris Sabtu/Minggu beda dari hari lain, tidak ada konsep "akhir pekan"
+ * yang ditulis mati di mana pun.
+ */
+interface DrafJadwalHari {
+  jamBuka: string;
+  jamTutup: string;
+  buka24Jam: boolean;
+}
+
+/**
+ * Draft LOKAL per hari, BUKAN kirim mutasi langsung per keystroke -- bug
+ * NYATA ditemukan 10 September 2026 saat mengisi jadwal lewat Playwright:
+ * mengisi jam buka lalu jam tutup dalam waktu berdekatan bisa saling
+ * menimpa, karena tiap input mengirim mutasi membawa nilai field LAIN dari
+ * closure `h.jamBuka`/`h.jamTutup` (data server) yang belum tentu sudah
+ * ter-refresh dari mutasi sebelumnya -- field yang baru saja diisi bisa
+ * balik jadi kosong. Sekarang KEDUA input + kotak centang mengubah draft
+ * lokal dulu, satu tombol "Simpan" per hari mengirim KETIGANYA sekaligus
+ * dari state yang sama -- tidak mungkin ada nilai basi yang ikut terkirim.
+ */
+function JadwalOutlet({ outletId }: { outletId: string }) {
+  const { data: jadwal } = useDaftarJadwalOperasional(outletId);
+  const ubah = useUbahJadwalOperasional();
+  const [draf, setDraf] = useState<Record<number, DrafJadwalHari>>({});
+
+  const jumlahBelumDiatur = (jadwal ?? []).filter((h) => !h.buka24Jam && !h.jamBuka && !h.jamTutup).length;
+
+  function nilai(h: JadwalHariAdmin): DrafJadwalHari {
+    return draf[h.hariIso] ?? { jamBuka: h.jamBuka?.slice(0, 5) ?? '', jamTutup: h.jamTutup?.slice(0, 5) ?? '', buka24Jam: h.buka24Jam };
+  }
+
+  function ubahDraf(h: JadwalHariAdmin, patch: Partial<DrafJadwalHari>) {
+    setDraf((d) => ({ ...d, [h.hariIso]: { ...nilai(h), ...patch } }));
+  }
+
+  function simpan(hariIso: number) {
+    const v = draf[hariIso];
+    if (!v) return;
+    ubah.mutate(
+      { outletId, hariIso, jamBuka: v.buka24Jam ? null : v.jamBuka || null, jamTutup: v.buka24Jam ? null : v.jamTutup || null, buka24Jam: v.buka24Jam },
+      { onSuccess: () => setDraf((d) => { const s = { ...d }; delete s[hariIso]; return s; }) },
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 border-t pt-2" style={{ borderColor: 'var(--garis)' }}>
+      {ubah.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubah.error, 'mengubah jadwal operasional')}</p>}
+      {jumlahBelumDiatur > 0 && (
+        <p className="text-sm" style={{ color: 'var(--merah)' }}>
+          {jumlahBelumDiatur} dari 7 hari belum diatur -- Laporan Kebersihan outlet ini TIDAK PUNYA batas kirim di hari yang belum diatur itu.
+        </p>
+      )}
+      {(jadwal ?? []).map((h) => {
+        const v = nilai(h);
+        const adaPerubahan = Boolean(draf[h.hariIso]);
+        return (
+          <div key={h.hariIso} className="flex flex-wrap items-center gap-2 text-sm">
+            <span style={{ width: 60 }}>{NAMA_HARI[h.hariIso - 1]}</span>
+            <label className="flex items-center gap-1">
+              <input
+                type="checkbox"
+                checked={v.buka24Jam}
+                onChange={(e) => ubahDraf(h, { buka24Jam: e.target.checked })}
+                style={{ minHeight: 20, minWidth: 20 }}
+              />
+              24 jam
+            </label>
+            <input
+              type="time"
+              disabled={v.buka24Jam}
+              value={v.jamBuka}
+              onChange={(e) => ubahDraf(h, { jamBuka: e.target.value })}
+              className="border p-1"
+              style={{ ...gayaInput, opacity: v.buka24Jam ? 0.5 : 1 }}
+            />
+            <span>–</span>
+            <input
+              type="time"
+              disabled={v.buka24Jam}
+              value={v.jamTutup}
+              onChange={(e) => ubahDraf(h, { jamTutup: e.target.value })}
+              className="border p-1"
+              style={{ ...gayaInput, opacity: v.buka24Jam ? 0.5 : 1 }}
+            />
+            {adaPerubahan && (
+              <button
+                type="button"
+                disabled={ubah.isPending}
+                onClick={() => simpan(h.hariIso)}
+                className="border px-2 py-1"
+                style={{ borderColor: 'var(--hijau)', color: 'var(--hijau)', minHeight: 32 }}
+              >
+                Simpan
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function TabOutlet() {
   const { data: daftar } = useDaftarOutletAdmin();
   const tambah = useTambahOutlet();
   const ubahAktif = useUbahAktifOutlet();
-  const ubahJamBuka = useUbahJamBukaOutlet();
   const [nama, setNama] = useState('');
+  const [jadwalTerbuka, setJadwalTerbuka] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col gap-3">
@@ -106,36 +218,31 @@ function TabOutlet() {
       </div>
       {tambah.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(tambah.error, 'menambah outlet')}</p>}
       {ubahAktif.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubahAktif.error, 'mengubah status outlet')}</p>}
-      {ubahJamBuka.isError && <p style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubahJamBuka.error, 'mengubah jam buka')}</p>}
       <ul className="flex flex-col gap-2">
         {(daftar ?? []).map((o) => (
-          <li key={o.id} className="flex flex-col gap-1 border p-2 text-sm" style={{ borderColor: 'var(--garis)' }}>
+          <li key={o.id} className="flex flex-col gap-2 border p-2 text-sm" style={{ borderColor: 'var(--garis)' }}>
             <div className="flex items-center justify-between">
               <span>{o.nama}</span>
-              <button
-                type="button"
-                onClick={() => ubahAktif.mutate({ id: o.id, aktif: !o.aktif })}
-                className="border px-2 py-1"
-                style={{ borderColor: o.aktif ? 'var(--hijau)' : 'var(--kosong)', color: o.aktif ? 'var(--hijau)' : 'var(--kosong)', minHeight: 44 }}
-              >
-                {o.aktif ? 'Aktif' : 'Nonaktif'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setJadwalTerbuka(jadwalTerbuka === o.id ? null : o.id)}
+                  className="border px-2 py-1"
+                  style={{ borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 44 }}
+                >
+                  {jadwalTerbuka === o.id ? 'Tutup jadwal' : 'Atur jadwal'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => ubahAktif.mutate({ id: o.id, aktif: !o.aktif })}
+                  className="border px-2 py-1"
+                  style={{ borderColor: o.aktif ? 'var(--hijau)' : 'var(--kosong)', color: o.aktif ? 'var(--hijau)' : 'var(--kosong)', minHeight: 44 }}
+                >
+                  {o.aktif ? 'Aktif' : 'Nonaktif'}
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm" style={{ color: 'var(--label)' }}>Jam buka (Laporan Kebersihan):</label>
-              <input
-                type="time"
-                value={o.jamBuka ? o.jamBuka.slice(0, 5) : ''}
-                onChange={(e) => ubahJamBuka.mutate({ id: o.id, jamBuka: e.target.value || null })}
-                className="border p-1"
-                style={gayaInput}
-              />
-            </div>
-            {!o.jamBuka && (
-              <p className="text-sm" style={{ color: 'var(--merah)' }}>
-                Jam buka belum diisi -- Laporan Kebersihan outlet ini TIDAK PUNYA batas kirim sampai diisi.
-              </p>
-            )}
+            {jadwalTerbuka === o.id && <JadwalOutlet outletId={o.id} />}
           </li>
         ))}
       </ul>

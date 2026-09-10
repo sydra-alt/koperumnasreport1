@@ -362,6 +362,7 @@ export default function AbsenPage() {
         <CameraCapture
           onGunakan={setelahFoto}
           onBatal={() => setLayar('konfirmasi_titik')}
+          facingMode="user"
           watermark={
             titikDipilih && posisi
               ? {

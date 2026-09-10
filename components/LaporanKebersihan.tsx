@@ -11,6 +11,7 @@ import {
   useFotoKebersihanHariIni,
   useKirimFotoKebersihan,
   useSelesaikanLaporanKebersihan,
+  useJadwalKebersihanHariIni,
   hitungBatasKebersihan,
   apakahTerlambatKebersihan,
   type SlotKebersihan,
@@ -68,6 +69,7 @@ export function LaporanKebersihan() {
   const outlet = outletSaya?.find((o) => o.id === outletId) ?? null;
 
   const { data: reportHariIni, isLoading: reportLoading } = useReportKebersihanHariIni(outletId);
+  const { data: jadwalHariIni } = useJadwalKebersihanHariIni(outletId);
   const pastikanLaporan = usePastikanLaporanKebersihan();
   const selesaikanLaporan = useSelesaikanLaporanKebersihan();
   const idLaporan = reportHariIni?.id ?? reportId;
@@ -153,7 +155,8 @@ export function LaporanKebersihan() {
   }
 
   const toleransiMenit = typeof policy?.kebersihan_toleransi_menit === 'number' ? policy.kebersihan_toleransi_menit : 30;
-  const batas = outlet ? hitungBatasKebersihan(outlet.jamBuka, toleransiMenit) : null;
+  const batas24Jam = typeof policy?.kebersihan_batas_24jam === 'string' ? policy.kebersihan_batas_24jam : null;
+  const batas = jadwalHariIni ? hitungBatasKebersihan(jadwalHariIni, toleransiMenit, batas24Jam) : null;
   const terlambatKalauSekarang = apakahTerlambatKebersihan(batas);
 
   function mulaiAmbil(slot: SlotKebersihan) {
@@ -225,6 +228,7 @@ export function LaporanKebersihan() {
           <CameraCapture
             onGunakan={(blob) => void setelahFoto(slotAktif, blob)}
             onBatal={() => setSlotAktif(null)}
+            facingMode="environment"
             watermark={{ baris1: `${outlet?.nama ?? ''} · ${jamWIB()} WIB`, baris2: label }}
           />
         </div>
@@ -239,10 +243,10 @@ export function LaporanKebersihan() {
         <p className="judul-bagian">{outlet?.nama}</p>
         {batas ? (
           <p className="text-sm" style={{ color: terlambatKalauSekarang && !semuaSelesai ? 'var(--merah)' : 'var(--label)' }}>
-            Batas kirim {batas} WIB
+            {jadwalHariIni?.buka24Jam ? `Buka 24 jam hari ini · Batas kirim ${batas} WIB` : `Batas kirim ${batas} WIB`}
           </p>
         ) : (
-          <p className="text-sm" style={{ color: 'var(--kosong)' }}>Batas kirim belum diatur -- hubungi Admin untuk mengisi jam buka outlet.</p>
+          <p className="text-sm" style={{ color: 'var(--kosong)' }}>Batas kirim belum diatur -- hubungi Admin untuk mengisi jadwal operasional outlet.</p>
         )}
       </div>
 
