@@ -230,17 +230,7 @@ in-effect`) — dipindah ke pola remount-lewat-`key` (komponen kecil
 Diverifikasi: `tsc --noEmit` bersih, `eslint` bersih, 257 test (35 file)
 tetap hijau setelah perubahan.
 
-**[ ] TT05 — Cetak label barcode** — BELUM dikerjakan, sengaja ditunda (lihat §10): tidak menghalangi titik periksa kedua ("kasir bisa jual", bukan "label sudah tercetak"). `label_settings` skemanya sudah ada dari TT01.
-Code128 digambar canvas/SVG. **Tidak lagi terkunci ke satu ukuran** (§8) —
-baca `label_settings` (lebar/tinggi/elemen aktif) sebelum menggambar,
-render pratinjau di layar (data barang contoh) SEBELUM tombol cetak
-sungguhan. Empat preset (33×15, 50×25, 50×30, 50×80mm) + ukuran bebas dari
-halaman pengaturan (bagian dari TT05, bukan task terpisah — satu layar
-kecil untuk atur `label_settings` + satu layar pratinjau/cetak). Web
-Bluetooth ke printer termal ATAU aplikasi cetak pihak ketiga — pilihan
-final masih tunggu jawaban `RENCANA-PROYEK-BARU.md` §8 poin 6 (printer yang
-sudah dipunya), TIDAK memblokir pembangunan (struk digital selalu jadi
-fallback yang sudah disebut di dokumen itu).
+**[x] TT05 — Cetak label barcode** — SELESAI (12 September 2026). Keputusan CEO menutup pertanyaan terbuka di atas: RawBT (bukan Web Bluetooth), Code128 digambar sendiri jadi gambar, lebar cetak 48mm dari kertas termal 58mm. Detail lengkap di §15.
 
 ### Fase C — Kasir jual barang
 
@@ -1126,3 +1116,57 @@ dengan dua outlet (satu fnb, satu thrifting) melihat dropdown dengan
 href yang benar per `pos_mode`; akun manager yang employees-nya
 tertaut ke satu outlet lewat `userId` melihat tautan langsung berlabel
 nama outlet itu, bukan dropdown.
+
+## §15 · TT05 — Cetak label barcode selesai (12 September 2026)
+
+Keputusan CEO menutup pertanyaan terbuka §8/task board: **RawBT**
+(bukan Web Bluetooth), Code128 digambar sendiri jadi gambar, lebar
+cetak **48mm dari kertas termal 58mm**.
+
+**Code128 (`lib/barcode/code128.ts`)** diimplementasikan sendiri sebagai
+fungsi murni (encode + decode), TIDAK ADA dependency baru — tabel pola
+107 baris standar, digambar ke `<canvas>` sebagai gambar (bukan font
+barcode/perintah printer bawaan) supaya portable lintas printer termal
+apa pun. Diverifikasi dua lapis yang bisa diotomasi: struktural (semua
+95 karakter ASCII 32-126 disapu, tiap pola 11 modul/13 untuk STOP,
+tiap "run" 1-4 modul sesuai aturan Code128) dan round-trip
+`decode(encode(x)) === x`. **Batas jujur**: tidak ada cara memverifikasi
+cocok scanner fisik sungguhan dari lingkungan build ini — CEO perlu
+tes pindai label hasil cetak sungguhan sebelum dipakai produksi
+sehari-hari, sama disiplin "buktikan, jangan menebak" yang dipakai di
+seluruh proyek ini, cuma di sini butuh perangkat fisik yang tidak ada
+di lingkungan kerja.
+
+**Cetak sungguhan** lewat `window.print()` (pola sama struk yang
+sudah ada) dengan `@page { size: 48mm auto }`. RawBT (aplikasi Android,
+dipasang sebagai print service) yang mengonversi hasil cetak halaman
+ke ESC/POS untuk printer termal 58mm — CEO yang mengonfirmasi mekanisme
+ini saat instruksi diberikan. Degradasi anggun ke print/PDF browser
+biasa kalau RawBT belum terpasang di tablet, sama prinsip "struk
+digital tetap fallback" yang sudah berlaku untuk struk transaksi.
+
+**`label_settings`** (skema sudah ada dari TT01, sebelumnya kolom mati
+total — tidak pernah dibaca kode apa pun) sekarang punya halaman
+`/label-settings`: 4 preset ukuran (33×15, 50×25, 50×30, 50×80mm) +
+lebar/tinggi bebas, lima toggle isi (barcode, nama, harga, ukuran,
+kode/nama pemilik), pratinjau hidup pakai data contoh sebelum simpan —
+satu baris per bisnis, berlaku untuk semua label thrifting.
+
+**Dua entry point, dua gerbang izin terpisah** (pola sama Tambah
+Barang/Statistik Ita — dua identitas berbeda, bukan technical debt):
+`/barang/[id]/label` dari dashboard (`barang.manage`, akun Supabase
+Auth) untuk CEO/Ita-lewat-dashboard-kalau-ada, dan
+`/pos/thrift/label/[id]` dari kasir (role manager/owner pemilik shift
+PIN) untuk Ita yang tidak pernah login dashboard sama sekali. Tombol
+"Cetak Label" ada di daftar `/barang`, DAN sebagai tombol aksi pada
+toast sukses langsung sesudah "Tambah Barang" dari kasir — Ita bisa
+cetak label barang yang baru saja dia input tanpa langkah tambahan.
+
+Diverifikasi: 14 test Code128 baru (277 total, semua hijau) + browser
+sungguhan — preset mengisi ukuran, pengaturan tersimpan ke database
+(dikonfirmasi query langsung, bukan cuma lewat UI), pratinjau
+menampilkan barcode asli (bukan placeholder), halaman cetak dari
+dashboard MAUPUN dari kasir keduanya menggambar barcode dengan piksel
+hitam-putih nyata (dicek lewat `getImageData` kanvas, bukan cuma
+"elemen ada"), dan barang milik bisnis lain ditolak 404 (bukan
+menampilkan data lintas-tenant).
