@@ -1013,3 +1013,116 @@ silent-failure yang ditemukan di atas (perbaikan template sekali di
 `DeleteConfirmButton` + pola `catch` yang sama dipakai `thrift-add-
 barang-dialog.tsx` bisa menutup semuanya, tapi BELUM dikerjakan sampai
 CEO memutuskan prioritasnya).
+
+## §14 · Ronde uji keempat CEO — silent-failure diperbaiki, ambang menumpuk jadi setting, tombol Buka Kasir (11-12 September 2026)
+
+**29 titik silent-failure (§13) — SELESAI, urutan persis instruksi CEO**:
+checkout F&B + thrifting, void/refund, keempat langkah shift,
+`DeleteConfirmButton` (7 file turunan), lalu 14 titik sisanya. Semua
+sekarang `try { ... } catch (err) { toast.error(...) } finally { ... }`.
+Diverifikasi kode: cart-clearing dan navigasi struk (baik F&B maupun
+thrifting) SUDAH gated ketat di balik `result.success` sebelum
+perbaikan ini -- exception yang lolos diam-diam TIDAK pernah membuat
+sukses palsu, tapi kasir tidak melihat apa pun kalau server melempar
+exception (bukan cuma `{error}`). **Dibuktikan hidup**: dipaksa
+`openShiftWithDb()` dan `payOrderWithDb()` throw lewat fixture sekali
+pakai + Playwright -- kasir tetap di layar semula dengan galat
+terlihat, keranjang checkout tetap utuh, tidak ada navigasi ke struk.
+Aturan baru masuk CLAUDE.md pos-fnb §3.7: setiap Server Action
+imperatif wajib `catch`, `try/finally` tanpa `catch` dilarang.
+
+**Ambang "barang menumpuk" (§13, pertanyaan terbuka §6 poin 3
+SPESIFIKASI-THRIFTING.md) — DITUTUP.** Keputusan CEO: bawaan 60 hari,
+disimpan di `outlets.barang_menumpuk_days` (migration 0027), diubah
+langsung dari Statistik Ita (gerbang sama "Tambah Barang" -- role
+manager/owner pemilik shift, PIN). `getBarangMenumpuk()` sekarang
+memfilter berdasar ambang ini, bukan menampilkan semua barang siap_jual
+tanpa batas. Diverifikasi test integrasi + browser sungguhan.
+
+### Pembatasan akses per outlet — DITUNDA, dicatat sebagai pekerjaan tersendiri
+
+CEO awalnya ingin semua karyawan dapat akun dashboard dengan lingkup
+per outlet (kasir Indokopi Jatinegara cuma lihat Jatinegara, dst).
+Diminta memeriksa dulu sebelum merancang. Temuan:
+
+1. **`memberships.outlet_ids[]` adalah kolom mati SEJAK AWAL, bukan
+   sesuatu yang rusak belakangan.** Ada di skema (`schema.ts:258`,
+   komentar "null = semua outlet"), tapi `getCurrentBusinessFromClient()`
+   (`session.ts:66-78`) -- satu-satunya tempat membaca membership untuk
+   otorisasi -- cuma `SELECT business_id, role`. Kolom ini tidak pernah
+   dibaca di mana pun dalam aplikasi.
+2. **Tidak ada peran yang dibatasi per outlet.** `userRoleEnum` (owner/
+   manager/cashier/waiter/kitchen/warehouse/accountant) dipakai bersama
+   oleh `memberships.role` (login dashboard) DAN `employees.role` (PIN
+   kasir), tapi `hasPermission()`/`PermissionContext` (`permissions.ts`)
+   murni role x permission per BISNIS, nol dimensi outlet.
+3. **Semua ~15 halaman dashboard business-wide, nol pembatasan outlet**
+   (`/barang`, `/products`, `/categories`, `/employees`, `/outlets`,
+   `/reports/sales`, dst -- semua query `WHERE business_id = :id` saja).
+   `DashboardLayout` juga menampilkan seluruh item nav ke semua role
+   tanpa penyaringan.
+4. **`employees.userId` (FK ke `profiles.id`) sudah ada dan TIDAK
+   bertabrakan dengan PIN** -- satu orang bisa punya baris `employees`
+   (PIN, buka/tutup shift) DAN baris `profiles`+`membership` (login
+   dashboard) sekaligus, saling tertaut lewat kolom ini. Sebelumnya
+   cuma dipakai sekali, untuk atribusi audit void/refund
+   (`void-refund.ts:70`) -- dipakai lagi di tombol Buka Kasir di bawah.
+
+**Keputusan CEO: DITUNDA.** Bukan "menambal 15 halaman" -- ini
+membangun lapisan otorisasi outlet yang belum pernah ada sama sekali.
+Terlalu besar untuk disisipkan di tengah pekerjaan thrifting. Dicatat
+sebagai task tersendiri, tiga bagian:
+  - **(a) session/permissions** -- `CurrentBusiness`/`PermissionContext`
+    perlu bawa daftar outlet yang diizinkan; `hasPermission()`/
+    `requirePermission()` perlu parameter outlet opsional.
+  - **(b) query ~15 halaman dashboard** -- setiap query per halaman
+    ditambah filter outlet sesuai lingkup user.
+  - **(c) RLS Postgres** -- fungsi `auth_outlet_ids()` baru (pola sama
+    `auth_business_ids()` yang sudah ada), dipasang di policy tabel-
+    tabel yang relevan, supaya mengetik alamat outlet lain ditolak di
+    database, bukan cuma disaring di kode Next.js (pelajaran mahal dari
+    sistem laporan -- pembatasan wajib di server, bukan sembunyikan
+    menu).
+
+**Keputusan rotasi untuk saat task ini dikerjakan nanti: akses ke
+SEMUA outlet yang diizinkan sekaligus, BUKAN ditentukan shift aktif
+yang sedang terbuka.** Sempat dipertimbangkan sebaliknya (lingkup =
+shift aktif, supaya kasir tidak bingung melihat dua daftar menu/stok/
+penjualan sekaligus -- masalah kebingungan harian yang nyata), tapi
+ditolak: itu berarti shift jadi penentu HAK AKSES, padahal mekanisme
+shift belum cukup andal untuk peran itu -- shift demo yang tertinggal
+terbuka pernah membuat `/pos/thrift` bisa dimasuki tanpa PIN (§9,
+insiden TT09). Kalau hak akses bergantung pada shift, bug keandalan
+shift berubah jadi lubang keamanan, bukan sekadar gangguan operasional.
+"Akses ke outlet yang diizinkan sekaligus" tidak punya ketergantungan
+itu sama sekali -- dipilih justru karena lebih SEDERHANA dan tidak
+menambah syarat baru (kebingungan menu tetap jadi masalah UI yang bisa
+diperbaiki terpisah, bukan alasan menambah kerapuhan ke sistem hak
+akses).
+
+### Tombol "Buka Kasir" di dashboard — SELESAI
+
+Instruksi CEO terpisah dari pembatasan outlet (dan tidak menunggunya):
+tombol di dashboard yang langsung membawa ke layar kasir outletnya,
+tanpa mengetik `/pos` atau `/pos/thrift` manual.
+
+`lib/pos/kasir-shortcut.ts` (`getKasirDestinationsForUser`) memakai
+`employees.userId` (temuan §14 poin 4 di atas) untuk mencocokkan akun
+dashboard yang login dengan baris employee PIN-nya, lalu memetakan tiap
+outlet ke `/pos` (fnb) atau `/pos/thrift` (thrifting) lewat
+`outlets.pos_mode`. Owner (atau siapa pun tanpa baris `employees`
+tertaut) melihat SEMUA outlet aktif bisnisnya -- supaya tombol ini
+tidak pernah kosong tanpa penjelasan. Satu outlet -> tautan langsung
+berlabel nama outletnya. Lebih dari satu -> menu dropdown pilih
+singkat. **Ini murni jalan pintas navigasi, bukan lapisan otorisasi** --
+siapa pun yang sudah login dashboard sudah bisa mengetik kedua URL itu
+sendiri, jadi tidak menunggu atau bertentangan dengan penundaan
+pembatasan outlet di atas.
+
+`components/dashboard/buka-kasir-button.tsx`, dipasang di
+`DashboardLayout` (topbar mobile + sidebar desktop, selalu terlihat di
+semua halaman dashboard). Diverifikasi browser sungguhan: akun owner
+dengan dua outlet (satu fnb, satu thrifting) melihat dropdown dengan
+href yang benar per `pos_mode`; akun manager yang employees-nya
+tertaut ke satu outlet lewat `userId` melihat tautan langsung berlabel
+nama outlet itu, bukan dropdown.
