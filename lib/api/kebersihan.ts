@@ -260,11 +260,20 @@ export function useReportKebersihanHariIni(outletId: string | null) {
   });
 }
 
-/** Presensi/laporan Kebersihan utk TANGGAL yang diminta, dipakai halaman Tinjau (ceo/pusat/is_hrd_kadiv). */
+/**
+ * Presensi/laporan Kebersihan utk TANGGAL yang diminta, dipakai halaman
+ * Tinjau (ceo/pusat/is_hrd_kadiv). SATU BARIS PER OUTLET AKTIF (bukan per
+ * report) -- outlet yang belum melapor sama sekali TETAP MUNCUL dengan
+ * `reportId: null` (instruksi eksplisit CEO 11 September 2026: "justru
+ * itu yang paling perlu kelihatan", pelajaran sama dengan Tinjau Absensi
+ * migrasi 0041). `outletId` dipakai sebagai key React -- SATU-SATUNYA
+ * yang selalu ada, beda dengan `reportId` yang bisa null.
+ */
 export interface LaporanKebersihanRow {
-  reportId: string;
+  outletId: string;
+  reportId: string | null;
   outletNama: string;
-  status: 'draft' | 'terkirim' | 'terlambat';
+  status: 'draft' | 'terkirim' | 'terlambat' | null;
   submittedAt: string | null;
   foto: FotoKebersihan[];
 }
@@ -274,25 +283,20 @@ export function useLaporanKebersihanUntukTanggal(tanggal: string = tanggalWIB())
     queryKey: ['laporan-kebersihan-untuk-tanggal', tanggal],
     queryFn: async (): Promise<LaporanKebersihanRow[]> => {
       const supabase = createClient();
-      const { data, error } = await supabase
-        .from('report')
-        .select('id, status, submitted_at, outlet:outlet_id(nama), attachment(id, field_key, path, created_at, pengunggah:uploaded_by(nama))')
-        .eq('form_key', 'kebersihan')
-        .eq('tanggal', tanggal);
+      const { data, error } = await supabase.rpc('kebersihan_untuk_tanggal', { p_tanggal: tanggal });
       if (error) throw error;
-      return (data ?? []).map((r) => ({
-        reportId: r.id,
-        outletNama: (r.outlet as unknown as { nama: string } | null)?.nama ?? '—',
-        status: r.status,
-        submittedAt: r.submitted_at,
-        foto: (
-          (r.attachment as unknown as { id: string; field_key: string; path: string; created_at: string; pengunggah: { nama: string } | null }[]) ?? []
-        ).map((a) => ({
-          id: a.id,
-          slot: a.field_key,
-          path: a.path,
-          createdAt: a.created_at,
-          uploadedByNama: a.pengunggah?.nama ?? null,
+      return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+        outletId: r.outlet_id as string,
+        reportId: r.report_id as string | null,
+        outletNama: r.outlet_nama as string,
+        status: r.status as LaporanKebersihanRow['status'],
+        submittedAt: r.submitted_at as string | null,
+        foto: ((r.foto ?? []) as { id: string; slot: string; path: string; created_at: string; uploaded_by_nama: string | null }[]).map((f) => ({
+          id: f.id,
+          slot: f.slot,
+          path: f.path,
+          createdAt: f.created_at,
+          uploadedByNama: f.uploaded_by_nama,
         })),
       }));
     },

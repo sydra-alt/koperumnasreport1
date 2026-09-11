@@ -122,7 +122,7 @@ function TinjauKebersihanIsi() {
       ) : (
         <div className="flex flex-col gap-3">
           {daftar.map((laporan) => (
-            <KartuOutlet key={laporan.reportId} laporan={laporan} tanggal={tanggal} />
+            <KartuOutlet key={laporan.outletId} laporan={laporan} tanggal={tanggal} />
           ))}
         </div>
       )}
