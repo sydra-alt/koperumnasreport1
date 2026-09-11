@@ -57,3 +57,5 @@ supabase/.temp
 *.njsproj
 *.sln
 *.sw?
+
+certificates

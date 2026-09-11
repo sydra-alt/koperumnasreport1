@@ -8,9 +8,17 @@
 
 ## §0 · Jawaban CEO yang mengubah rancangan
 
+> ⚠️ **Baris "Kasir" di bawah SUDAH DIGANTIKAN** (10 September 2026, setelah
+> `pos-fnb` benar-benar dibaca langsung — lihat
+> `docs/RENCANA-PEMBANGUNAN-KASIR-THRIFTING.md`): thrifting jadi **outlet
+> baru di `business` YANG SAMA** (brand baru), BUKAN business terpisah —
+> `order_items` **DIPERLUAS** dengan kolom nullable (`barangId`, dst), bukan
+> tabel polimorfik terpisah. Disetujui CEO menggantikan baris di bawah.
+> "Tidak menyentuh apa pun milik Indokopi" TETAP benar dan tetap berlaku.
+
 | Hal | Jawaban | Akibatnya |
 |---|---|---|
-| Kasir | **Terpisah**, meja sendiri | Thrifting jadi `business` tersendiri di `pos-fnb`. `order_items` **tidak** perlu polimorfik. Tidak menyentuh apa pun milik Indokopi |
+| Kasir | ~~Terpisah, meja sendiri~~ **DIGANTIKAN, lihat catatan di atas** | ~~Thrifting jadi `business` tersendiri di `pos-fnb`. `order_items` tidak perlu polimorfik.~~ |
 | Bestie Thrift | **Diganti** | Perlu pemindahan data barang lama |
 | "SS" | **Kode pemilik barang titipan** — Salma | Konsinyasi itu nyata. Lihat §7 |
 | Bagi hasil | **60% pemilik, 40% toko** | Perlu pencatatan dan laporan per pemilik |
@@ -207,19 +215,85 @@ Konsekuensi langsung untuk rancangan kasir thrifting di `pos-fnb`:
 
 1. **BUKAN satu akun kasir untuk toko.** Harus ada lebih dari satu orang yang bisa membuka kas (login kasir) — minimal Ita dan siapa pun yang menggantikannya sore/malam. Login per-orang, bukan satu kredensial bersama yang dipakai bergiliran (kalau `pos-fnb` sudah punya pola multi-kasir dari sisi F&B, thrifting tinggal memakainya — ini salah satu hal yang perlu dicek saat membaca kodenya).
 
-2. **Serah terima shift WAJIB menghitung uang saat itu juga, bukan digabung sampai tutup.** Ita buka `09:00`, serah terima ke penggantinya `18:00` — kas dihitung & ditutup PADA JAM SERAH TERIMA itu, bukan ditunda sampai toko tutup `03:00`. Kalau ada selisih, harus jelas **shift siapa** yang menghasilkan selisih itu (bukan digabung jadi satu selisih besar per hari yang tidak bisa ditelusuri ke shift mana). Ini berarti toko butuh **lebih dari satu periode shift per hari** (bukan satu shift `09:00`–`03:00` penuh) — berapa shift dan jam potongnya perlu dipastikan ke CEO (kemungkinan mengikuti jam pulang tiap penjaga, bukan jam tetap).
+2. ✅ **BERUBAH TOTAL (10 September 2026) — TIDAK ADA TUNAI SAMA SEKALI.** CEO: semua outlet sudah cashless (QRIS + transfer saja, tunai yang masuk di-top-up ke rekening). Seluruh poin "hitung uang saat serah terima" di atas **tidak berlaku lagi** untuk thrifting — dan setelah `pos-fnb` dibaca langsung, ternyata **tidak ada kode baru yang perlu ditulis untuk ini**: `outlets.cashEnabled=false` (kolom yang SUDAH ADA, per-outlet, diatur dari halaman Admin outlet yang SUDAH ADA) membuat seluruh siklus shift otomatis lewat jalur tutup-shift ringkas (`closeCashlessShiftWithDb()`, SUDAH ADA sejak T15) — tidak ada modal awal, tidak ada hitung kas, tidak ada selisih. Metode pembayaran tunai (`isCashDrawer=true`) otomatis disembunyikan dari layar kasir outlet itu (`getPosCatalog()`, SUDAH ADA) — bukan cuma tombolnya disembunyikan, memang tidak ditawarkan. Detail lengkap di `docs/RENCANA-PEMBANGUNAN-KASIR-THRIFTING.md` §7.
 
-3. **Siapa yang melayani TIDAK PERLU jadi catatan manual baru.** `pos-fnb` (sisi F&B) sudah mencatat kasir per transaksi — kasir thrifting memakai mekanisme yang SAMA (satu lagi alasan untuk baca kodenya dulu sebelum membangun apa pun baru), bukan menciptakan kolom/tabel "siapa melayani" terpisah untuk thrifting.
+3. **Siapa yang melayani TIDAK PERLU jadi catatan manual baru** — BENAR untuk kasir bernama (F&B `getSalesByCashier` dipakai ulang apa adanya). **TAPI** ditemukan pengecualian penting: akun BERSAMA/tamu (lihat §9 di bawah) butuh SATU kolom baru (`shifts.servedByName`) karena `pos-fnb` tidak punya cara mencatat "siapa sungguhan melayani" kalau shift dibuka dengan kredensial bersama, bukan kredensial pribadi.
 
-**Yang masih perlu dipastikan ke CEO** (ditambahkan ke §6): berapa shift per hari untuk toko thrifting, dan jam potongnya masing-masing — jawaban ini akan langsung menentukan bentuk RENCANA-PEMBANGUNAN-KASIR-THRIFTING.md (lihat dokumen itu untuk urutan kerja lengkapnya).
+**Konsekuensi dari poin 2 di atas**: pertanyaan "berapa shift per hari & jam potongnya" TIDAK LAGI memblokir apa pun (dulu ditanyakan justru karena kas harus direkonsiliasi per orang) — tanpa uang tunai untuk dihitung, jumlah shift/hari jadi murni soal akuntabilitas "siapa sedang bertugas", bukan rekonsiliasi finansial. Ditutup dengan mekanisme akun tamu di §9: siapa pun yang bertugas sore/malam cukup buka shift baru (kredensial bersama + nama sendiri), berapa kali pun berganti orang, tanpa perlu jadwal shift tetap ditentukan di muka.
+
+**Ita = MANAGER** (dikonfirmasi CEO, bukan kasir-dengan-kelonggaran) — dia mengurus barang masuk, harga, pemilik titipan, dan laporan bagi hasil, pekerjaan manajerial. `barang.manage`/`pemilik.manage` di rancangan permission (lihat `docs/RENCANA-PEMBANGUNAN-KASIR-THRIFTING.md` §6.6) DIPERKETAT jadi `na` untuk role kasir (bukan `off`/bisa-di-override seperti draft sebelumnya) — sekarang TIDAK ADA jalan bagi akun kasir mana pun, termasuk akun tamu, untuk mendapat izin itu lewat override apa pun.
+
+---
+
+## §9 · Akun tamu bersama (jam sore/malam) dan label barcode admin-configurable
+
+### Akun tamu
+
+CEO: penjualan setelah jam 6 sore jauh lebih sedikit daripada jam 9–18 —
+**tidak perlu tahu siapa yang melayani** di jam sepi itu, siapa saja
+(termasuk anak part-time) boleh masuk dengan satu akun BERSAMA, bukan akun
+per orang.
+
+**Diperiksa dulu ke `pos-fnb` sebelum membangun** (instruksi eksplisit) — dua temuan:
+
+1. ❌ **"Nama pelayan per shift" TIDAK DIDUKUNG sekarang.** `openShiftWithDb()`
+   cuma menerima `employeeCode`+`pin` — nama yang tercatat SELALU
+   `employees.fullName` hasil verifikasi PIN, tidak ada tempat mengetik nama
+   bebas. **Butuh kolom baru**: `shifts.servedByName` (nullable) + kolom
+   penanda `employees.isSharedAccount` (boolean) supaya server tahu KAPAN
+   nama itu wajib diminta (cuma saat shift dibuka pakai akun bersama, bukan
+   akun pribadi). Wajib diisi ditegakkan di `openShiftWithDb()`, sama pola
+   validasi server-side yang sudah dipakai di file itu (bukan cuma di UI).
+   Setiap tempat yang menampilkan `employeeName` (dashboard "siapa
+   bertugas", laporan `getSalesByCashier`, struk) diprioritaskan membaca
+   `servedByName` kalau terisi, supaya laporan malam menyebut nama
+   sungguhan, bukan literal "Akun Tamu" berulang-ulang.
+2. ✅ **Void/refund SUDAH TIDAK MUNGKIN dilakukan akun tamu** — bukan
+   sesuatu yang perlu dibatasi, sudah begitu strukturnya: void/refund
+   (`lib/pos/void-refund.ts`) digerbangi sesi Supabase Auth owner/manajer
+   SUNGGUHAN (login dashboard penuh), BUKAN sesi PIN kasir yang dipakai
+   layar kasir/buka-shift. Akun tamu (kredensial PIN) tidak pernah bisa
+   sampai ke jalur itu sama sekali, apa pun izin yang diberikan lewat
+   `permissions_override`. **Jawaban atas pertanyaan CEO poin 4**: pilihan
+   pertama ("tidak bisa sama sekali") itulah yang SUDAH TERJADI secara
+   arsitektur, bukan sesuatu yang perlu dipilih/dibangun. Kalau ada
+   transaksi malam yang perlu di-void/refund, itu dikerjakan Ita/CEO lewat
+   dashboard sungguhan setelahnya (login asli, bukan lewat layar kasir).
+
+Rancangan akun tamu, lima syarat CEO dipetakan ke mekanisme yang ada:
+
+| Syarat CEO | Mekanisme |
+|---|---|
+| 1-2. Nama pelayan wajib diketik saat buka shift | Kolom baru `shifts.servedByName` + validasi wajib di `openShiftWithDb()` (BARU, belum ada) |
+| 3. Cuma bisa jual & buka/tutup shift | Satu employee row `role='cashier'` (default RBAC sudah membatasi `product`/`price`/`report`/`settings` untuk kasir) + `barang.manage`/`pemilik.manage` diperketat `na` (lihat di atas) — TIDAK PERLU override apa pun, defaultnya sudah pas |
+| 4. Void/refund tidak bisa (atau lewat Ita) | SUDAH begitu secara struktur (lihat temuan #2 di atas) — tidak perlu dibangun |
+| 5. Password (PIN) bisa diganti sekali tekan dari Admin | SUDAH ADA — tombol "reset PIN" T15b, dipakai apa adanya untuk akun tamu |
+
+**Satu employee row baru** cukup: `code` (mis. "TAMU"), `fullName` "Akun
+Tamu — Bestie Thrift", `role='cashier'`, `isSharedAccount=true`, PIN
+ditentukan & bisa direset kapan pun dari Admin.
+
+### Label barcode — TIDAK dikunci satu ukuran
+
+CEO: kemarin label terasa kekecilan, tidak yakin lagi ukuran persisnya —
+**jangan dikunci di kode**. Diatur dari Admin: lebar, tinggi, dan elemen apa
+saja yang dicetak (barcode, nama, harga, kode pemilik, ukuran barang). Empat
+preset umum di Indonesia (33×15, 50×25, 50×30, 50×80mm) + pilihan ukuran
+bebas + **pratinjau di layar sebelum cetak** (supaya CEO bisa coba-coba
+tanpa buang kertas label sungguhan). Detail skema (`label_settings` per
+business, bukan per barang) ada di `docs/RENCANA-PEMBANGUNAN-KASIR-THRIFTING.md` §8.
 
 ---
 
 ## §6 · Yang masih perlu ditanyakan
 
 1. ✅ **TERJAWAB (10 September 2026) — Ada berapa pemilik titipan sekarang?** **4 orang**, ke depan bisa **10+** — lihat §7 (jangan terpaku kode 2-huruf, layar Tambah Pemilik wajib ada di Admin sejak awal).
-2. **Persentase 60/40 sama untuk semua**, atau berbeda per orang?
-3. **Barang titipan yang tidak laku berbulan-bulan** — dikembalikan, atau didiskon dengan izin pemiliknya?
+2. **Persentase 60/40 sama untuk semua**, atau berbeda per orang? — MASIH TERBUKA.
+3. **Barang titipan yang tidak laku berbulan-bulan** — dikembalikan, atau didiskon dengan izin pemiliknya? — MASIH TERBUKA.
 4. ✅ **TERJAWAB (10 September 2026) — Bagi hasil dibayarkan kapan?** **Bulanan, saat tutup buku** — lihat §7 ("Laporan bagi hasil").
-5. **Data barang di Bestie Thrift** perlu dipindahkan semua, atau cukup yang belum terjual?
-6. **Berapa shift per hari untuk toko thrifting, dan jam potongnya masing-masing?** — lihat §8. Toko buka 18 jam (`09:00`–`03:00`), Ita cuma 9 jam pertama — perlu tahu titik potong shift berikutnya (jam pulang siapa selanjutnya), bukan diasumsikan.
+5. ✅ **TERJAWAB (10 September 2026) — Data barang di Bestie Thrift dipindahkan semua atau cukup yang belum terjual?** **CUKUP YANG BELUM TERJUAL.** Barang yang sudah terjual TETAP di sistem lama sebagai arsip, tidak ikut dipindahkan.
+6. ✅ **TIDAK LAGI RELEVAN (10 September 2026) — "Berapa shift & jam potong"** — pertanyaan ini lahir dari kebutuhan rekonsiliasi kas per shift, yang sekarang tidak ada sama sekali (toko 100% cashless, lihat §8 poin 2). Ditutup lewat mekanisme akun tamu (§9): siapa pun yang bertugas cukup buka shift dengan namanya sendiri, tidak perlu jadwal shift baku.
+7. ✅ **TERJAWAB (10 September 2026) — Ukuran label barcode** — lihat §9. TIDAK dikunci ke satu ukuran; diatur dari Admin (lebar, tinggi, elemen yang dicetak), dengan preset umum + ukuran bebas + pratinjau sebelum cetak.
+8. **Pajak/service charge thrifting** — ✅ **TERJAWAB, tapi MENUNGGU konfirmasi resmi CEO ke pemilik proyek**: **PAJAK NOL** ("harga label = harga bayar, barang bekas titipan bukan restoran"). Dikerjakan dengan asumsi ini (`outlets.taxPercent=0` saat outlet dibuat, TT09) — kalau CEO membalikkan keputusan ini nanti, cuma satu nilai yang perlu diubah, bukan kode.
+
+Sisa yang MASIH TERBUKA setelah sesi ini: poin 2 dan 3 saja — keduanya TIDAK memblokir pembangunan (lihat `docs/RENCANA-PEMBANGUNAN-KASIR-THRIFTING.md`).
