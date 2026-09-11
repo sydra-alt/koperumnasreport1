@@ -959,3 +959,57 @@ buka alamat "Network: https://..." yang dicetak di terminal dari HP di
 jaringan WiFi yang sama. Browser HP akan menampilkan peringatan
 sertifikat tidak dikenal sekali (wajar untuk self-signed, bukan bug) —
 lanjutkan, lalu izinkan akses kamera saat diminta.
+
+---
+
+## §13 · Ronde uji ketiga CEO — sisir silent-failure, dashboard per brand, Statistik Ita (11 September 2026)
+
+**Sisir seluruh pos-fnb untuk pola silent-failure** (instruksi CEO,
+setelah menemukan pola yang sama untuk keempat kalinya). Diaudit lewat
+subagent Explore, hasil LENGKAP (bukan diperbaiki dulu, sesuai
+instruksi "laporkan dulu"):
+
+**29 titik panggilan di 21 file** memakai pola `try { await someAction()
+} finally { ... }` TANPA `catch` — exception yang dilempar lolos diam-
+diam, cuma `{error}` yang dikembalikan normal yang tertangani. Plus
+`components/dashboard/delete-confirm-button.tsx` (dipakai 7 file
+row-actions lain) punya bug yang sama, mewariskannya ke semua tombol
+"Hapus" yang dibangun di atasnya. Termasuk jalur uang: `payment-
+dialog.tsx` (checkout F&B), `thrift-payment-dialog.tsx` (checkout
+thrifting), `order-row-actions.tsx` (void/refund), keempat file shift
+(buka/tutup/tutup-cashless/kas). Pola AMAN (`useActionState` +
+`useEffect` yang menampilkan `state.error`) dipakai 18 file lain, semua
+diverifikasi benar. Ini bug level TEMPLATE, bukan beberapa kesalahan
+lepas — daftar lengkap file+baris ada di transkrip sesi, BELUM
+diperbaiki (menunggu keputusan lanjutan CEO kapan/bagaimana).
+
+**(c) Duplikasi angka manager_resto vs pos-fnb** — dicatat di
+`SPESIFIKASI-THRIFTING.md` §10 (repo ini), BUKAN dibangun. CEO: belum
+ada outlet yang sungguhan produksi di pos-fnb (Indokopi pun belum
+pernah), jadi rekap otomatis tidak mendesak.
+
+**(a) Dashboard per jenis usaha — SELESAI.** `getSalesByBrand()` baru
+(lib/db/queries/sales-report.ts) — LEFT JOIN berantai brands->outlets
+->orders supaya brand dengan outlet aktif tapi nol transaksi TETAP
+tampil Rp0 (pelajaran sama Tinjau Kebersihan §12). Dashboard (`/`)
+sekarang: tiga kartu brand di atas selalu, TIDAK ADA lagi angka
+gabungan. Klik kartu (`?brandId=...`) menurunkan ke KPI+outlet
+comparison brand itu. Diverifikasi browser sungguhan.
+
+**(b) Halaman Statistik Ita — SELESAI, dengan dua tambahan CEO.**
+Tombol "Statistik" di /pos/thrift, gerbang sama "Tambah Barang" (role
+employee shift, PIN -- Ita tidak punya login dashboard pribadi).
+Isinya: omzet hari ini & bulan ini, barang terlaris bulan ini, status
+stok (baru masuk/siap jual/terjual/rusak), **barang menumpuk diurutkan
+paling lama** (§7 -- tanpa ambang hardcode, itu masih pertanyaan
+terbuka §6 poin 3 SPESIFIKASI-THRIFTING.md), **rekap bagi hasil per
+pemilik bulan berjalan** (versi ringkas TT11, belum ada status "sudah
+dibayar"). `lib/pos/thrift-statistik.ts` baru. Diverifikasi browser
+sungguhan + shift Ita sungguhan, termasuk kasus barang berumur 75 hari
+buatan untuk menguji daftar menumpuk.
+
+**Menunggu keputusan CEO**: kapan/bagaimana memperbaiki 29 titik
+silent-failure yang ditemukan di atas (perbaikan template sekali di
+`DeleteConfirmButton` + pola `catch` yang sama dipakai `thrift-add-
+barang-dialog.tsx` bisa menutup semuanya, tapi BELUM dikerjakan sampai
+CEO memutuskan prioritasnya).
