@@ -297,3 +297,46 @@ business, bukan per barang) ada di `docs/RENCANA-PEMBANGUNAN-KASIR-THRIFTING.md`
 8. **Pajak/service charge thrifting** — ✅ **TERJAWAB, tapi MENUNGGU konfirmasi resmi CEO ke pemilik proyek**: **PAJAK NOL** ("harga label = harga bayar, barang bekas titipan bukan restoran"). Dikerjakan dengan asumsi ini (`outlets.taxPercent=0` saat outlet dibuat, TT09) — kalau CEO membalikkan keputusan ini nanti, cuma satu nilai yang perlu diubah, bukan kode.
 
 Sisa yang MASIH TERBUKA setelah sesi ini: poin 2 dan 3 saja — keduanya TIDAK memblokir pembangunan (lihat `docs/RENCANA-PEMBANGUNAN-KASIR-THRIFTING.md`).
+
+---
+
+## §10 · Duplikasi angka dengan laporan manager_resto — BELUM mendesak, dicatat untuk nanti (11 September 2026)
+
+**Status saat dicatat**: BELUM ADA outlet yang benar-benar memakai
+`pos-fnb` sehari-hari — Indokopi maupun Indosteak belum pernah produksi
+di sana, cuma didaftarkan namanya ke database dev untuk pengujian (lihat
+`RENCANA-PEMBANGUNAN-KASIR-THRIFTING.md` §12). Form manual
+`manager_resto` di sistem laporan ini (repo `reportkoperumnasgroup`)
+tetap jalan seperti biasa. **Tidak ada yang perlu dibangun sekarang** —
+ini catatan supaya tidak terlewat NANTI.
+
+**Yang ditemukan**: `forms/f16-manager-resto.ts` (form harian yang
+diisi manual manager resto) punya delapan kolom `uang` yang PERSIS
+angka yang sama yang otomatis tercatat `pos-fnb` kalau outlet itu pakai
+kasirnya:
+
+| Kolom form (`f16-manager-resto.ts`) | Sumber sepadan di pos-fnb |
+|---|---|
+| `total_omzet` | `getSalesSummary()` — `netSales` |
+| `penjualan_makanan` / `penjualan_minuman` | agregasi per kategori produk |
+| `metode_cash` / `metode_qris` / `metode_transfer` / `metode_lainnya` | breakdown `payments` per `payment_methods` |
+| `cash_diterima` / `sisa_cash` | shift cash reconciliation (`shifts.countedCash`/`expectedCash`) |
+
+**Aturan yang HARUS ditegakkan begitu satu outlet benar-benar pindah ke
+pos-fnb sehari-hari**: kedelapan kolom itu WAJIB dikunci jadi
+**baca-saja** (pre-filled otomatis dari pos-fnb, bukan lagi diketik
+manager) untuk outlet tersebut — bukan dibiarkan berdampingan sebagai
+dua kolom yang bisa berbeda angka untuk hal yang sama. Ini pelajaran
+yang sama yang sudah pernah susah payah dihindari di laporan
+pembangunan (dua sumber kebenaran untuk satu angka = salah satu pasti
+diam-diam salah, dan tidak ada yang tahu mana yang benar saat keduanya
+beda).
+
+**Kenapa belum dibangun sekarang**: pos-fnb belum punya jalur keluar
+data sama sekali (tidak ada satu pun `/api/*` route, murni Server
+Action internal) — menyambungkan dua sistem ini perlu endpoint baru +
+otentikasi server-ke-server di pos-fnb, plus perubahan di form
+`manager_resto` supaya tahu kapan harus membaca dari sana vs menerima
+input manual. Pekerjaan nyata, bukan "sambil lewat" — ditunda sampai
+ada outlet yang SUNGGUHAN produksi di pos-fnb, dicatat di sini supaya
+tidak lupa begitu saatnya tiba.
