@@ -1566,3 +1566,91 @@ berubah (Asia/Jakarta → Asia/Jayapura, WIB → WIT) mereset
 `dayCutoffConfirmed` KEDUA outlet uji sekaligus (bukan cuma yang
 sedang aktif). Total setelah koreksi ini: 43 file test, 322 test,
 semua hijau; `tsc`/`lint`/`build` bersih.
+
+## §18 · Keputusan final dayCutoffTime, dan pengaman database uji (12 September 2026)
+
+### Keputusan final — batas hari (`dayCutoffTime`)
+
+**KEPUTUSAN CEO, FINAL — bukan lagi asumsi yang menunggu konfirmasi:**
+
+- **Penjualan ikut hari SHIFT-nya dibuka.** Transaksi pukul 02:30
+  tanggal 1 Oktober masuk ke tanggal 30 September, karena shift yang
+  sedang berjalan saat itu dibuka tanggal 30. Ini konsisten dengan
+  cara `businessDate()` sudah bekerja (§CALC-SPEC bagian F) — bukan
+  perubahan logika, cuma konfirmasi bahwa logika yang sudah ada memang
+  yang dimaksud.
+- **`dayCutoffTime` = 04:00 DIKONFIRMASI BENAR**, berlaku untuk Bestie
+  Thrift MAUPUN outlet Indokopi yang tutup jam 03:00 — 04:00 ada SATU
+  JAM SETELAH tutup, cukup menampung transaksi larut malam/dini hari
+  tanpa memotong di tengah operasional.
+- **CEO sendiri yang mengklik tombol "Konfirmasi" lewat UI** di halaman
+  `/outlets` untuk menyalakan `dayCutoffConfirmed` pada outlet yang
+  sudah ada. Agen (Claude Code) **TIDAK PERNAH** mengubah nilai
+  `dayCutoffConfirmed` lewat skrip atau migrasi — itu akan meniadakan
+  seluruh maksud SYARAT 3 TT11 (konfirmasi manusia, bukan kode yang
+  mengasumsikan dirinya sendiri benar).
+
+**Catatan penting untuk orang berikutnya — Indokopi akhir pekan:**
+Indokopi buka 24 jam Sabtu–Minggu. Di hari-hari itu, `04:00` BUKAN
+garis yang mengikuti jam tutup (karena tidak pernah tutup) — itu garis
+yang **DIPILIH**, semata-mata supaya satu `dayCutoffTime` yang sama
+berlaku konsisten sepanjang minggu. Ini bukan masalah dan tidak perlu
+diperbaiki, tapi harus tertulis di sini supaya tidak ada yang nanti
+mengira angka `04:00` di hari Sabtu/Minggu punya dasar operasional
+(jam tutup) yang sebenarnya tidak ada pada hari-hari itu.
+
+### Pengaman database uji — gagal-tertutup, bukan gagal-terbuka
+
+Usulan pertama (baca ref database produksi dari `.env.production.local`
+untuk dibandingkan) DITOLAK CEO: kalau file itu tidak ada (clone baru,
+terhapus), pengaman diam-diam tidak berbuat apa-apa — persis pola
+gagal-terbuka yang dilarang proyek ini. **Dibalik: IZINKAN HANYA yang
+dikenal, TOLAK sisanya.**
+
+`lib/db/guard-test-database.ts` (baru) — daftar ref project Supabase
+dev yang diizinkan ditulis **eksplisit sebagai konstanta di kode**
+(`ALLOWED_TEST_PROJECT_REFS`), bukan dibaca dari env/file mana pun yang
+bisa hilang. Project ref bukan rahasia (muncul di URL publik
+`https://<ref>.supabase.co`). Kalau `DATABASE_URL` tidak cocok daftar
+itu, tidak bisa diurai sama sekali, atau kosong — **LEMPAR GALAT**
+dengan pesan yang menyebut ref yang ditemukan vs yang diharapkan.
+Jalan keluar sengaja untuk kasus sah: `ALLOW_TEST_DB_OVERRIDE=1`
+eksplisit (bukan default, bukan truthy sembarangan — harus persis
+string `"1"`), dicatat dengan peringatan di output, bukan diam-diam.
+
+Dipasang di `vitest.setup.ts` (setupFiles), jalan SATU KALI sebelum
+file test mana pun sempat mengimpor `lib/db/client.ts` dan membuka
+koneksi — BUKAN di `getAdminDb()` sendiri, karena fungsi itu juga
+jalur skrip yang SAH menyentuh produksi (`scripts/bootstrap-
+production.ts`, `scripts/demo:*`); memagari di sana akan mematahkan
+skrip yang justru harus bisa menyentuh produksi.
+
+**Satu penyimpangan disengaja dari spesifikasi CEO, ditulis di sini
+supaya bisa dikoreksi kalau salah tafsir**: pengaman GLOBAL (dipanggil
+dari `vitest.setup.ts`) sengaja **TIDAK melempar** kalau `DATABASE_URL`
+SAMA SEKALI TIDAK ADA (bukan ada-tapi-salah) — karena proyek ini sudah
+lama punya pola `describe.skipIf(!hasEnv)` di SETIAP file test
+integrasi, yang mensyaratkan `DATABASE_URL` (dan dua env lain) sebelum
+test itu jalan sama sekali. Kalau `DATABASE_URL` benar-benar kosong,
+TIDAK ADA test integrasi yang akan jalan dan TIDAK ADA koneksi yang
+akan dibuka — jadi tidak ada risiko untuk dipagari, dan melempar di
+sini cuma akan mematahkan `npm test` untuk siapa pun yang sengaja
+menjalankan test unit saja tanpa kredensial Supabase (pola yang sudah
+ada sebelum pengaman ini dibangun). Fungsi murninya sendiri
+(`checkTestDatabaseAllowed`) TETAP menolak `DATABASE_URL` kosong sesuai
+spesifikasi CEO persis — penyimpangan ini HANYA ada di pembungkus yang
+dipanggil `vitest.setup.ts`, bukan di logika intinya.
+
+Diverifikasi (unit test murni, `guard-test-database.test.ts`, 17 test,
+tidak butuh koneksi apa pun jadi selalu jalan): ref yang diizinkan
+(bentuk pooler dan koneksi langsung) lolos; ref lain mana pun ditolak
+dengan pesan yang menyebut kedua ref; `DATABASE_URL` kosong/rusak
+ditolak di level fungsi murni; override `"1"` lolos dengan peringatan
+walau ref tidak dikenal, TAPI nilai selain `"1"` persis (mis. `"true"`)
+tetap ditolak; wrapper global tidak melempar untuk `DATABASE_URL` yang
+sama sekali tidak ada (penyimpangan di atas), TAPI tetap melempar untuk
+yang ada-tapi-salah. Dijalankan juga sebagai bagian full test suite
+sungguhan (43 file, terhitung dengan file baru ini) -- pengaman lolos
+diam-diam terhadap `DATABASE_URL` dev yang sungguhan dipakai proyek
+ini, membuktikan wiring-nya sungguhan bekerja, bukan cuma lolos di
+unit test terisolasi.
