@@ -1270,8 +1270,10 @@ Dua kandidat, keduanya berubah di antara ronde gagal dan ronde lolos:
    bukan dari mm/96dpi) — tapi CEO sendiri menunjukkan lubang
    logikanya (keberatan checksum, § di atas): distorsi cetak yang
    mengubah nilai simbol seharusnya membuat checksum GAGAL, bukan
-   mengembalikan isi yang salah. Kalau keberatan itu benar, perbaikan
-   ini KEMUNGKINAN BESAR BUKAN yang memperbaiki masalah aslinya.
+   mengembalikan isi yang salah. Keberatan ini membuat penjelasan
+   distorsi-cetak **sangat tidak mungkin, TAPI TIDAK disingkirkan
+   secara formal** (koreksi CEO 12 September 2026) — bukan mustahil,
+   cuma kecil kemungkinannya.
 2. **Alat ukur ronde-ronde gagal sebelumnya kemungkinan besar cacat**:
    ronde pertama (yang melaporkan "terbaca tapi isinya salah/acak")
    memakai **web scanner berbasis browser**. Alat semacam ini
