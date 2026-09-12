@@ -1170,3 +1170,48 @@ dashboard MAUPUN dari kasir keduanya menggambar barcode dengan piksel
 hitam-putih nyata (dicek lewat `getImageData` kanvas, bukan cuma
 "elemen ada"), dan barang milik bisnis lain ditolak 404 (bukan
 menampilkan data lintas-tenant).
+
+## §16 · TT05 — Bug barcode salah baca, ditemukan CEO lewat pindai sungguhan (12 September 2026)
+
+**Yang terjadi**: label 50×80mm (preset terbesar) dipindai pakai
+scanner sungguhan — TERBACA, tapi isinya salah/acak. CEO menunjukkan
+(tepat) bahwa ke-14 test dari §15 MELINGKAR: `decode(encode(x))===x`
+dan sapuan 95 karakter cuma membuktikan encoder dan decoder buatan
+sendiri saling sepakat, bukan bahwa keduanya cocok Code128 sungguhan —
+satu kesalahan sistematis di tabel pola akan lolos 100% dari test itu.
+
+**Investigasi (bukan tebakan)**:
+- Tabel pola 107 baris diverifikasi **byte-per-byte** terhadap `BARS`
+  array produksi library JsBarcode (diambil langsung dari GitHub,
+  bukan dari memori) — semua 107 baris cocok persis.
+- Formula checksum dan pemetaan nilai karakter cocok dengan logika
+  JsBarcode yang sama (diverifikasi lewat pembacaan source code-nya).
+- Empat tersangka yang diminta CEO diperiksa satu per satu: start
+  code vs tabel nilai (bersih), Code C (tidak pernah aktif, encoder
+  selalu Subset B), arah gambar (dibuktikan BERSIH lewat pembacaan
+  ulang piksel kanvas SUNGGUHAN di browser — modul yang benar-benar
+  tergambar cocok 100% dengan bitstring yang dihitung), checksum
+  (dihitung tangan, cocok).
+
+**Akar masalah paling mungkin, BELUM dibuktikan lewat pindai fisik
+ulang**: buffer kanvas sebelumnya cuma ~96 DPI, jauh di bawah DPI
+cetak printer termal (203-300 DPI) — RawBT terpaksa memperbesar bitmap
+resolusi rendah itu, dan upscaling bisa mengaburkan rasio lebar modul
+cukup jauh untuk mengubah nilai simbol walau strukturnya tetap valid
+(persis gejala "terbaca tapi salah"). Diperbaiki: buffer kanvas
+sekarang dihitung dari jumlah modul (≥10px/modul, bukan dari mm/96dpi)
++ `image-rendering: pixelated`. Ukuran fisik (mm) tidak berubah.
+
+**Diganti**: 14 test lama diturunkan jadi jaring regresi (dipertahankan,
+diberi komentar eksplisit "bukan bukti"), ditambah 3 test vektor
+literal yang dihitung tangan dari `BARS[N]` JsBarcode (sumber eksternal
+sungguhan, bukan kode kita) plus anchor spesifikasi independen. Mode
+debug ditambahkan di `/label-settings` (code set, nilai per simbol,
+checksum) supaya CEO bisa bandingkan sendiri saat pindai berikutnya.
+
+**STATUS: BELUM SELESAI.** Perbaikan resolusi kanvas adalah hipotesis
+berbasis eliminasi bukti (dua lapis lain — algoritma dan rendering
+piksel — sudah terbukti benar secara independen, jadi lapisan cetak
+fisik jadi satu-satunya yang tersisa), bukan kepastian. Menunggu CEO
+mencetak dan memindai ulang label sungguhan sebelum ini dianggap
+tertutup.
