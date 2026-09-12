@@ -230,7 +230,7 @@ in-effect`) — dipindah ke pola remount-lewat-`key` (komponen kecil
 Diverifikasi: `tsc --noEmit` bersih, `eslint` bersih, 257 test (35 file)
 tetap hijau setelah perubahan.
 
-**[x] TT05 — Cetak label barcode** — SELESAI (12 September 2026). Keputusan CEO menutup pertanyaan terbuka di atas: RawBT (bukan Web Bluetooth), Code128 digambar sendiri jadi gambar, lebar cetak 48mm dari kertas termal 58mm. Detail lengkap di §15.
+**[x] TT05 — Cetak label barcode** — SELESAI, dikonfirmasi lolos uji pindai fisik (12 September 2026). Keputusan CEO menutup pertanyaan terbuka di atas: RawBT (bukan Web Bluetooth), Code128 digambar sendiri jadi gambar, lebar cetak 48mm dari kertas termal 58mm. Detail pembangunan di §15, investigasi bug "terbaca tapi salah" dan penutupannya (penyebab TIDAK bisa dipastikan, dicatat jujur) di §16.
 
 ### Fase C — Kasir jual barang
 
@@ -1256,10 +1256,53 @@ di-encode untuk barang yang benar-benar dicetak — dalam kurung siku
 lain ketahuan) — supaya CEO bisa membandingkan langsung dengan hasil
 pindai tanpa menebak.
 
-**STATUS: BELUM SELESAI.** Jalur data (field, transformasi, kebocoran
-sample) sudah diperiksa tuntas dan BERSIH — tidak ditemukan bug baru
-di sana. Hipotesis DPI/resolusi diturunkan statusnya per keberatan
-checksum CEO. Belum ada kandidat penyebab baru yang menjelaskan gejala
-"terbaca tapi salah" secara meyakinkan. Menunggu CEO mengirim hasil
-pindai mentah (kode asli vs hasil scan) untuk melanjutkan dari bukti
-konkret, bukan dugaan lebih jauh.
+**STATUS: SELESAI — uji pindai fisik LOLOS (12 September 2026).** Tiga
+bentuk kode (angka semua, huruf semua, campuran bertanda hubung)
+dipindai pakai scanner fisik sungguhan (bukan web scanner browser lagi
+— lihat catatan di bawah), ketiganya mengembalikan string yang persis
+sama dengan yang tampil di panel debug halaman cetak.
+
+**Penyebab jujur — TIDAK BISA dipastikan mana yang sebenarnya
+memperbaiki, dan itu dicatat apa adanya, bukan dikarang supaya rapi.**
+Dua kandidat, keduanya berubah di antara ronde gagal dan ronde lolos:
+
+1. **Perbaikan resolusi kanvas** (§ di atas: buffer ≥10px/modul,
+   bukan dari mm/96dpi) — tapi CEO sendiri menunjukkan lubang
+   logikanya (keberatan checksum, § di atas): distorsi cetak yang
+   mengubah nilai simbol seharusnya membuat checksum GAGAL, bukan
+   mengembalikan isi yang salah. Kalau keberatan itu benar, perbaikan
+   ini KEMUNGKINAN BESAR BUKAN yang memperbaiki masalah aslinya.
+2. **Alat ukur ronde-ronde gagal sebelumnya kemungkinan besar cacat**:
+   ronde pertama (yang melaporkan "terbaca tapi isinya salah/acak")
+   memakai **web scanner berbasis browser**. Alat semacam ini
+   menjalankan deteksi FORMAT OTOMATIS lintas simbologi (Code128,
+   Code39, EAN, QR, dst.) dan bisa mengembalikan hasil dari simbologi
+   LAIN yang kebetulan juga menganggap pola pikselnya valid —
+   **TANPA pernah memvalidasi checksum Code128 kita sama sekali**.
+   "Terbaca tapi acak" cocok PERSIS dengan gejala salah-deteksi
+   simbologi, dan menjelaskan kenapa keberatan checksum CEO tetap
+   masuk akal: bukan Code128 kita yang gagal checksum, karena yang
+   dibaca BUKAN didekode sebagai Code128 sama sekali.
+
+Tidak ada cara memastikan mana dari keduanya (atau kombinasi
+keduanya) yang sebenarnya menyebabkan kegagalan ronde sebelumnya —
+kedua variabel berubah bersamaan sebelum uji pindai fisik yang lolos.
+**Ditulis jujur sebagai tidak pasti**, bukan diklaim sebagai satu akar
+masalah yang sudah ditemukan.
+
+**Dicatat untuk orang berikutnya (supaya tidak terjadi lagi)**:
+- **Jangan pernah pakai web scanner berbasis browser untuk verifikasi
+  barcode lagi.** Alat itu menjalankan deteksi simbologi otomatis dan
+  bisa mengembalikan hasil dari format lain tanpa validasi checksum
+  Code128 — hasil "berhasil dipindai" darinya TIDAK membuktikan
+  encoding kita benar. Verifikasi barcode SELALU lewat scanner fisik
+  dedicated (atau printer+scanner sungguhan di alur produksi), tidak
+  pernah lewat scanner web/kamera generik.
+- **Buffer kanvas ≥10px/modul (bukan `mmToPx` langsung) DIPERTAHANKAN
+  SENGAJA** — lihat komentar di `components/barcode/barcode-canvas.tsx`.
+  Walau tidak terbukti sebagai akar masalah yang sebenarnya (lihat
+  keberatan checksum di atas), resolusi tinggi tetap higiene teknis
+  yang benar untuk barcode yang akan di-print di DPI jauh lebih tinggi
+  dari 96 DPI layar. **Jangan disederhanakan kembali ke `mmToPx`
+  langsung** tanpa alasan kuat — itu mengembalikan risiko upscaling
+  di alur cetak, walau bukan penyebab yang terbukti di kasus ini.
