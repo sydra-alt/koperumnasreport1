@@ -1193,25 +1193,73 @@ satu kesalahan sistematis di tabel pola akan lolos 100% dari test itu.
   tergambar cocok 100% dengan bitstring yang dihitung), checksum
   (dihitung tangan, cocok).
 
-**Akar masalah paling mungkin, BELUM dibuktikan lewat pindai fisik
-ulang**: buffer kanvas sebelumnya cuma ~96 DPI, jauh di bawah DPI
-cetak printer termal (203-300 DPI) — RawBT terpaksa memperbesar bitmap
-resolusi rendah itu, dan upscaling bisa mengaburkan rasio lebar modul
-cukup jauh untuk mengubah nilai simbol walau strukturnya tetap valid
-(persis gejala "terbaca tapi salah"). Diperbaiki: buffer kanvas
-sekarang dihitung dari jumlah modul (≥10px/modul, bukan dari mm/96dpi)
-+ `image-rendering: pixelated`. Ukuran fisik (mm) tidak berubah.
+**Kemungkinan penyebab cetak/DPI, DENGAN KEBERATAN dari CEO (diturunkan
+dari "hipotesis terkuat" — koreksi penting)**: dugaan awal adalah
+buffer kanvas ~96 DPI terlalu rendah dibanding DPI cetak printer
+termal (203-300 DPI), sehingga RawBT terpaksa memperbesar (upscale)
+bitmap resolusi rendah dan mengaburkan rasio lebar modul. CEO menunjukkan
+lubang logikanya: **distorsi yang mengubah nilai simbol akan membuat
+CHECKSUM tidak cocok**, dan decoder yang patuh standar mengembalikan
+GAGAL BACA (nol hasil), bukan mengembalikan isi yang salah. Distorsi
+sistematis (semua modul membulat ke arah yang sama) pun biasanya
+dinormalkan decoder terhadap lebar total simbol, hasilnya tetap benar.
+Jadi cetak yang buruk secara teori menghasilkan **gagal baca**, bukan
+**salah baca** — gejala yang dilaporkan CEO tidak cocok penjelasan ini.
+Perbaikan resolusi kanvas (buffer dihitung dari jumlah modul, ≥10px/
+modul, bukan dari mm/96dpi, + `image-rendering: pixelated`) TETAP
+dipertahankan sebagai higiene teknis yang masuk akal, tapi statusnya
+sekarang "kemungkinan, dengan keberatan checksum di atas" — bukan lagi
+kandidat penyebab utama.
 
-**Diganti**: 14 test lama diturunkan jadi jaring regresi (dipertahankan,
-diberi komentar eksplisit "bukan bukti"), ditambah 3 test vektor
-literal yang dihitung tangan dari `BARS[N]` JsBarcode (sumber eksternal
-sungguhan, bukan kode kita) plus anchor spesifikasi independen. Mode
-debug ditambahkan di `/label-settings` (code set, nilai per simbol,
-checksum) supaya CEO bisa bandingkan sendiri saat pindai berikutnya.
+**Investigasi lanjutan (jalur data, bukan cetak)** — CEO meminta
+memeriksa apa yang SEBENARNYA sampai ke encoder, bukan berasumsi:
+- **Field yang dibaca**: kedua entry point (`/barang/[id]/label` dan
+  `/pos/thrift/label/[id]`) query `barang.kode` langsung lewat Drizzle
+  select eksplisit, tanpa concat/UUID/field lain — dikonfirmasi baris
+  kodenya persis.
+- **Transformasi**: TIDAK ADA trim/uppercase/normalisasi di jalur
+  cetak — `row.kode` dioper apa adanya lewat `LabelView` ke
+  `BarcodeCanvas` sampai ke `encodeCode128B()`. Ditemukan asimetri
+  nyata di arah SEBALIKNYA: `findSellableBarangByKode()` (pencarian
+  kasir) memakai `kode.trim()` sebelum mencocokkan, sementara jalur
+  cetak tidak trim sama sekali. Ini TIDAK cocok gejala "salah baca"
+  (kalau `barang.kode` di database benar-benar punya spasi tepi, efeknya
+  pencarian kasir gagal menemukan barangnya, bukan barcode ter-decode
+  jadi string lain) — dicatat sebagai kerapuhan laten, bukan penyebab.
+- **Kebocoran data contoh**: DIBUKTIKAN TIDAK MUNGKIN. `SAMPLE_BARANG`
+  di `label-settings-form.tsx` adalah konstanta level-modul yang cuma
+  dipakai di komponen preview itu sendiri, tidak pernah diimpor ke
+  halaman cetak. Kedua halaman cetak adalah Server Component async
+  penuh (tidak ada `loading.tsx`/fallback UI) yang `await` query DB
+  SEBELUM mengembalikan JSX apa pun — tidak ada jalur render dengan
+  data placeholder.
+- **`generateBarangKode()`**: charset bersih (huruf besar+angka tanpa
+  0/O/1/I), tidak pernah menerima input klien. Celah nyata yang
+  ditemukan: **`outlets.code` tidak divalidasi** (`trim().min(1)` saja)
+  — kode barang berprefiks kode outlet ini, jadi karakter aneh di kode
+  outlet akan ikut tercetak ke barcode. Kesembilan kode outlet yang ada
+  sekarang semua sudah bersih (huruf besar+angka), jadi ini BUKAN
+  penyebab kasus ini, tapi kerapuhan nyata — DIPERBAIKI: validasi Zod
+  diperketat ke pola `^[A-Z0-9]+$` (`lib/outlets/manage.ts`), plus
+  CHECK constraint level database (`outlets_code_format`, migration
+  0028) sebagai pertahanan lapis kedua terhadap jalur yang tidak lewat
+  Server Action (mis. skrip admin). Migration 0028 menormalkan
+  (uppercase) baris lama dulu, lalu BERHENTI dengan pesan jelas kalau
+  masih ada yang tidak sesuai pola setelah itu — tidak membuang
+  karakter diam-diam.
 
-**STATUS: BELUM SELESAI.** Perbaikan resolusi kanvas adalah hipotesis
-berbasis eliminasi bukti (dua lapis lain — algoritma dan rendering
-piksel — sudah terbukti benar secara independen, jadi lapisan cetak
-fisik jadi satu-satunya yang tersisa), bukan kepastian. Menunggu CEO
-mencetak dan memindai ulang label sungguhan sebelum ini dianggap
-tertutup.
+**Mode debug diperluas**: sebelumnya cuma di `/label-settings` (data
+contoh). Sekarang komponen `Code128DebugPanel` dipakai juga di KEDUA
+halaman cetak sungguhan, menampilkan STRING MENTAH yang benar-benar
+di-encode untuk barang yang benar-benar dicetak — dalam kurung siku
+(spasi tepi terlihat) dan `JSON.stringify` (karakter tak terlihat
+lain ketahuan) — supaya CEO bisa membandingkan langsung dengan hasil
+pindai tanpa menebak.
+
+**STATUS: BELUM SELESAI.** Jalur data (field, transformasi, kebocoran
+sample) sudah diperiksa tuntas dan BERSIH — tidak ditemukan bug baru
+di sana. Hipotesis DPI/resolusi diturunkan statusnya per keberatan
+checksum CEO. Belum ada kandidat penyebab baru yang menjelaskan gejala
+"terbaca tapi salah" secara meyakinkan. Menunggu CEO mengirim hasil
+pindai mentah (kode asli vs hasil scan) untuk melanjutkan dari bukti
+konkret, bukan dugaan lebih jauh.
