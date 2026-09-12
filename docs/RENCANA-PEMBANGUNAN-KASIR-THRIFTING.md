@@ -1308,3 +1308,261 @@ masalah yang sudah ditemukan.
   dari 96 DPI layar. **Jangan disederhanakan kembali ke `mmToPx`
   langsung** tanpa alasan kuat — itu mengembalikan risiko upscaling
   di alur cetak, walau bukan penyebab yang terbukti di kasus ini.
+
+## §17 · TT10 & TT11 — Laporan stok barang dan laporan bagi hasil bulanan (12 September 2026)
+
+**KEPUTUSAN: dependency `exceljs` dipasang** untuk ekspor Excel TT11
+(12 September 2026) — dikonfirmasi CEO SESUDAH pemasangan (bukan
+sebelum, lihat catatan proses di bawah), dengan alasan konsistensi:
+`reportkoperumnasgroup` (proyek saudara) sudah memakai ExcelJS untuk
+seluruh ekspornya, jadi memakai library yang sama di `pos-fnb`
+menghindari dua pustaka berbeda untuk pekerjaan yang sama di dua
+proyek yang saling terkait. Dipakai HANYA di Route Handler server
+(`app/api/reports/bagi-hasil/export/route.ts` dan logikanya di
+`lib/pemilik/bagi-hasil-export.ts`) — tidak pernah diimpor ke kode
+yang dikirim ke browser, jadi tidak menambah ukuran bundle klien.
+
+**Catatan proses, ditulis jujur**: agen sempat menulis "perlu
+menunggu izin sebelum memasang", lalu memasang `exceljs` tanpa
+menunggu jawaban CEO. CEO menegur ini secara eksplisit, meratifikasi
+pemasangannya (alasan konsistensi di atas), TAPI menegaskan pola ini
+tidak boleh terulang — kalau agen menyatakan perlu izin di titik
+tertentu, WAJIB berhenti dan menunggu di titik itu, bukan jalan terus
+sambil menyatakan sedang menunggu. Kalau menunggu terasa memblokir
+seluruh pekerjaan, kerjakan bagian lain dan sisakan HANYA bagian yang
+butuh izin sebagai yang belum selesai.
+
+### TT10 — Laporan Stok Barang
+
+Pola sama `getSalesByProduct`/`getSalesByBrand` (T17, §13): LEFT JOIN
+dari `categories` (tabel dimensi), bukan dari `barang`, supaya
+kategori dengan nol barang tetap tampil sebagai baris nol
+(`lib/db/queries/barang-report.ts`, `getStokByCategory`). Ambang
+"menumpuk" dibaca dari `outlets.barang_menumpuk_days` lewat fungsi
+yang sudah ada (`getBarangMenumpukDays`, dari ronde §14) — TIDAK ADA
+angka 60 baru ditulis di mana pun untuk TT10. Status per outlet
+(baru_masuk/siap_jual/terjual/rusak) dan daftar barang menumpuk memakai
+ulang `getStokStatusSummary`/`getBarangMenumpuk` yang sudah ada di
+`lib/pos/thrift-statistik.ts` — tidak diduplikasi.
+
+Halaman `/reports/stock` (`report.sales`, owner+manajer+akuntan) —
+gerbang izin SAMA dengan laporan penjualan, ini snapshot stok
+SEKARANG (bukan rentang tanggal terpilih) jadi tidak butuh gerbang
+lebih ketat.
+
+**Koreksi self-catch**: draf pertama `getStokByCategory` menulis label
+`"Tanpa kategori"` sebagai string literal DI DALAM query
+(`categoryName: "Tanpa kategori"`) untuk baris barang tanpa kategori.
+Ini melanggar pola proyek (semua teks antarmuka lewat `lib/i18n/id.ts`,
+lihat `categoryName: string | null` di `sales-report.ts` yang
+membiarkan `null` dan UI yang memutuskan labelnya) — diperbaiki:
+query sekarang mengembalikan `categoryName: null`, label
+`"Tanpa kategori"` dipindah jadi `strings.stockReport.categoryNone`
+dan dirender di `stock-report-view.tsx`.
+
+### TT11 — Laporan Bagi Hasil Bulanan
+
+Bentuk tabel persis SPESIFIKASI-THRIFTING.md §7: dititipkan / terjual
+/ belum terjual / total penjualan / bagian pemilik / bagian toko /
+sudah dibayarkan / sisa dibayar (`lib/db/queries/bagi-hasil-report.ts`,
+`getBagiHasilLaporan`). Query pakai TIGA CTE pra-agregasi terpisah per
+`pemilikId` (stok, uang periode, pembayaran periode) di-LEFT-JOIN ke
+`pemilik` — BUKAN tiga LEFT JOIN langsung ke tabel mentah, supaya tidak
+terjadi fan-out (cross product `barang` × `pemilik_payouts` yang
+mengalikan SUM/COUNT, bukan menjumlahkannya).
+
+**ASUMSI PENAFSIRAN yang belum dikonfirmasi CEO** (spesifikasi §7 tidak
+eksplisit soal ini): `dititipkan`/`terjual`/`belumTerjual`/`rusak`
+DIBUAT KUMULATIF sampai akhir periode (bukan dibatasi rentang tanggal
+laporan), supaya identitas tertutup `dititipkan = terjual + belumTerjual
++ rusak` selalu berlaku — dites eksplisit. `totalPenjualan`/
+`bagianPemilik`/`bagianToko` SEBALIKNYA dibatasi ketat ke rentang
+tanggal laporan, karena itu dasar kewajiban bayar periode itu. **Kalau
+CEO memaksudkan keempat angka stok itu juga dibatasi periode, ini perlu
+diperbaiki** — ditulis di sini dan di komentar kode supaya mudah
+dikoreksi.
+
+**LIMA SYARAT CEO, status masing-masing**:
+
+1. **SNAPSHOT, BUKAN HITUNG ULANG** — `bagianPemilik`/`bagianToko`
+   dijumlahkan dari `order_items.pemilikShareAmount`/`tokoShareAmount`
+   tersimpan SAAT transaksi (kolom sudah ada sejak TT07/consignment-
+   split), TIDAK PERNAH mengalikan ulang dengan `pemilik.persen_bagi`
+   sekarang. **DIBUKTIKAN lewat database sungguhan**: test mengubah
+   `persen_bagi` dari 60% jadi 90% SESUDAH transaksi tercatat, laporan
+   bulan itu tetap `1.110.000` (60% lama), bukan `1.665.000` (90%
+   baru) — `bagi-hasil-report.test.ts`.
+
+   Ronde koreksi tambahan atas permintaan CEO: test serupa untuk sisi
+   STOK, bukan cuma uang — barang yang laku SESUDAH `endDate` periode
+   lama (fakta `terjualPada` yang baru terisi belakangan) tetap
+   terhitung `belumTerjual` untuk laporan periode lama itu, TIDAK
+   ikut `terjualKumulatif`, walau `status` barang di database SEKARANG
+   sudah `'terjual'` sungguhan. Dibuktikan dengan barang
+   `masukPada` tahun 2020, dijual via `sellBarangWithDb` sungguhan
+   SETELAH laporan periode "kemarin" diambil, lalu laporan periode
+   "kemarin" yang SAMA diambil ULANG dan angkanya harus identik —
+   sejajar dengan uji snapshot persen_bagi di atas.
+
+2. **"SUDAH DIBAYAR" BISA SEBAGIAN** — tabel baru `pemilik_payouts`
+   (migration 0029): `pemilik_id`, `start_date`/`end_date` (identitas
+   periode), `jumlah`, `tanggal_bayar`, `recorded_by_user_id`,
+   `catatan`. APPEND-ONLY (tidak ada RLS policy UPDATE/DELETE, sama
+   filosofi `stock_movements`) — koreksi jadi baris baru, bukan edit.
+   "Sisa dibayar" (`lib/calc/bagi-hasil-payout.ts`,
+   `calculateSisaDibayar`) = bagian pemilik dikurangi SEMUA baris
+   pembayaran periode itu, sengaja TIDAK di-clamp ke nol supaya
+   kelebihan bayar terlihat sebagai sisa negatif, bukan disembunyikan.
+   Dibuktikan: 300.000 + 500.000 = 800.000, cocok contoh §7 persis.
+
+3. **`dayCutoffTime` — PEMBLOKIR** — kolom baru
+   `outlets.day_cutoff_confirmed` (boolean, default **false untuk
+   SEMUA outlet** termasuk yang sudah ada, karena belum pernah ada
+   manusia yang mengonfirmasi angka `04:00` bawaan). Direset otomatis
+   ke `false` oleh `updateOutletWithDb` HANYA kalau `dayCutoffTime`
+   benar-benar berubah NILAINYA (dibandingkan lewat `parseCutoffSeconds`,
+   bukan string mentah — "04:00" vs "04:00:00" dianggap SAMA, tidak
+   memicu reset palsu tiap simpan form). Nilai `04:00` bawaan **TIDAK
+   DIUBAH/DITEBAK** — cuma mekanisme konfirmasinya yang dibangun.
+
+   Halaman `/outlets` menampilkan kolom "Batas Hari" + badge
+   terkonfirmasi/belum + tombol "Konfirmasi" (`confirmDayCutoffWithDb`).
+   Laporan `/reports/bagi-hasil` TETAP BISA DILIHAT walau belum
+   dikonfirmasi (banner peringatan tampil), TAPI ekspor Excel dan
+   "Tandai sudah dibayar" DIKUNCI dengan pesan eksplisit.
+
+   **Pembuktian gerbang, atas permintaan CEO — "kodenya ada" versus
+   "terbukti hidup"**: awalnya seluruh logika ekspor (termasuk
+   pengecekan `dayCutoffConfirmed`) ada LANGSUNG di dalam Route Handler
+   (`app/api/reports/bagi-hasil/export/route.ts`), yang PALING SULIT
+   diuji otomatis (butuh konteks request Next.js penuh) — celah nyata:
+   jalur "Tandai sudah dibayar" sudah dites lewat database sungguhan,
+   tapi jalur ekspor Excel BELUM SAMA SEKALI. Diperbaiki dengan
+   memisah logikanya ke `lib/pemilik/bagi-hasil-export.ts`
+   (`buildBagiHasilExport`, pola sama `*WithDb` lain di proyek ini)
+   supaya Route Handler jadi pembungkus tipis, dan logika inti
+   (termasuk gerbang) bisa dites lewat database sungguhan. Hasilnya
+   (`bagi-hasil-export.test.ts`, SEMUA lewat database sungguhan, bukan
+   mock):
+   - Ekspor DITOLAK (`status: "locked"`) selama outlet belum
+     dikonfirmasi, termasuk untuk outlet yang BARU SAJA dibuat (bukan
+     cuma outlet lama yang kebetulan belum diklik).
+   - SESUDAH `confirmDayCutoffWithDb` dipanggil sungguhan, ekspor
+     berhasil menghasilkan file — dibuktikan BUKAN cuma "tidak
+     melempar galat": byte pertama file dicek adalah tanda tangan ZIP
+     (`PK`, karena `.xlsx` adalah arsip ZIP), lalu file itu DIBACA
+     ULANG oleh ExcelJS (`Workbook.xlsx.load`) dan isinya diverifikasi
+     (nama sheet, header kolom, nama pemilik muncul di baris) — bukti
+     file yang dihasilkan benar-benar valid dibuka lagi, bukan byte
+     acak yang kebetulan lolos.
+   - "Tandai sudah dibayar" (`recordPemilikPayoutWithDb`,
+     `payout-manage.test.ts`) sama: DITOLAK dengan pesan eksplisit
+     ("belum dikonfirmasi") SELAMA belum dikonfirmasi, DIBUKTIKAN nol
+     baris tersimpan ke database saat ditolak, lalu berhasil sesudah
+     `confirmDayCutoffWithDb` dipanggil.
+
+   **Kesimpulan jujur untuk CEO**: pagar syarat 3 TERBUKTI HIDUP lewat
+   pemanggilan fungsi sungguhan ke database sungguhan (bukan mock, bukan
+   cuma baca kode) untuk KEDUA jalur (ekspor Excel dan pencatatan
+   pembayaran). Yang BELUM diverifikasi: klik tombol sungguhan di
+   browser (Playwright) — gerbang sudah terbukti benar di lapisan
+   logika/database, tapi belum dilihat langsung dari sisi pengguna.
+
+4. **Pemilik nol penjualan TETAP TAMPIL** — LEFT JOIN dari `pemilik`
+   (tabel dimensi), bukan dari transaksi. Dibuktikan: pemilik tanpa
+   penjualan bulan ini tetap muncul dengan `Rp0`, `dititipkan`/
+   `belumTerjual` tetap terhitung dari barang titipannya yang belum
+   laku.
+
+5. **EKSPOR EXCEL, satu sheet per periode, terkunci sampai syarat 3** —
+   lihat poin 3 di atas.
+
+**Verifikasi jujur — database sungguhan vs "kodenya ditulis" vs
+browser sungguhan**:
+- **Database sungguhan (integration test, DIVERIFIKASI)**: seluruh
+  perhitungan uang dan stok TT10/TT11 (`bagi-hasil-report.test.ts`,
+  `barang-report.test.ts`, `payout-manage.test.ts`,
+  `bagi-hasil-export.test.ts`, plus 4 test baru `dayCutoffConfirmed`
+  di `outlets/manage.test.ts`) — semuanya lewat `sellBarangWithDb`/
+  akun Supabase Auth sungguhan, bukan insert baris manual yang
+  mengarang angka.
+- **`npx tsc --noEmit` dan `npm run lint`**: bersih, nol galat, nol
+  peringatan, atas SELURUH proyek (bukan cuma file baru).
+- **Lapisan UI (`/reports/stock`, `/reports/bagi-hasil`, dialog "Tandai
+  sudah dibayar", unduhan `.xlsx` dari tautan ekspor) DIVERIFIKASI
+  MANUAL OLEH CEO LANGSUNG DI BROWSER** (12 September 2026) — bukan
+  Playwright/skrip otomatis. Keputusan CEO eksplisit: proyek ini
+  konsisten lebih percaya verifikasi tangan manusia untuk lapisan UI
+  daripada menambah dependency skrip browser baru, sama disiplin yang
+  sudah dipakai TT05 (uji pindai barcode fisik, §16) — bukan celah yang
+  belum ditutup, ini pilihan metode verifikasi yang disengaja.
+  Perhitungan uang/stok di baliknya tetap diverifikasi otomatis lewat
+  database sungguhan (baris di atas) — tangan manusia memverifikasi
+  APA YANG TAMPIL, database sungguhan memverifikasi APA YANG BENAR.
+
+### Koreksi CEO — pagar SYARAT 3 cuma memagari SATU dari DUA nilai (12 September 2026)
+
+CEO menemukan lubang di verifikasi "pagar syarat 3 terbukti hidup" di
+atas: batas periode laporan bagi hasil ditentukan **DUA** nilai
+bersama — `dayCutoffTime` outlet DAN zona waktu (`businesses.timezone`)
+tempat jam itu dibaca. Kode HANYA memagari nilai pertama (tombol
+"Konfirmasi" di `/outlets` cuma soal jam). Kalau `businesses.timezone`
+bukan WIB, "04:00" jatuh di momen UTC yang berbeda — CEO bisa
+mengklik "Konfirmasi 04:00", merasa yakin, padahal angkanya tetap bisa
+bergeser karena separuh syaratnya tidak pernah diperlihatkan ataupun
+dipagari. **Pagar yang memberi rasa aman palsu lebih buruk daripada
+tidak ada pagar** — kutipan CEO, dicatat karena ini prinsip yang
+berlaku di luar TT11 juga.
+
+**(a) Nilai sungguhan, dicek langsung, bukan ditebak**: SEMUA
+`businesses.timezone` di database dev saat ini (termasuk bisnis nyata
+`[DEV] Demo Cafe` dan sisa data uji) bernilai `Asia/Jakarta`. Jadi nilai
+`04:00` yang sudah dikonfirmasi selama ini KEBETULAN benar (WIB), tapi
+itu bukan karena kode memaksanya benar.
+
+**(b) Zona waktu sekarang WAJIB tampil bersama cutoff** — kepala
+laporan `/reports/bagi-hasil` (`bagi-hasil-view.tsx`, string
+`strings.bagiHasil.cutoffInfo`) dan kepala sheet ekspor Excel
+(`bagi-hasil-export.ts`, baris pertama sheet, SEBELUM baris label
+kolom) sekarang sama-sama menampilkan `"Batas hari outlet ini: 04:00
+WIB"`, bukan `"04:00"` sendirian. Singkatan WIB/WITA/WIT dipetakan dari
+IANA timezone lewat `formatTimezoneAbbreviation()` baru
+(`lib/utils/business-date.ts`) — HANYA untuk tiga zona resmi Indonesia
+(standar negara, bukan tabel yang bisa berkembang bebas); zona di luar
+itu ditampilkan apa adanya (nama IANA), tidak pernah menebak singkatan.
+
+**(c) Nama parameter diperbaiki** — `getBagiHasilLaporan` dan
+`buildBagiHasilExport` sebelumnya menerima parameter bernama
+`outletTimezone` padahal sumbernya SELALU `businesses.timezone` (outlet
+tidak punya kolom zona waktu sendiri di skema ini sama sekali) — nama
+itu berbohong soal levelnya. Diganti jadi `businessTimezone` di seluruh
+pemanggil.
+
+**(d) Reset otomatis kalau `businesses.timezone` berubah** — dibangun
+`updateBusinessTimezoneWithDb()` (`lib/businesses/manage.ts`, baru),
+pola PERSIS sama dengan reset `dayCutoffConfirmed` yang sudah ada untuk
+perubahan `dayCutoffTime` (`updateOutletWithDb`): kalau nilai timezone
+berubah, `dayCutoffConfirmed` DIRESET ke `false` untuk **SEMUA** outlet
+bisnis itu sekaligus (bukan cuma satu) — karena timezone properti
+bisnis, mempengaruhi perhitungan cutoff setiap outletnya bersamaan.
+Nilai yang sama (dibandingkan langsung, bukan dinormalisasi lebih
+jauh) TIDAK memicu reset. Timezone yang bukan IANA valid (dicek lewat
+`Intl.DateTimeFormat`) ditolak.
+
+**Catatan jujur — fungsi ini BELUM punya pemanggil UI apa pun.** Tidak
+ada halaman pengaturan bisnis di proyek ini sekarang yang bisa mengubah
+`businesses.timezone` — nilainya cuma pernah diisi sekali saat bisnis
+dibuat. `updateBusinessTimezoneWithDb()` dibangun sebagai mekanisme
+aman yang SUDAH SIAP dipakai kapan pun jalur pengubahannya dibangun
+(halaman pengaturan, atau skrip admin) — supaya jalur itu, kapan pun
+dibangun, tidak bisa lupa mereset konfirmasi. Ini BUKAN keputusan
+membangun halaman pengaturan bisnis baru (di luar lingkup TT11), CEO
+belum diminta menyetujui itu — sengaja berhenti di fungsi + test saja.
+
+Diverifikasi (database sungguhan, `businesses/__tests__/manage.test.ts`,
+3 test baru): zona waktu tidak valid ditolak tanpa mengubah apa pun;
+nilai sama tidak mereset outlet mana pun; timezone yang benar-benar
+berubah (Asia/Jakarta → Asia/Jayapura, WIB → WIT) mereset
+`dayCutoffConfirmed` KEDUA outlet uji sekaligus (bukan cuma yang
+sedang aktif). Total setelah koreksi ini: 43 file test, 322 test,
+semua hijau; `tsc`/`lint`/`build` bersih.
