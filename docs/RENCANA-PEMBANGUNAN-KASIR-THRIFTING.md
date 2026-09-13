@@ -3364,6 +3364,71 @@ pengisian, poin 1-2 di atas (nol akun, kolom dorman) tidak lagi
 benar, dan celah yang dianalisis di atas jadi bisa dieksploitasi
 sungguhan.
 
+## §33 · Pembersihan utang terkumpul dari Tahap 5 (13 September 2026)
+
+Tiga utang yang dikumpulkan sengaja selama Tahap 5 (§29-31) dikerjakan
+sekaligus satu putaran, SETELAH Tahap 5/6 tutup -- bukan dicicil di
+tengah pekerjaan RLS supaya tidak merusak dua hal sekaligus (prinsip
+yang sama dipakai berulang sepanjang proyek ini).
+
+### 1. `search_path` untuk `auth_business_ids()` DAN `auth_outlet_ids()`
+
+Yang PALING berisiko dari ketiganya -- `auth_business_ids()` adalah
+dasar SETIAP policy RLS di 30+ tabel sejak migrasi 0000, bukan cuma
+satu tabel. Kill-switch (`scripts/rls-rollback-search-path.sql`)
+disiapkan dan diverifikasi jalan sungguhan DUA KALI (sebelum dan
+sesudah migrasi maju) mengikuti pola persis Tahap 5, sebelum migrasi
+`0036_search_path_auth_functions.sql` dipasang.
+
+`SET search_path = public` dipilih (BUKAN search_path kosong) supaya
+body KEDUA fungsi tidak perlu diubah sama sekali -- referensi
+`memberships` tanpa skema tetap resolve persis seperti sebelumnya.
+Perubahan sekecil mungkin untuk fungsi yang jadi fondasi hampir
+seluruh RLS proyek ini.
+
+Diverifikasi lewat FULL SUITE (576 tes, 62 file) setelah migrasi
+dipasang -- termasuk 23 tes sinkronisasi TS/SQL lintas 7 role
+(`auth-outlet-ids-sync.test.ts`) dan seluruh tes RLS `orders`/
+`shifts`/`barang` (§29-31) -- membuktikan perilaku KEDUA fungsi identik,
+cuma search_path yang berubah. Commit: `9b1327f` (kill-switch),
+`7dd97ea` (migrasi).
+
+### 2. `closeAndReopenShiftWithDb` meneruskan `err.message` mentah
+
+Satu-satunya dari 9 fungsi tulis di `lib/pos/shift.ts` yang tidak
+memakai pesan generik seperti 8 lainnya. Race "shift lama sudah
+ditutup pihak lain" (satu-satunya `throw` custom di file ini, dulu
+ditangkap balik oleh catch-all yang sama) dipindah dari pola
+throw+catch jadi flag `raceLost` yang dicek SETELAH transaksi selesai
+-- pesan spesifiknya (`alreadyClosedError`) tetap sampai ke pengguna
+tanpa perlu catch-all membedakan jenis error lagi, jadi catch-all
+sekarang SELALU pesan generik seperti 8 fungsi lain.
+
+Diverifikasi: seluruh 27 tes `shift.test.ts` (termasuk empat skenario
+`closeAndReopenShiftWithDb`: selisih kecil/besar, PIN salah, outlet
+cashless) tetap hijau tanpa perubahan apa pun ke tes-nya. Commit:
+`b1bad8d`.
+
+### 3. `saveBarangWithDb` jalur CREATE tidak membungkus error
+
+`throw err` mentah di jalur non-unique-violation diganti pesan
+generik, pola sama fungsi lain. HANYA jalur CREATE yang diubah --
+`assertRowsAffected` di jalur UPDATE SENGAJA tetap melempar mentah
+(bug struktural, bukan penolakan akses yang sah, beda kelas masalah,
+lihat komentar `assertRowsAffected` di `lib/db/errors.ts`).
+
+Diverifikasi: `barang/manage.test.ts` (10 tes), `pos-add-barang-
+outlet-scope.test.ts` (3 tes), `rls-barang-outlet-scope.test.ts` (11
+tes, termasuk raw INSERT yang membuktikan `barang_insert` sendiri
+tetap melempar di level RLS) semua tetap hijau. Commit: `359835e`.
+
+### Verifikasi menyeluruh, satu putaran
+
+Full suite (576 tes, 62 file) dan `npm run build` dijalankan ULANG
+setelah ketiga perbaikan digabung (bukan cuma per-perbaikan) -- semua
+hijau, build bersih. Kedua repo (`pos-fnb`, `reportkoperumnasgroup`)
+dikonfirmasi bersih dan ter-push ke origin.
+
 ---
 
 ## PEMBATASAN AKSES PER OUTLET — SELESAI (Tahap 0-5)
@@ -3372,4 +3437,7 @@ Tahap 0 (kelola membership) -- Tahap 1 (fondasi `allowedOutletIds`) --
 Tahap 2 (utilitas filter+assert) -- Tahap 3 (enam halaman baca) --
 Tahap 4 (lima jalur tulis app-layer, termasuk tiga temuan proaktif) --
 Tahap 5 (RLS level database: `orders`, `shifts`, `barang`). Tahap 6
-dilewati sadar, dicatat sebagai utang terikat pemicu di atas.
+dilewati sadar, dicatat sebagai utang terikat pemicu di atas. Tiga
+utang terkumpul dari Tahap 5 dibersihkan satu putaran di §33 --
+`search_path` kedua fungsi RLS, `closeAndReopenShiftWithDb`, dan
+`saveBarangWithDb`.
