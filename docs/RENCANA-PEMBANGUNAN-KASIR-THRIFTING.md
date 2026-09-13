@@ -3441,3 +3441,135 @@ dilewati sadar, dicatat sebagai utang terikat pemicu di atas. Tiga
 utang terkumpul dari Tahap 5 dibersihkan satu putaran di §33 --
 `search_path` kedua fungsi RLS, `closeAndReopenShiftWithDb`, dan
 `saveBarangWithDb`.
+
+---
+
+## §34 · Kesiapan sisi F&B (Indosteak & Indokopi) — investigasi + lima bukti ujung-ke-ujung (13 September 2026)
+
+Rencana peluncuran CEO: Ita/thrifting dulu (matang) -> Indosteak ->
+Indokopi. Investigasi menyeluruh (bukan dugaan) sebelum satu baris
+kode pun dibangun untuk sisi F&B.
+
+### Koreksi terhadap dugaan awal CEO — EMPAT dari LIMA sudah ada
+
+CEO menduga modifier, varian, dine-in vs takeaway, dan tunai+kembalian
+belum ada di sistem (dianggap "khas F&B" yang belum pernah disentuh
+karena thrifting tidak butuh semuanya). **Keempatnya SUDAH ADA**,
+dikonfirmasi lewat pembacaan kode dan (setelah investigasi awal) lewat
+pembayaran sungguhan (lihat bukti di bawah):
+- Modifier: skema+kode ada sejak Fase 1, matematikanya teruji ketat di
+  `order-calculator.test.ts`.
+- Varian: `product_prices.variant_id` + `product_variants.price_delta`
+  ada sejak Fase 1.
+- Dine-in vs takeaway: sudah JALAN lewat `price_tiers`+`channel`
+  (DINEIN/TAKEAWAY/GOFOOD/MEMBER sudah ter-seed), `orders.channel`
+  otomatis mengikuti tier yang dipilih kasir.
+- Tunai+kembalian: `payments.change_amount` + perhitungan di
+  `pay-order.ts` sudah ada sejak T13.
+
+Satu dugaan yang **benar**: pajak & service charge (thrifting 0%) --
+dikonfirmasi persis, tapi dengan catatan: `service_charge_percent`
+saat ini **0% di SEMUA outlet produksi**, termasuk Indosteak/Indokopi
+-- kalkulatornya siap, datanya belum diisi.
+
+### PENGHALANG PELUNCURAN (bukan "data belum diisi" biasa) — pemisahan katalog per brand
+
+**`product_outlets` = 0 baris. `products.brand_id` = 100% NULL.**
+Aturan sistem: produk TANPA baris `product_outlets` = tersedia di
+SEMUA outlet (default). Artinya **hari ini, kalau Indosteak dibuka
+apa adanya, kasirnya akan melihat menu kopi/boba Indokopi (dan
+sebaliknya)** -- 25 produk yang ada di database adalah menu kafe
+generik demo, nol di antaranya menu Indosteak/Indokopi sungguhan, dan
+mekanisme yang SUDAH ADA untuk memisahkannya (`product_outlets`
+whitelist per outlet, `brands` untuk label) **belum dipakai sama
+sekali**.
+
+**Ini PENGHALANG PELUNCURAN untuk Indosteak, bukan catatan biasa** --
+mengisi katalog+kategori+modifier Indosteak sungguhan DAN mengisi
+`product_outlets`/`brand_id` yang sesuai WAJIB selesai sebelum outlet
+pertama buka, atau kasir hari pertama menjual menu yang salah total.
+Ini pekerjaan DATA (CEO yang isi), bukan pekerjaan kode -- mekanismenya
+sudah ada dan terbukti benar (T22a).
+
+### Lima jalur ujung-ke-ujung dibuktikan lewat pembayaran sungguhan (nol kode produksi baru)
+
+Sebelumnya cuma teruji sebagai matematika murni (`order-calculator.test.ts`)
+atau tidak teruji sama sekali lewat `payOrderWithDb` yang sungguh
+menulis ke database. File baru `src/lib/pos/__tests__/pay-order-fnb-
+integration.test.ts` (pos-fnb) membuktikan KELIMANYA, memakai
+`calculateOrder()` sebagai ORACLE (input yang sama persis yang
+dibangun `payOrderWithDb` secara internal) dibandingkan ke angka yang
+BENAR-BENAR tersimpan di database, di outlet bergaya Indosteak/
+Indokopi (pajak 10%, service charge 5% -- sengaja diisi di fixture
+tes, bukan 0% seperti data produksi hari ini):
+
+1. **Modifier berharga > 0** -- harga modifier masuk ke `grossAmount`/
+   `netAmount`, tersimpan di `order_items`+`order_item_modifiers`, dan
+   `getSalesByProduct` (laporan penjualan) menghitungnya benar.
+2. **Varian (variantId non-null)** -- `unitPrice` yang tersimpan =
+   harga dasar + `priceDelta` varian (bukan harga dasar polos) --
+   dibuktikan angka eksplisit (20000+8000=28000), bukan cuma "lebih
+   besar dari 0".
+3. **Pajak > 0 ujung-ke-ujung** -- `taxAmount`/`total` yang tersimpan
+   cocok PERSIS dengan `calculateOrder()` (bukan didekati/dibulatkan
+   beda).
+4. **Split payment** (dua metode bayar, QRIS+tunai, satu order) --
+   **DIDUKUNG PENUH**, kedua baris `payments` tersimpan benar, jumlah
+   keduanya menutupi total. **Catatan desain yang ditemukan, bukan
+   bug**: kembalian dilekatkan ke pembayaran TERAKHIR di array yang
+   dikirim klien, bukan ke pembayaran yang metodenya tunai -- kalau UI
+   nanti mengirim urutan QRIS-setelah-tunai, kembalian akan salah
+   nempel ke QRIS. UI wajib selalu mengirim tunai TERAKHIR kalau ada
+   kembalian. Dicatat di sini supaya diperhatikan saat membangun layar
+   split payment, BUKAN tugas coding sekarang.
+5. **Service charge > 0 ujung-ke-ujung** (usul CEO, kelas sama poin 3)
+   -- `serviceCharge` yang tersimpan cocok persis dengan oracle, DAN
+   dibuktikan `serviceChargeInTaxBase=true` benar-benar mengubah
+   `taxAmount` (bukan setting yang diam/tidak berpengaruh).
+
+**Kelima jalur LULUS tanpa satu pun kegagalan** -- tidak ada yang perlu
+diperbaiki, tidak ada temuan yang mengharuskan berhenti. Kesimpulan:
+backend F&B (modifier, varian, pajak, split payment, service charge)
+**siap dipakai apa adanya** untuk Indosteak/Indokopi, dengan satu
+catatan desain (poin 4 di atas) untuk diperhatikan saat UI-nya
+dibangun nanti.
+
+### HPP nol -- angka laba TIDAK BOLEH dipakai mengambil keputusan (dicatat, TIDAK diperbaiki)
+
+Dikonfirmasi §34 sejalan dengan §01-TASK-BOARD Fase 2: `pay-order.ts`
+hardcode `unitCogs`/`cogsTotal` = `"0"` untuk SETIAP order F&B (skema
+resep/bahan belum ada). **Implikasinya eksplisit, bukan cuma "belum
+akurat"**: `grossProfit` yang tersimpan = `netSales` PENUH --
+**margin/laba kotor per produk terbaca 100% di SEMUA produk F&B**,
+angka yang secara harfiah salah kalau dipakai untuk keputusan harga
+atau evaluasi produk mana yang menguntungkan. **Angka laba di sistem
+ini TIDAK BOLEH dipakai mengambil keputusan bisnis apa pun sampai Fase
+2 (resep/HPP) ada.** Dashboard (T18) sudah menandai ini sebagai
+placeholder yang terlihat, bukan Rp0 yang menyesatkan diam-diam --
+tapi "terlihat sebagai placeholder" beda dari "terbaca 100%", jadi
+tetap perlu ditulis eksplisit di sini.
+
+**Thrifting TIDAK kena masalah yang sama** -- `barang.harga_modal`
+dicatat manual per barang (bukan dari resep), jadi laba kotor
+thrifting sudah akurat sejak awal, tidak menunggu Fase 2.
+
+### Ditunda, dicatat (instruksi eksplisit CEO -- jangan dikerjakan)
+
+- **KDS (layar dapur)** dan **manajemen meja**: kolom/tabel ada di
+  skema (`order_items.kitchen_status`, tabel `tables`,
+  `orders.table_id`), nol baris kode yang pernah menyentuhnya. Ditunda.
+- **Playwright/e2e untuk `/pos`**: proyek ini nol test otomatis untuk
+  layar React kasir (cuma fungsi backend yang teruji). CEO setuju
+  dengan alasan biaya-manfaat yang diajukan -- ditunda.
+- **`product_outlets`/`brand_id`**: PENGHALANG PELUNCURAN (di atas),
+  tapi pekerjaan DATA, bukan coding -- CEO yang mengisi.
+
+### Data yang harus disiapkan sebelum Indosteak buka (ringkas dari laporan investigasi)
+
+Katalog menu+kategori+modifier Indosteak sungguhan (nol hari ini,
+25 produk yang ada = demo generik), `product_outlets`/`brand_id`
+(lihat penghalang di atas), karyawan+PIN sungguhan (cuma 5 untuk
+seluruh bisnis hari ini, jelas placeholder), device per outlet dicek
+ter-pairing (4 device untuk 5 outlet aktif -- perlu dicek per outlet
+mana yang belum), keputusan service charge (isi persen atau biarkan
+0%).
