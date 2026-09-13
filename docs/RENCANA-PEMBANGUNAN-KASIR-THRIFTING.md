@@ -2182,3 +2182,77 @@ Build + lint + typecheck bersih.
 
 Menunggu keputusan CEO untuk lanjut ke Tahap 3 (halaman baca-saja,
 pemasangan filter PERTAMA kali ke halaman sungguhan).
+
+## §24 · Pembatasan akses per outlet — Tahap 3, halaman 1/6: Dashboard (13 September 2026)
+
+Aturan CEO untuk seluruh Tahap 3: SATU HALAMAN PER COMMIT, TIGA TES
+wajib per halaman (scope null/satu-outlet/kosong), pesan eksplisit
+"Anda tidak punya akses ke outlet manapun -- hubungi admin" saat scope
+kosong (beda jelas dari "belum ada data"), JANGAN sentuh halaman tulis
+atau RLS. Lapor setelah halaman pertama, bukan setelah keenamnya.
+
+### Dashboard TERNYATA lebih besar dari lima halaman lain
+
+Dashboard (`app/(dashboard)/page.tsx`) menyentuh TIGA fungsi query
+berbeda, bukan satu -- lebih besar dari perkiraan awal "halaman
+pertama untuk melihat pola":
+- `getSalesByBrand()` (`lib/db/queries/sales-report.ts`) -- SEBELUM
+  Tahap 3, fungsi ini TIDAK PUNYA parameter outlet sama sekali (selalu
+  agregasi SEMUA outlet per brand). Ditambah `allowedOutletIds: OutletScope`
+  WAJIB (bukan opsional) di parameter filter, diterapkan di JOIN
+  `outlets` (kondisi tambahan sejajar `eq(outlets.isActive, true)` yang
+  sudah ada) lewat `outletScopeCondition()` Tahap 2.
+- `getOpenShiftsForBusiness()` dan `getShiftsNeedingReview()`
+  (`lib/pos/shift.ts`) -- ditambah parameter `allowedOutletIds:
+  OutletScope` WAJIB di akhir, diterapkan ke `shifts.outletId` lewat
+  `outletScopeCondition()`. WAJIB, bukan opsional dengan default `null`
+  -- kalau opsional, pemanggil baru yang lupa mengisi akan diam-diam
+  dapat "semua outlet", persis kelas kesalahan yang seluruh Tahap 2/3
+  ini dibangun untuk mencegah. Karena wajib, 4 titik panggil lama (3 di
+  `shift.test.ts`, 1 di `scripts/demo-thrift-guest-account.ts`) GAGAL
+  DI COMPILE TIME sampai diisi eksplisit `null` -- persis efek yang
+  diinginkan, ditemukan lewat `tsc --noEmit`, bukan lolos diam-diam.
+
+### Kombinasi dengan filter outlet yang SUDAH ADA sebelum Tahap 3
+
+Dashboard sudah punya mekanisme penyempitan outlet sendiri sejak 11
+September 2026 (drill-down per BRAND -- `SalesReportFilter.outletId:
+string[]`, `outletFilterClause()` bahkan sudah punya penanganan
+array-kosong-berarti-false sendiri, versi lama dari logika yang sama
+Tahap 2 buat generik). Dua mekanisme ini WAJIB berlaku SEKALIGUS --
+outlet yang lolos harus ada di KEDUANYA. Ditambahkan
+`intersectOutletScope(allowedOutletIds, pageFilter)` di
+`lib/auth/outlet-scope.ts` untuk ini, generik (bukan spesifik
+Dashboard) -- kemungkinan besar dipakai lagi di Laporan Penjualan/
+Laporan Stok kalau keduanya sudah punya dropdown pilih-outlet sendiri.
+
+### Pesan scope kosong
+
+Ditambahkan `strings.common.noOutletAccess` (satu string dipakai
+ULANG di semua halaman Tahap 3, bukan ditulis ulang per halaman) --
+Dashboard MEMOTONG SELURUH render begitu `allowedOutletIds` array
+kosong terdeteksi (sebelum query lain apa pun dijalankan), menampilkan
+CUMA pesan akses ini, bukan dashboard kosong yang mirip "toko sepi".
+
+### Diverifikasi -- tiga tes wajib, dua file baru
+
+- `lib/db/queries/__tests__/sales-by-brand-outlet-scope.test.ts` (4
+  tes) -- dua outlet, order SUNGGUHAN (`payOrderWithDb`) beda qty per
+  outlet supaya tidak mungkin tertukar diam-diam. Scope null -> netSales
+  gabungan benar; scope satu outlet -> netSales CUMA outlet itu, outlet
+  lain nol jejak; scope kosong -> **brand tidak muncul sama sekali di
+  hasil**, bukan brand dengan angka nol.
+- `lib/pos/__tests__/shift-outlet-scope.test.ts` (7 tes) -- dua outlet,
+  shift terbuka di keduanya (satu sengaja dipaksa basi untuk menguji
+  `getShiftsNeedingReview` juga). Tiga kasus yang sama untuk KEDUA
+  fungsi.
+
+Full suite: **50 file, 420 tes hijau** (naik dari 48 file/404 tes
+sebelum halaman ini -- selisihnya 16 tes baru: 4 di
+`sales-by-brand-outlet-scope.test.ts`, 7 di
+`shift-outlet-scope.test.ts`, sisanya dari perluasan tes murni
+`intersectOutletScope` di `outlet-filter.test.ts`). Build + lint +
+typecheck bersih.
+Halaman baca-saja lain (Laporan Penjualan, Laporan Stok, Laporan Bagi
+Hasil, Barang, Kartu Stok Bahan) MASIH BELUM disentuh -- menunggu
+keputusan CEO atas halaman pertama ini sebelum polanya diulang.
