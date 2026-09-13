@@ -2092,3 +2092,65 @@ hijau**. Build + lint + typecheck bersih.
 
 Menunggu keputusan CEO untuk lanjut ke Tahap 2 (utilitas filter +
 assert, masih belum dipasang ke halaman mana pun).
+
+## §23 · Pembatasan akses per outlet — Tahap 2: utilitas filter + assert (13 September 2026)
+
+Masih NOL pemasangan ke halaman/Server Action mana pun (Tahap 3/4) --
+cuma utilitasnya, semua di `lib/auth/outlet-scope.ts` (satu file yang
+sama dengan Tahap 1, sengaja -- supaya logika "null vs array kosong"
+cuma ada di SATU tempat, bukan ditulis ulang tiap fungsi).
+
+**Bentuk yang dipilih supaya sulit dipakai salah (permintaan CEO
+eksplisit)**: `resolveOutletScope()` (privat, tidak diekspor) memaksa
+setiap fungsi publik menangani TIGA kasus lewat `switch` tanpa
+`default` (unrestricted/none/specific) -- pemanggil dari luar file ini
+TIDAK PERNAH menulis `if (allowedOutletIds)` atau `.length` sendiri,
+yang justru sumber dua arah kesalahan yang CEO khawatirkan:
+- `outletScopeCondition(scope, column)` SELALU mengembalikan SQL yang
+  valid untuk di-AND-kan tanpa syarat: `sql\`true\`` untuk tak
+  terbatas, `sql\`false\`` untuk array kosong (BUKAN "tidak ada
+  filter" -- dua konstanta SQL eksplisit yang tidak mungkin tertukar),
+  `inArray(...)` untuk daftar spesifik. Tidak ada cabang kondisional
+  yang diserahkan ke pemanggil sama sekali.
+- `outletScopeConditionForTransfer(scope, fromColumn, toColumn)` --
+  fungsi TERPISAH (bukan dipaksakan lewat `outletScopeCondition` satu
+  kolom) untuk `stock_transfers`, OR lintas dua kolom.
+- `isOutletAllowed(scope, outletId)` -- boolean, dipakai
+  `assertOutletAllowed(scope, outletId, context)` yang SELALU MELEMPAR
+  kalau ditolak (tidak pernah mengembalikan boolean yang bisa
+  diabaikan pemanggil, keputusan CEO eksplisit).
+
+**Diverifikasi lewat query DB sungguhan, KEDUA ARAH kesalahan** (bukan
+cuma nilai balik fungsi murni):
+- `lib/auth/__tests__/outlet-filter.test.ts` -- fixture 2 outlet + 2
+  device (satu per outlet). Scope `null` mengembalikan KEDUA device
+  (null tidak dibaca sebagai kosong); scope `[]` mengembalikan NOL
+  device (kosong tidak dibaca sebagai null); scope `[outletA]`
+  mengembalikan cuma device outlet itu.
+- Kasus transfer stok: fixture 3 outlet (A/B/C) + 2 transfer (A→B,
+  B→C). Scope `[outletB]` sengaja dites paling ketat -- B muncul
+  sebagai TO di baris pertama DAN FROM di baris kedua, jadi hasil yang
+  benar adalah KEDUA transfer kembali (membuktikan OR lintas kolom
+  DAN lintas baris, bukan cuma kebetulan satu kolom cocok).
+- `assertOutletAllowed` dites melempar (bukan cuma mengembalikan
+  false) untuk kasus ditolak, dan pesan errornya menyertakan
+  `context` yang diberikan pemanggil (memudahkan debug jalur non-UI).
+
+**Kesalahan yang ditangkap sendiri sebelum sempat jalan** (bukan oleh
+CEO): draf pertama test file ini menulis
+`eq(stockTransfers.businessId, businessId) && outletScopeCondition(...)`
+di `.where(...)` -- pakai operator JS `&&`, BUKAN `and()` dari
+drizzle-orm. Karena kedua sisi adalah objek SQL (truthy), `&&`
+mengembalikan operand KANAN begitu saja dan **operand kiri (filter
+business_id) hilang sepenuhnya dari query** -- persis kelas bug "filter
+diam-diam tidak ikut" yang seluruh Tahap 2 ini dibangun untuk dicegah,
+kali ini di kode tes saya sendiri. Ditemukan lewat review sebelum
+dijalankan, diperbaiki jadi `and(eq(...), outletScopeCondition(...))`
+di semua 6 titik yang kena.
+
+Full suite: **48 file, 404 tes hijau** (naik dari 47 file/389 tes di
+Tahap 1 -- selisihnya 15 tes baru `outlet-filter.test.ts` di atas).
+Build + lint + typecheck bersih.
+
+Menunggu keputusan CEO untuk lanjut ke Tahap 3 (halaman baca-saja,
+pemasangan filter PERTAMA kali ke halaman sungguhan).
