@@ -2646,3 +2646,89 @@ Full suite: dicatat di commit. Build + lint + typecheck bersih.
 
 Lanjut Outlets → Employees → Devices tanpa lapor di tengah (instruksi
 CEO). Berhenti SEBELUM Stock Transfers -- rancangan dilaporkan dulu.
+
+CEO menegaskan bobot temuan `addBarangFromShiftWithDb`: **lubang
+sungguhan yang sudah terbuka di produksi, bukan pertahanan berlapis**
+-- barang thrifting terikat pemilik titipan + bagi hasil, jadi outlet
+salah = uang pemilik titipan berpindah diam-diam ke laporan outlet
+yang salah, bukan cuma data tidak rapi. Perbaikannya (`[shift.outletId]`)
+dicatat sebagai penerapan LANGSUNG prinsip "shift mempersempit, tidak
+pernah memberi" (§21) ke jalur yang aturan itu belum pernah menyentuh.
+
+**Utang dicatat untuk DITINJAU SETELAH TAHAP 4 (bukan sekarang)**:
+`isOutletAllowed()` mengembalikan boolean biasa, bisa diabaikan
+pemanggil baru -- persis yang `assertOutletAllowed()` Tahap 2 hindari.
+Aman di jalur yang sudah ada (hasilnya selalu langsung dipakai), tapi
+tidak ada yang MEMAKSA pemanggil berikutnya menulis pola itu. Usulan
+bentuk yang lebih sulit dipakai salah menyusul setelah item 5 (Stock
+Transfers) selesai.
+
+### Tahap 4, item 2/5 — Outlets (ubah outlet yang sudah ada)
+
+`updateOutletWithDb`: outlet TIDAK PUNYA "outletId induk" seperti
+employees/devices -- baris yang diubah ADALAH outletnya sendiri, jadi
+cuma SATU sumber dicek: `data.id`. `createOutletWithDb` SENGAJA TIDAK
+disentuh -- owner-only ("settings.business"), owner SELALU
+`allowedOutletIds` null, dan outlet baru belum py "outlet existing"
+untuk diperiksa cakupannya.
+
+**Ditambah PROAKTIF**: `confirmDayCutoffWithDb` (tombol "Konfirmasi"
+terpisah dari form edit penuh, TT11) -- fungsi tulis lain yang
+menerima `outletId` langsung tanpa gerbang apa pun sampai sekarang,
+gerbang izin sama (`outlet.manage`).
+
+Diverifikasi: 6 tes baru di `outlets/__tests__/manage.test.ts` --
+`updateOutletWithDb`/`confirmDayCutoffWithDb` outlet lain (DITOLAK,
+baris tidak berubah, pesan tidak menyebut outlet), outlet yang
+diizinkan (berhasil), array kosong (DITOLAK).
+
+### Tahap 4, item 3/5 — Employees
+
+**Kasus jahat CEO diterapkan persis**: `updateEmployeeWithDb` memeriksa
+DUA sumber TERPISAH -- outletId BARIS SAAT INI (diambil ulang dari DB)
+DAN outletId TUJUAN (`data.outletId`, employees BISA dipindah outlet
+lewat form ini, beda dari barang). Baris di outlet lain ditolak walau
+input tujuan diisi outlet yang diizinkan (mencoba "menarik"); baris di
+outlet yang diizinkan ditolak juga kalau tujuannya outlet lain (mencoba
+"mendorong keluar"). Kedua arah dites eksplisit dengan pembuktian baris
+TIDAK PERNAH pindah.
+
+**Kasus khusus**: `employees.outletId` NULLABLE (karyawan lintas-outlet).
+Helper `isEmployeeOutletAllowed()` baru: outlet `null` cuma bisa
+disentuh scope TAK TERBATAS (`null`) -- ambigu ditolak, bukan
+diloloskan, supaya tidak jadi celah "karyawan tanpa outlet = bisa
+disentuh siapa saja yang dibatasi".
+
+**Ditambah PROAKTIF**: `resetPinWithDb` dan `unlockEmployeeWithDb` --
+dua fungsi tulis terpisah, menerima `employeeId` langsung tanpa
+gerbang apa pun sampai sekarang, gerbang izin sama (`employee.manage`).
+Dibuktikan: PIN lama tetap berfungsi / karyawan tetap terkunci setelah
+percobaan ditolak.
+
+Diverifikasi: 8 tes baru di `employees/__tests__/manage.test.ts`.
+
+### Tahap 4, item 4/5 — Devices
+
+`updateDeviceWithDb`: pola DUA sumber sama persis employees
+(`devices.outletId` NOT NULL, jadi tidak perlu helper null-handling
+terpisah). `createDeviceWithDb`: satu sumber (input).
+
+**Ditambah PROAKTIF, temuan paling jauh dari daftar CEO**:
+`pairDeviceWithDb` (`lib/pos/device-pairing.ts`, `/pos/setup`) --
+memasangkan tablet ke device outlet lain membiarkan manajer yang
+dibatasi beroperasi seolah berwenang atas outlet itu SEBELUM PIN
+karyawan pernah dicek. Pesan pakai `outletAccessDenied` (bukan pola
+`notFound()` Tahap 3) -- ini jalur TULIS (baris `devices` diperbarui),
+bukan halaman baca-by-id.
+
+Diverifikasi: 7 tes baru gabungan `devices/__tests__/manage.test.ts`
+(4 baru) dan `pos/__tests__/device-pairing.test.ts` (3 baru) --
+termasuk bukti `lastPairedAt` TIDAK PERNAH tertulis untuk percobaan
+yang ditolak.
+
+Full suite: dicatat di commit (tiga commit terpisah, satu per item).
+Build + lint + typecheck bersih.
+
+**Berhenti SEBELUM Stock Transfers** -- rancangan wajib dilaporkan
+dulu sebelum dibangun (gerbang per AKSI, bukan per baris: outlet ASAL
+vs outlet TUJUAN beda hak untuk aksi berbeda).
