@@ -3154,3 +3154,126 @@ hijau, tidak ada yang diakali.**
 Barang **belum disentuh**. Commit pos-fnb: `8c14df8` (kill-switch),
 `fe2e70b` (migrasi + schema + tes). Push ke origin dilakukan sebelum
 migrasi 0034 dipasang (kelanjutan dari kebiasaan backup §29).
+
+## §31 · Pembatasan akses per outlet — Tahap 5: RLS level database, `barang` (13 September 2026) — TAHAP 5 TUTUP
+
+Tabel KETIGA dan TERAKHIR Tahap 5. `auth_outlet_ids(business_id)`
+DIPAKAI ULANG APA ADANYA (migrasi 0033) -- tidak ada fungsi SQL baru
+di migrasi 0035. Tiga policy `barang` (select/insert/update) dapat AND
+kondisi outlet persis sama bentuknya dengan `orders` dan `shifts`.
+
+### Temuan WAJIB dilaporkan SEBELUM policy dipasang — "Ita super kasir"
+
+`addBarangFromShiftWithDb` (`lib/pos/pos-add-barang.ts`) menulis lewat
+`requirePermissionDb()` -> `getUserDb(accessToken)` -- **sama kelas
+risiko dengan `shifts`**: identitas RLS yang berlaku adalah akun yang
+login di tablet POS, BUKAN Ita yang PIN. Kalau akun tablet dibatasi
+dan `outlet_ids`-nya tidak memuat outlet shift itu sendiri, SEMUA
+kasir gagal menambah barang dari kasir langsung. **Keputusan CEO:
+lanjut bangun, dicatat sebagai SYARAT PELUNCURAN** (pola sama
+shifts/gudang) -- akun yang login di tablet POS produksi harus
+mencakup outlet tablet itu di `outlet_ids`-nya, atau memakai akun
+unrestricted.
+
+### Koreksi terhadap dugaan awal — ditemukan SAAT MENULIS TES, bukan diasumsikan lalu dibiarkan
+
+Dugaan sebelum menulis kode: `saveBarangWithDb` jalur CREATE tidak
+membungkus error jadi pesan generik (beda dari `shift.ts`), jadi kalau
+RLS menolak, `addBarangFromShiftWithDb` akan MELEMPAR mentah.
+**Terbukti salah saat tes dijalankan** -- hasil sungguhan adalah
+`{error: "Terjadi kesalahan, coba lagi"}`, GRACEFUL, bukan lemparan.
+Ditelusuri kenapa: baris PERTAMA `addBarangFromShiftWithDb` melakukan
+`SELECT` ke `shifts` (`innerJoin` ke `employees`) untuk membaca shift
+yang dimaksud -- SELECT ini SUDAH digerbang `shifts_select`
+outlet-aware (§30, dipasang LEBIH DULU dari `barang`). Manajer yang
+tidak berwenang di outlet shift itu GAGAL DI SITU (shift tidak
+ketemu, `{error: unexpectedError}`, graceful) -- **tidak pernah
+sampai ke `db.insert(barang)` sama sekali**.
+
+Diverifikasi secara terpisah (raw INSERT langsung ke `barang`, BUKAN
+lewat `addBarangFromShiftWithDb`) bahwa policy `barang_insert` MEMANG
+melempar kalau benar-benar tercapai -- jadi celah try/catch di
+`saveBarangWithDb` tetap NYATA secara struktural (utang, dicatat di
+bawah), cuma TIDAK TERAKTIFKAN lewat pemanggil yang ada sekarang,
+karena lapisan `shifts` yang dipasang lebih dulu menutupnya secara
+transitif. Pelajaran yang dicatat eksplisit: **urutan pemasangan RLS
+antar tabel yang saling berhubungan bisa mengubah PERILAKU kegagalan
+tabel berikutnya** -- dugaan yang benar untuk `barang` sendirian bisa
+salah begitu `shifts` sudah lebih dulu digerbang.
+
+### Kill-switch — pola sama `orders`/`shifts`, diverifikasi dua kali
+
+`scripts/rls-rollback-barang.sql` -- revert tiga policy `barang` ke
+business-only, termasuk catatan eksplisit soal risiko "Ita super
+kasir" di kepala file. Diverifikasi jalan sungguhan di dev, sebelum
+DAN sesudah migrasi maju dipasang.
+
+### Bukti lima skenario + temuan empiris `order_items`
+
+11 tes lewat koneksi RLS SUNGGUHAN:
+1-4. Sama persis pola `orders`/`shifts`: owner dan akuntan lihat
+barang semua outlet, manajer dibatasi outlet A lihat cuma outlet A,
+`outlet_ids` kosong nol baris.
+5. `addBarangFromShiftWithDb` SUNGGUHAN: manajer A coba tambah barang
+   dari shift outlet B -- DITOLAK (lewat gerbang `shifts`, dibuktikan
+   di atas), tambah barang dari shift outlet A sendiri BERHASIL,
+   UPDATE langsung ke barang outlet B nol baris berubah, DAN raw
+   INSERT langsung (bukan lewat fungsi aplikasi) MELEMPAR --
+   membuktikan `barang_insert` sendiri memang menolak.
+
+**Temuan empiris `order_items`**: `order_items` punya `barangId`
+menunjuk `barang`, TAPI policy-nya (`EXISTS` ke `orders` saja) TIDAK
+PERNAH merujuk `barang` sama sekali. Diuji dengan kombinasi sengaja
+janggal -- order_item yang `barangId`-nya menunjuk barang OUTLET B
+(di luar cakupan manajer A) tapi order-nya sendiri di OUTLET A (dalam
+cakupan) -- **order_item ini TETAP UTUH terlihat**, `barangId`-nya pun
+tetap terbaca walau baris `barang` yang dirujuk sendiri tidak bisa
+diakses langsung oleh manajer A. **`order_items` sepenuhnya
+independen dari RLS `barang`.** Konsisten dengan `bagi-hasil-
+report.ts` yang TIDAK PERNAH JOIN `order_items` ke `barang` untuk
+`bagianPemilik` -- kolom `pemilikShareAmount` dkk sudah snapshot sejak
+transaksi terjadi.
+
+### Regresi WAJIB — dijalankan ulang APA ADANYA
+
+`bagi-hasil-outlet-scope.test.ts`: **bagianPemilik Salma outlet BTHR
+TETAP 60000** -- tabel paling dekat dengan uang pemilik titipan, tidak
+terpotong diam-diam. `barang-list-outlet-scope.test.ts` (termasuk
+bagian halaman cetak label akses by-id), `code128.test.ts`,
+`barcode-canvas.test.ts`, `pos-add-barang-outlet-scope.test.ts`
+(Tahap 4, app-layer), `barang/manage.test.ts` (Tahap 4). **Semua
+hijau, tidak ada yang diakali.**
+
+### Utang dikumpulkan — dikerjakan setelah Tahap 6, sekalian
+
+Tiga akar penyebab berbeda, sengaja DIKUMPULKAN jadi satu putaran
+perbaikan nanti (bukan dikerjakan sekarang, bukan dilupakan):
+1. `search_path` belum di-set eksplisit untuk `auth_business_ids()`
+   MAUPUN `auth_outlet_ids()` (§29).
+2. `closeAndReopenShiftWithDb` meneruskan `err.message` MENTAH ke
+   pengguna, beda dari 8 fungsi lain di `shift.ts` yang pakai pesan
+   generik (§30).
+3. `saveBarangWithDb` jalur CREATE tidak membungkus error RLS jadi
+   pesan generik (beda dari pola `shift.ts`) -- saat ini tidak
+   teraktifkan lewat `addBarangFromShiftWithDb` (ditutup transitif
+   oleh gerbang `shifts`), TAPI tetap nyata secara struktural untuk
+   pemanggil `saveBarangWithDb` lain mana pun di masa depan.
+
+### TAHAP 5 TUTUP
+
+Tiga tabel selesai: `orders` (§29), `shifts` (§30), `barang` (§31).
+Pola yang konsisten di ketiganya: rancangan dilaporkan dan disetujui
+CEO SEBELUM satu baris migrasi pun ditulis, kill-switch disiapkan dan
+diverifikasi jalan sungguhan DUA KALI (sebelum dan sesudah migrasi
+maju) sebelum migrasi dipasang, lima skenario RLS lewat koneksi
+sungguhan (bukan admin bypass), tabel turunan dibuktikan EMPIRIS
+(bukan dipercaya dari teori) -- `order_items` (dua kali, terhadap
+`orders` dan terhadap `barang`), `cash_movements`. Semua regresi
+wajib (termasuk yang paling dekat dengan uang pemilik titipan)
+dijalankan ulang apa adanya, tidak ada yang diakali. Push ke origin
+sebelum setiap migrasi maju dipasang.
+
+Commit pos-fnb: `a040281` (kill-switch), `906ed99` (migrasi + schema +
+tes, TAHAP 5 TUTUP).
+
+Menunggu instruksi CEO untuk Tahap 6 -- tidak lompat langsung.
