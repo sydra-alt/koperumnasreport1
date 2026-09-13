@@ -2376,3 +2376,45 @@ bersih di setiap titik sebelum commit.
 Berhenti SEBELUM Laporan Bagi Hasil sesuai instruksi CEO -- menunggu
 tinjauan sebelum menyentuh halaman yang berurusan dengan pembayaran ke
 pemilik titipan.
+
+### Koreksi CEO — alasan sesungguhnya notFound() vs assertOutletAllowed(), jadikan POLA STANDAR
+
+Alasan saya sebelumnya ("tidak membocorkan bahwa kode itu ada") BENAR
+tapi tidak menjelaskan sampai tuntas. Alasan penuh dari CEO: kalau
+halaman akses-by-id melempar pesan "akses ditolak" yang BEDA dari
+"tidak ditemukan", orang yang punya beberapa kode barang di tangan
+(hasil tebak-tebak, atau pernah lihat sebagian) bisa MEMBEDAKAN kode
+yang benar-benar tidak ada dari kode yang ADA tapi di luar cakupannya
+-- itu sendiri kebocoran informasi (mengonfirmasi keberadaan baris
+data yang seharusnya dia tidak tahu ada), bahkan tanpa pernah melihat
+isi barisnya. `notFound()` menyatukan kedua kasus jadi satu respons
+yang tidak bisa dibedakan dari luar -- "tidak ada" dan "tidak boleh"
+harus terlihat SAMA ke pemanggil.
+
+**Ini jadi POLA STANDAR untuk SEMUA halaman akses-by-id ke depan**
+(bukan cuma `barang/[id]/label`): fetch baris by id + businessId dulu,
+lalu `if (!row || !isOutletAllowed(allowedOutletIds, row.outletId))
+notFound();` -- SATU pengecekan gabungan, SATU respons, tidak pernah
+pesan berbeda untuk "tidak ada" vs "di luar cakupan".
+`assertOutletAllowed()` (melempar Error) tetap untuk jalur TULIS yang
+memang harus berisik ke pemanggil yang salah pakai — bukan untuk
+halaman baca yang diakses langsung by-id.
+
+### UTANG TERBUKA — jendela nyata, dicatat dengan nama fungsi (WAJIB item PERTAMA Tahap 4)
+
+**`saveBarang`** (Server Action, `app/(dashboard)/barang/actions.ts`) →
+**`saveBarangWithDb`** (`lib/barang/manage.ts`) menerima `outletId`
+mentah dari FormData TANPA validasi cakupan apa pun. Tahap 3 cuma
+menyaring TAMPILAN dropdown form intake (supaya tidak menampilkan
+outlet terlarang) -- dropdown yang bersih TIDAK MENCEGAH pemanggilan
+langsung: manajer yang dibatasi ke Outlet A bisa memanggil `saveBarang`
+langsung (bukan lewat form, misal lewat request manual) dengan
+`outletId` Outlet B dan BERHASIL menambah barang di outlet yang bukan
+haknya, HARI INI, selama Tahap 4 belum dikerjakan. Ini bukan risiko
+teoretis -- ini gerbang yang sengaja belum dipasang, dicatat di sini
+persis supaya tidak hilang di antara tahap.
+
+**Tindakan wajib di Tahap 4**: `saveBarangWithDb` harus jadi fungsi
+PERTAMA yang dipasangi `assertOutletAllowed(allowedOutletIds,
+data.outletId, "saveBarangWithDb")` sebelum insert/update apa pun,
+sebelum halaman tulis lain mana pun dikerjakan.
