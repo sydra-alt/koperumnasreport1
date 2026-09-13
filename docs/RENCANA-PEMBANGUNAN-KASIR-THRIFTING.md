@@ -2095,6 +2095,43 @@ assert, masih belum dipasang ke halaman mana pun).
 
 ## §23 · Pembatasan akses per outlet — Tahap 2: utilitas filter + assert (13 September 2026)
 
+### Pelajaran paling berharga dari Tahap 2 — bukan fiturnya (kata CEO, dan benar)
+
+Draf pertama `lib/auth/__tests__/outlet-filter.test.ts` menulis:
+
+```ts
+.where(eq(stockTransfers.businessId, businessId) && outletScopeConditionForTransfer(...))
+```
+
+`&&` di sini operator JAVASCRIPT, bukan `and()` drizzle-orm. Kedua sisi
+adalah OBJEK SQL — dan objek, apa pun isinya, SELALU truthy di
+JavaScript. `&&` mengevaluasi operand kiri (truthy), lalu **langsung
+mengembalikan operand KANAN begitu saja** — operand kiri dibuang,
+bukan digabung. Efeknya: filter `business_id` hilang TOTAL dari query,
+tanpa error, tanpa warning, tanpa baris merah di mana pun. Query tetap
+valid secara SQL, tetap jalan, tetap mengembalikan hasil — cuma
+hasilnya salah: **data lintas BISNIS**, bukan cuma lintas outlet.
+Kalau ini lolos ke kode produksi, business A bisa melihat baris milik
+business B, jenis kebocoran paling parah yang proyek ini punya (lebih
+parah dari kebocoran lintas-outlet yang Tahap 2 ini dibangun untuk
+dicegah — itu baru lintas TENANT).
+
+Ini ditulis SENDIRI, di ronde yang secara eksplisit dibangun untuk
+mencegah persis kelas bug ini ("null dibaca kosong, kosong dibaca
+null, filter yang diam-diam tidak ikut"). Ditemukan lewat membaca
+ulang kode sebelum menjalankannya, bukan oleh CEO, bukan oleh test
+yang gagal — kalau tidak ketemu saat itu, tes yang saya tulis sendiri
+akan lulus (fixture cuma satu bisnis, jadi hilangnya filter
+business_id tidak akan pernah terlihat dari HASIL test, cuma dari
+membaca query yang dihasilkan). **Pelajaran**: "sudah ditulis di file
+yang tepat, dengan niat yang benar" bukan jaminan hasilnya benar --
+kesalahan sekecil satu operator, di kode yang secara eksplisit
+tentang keamanan data, tetap bisa lolos tanpa fixture yang cukup jahat
+untuk mengeksposnya. Diperbaiki jadi `and(eq(...), outletScopeCondition(...))`
+di semua 6 titik yang kena, sebelum pernah dijalankan sekali pun.
+
+### Yang dibangun
+
 Masih NOL pemasangan ke halaman/Server Action mana pun (Tahap 3/4) --
 cuma utilitasnya, semua di `lib/auth/outlet-scope.ts` (satu file yang
 sama dengan Tahap 1, sengaja -- supaya logika "null vs array kosong"
@@ -2136,17 +2173,8 @@ cuma nilai balik fungsi murni):
   false) untuk kasus ditolak, dan pesan errornya menyertakan
   `context` yang diberikan pemanggil (memudahkan debug jalur non-UI).
 
-**Kesalahan yang ditangkap sendiri sebelum sempat jalan** (bukan oleh
-CEO): draf pertama test file ini menulis
-`eq(stockTransfers.businessId, businessId) && outletScopeCondition(...)`
-di `.where(...)` -- pakai operator JS `&&`, BUKAN `and()` dari
-drizzle-orm. Karena kedua sisi adalah objek SQL (truthy), `&&`
-mengembalikan operand KANAN begitu saja dan **operand kiri (filter
-business_id) hilang sepenuhnya dari query** -- persis kelas bug "filter
-diam-diam tidak ikut" yang seluruh Tahap 2 ini dibangun untuk dicegah,
-kali ini di kode tes saya sendiri. Ditemukan lewat review sebelum
-dijalankan, diperbaiki jadi `and(eq(...), outletScopeCondition(...))`
-di semua 6 titik yang kena.
+(Kesalahan `&&` vs `and()` di draf pertama test file ini sudah dibahas
+lengkap di bagian pembuka §23 di atas -- tidak diulang di sini.)
 
 Full suite: **48 file, 404 tes hijau** (naik dari 47 file/389 tes di
 Tahap 1 -- selisihnya 15 tes baru `outlet-filter.test.ts` di atas).
