@@ -2923,3 +2923,143 @@ resetPin/unlockEmployee, pairDevice) plus dua yang lebih dulu
 eksplisit untuk pekerjaan terpisah nanti, TIDAK dikerjakan sekarang:
 utang perilaku stok cancel (di atas) dan tinjauan
 `isOutletAllowed`-sebagai-boolean-yang-bisa-diabaikan (dicatat §27).
+
+## §29 · Pembatasan akses per outlet — Tahap 5: RLS level database, `orders` (13 September 2026)
+
+Tahap paling berbahaya dari seluruh pekerjaan ini (kata CEO) -- gerbang
+sekarang dipindah dari app layer (Tahap 1-4, bisa dilewati kalau ada
+jalur baru yang lupa memanggilnya) ke **database itu sendiri** lewat
+Row Level Security. Dibangun SATU tabel (`orders`), rancangan
+dilaporkan dan disetujui CEO dulu sebelum satu baris migrasi pun ditulis.
+
+### `auth_outlet_ids(business_id)` — BARU, `auth_business_ids()` TIDAK disentuh
+
+```sql
+CREATE OR REPLACE FUNCTION auth_outlet_ids(p_business_id uuid)
+RETURNS uuid[] LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT
+    CASE
+      WHEN m.role IN ('owner', 'accountant') THEN NULL
+      ELSE m.outlet_ids
+    END
+  FROM memberships m
+  WHERE m.user_id = auth.uid()
+    AND m.business_id = p_business_id
+    AND m.is_active = true
+  LIMIT 1
+$$;
+```
+
+**Kenapa berparameter `business_id`, BEDA dari `auth_business_ids()`
+yang tanpa argumen**: seorang user bisa punya membership di lebih dari
+satu bisnis (constraint `memberships` cuma unique per
+`(business_id, user_id)`, skema TIDAK melarangnya walau belum ada UI
+ganti-bisnis) dengan role/`outlet_ids` BEDA di tiap bisnis. Fungsi
+tanpa konteks bisnis tidak bisa tahu NULL (unrestricted) itu milik
+membership yang mana -- bisa menembus ke bisnis lain tempat user itu
+justru dibatasi. Dipanggil selalu dengan kolom baris itu sendiri:
+`auth_outlet_ids(orders.business_id)`.
+
+### Kondisi policy — guard `IS NULL OR` di depan
+
+```sql
+USING (
+  orders.business_id = any(auth_business_ids())
+  AND (
+    auth_outlet_ids(orders.business_id) IS NULL
+    OR orders.outlet_id = any(auth_outlet_ids(orders.business_id))
+  )
+)
+```
+
+Dipasang identik untuk `orders_select`, `orders_insert` (`WITH CHECK`),
+`orders_update` (`USING` DAN `WITH CHECK`). `x = any(NULL)` di Postgres
+adalah NULL -- diperlakukan TOLAK di `USING`/`WITH CHECK`, BUKAN
+"semua diizinkan" seperti maksudnya di app layer. Tanpa guard
+`IS NULL OR` di depan, owner/akuntan akan kehilangan SEMUA baris
+`orders` tanpa galat apa pun begitu policy dipasang -- persis jebakan
+yang diminta CEO dibuktikan sudah dipikirkan. Array KOSONG
+(`outlet_ids = '{}'`) tidak butuh guard tambahan -- `x = any('{}')`
+sudah terdefinisi FALSE (bukan NULL) di Postgres, otomatis menolak
+semua baris, konsisten dengan `outletScopeCondition()` kind "none" di
+app layer.
+
+Migrasi: `0033_rls_outlet_ids_orders.sql` (pos-fnb).
+
+### Kill-switch — disiapkan dan DIVERIFIKASI SEBELUM migrasi maju dipasang
+
+`scripts/rls-rollback-orders.sql` (pos-fnb, bukan di plan doc ini --
+orang yang panik tidak akan membuka dokumen perencanaan): revert tiga
+policy `orders` persis ke kondisi business-only sebelum Tahap 5.
+Dijalankan lewat Supabase SQL Editor (service role, BYPASSRLS) -- tidak
+butuh akses dashboard aplikasi sama sekali, karena `service_role` di
+Supabase tidak pernah tunduk RLS apa pun.
+
+Diverifikasi SUNGGUHAN JALAN di database dev, DUA KALI: sekali sebelum
+migrasi maju (no-op, membuktikan sintaks & privilese benar) dan sekali
+lagi SETELAH migrasi maju dipasang (membuktikan revert benar-benar
+mengembalikan teks policy persis ke baseline business-only) -- bukan
+ditulis lalu diasumsikan benar.
+
+### Sinkronisasi TS <-> SQL — tes PERILAKU, bukan cocok-teks
+
+`UNRESTRICTED_OUTLET_ROLES` (TS) dan CASE di `auth_outlet_ids()` (SQL)
+adalah dua tempat, satu aturan. Bukan dites dengan parse source SQL
+lalu dibandingkan ke array TS (rapuh) -- untuk **setiap** role di
+`userRoleEnum` (7 nilai ASLI dari database), tes men-set membership
+sungguhan, memanggil `auth_outlet_ids()` LANGSUNG lewat sesi user itu,
+dan membandingkan ke `computeAllowedOutletIds()` (TS) dengan input
+sama. 23 tes (7 role x 3 bentuk `outlet_ids`: null/spesifik/kosong) --
+kalau salah satu sisi diubah tanpa yang lain, test case role itu gagal
+duluan, tidak menunggu insiden produksi.
+
+### Bukti lima skenario + temuan empiris `order_items`
+
+10 tes lewat koneksi RLS SUNGGUHAN (`getUserDb`, BUKAN `getAdminDb()`
+untuk operasi yang diuji):
+1. Owner -- lihat orders semua outlet.
+2. Accountant -- sama, walau `outlet_ids` kolomnya sendiri tidak pernah
+   diisi (NULL dipaksa dari ROLE, bukan kebetulan datanya NULL).
+3. Manajer dibatasi outlet A -- lihat outlet A, NOL baris outlet B.
+4. Membership `outlet_ids` KOSONG -- nol baris sama sekali.
+5. INSERT/UPDATE ke outlet terlarang -- DITOLAK DATABASE. INSERT
+   melempar (`violates row-level security policy`); UPDATE menyaring
+   baris (0 baris ter-`returning()`, bukan galat) -- baris DIBUKTIKAN
+   tidak berubah lewat pembacaan admin sesudahnya.
+
+**Temuan empiris (dilaporkan, bukan dipercaya dari teori)**:
+`order_items` policy-nya cuma `EXISTS (SELECT 1 FROM orders WHERE ...
+business_id = any(auth_business_ids()))` -- TIDAK cek outlet sendiri.
+Diuji langsung: manajer outlet A SELECT `order_items` milik order
+outlet B -- **NOL baris**, TERWARISI OTOMATIS. RLS Postgres menegakkan
+ulang policy `orders_select` di dalam `EXISTS` itu (bukan
+`SECURITY DEFINER` yang bypass), jadi begitu `orders_select`
+diperketat outlet, `order_items` ikut ketat tanpa kode tambahan.
+**Bukan bug, bukan utang baru** -- dicatat di sini supaya orang
+berikutnya tidak mengira ini butuh perbaikan terpisah kalau
+`shifts`/barang nanti disentuh dengan pola serupa.
+
+### Regresi bagi hasil BTHR — dijalankan ulang APA ADANYA
+
+`bagi-hasil-outlet-scope.test.ts` (Tahap 3, sudah ada, `db` di situ
+sudah RLS sungguhan lewat `createUserDbFixture`) -- bagian pemilik
+Salma outlet BTHR = 60000, dilihat owner, dijalankan ulang tanpa
+diubah SATU BARIS PUN sesudah policy baru dipasang. **Tetap 60000** --
+policy baru tidak memotong baris owner diam-diam.
+
+### UTANG BARU — dicatat, TIDAK dikerjakan sekarang
+
+`search_path` belum di-set eksplisit untuk `auth_business_ids()`
+MAUPUN `auth_outlet_ids()` (keduanya `SECURITY DEFINER` tanpa
+hardening `search_path`) -- kalau ini mau dikeraskan, itu perubahan
+untuk KEDUA fungsi SEKALIGUS (konsistensi), bukan cuma yang baru,
+diputuskan CEO untuk ditunda.
+
+### Cakupan — berhenti setelah `orders`
+
+`shifts` dan tabel barang **belum disentuh** -- instruksi eksplisit
+CEO. Commit pos-fnb: `8888169` (kill-switch), `e36fd01` (migrasi +
+schema + dua file tes). Push ke origin (`badarbaradja/pos-fnb`)
+dilakukan SEBELUM migrasi dipasang (71 commit sebelumnya belum pernah
+ter-cadangkan di mesin manapun selain lokal -- risiko yang tidak perlu
+persis di tahap paling mungkin butuh mundur ke commit sebelumnya).
