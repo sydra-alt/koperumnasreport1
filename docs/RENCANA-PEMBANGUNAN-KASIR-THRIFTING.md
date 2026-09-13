@@ -1845,18 +1845,67 @@ berdiri di depan perangkat sekarang). Diterapkan konsisten di KEDUA
 `/pos` dan `/pos/thrift` (plus halaman cetak label & Statistik Ita
 yang memakai gate sama).
 
-### Belum diputuskan — Indokopi buka 24 jam Sabtu-Minggu
+### 4 · Indokopi buka 24 jam Sabtu-Minggu — SELESAI (keputusan final CEO, dibangun 13 September 2026)
 
 CEO menunjukkan celah yang saya lewatkan total di rancangan pertama:
 outlet yang tidak pernah tutup akan mengalami blokir poin 1 tepat di
-tengah transaksi jam 04:00. **Belum dibangun, menunggu keputusan
-CEO.** Tiga bagian usulan yang diajukan: (a) peringatan pita di layar
-kasir sebelum cutover (usulan 30 menit, angka ini belum dikonfirmasi
-CEO), (b) tombol "Tutup & Buka Shift Baru" satu alur, (c) SATU
-hitungan fisik laci kas dipakai ganda -- jadi `countedCash` shift
-lama SEKALIGUS `openingCash` shift baru, supaya kasir tidak menghitung
-uang yang sama dua kali jam 4 pagi. Alternatif yang dipertimbangkan
-tapi tidak direkomendasikan sendiri: jeda toleransi beberapa menit
-sesudah cutoff, atau melonggarkan `shift.reconcile` supaya pemilik
-shift sendiri (bukan cuma manajer) bisa menutup-tanpa-hitung di
-momen cutover 24 jam itu sendiri.
+tengah transaksi jam 04:00. Tiga usulan diajukan, KETIGANYA diputuskan
+CEO dan dibangun persis seperti diputuskan:
+
+**(a) Peringatan sebelum cutoff** — kolom setting BARU
+`outlets.shift_warning_minutes` (migration 0031, bawaan 30 menit
+untuk semua outlet), BUKAN angka mati. `nextCutoffInstant()`
+(`lib/utils/business-date.ts`, baru) menghitung instant UTC persis
+kapan hari bisnis SEKARANG berakhir — dari `businessDate(now)` = X,
+cutoff yang mengakhirinya selalu jatuh di kalender X+1 jam
+`dayCutoffTime` (businessDate() sendiri mundur satu hari kalender
+kalau jam lokal < cutoff). `ShiftCutoverBar` (client, baru) membanding
+jam klien terhadap instant tetap ini tiap 30 detik, muncul non-blocking
+di `/pos` dan `/pos/thrift` sekali masuk jendela peringatan — transaksi
+yang sedang jalan tidak terganggu sama sekali.
+
+**(b) Alur gabungan satu langkah** — `closeAndReopenShiftWithDb()`
+(baru): tutup shift LAMA + buka shift BARU dalam SATU transaksi DB
+atomik (tidak pernah ada keadaan "lama tertutup, baru gagal dibuka").
+UI-nya satu dialog (`ShiftCutoverBar`), bukan dua layar terpisah.
+
+**(c) SATU hitungan kas, DUA arti** — **koreksi tegas CEO** atas
+usulan awal saya (satu angka jadi penutup DAN pembuka sekaligus secara
+membabi buta): "kalau satu angka jadi penutup shift lama SEKALIGUS
+saldo awal shift baru, selisih kas hilang sepenuhnya — sistem
+menganggap angka itu benar menurut definisi, shift lama SELALU pas.
+Satu angka tidak bisa jadi pengukur dan yang diukur sekaligus." Yang
+dibangun: penjaga menghitung SEKALI (`countedCash`), angka itu dipakai
+DUA KALI dengan ARTI BERBEDA — (1) dibandingkan dengan `expectedCash`
+shift LAMA, selisih dihitung & DICATAT SEPERTI BIASA (termasuk alasan
+wajib kalau di luar toleransi); BARU KEMUDIAN (2) disalin APA ADANYA
+jadi `openingCash` shift BARU (bukan dihitung ulang, bukan angka
+baru). Selisih di luar toleransi TETAP BOLEH LANJUT (pembeli menunggu,
+toko 24 jam) — beda dari alur tutup shift normal yang menahan status
+sampai dikonfirmasi terpisah, TIDAK PERNAH memblokir penjualan karena
+urusan rekonsiliasi di sini; cukup isi alasan di form yang sama.
+Kalau selisih di luar toleransi dan alasan belum diisi,
+`closeAndReopenShiftWithDb()` mengembalikan pratinjau (`needsReason`)
+TANPA menulis apa pun ke DB — dialog client menampilkan selisihnya,
+minta alasan, submit ulang form yang sama (bukan navigasi ke layar
+lain). Outlet CASHLESS melewati seluruh langkah kas ini.
+
+Diverifikasi database sungguhan (6 test baru, termasuk yang WAJIB
+diminta CEO — "kalau selisih selalu nol di test, berarti tidak ada
+yang diuji"): selisih KECIL dalam toleransi (+5.000) tetap tercatat
+apa adanya di shift lama SEKALIGUS jadi openingCash shift baru;
+selisih BESAR di luar toleransi (-50.000) tanpa alasan menghasilkan
+pratinjau tanpa tulis apa pun; selisih besar yang sama DENGAN alasan
+tetap lanjut (shift baru tetap terbuka, bukan diblokir); PIN salah
+gagal SEBELUM shift lama disentuh sama sekali; outlet cashless
+melewati seluruh langkah kas.
+
+**Kesalahan yang ditangkap sendiri lewat full test suite** (bukan oleh
+CEO): draf pertama `shiftWarningMinutes` di skema Zod
+`lib/outlets/manage.ts` WAJIB tanpa nilai bawaan -- mematahkan 8 test
+di 4 file lain yang memanggil `createOutletWithDb()` tanpa tahu field
+baru ini ada sama sekali. Diperbaiki dengan `.default(30)` (sama
+dengan bawaan kolom DB), pola yang SAMA dengan `isCentralKitchen`/
+`cashEnabled` di skema yang sama -- field baru pada fungsi yang sudah
+dipakai banyak tempat harus punya nilai bawaan yang masuk akal, bukan
+wajib diisi pemanggil lama yang tidak tahu field itu ada.
