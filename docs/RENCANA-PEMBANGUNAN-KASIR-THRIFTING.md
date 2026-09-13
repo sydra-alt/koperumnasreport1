@@ -1739,3 +1739,124 @@ skema, status `disimpan` tidak ada di kode, `kategori_id` "wajib" di
 spec tapi nullable di skema) tidak menghasilkan kode apa pun -- cuma
 laporan lisan ke CEO, tidak diarsipkan di sini karena TT13 tidak
 dilanjutkan.
+
+## §20 · Tiga prasyarat shift (§14, disetujui CEO, dikerjakan 13 September 2026)
+
+Penghalang peluncuran (TT14, Ita mulai pakai sungguhan): toko buka
+sampai 18 jam dengan akun tamu, shift yang tertinggal terbuka semalam
+berisiko merusak atribusi transaksi hari berikutnya.
+
+**Temuan investigasi dulu, sebelum kode ditulis** (CEO awalnya menduga
+laporan bagi hasil ikut rusak -- salah, dan CEO sendiri yang
+mengoreksi setelah saya tunjukkan jejaknya): `businessDate` transaksi
+dihitung ULANG dari jam sungguhan setiap `sellBarangWithDb`/
+`payOrderWithDb` dipanggil (`business_date()`, bukan diwariskan dari
+`shifts.business_date`) -- laporan bagi hasil dan laporan stok
+AMAN, keduanya memfilter murni lewat `orders.businessDate`/
+`barang.masukPada`/`terjualPada`, tidak pernah menyentuh `shiftId`.
+**Yang sungguhan rusak**: `orders.shiftId`/`cashierId` diwariskan dari
+shift mana pun yang sedang `status='open'` untuk device itu, tidak
+peduli sudah berapa lama dibuka -- `getSalesByCashier` jadi salah
+atribusi (penjualan besok atas nama shift semalam), dan rekonsiliasi
+kas shift itu mencampur uang lebih dari satu hari kerja jadi satu
+angka yang mustahil diverifikasi.
+
+**Query pengecekan sebelum memasang aturan baru** (13 September
+2026): 3 baris `shifts.status='open'` di database dev, 2 di antaranya
+data sungguhan basi (Indosteak Pekansari ~28 hari, Bestie Thrift ~2
+hari, KEDUANYA cashless) dan 1 sisa data uji. **Tidak perlu skrip
+pembersihan** -- keduanya cashless, tidak ada uang tersangkut, dan
+begitu aturan poin 1 di bawah dipasang keduanya otomatis jadi
+"tidak sellable" tanpa perlu disentuh manual, menunggu ditutup lewat
+fitur poin 2/3.
+
+### 1 · Penutupan otomatis — DIPUTUSKAN BUKAN CRON, diblokir di titik pemakaian
+
+CEO menolak usulan cron (rancangan pertama): "masalahnya bukan shift
+basi masih terbuka, masalahnya shift basi masih BISA BERJUALAN."
+Nol infrastruktur baru dibangun -- cron ditunda, cuma kerapian nanti
+kalau memang terasa perlu.
+
+`checkShiftSellability()` (`lib/pos/shift.ts`, baru) menambah SATU
+pengecekan ke `isShiftSellable()`: `shifts.businessDate` harus SAMA
+dengan `businessDate(sekarang, businessTimezone, outlet.dayCutoffTime)`
+-- kalau tidak, shift dianggap basi (`"stale"`), ditolak di SERVER
+(`sellBarangWithDb`/`payOrderWithDb`), bukan cuma gate halaman.
+`openShiftWithDb()` sebaliknya: shift basi TIDAK menghalangi shift
+baru dibuka di device yang sama (justru itu jalan keluarnya) --
+shift basi tetap `status='open'` apa adanya, menunggu ditutup lewat
+poin 2 di bawah. Ambang waktunya `outlet.dayCutoffTime`, kolom
+setting yang sudah ada, nol angka mati baru.
+
+Diverifikasi database sungguhan (`shift.test.ts`): shift basi ditolak
+jualan dengan pesan eksplisit ("shift kemarin belum ditutup"), shift
+baru tetap bisa dibuka di device yang sama, shift lama tidak disentuh.
+
+### 2 · Manajer menutup shift orang lain
+
+Izin `shift.reconcile` (owner/manajer/akuntan) — SUDAH ADA di matriks
+RBAC sejak awal, tidak pernah dipasang ke mana pun sebelum ini,
+dipakai apa adanya (bukan izin baru). Beda dari `shift.open_close`
+(kasir, shift milik sendiri).
+
+`forceCloseShiftWithDb()` (baru): menutup shift ORANG LAIN, alasan
+WAJIB, dicatat ke `audit_logs` (`action: "shift_force_closed"`, siapa
+menutup [`profiles.id` manajer, di `metadata` -- bukan FK
+`employees.id` yang tidak cocok identitasnya], shift siapa yang
+ditutup, kapan, kenapa). Kas TIDAK PERNAH dihitung di titik ini,
+bahkan untuk outlet bertunai -- manajer yang menutup dari jauh belum
+tentu tahu isi laci kasnya. Kolom baru `shifts.forceClosedAt`
+(migration 0030) memakai status `'reconciled'` yang SUDAH ADA di enum
+sejak awal tapi dormant (tidak pernah ditulis kode mana pun sebelum
+ini) -- outlet cashless langsung `'closed'` selesai (tidak ada apa pun
+untuk direkonsiliasi), outlet bertunai `'closed'`+`forceClosedAt`
+terisi = "perlu ditinjau" sampai `reconcileForceClosedShiftWithDb()`
+(kas dalam toleransi -> langsung `'reconciled'`) atau
+`confirmForceClosedReconciliationWithDb()` (di luar toleransi, alasan
+tambahan wajib -- pola dua-langkah SAMA PERSIS alur tutup shift normal)
+memindahkannya ke `'reconciled'`.
+
+Layar baru di dashboard home (`ShiftsNeedingReview`, digerbang lewat
+Server Action `shift.reconcile`) menampilkan DUA kategori: shift basi
+("Tutup Paksa") dan shift force-closed menunggu kas ("Hitung Kas &
+Selesaikan") -- `getShiftsNeedingReview()` menghitung staleness PER
+OUTLET (dayCutoffTime beda-beda) di JavaScript sesudah query, bukan
+di SQL, karena jumlah shift open per bisnis kecil.
+
+Diverifikasi database sungguhan (7 test baru): force-close outlet
+bertunai vs cashless, ditolak untuk shift sudah closed, reconcile
+dalam/luar toleransi, write-once reconcile, ditolak untuk shift yang
+bukan hasil force-close, isi `getShiftsNeedingReview()` benar untuk
+kedua kategori.
+
+### 3 · Layar "buka shift dulu"
+
+Temuan: kode YANG SUDAH ADA sebelum ronde ini SUDAH redirect ke
+`/pos/shift/open` (bukan halaman kosong) dan halaman itu SUDAH punya
+judul+hint+form -- laporan awal saya soal ini keliru, CEO
+mengoreksi. Yang BELUM tertangani: shift TERBUKA TAPI BASI dulu lolos
+begitu saja (`status='open'` saja cukup lolos gate lama) -- perbaikan
+poin 1 menutup celah itu. `/pos/shift/open` sekarang membedakan
+alasan: shift basi menampilkan `strings.shift.staleShiftHint`
+("Shift kemarin belum ditutup...") alih-alih hint pembuka biasa,
+BUKAN diarahkan ke `/pos/shift/close` (itu untuk shift MILIK SENDIRI
+yang sedang mid-close, shift basi belum tentu milik orang yang
+berdiri di depan perangkat sekarang). Diterapkan konsisten di KEDUA
+`/pos` dan `/pos/thrift` (plus halaman cetak label & Statistik Ita
+yang memakai gate sama).
+
+### Belum diputuskan — Indokopi buka 24 jam Sabtu-Minggu
+
+CEO menunjukkan celah yang saya lewatkan total di rancangan pertama:
+outlet yang tidak pernah tutup akan mengalami blokir poin 1 tepat di
+tengah transaksi jam 04:00. **Belum dibangun, menunggu keputusan
+CEO.** Tiga bagian usulan yang diajukan: (a) peringatan pita di layar
+kasir sebelum cutover (usulan 30 menit, angka ini belum dikonfirmasi
+CEO), (b) tombol "Tutup & Buka Shift Baru" satu alur, (c) SATU
+hitungan fisik laci kas dipakai ganda -- jadi `countedCash` shift
+lama SEKALIGUS `openingCash` shift baru, supaya kasir tidak menghitung
+uang yang sama dua kali jam 4 pagi. Alternatif yang dipertimbangkan
+tapi tidak direkomendasikan sendiri: jeda toleransi beberapa menit
+sesudah cutoff, atau melonggarkan `shift.reconcile` supaya pemilik
+shift sendiri (bukan cuma manajer) bisa menutup-tanpa-hitung di
+momen cutover 24 jam itu sendiri.
