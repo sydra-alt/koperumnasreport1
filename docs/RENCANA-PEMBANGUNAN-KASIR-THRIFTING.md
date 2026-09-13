@@ -2256,3 +2256,123 @@ typecheck bersih.
 Halaman baca-saja lain (Laporan Penjualan, Laporan Stok, Laporan Bagi
 Hasil, Barang, Kartu Stok Bahan) MASIH BELUM disentuh -- menunggu
 keputusan CEO atas halaman pertama ini sebelum polanya diulang.
+
+## §25 · Pembatasan akses per outlet — Tahap 3, halaman 2-5/6 (13 September 2026)
+
+CEO menyetujui pola halaman 1 (Dashboard) apa adanya. Urutan sisa
+ditetapkan: Laporan Penjualan → Laporan Stok → Barang → Kartu Stok
+Bahan → **Laporan Bagi Hasil paling akhir** (satu-satunya yang
+menyentuh pembayaran ke pihak luar — CEO ingin meninjau sebelum itu
+dikerjakan). Empat halaman ini dikerjakan berurutan TANPA lapor di
+tengah (instruksi eksplisit), tetap SATU HALAMAN PER COMMIT. Tiga
+aturan yang dikonfirmasi tetap berlaku di semua: parameter outlet
+WAJIB bukan opsional, tes pakai transaksi sungguhan dengan angka
+BERBEDA per outlet, scope kosong = baris hilang (bukan baris nol).
+
+### Halaman 2/6 — Laporan Penjualan (`reports/sales/page.tsx`)
+
+BEDA dari Dashboard: `SalesReportFilter.outletId` SUDAH wajib diisi
+sejak desain awal (bukan opsional) -- prinsip "wajib bukan opsional"
+sudah terpenuhi tanpa perubahan skema. Yang baru: halaman menghitung
+NILAI `outletId` itu lewat `intersectOutletScope(allowedOutletIds,
+pilihanDropdown)`, bukan langsung dari dropdown mentah -- outletId di
+URL untuk outlet di luar cakupan (bukan cuma dipilih dari dropdown)
+otomatis diirisan jadi array kosong, bukan diloloskan. Dropdown outlet
+(query `outletRows`) disaring `outletScopeCondition` supaya tidak
+pernah menampilkan outlet terlarang (permintaan CEO soal dropdown).
+
+Diverifikasi: `sales-report-outlet-scope.test.ts` (7 tes) -- dua
+outlet, transaksi sungguhan qty 1 vs 4 (netSales 50000 vs 200000).
+`getSalesSummary` (bentuk RINGKASAN, singleton) diuji terpisah dari
+`getSalesByProduct` (bentuk DAFTAR) -- dicatat eksplisit di file tes
+bahwa "baris hilang" cuma bermakna literal untuk bentuk daftar; bentuk
+ringkasan scope kosong berarti semua angka nol, bukan "baris tidak
+ada" (tidak ada konsep itu untuk satu baris tunggal). 51 file, 427 tes
+hijau.
+
+### Halaman 3/6 — Laporan Stok (`reports/stock/page.tsx`)
+
+BEDA lagi dari dua halaman sebelumnya: `getStokByCategory`/
+`getStokStatusSummary`/`getBarangMenumpuk*` SUDAH menerima SATU
+`outletId: string` wajib (bukan array/scope) -- halaman ini per
+desain menampilkan SATU outlet pada satu waktu (dropdown ganti-outlet,
+bukan agregasi lintas outlet). Prinsip "wajib" sudah terpenuhi oleh
+bentuk fungsi yang sudah ada; TIDAK ADA perubahan skema fungsi laporan
+di halaman ini. Risiko satu-satunya ada di query DAFTAR OUTLET yang
+mengisi dropdown DAN yang jadi sumber `selectedOutlet` (lewat fallback
+`outletRows[0]` kalau `?outletId=` di URL tidak ketemu) -- disaring
+`outletScopeCondition`. Karena fallback-nya SUDAH cuma memilih dari
+`outletRows` yang sudah bersih, `selectedOutlet` TIDAK MUNGKIN jatuh
+ke outlet terlarang secara struktural -- tidak ditambah pengecekan
+assert terpisah (sengaja, itu jadi validasi untuk skenario yang tidak
+mungkin terjadi lagi setelah query sumbernya benar).
+
+Pesan scope kosong dicek LEBIH DULU dari query outletRows, supaya beda
+jelas dari `noThriftOutlet` ("bisnis ini memang tidak punya outlet
+thrifting") -- kalau dibalik urutannya, orang dengan scope kosong akan
+salah baca pesannya sebagai "bisnis ini tidak jualan thrifting", bukan
+"Anda tidak punya akses".
+
+Diverifikasi: `stock-report-outlet-scope.test.ts` (4 tes) -- DUA
+outlet thrifting + SATU outlet F&B (bukan cuma dua thrifting) supaya
+sekalian membuktikan filter `posMode='thrifting'` yang sudah ada tidak
+rusak oleh tambahan `outletScopeCondition`.
+
+### Halaman 4/6 — Barang, daftar + cetak label (`barang/page.tsx`, `barang/[id]/label/page.tsx`)
+
+Halaman ini SATU-SATUNYA dari enam yang punya form TULIS tertanam di
+file yang sama (intake barang baru) -- form dan Server Action-nya
+SENGAJA TIDAK disentuh (Tahap 3 cuma baca-saja), tapi dropdown outlet
+form itu TETAP disaring `outletScopeCondition` murni sebagai narrowing
+TAMPILAN (permintaan CEO soal dropdown, bukan perubahan validasi
+Server Action). Kalau scope kosong, SELURUH halaman dipotong
+(termasuk form) -- form dengan dropdown outlet kosong lebih
+membingungkan daripada tidak ditampilkan sama sekali.
+
+`barang/[id]/label/page.tsx` diakses LANGSUNG lewat URL by-id, bukan
+lewat daftar yang sudah disaring -- jalur PERSIS yang diminta CEO
+diuji sejak laporan enam-pertanyaan awal ("panggil dengan id outlet
+lain lewat URL langsung"). Ditambah `isOutletAllowed()` (BUKAN
+`assertOutletAllowed()` -- dipilih sengaja: `notFound()` konsisten
+dengan penanganan "baris tidak ada" yang sudah ada di halaman ini,
+dan tidak membocorkan bahwa kode barang itu ADA tapi di luar cakupan;
+`assertOutletAllowed()` melempar Error mentah, cocok untuk jalur
+tulis yang memang harus berisik, bukan halaman baca yang lebih baik
+diam-diam jadi 404).
+
+Diverifikasi: `barang-list-outlet-scope.test.ts` (7 tes) -- dua
+barang beda kode/harga di outlet berbeda untuk daftar, plus kasus
+`isOutletAllowed` untuk halaman label (scope null/satu-outlet/kosong).
+
+### Halaman 5/6 — Kartu Stok Bahan (`ingredients/[id]/stock-card/page.tsx`)
+
+`ingredients` katalog BISNIS (tidak punya `outletId`), tapi
+`stock_movements`-nya PER OUTLET -- satu bahan yang sama punya
+pergerakan stok terpisah tiap outlet, dan halaman ini menampilkan
+GABUNGAN pergerakan lintas outlet untuk satu bahan. Disaring lewat
+`outletScopeCondition` di `stock_movements.outlet_id` pada query
+movement (bukan di query ingredient, yang business-wide dan tidak
+perlu disentuh).
+
+Diverifikasi: `stock-card-outlet-scope.test.ts` (4 tes) -- satu bahan,
+dua movement outlet berbeda dengan qty BEDA (10 vs 25) lewat insert
+langsung `stock_movements` (pola sama `inventory-tenancy-trigger.test.ts`,
+bukan lewat alur pembelian/opname sungguhan -- yang diuji di sini
+murni filter query-nya, bukan logika pencatatan movement).
+
+**Kesalahan kecil ditangkap sendiri sebelum commit** (bukan oleh
+CEO): draf pertama tes Kartu Stok Bahan menuliskan qty sebagai `"10"`/
+`"25"` untuk membandingkan hasil query -- gagal, karena kolom
+`stock_movements.qty` adalah `numeric(16,4)`, Postgres selalu
+mengembalikannya sebagai `"10.0000"`/`"25.0000"` (string, presisi
+penuh), bukan dipangkas. Bukan bug scoping (query sudah benar), murni
+ekspektasi tes yang salah tebak format -- diperbaiki dengan
+membandingkan string presisi penuh apa adanya.
+
+Full suite (gabungan empat halaman ini): commit terpisah per halaman,
+angka final dicatat di commit masing-masing. Build + lint + typecheck
+bersih di setiap titik sebelum commit.
+
+Berhenti SEBELUM Laporan Bagi Hasil sesuai instruksi CEO -- menunggu
+tinjauan sebelum menyentuh halaman yang berurusan dengan pembayaran ke
+pemilik titipan.
