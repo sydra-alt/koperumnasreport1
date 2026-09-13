@@ -1654,3 +1654,64 @@ sungguhan (43 file, terhitung dengan file baru ini) -- pengaman lolos
 diam-diam terhadap `DATABASE_URL` dev yang sungguhan dipakai proyek
 ini, membuktikan wiring-nya sungguhan bekerja, bukan cuma lolos di
 unit test terisolasi.
+
+## §19 · Pertahanan berlapis: barcode gagal-encode tidak lagi diam-diam (13 September 2026)
+
+Saat investigasi kelayakan TT13 (impor data lama Bestie Thrift dengan
+kode barang dipertahankan apa adanya — **TT13 sendiri DIBATALKAN**,
+lihat di bawah), ditemukan `components/barcode/barcode-canvas.tsx`
+menangkap galat `encodeCode128B()` (kode di luar ASCII 32-126) lalu
+membiarkan kanvas kosong TANPA pesan apa pun — label tercetak KOSONG,
+baru ketahuan setelah barang ditempeli label itu dan dijual (tidak
+bisa dipindai). Kelas kegagalan sama dengan 29 titik silent-failure
+yang sudah disisir (CLAUDE.md §3.7), belum kena sisir sebelumnya
+karena jalur ini dianggap tidak mungkin terjadi.
+
+**CATATAN JUJUR — ini pertahanan berlapis, BUKAN perbaikan bug yang
+sedang aktif hari ini.** Kode barang SELALU digenerate sistem
+(`lib/barang/kode.ts`, alfabet aman: huruf besar+angka tanpa 0/O/1/I)
+dan `outlets.code` dipaksa pola `^[A-Z0-9]+$` (Zod + CHECK constraint,
+§16). Jadi setiap kode yang bisa terbentuk lewat aplikasi hari ini
+DIJAMIN ASCII 32-126 — `encodeCode128B()` tidak akan pernah melempar
+lewat jalur manapun yang ada sekarang. Satu-satunya jalan masuk kode
+tak-encodable adalah impor dari sistem lain, dan **TT13 (impor data
+lama) DIBATALKAN** oleh CEO. Diperbaiki karena sudah ditemukan dan
+sudah terlanjur 80% dikerjakan saat pembatalan itu datang — dipasang
+supaya jalur impor apa pun di masa depan tidak bisa menghasilkan label
+kosong tanpa suara, bukan karena ada insiden sungguhan hari ini.
+
+**Perbaikan**:
+- `BarcodeCanvas` menerima `onEncodeError?: (message) => void` --
+  dipanggil lewat `useEffect` (bukan langsung di badan komponen, supaya
+  tidak melanggar aturan "render harus murni"). Saat encode gagal,
+  kanvas diganti kotak pesan `"Barcode tidak bisa dibuat: [alasan]"` --
+  SENGAJA tetap di dalam `#label-print-area` (area yang ikut tercetak),
+  supaya kalau seseorang tetap memicu cetak lewat jalur lain (Ctrl+P)
+  walau tombol kita terkunci, kertas yang keluar membawa pesan galat,
+  bukan kosong tanpa penjelasan.
+- `LabelPrintArea` (komponen client baru, `components/barang/`)
+  menyatukan `LabelView` + tombol cetak + pesan galat dalam satu
+  tempat yang menahan state — dipakai KEDUA halaman cetak
+  (`barang/[id]/label` dashboard dan `pos/thrift/label/[id]` kasir),
+  menggantikan pemanggilan `LabelView`+`PrintButton` langsung. Tombol
+  cetak DIKUNCI (`disabled`) selama ada galat encode.
+- Logika encode+tangkap-galat dipisah jadi `resolveBarcodeModules()`
+  (diekspor dari `barcode-canvas.tsx`) supaya testable TANPA render
+  React sungguhan -- proyek ini tidak punya `@testing-library/react`/
+  jsdom (vitest environment `'node'` murni), jadi test yang ditulis
+  menguji fungsi logika ini langsung (3 test: data valid, karakter di
+  luar jangkauan, data kosong), BUKAN test render DOM/tombol terkunci.
+  Dicatat jujur sebagai batas cakupan test, bukan diklaim sudah diuji
+  sampai lapisan komponen.
+
+**TT13 ditutup, dibatalkan CEO**: premis TT13 (kode barang lama bisa
+membawa karakter yang tidak Code128-encodable, ditemukan hanya saat
+impor) TIDAK BISA TERCAPAI karena kode SELALU digenerate sistem dari
+alfabet aman -- satu-satunya jalan masuk (impor data lama) sudah
+dibatalkan sebelum dibangun apa pun. Investigasi kelayakan (constraint
+`barang.kode`, ruang tabrakan `generateBarangKode()`, status foto
+nullable, tiga drift spec-vs-implementasi: `catatan` tidak ada di
+skema, status `disimpan` tidak ada di kode, `kategori_id` "wajib" di
+spec tapi nullable di skema) tidak menghasilkan kode apa pun -- cuma
+laporan lisan ke CEO, tidak diarsipkan di sini karena TT13 tidak
+dilanjutkan.
