@@ -3063,3 +3063,94 @@ schema + dua file tes). Push ke origin (`badarbaradja/pos-fnb`)
 dilakukan SEBELUM migrasi dipasang (71 commit sebelumnya belum pernah
 ter-cadangkan di mesin manapun selain lokal -- risiko yang tidak perlu
 persis di tahap paling mungkin butuh mundur ke commit sebelumnya).
+
+## §30 · Pembatasan akses per outlet — Tahap 5: RLS level database, `shifts` (13 September 2026)
+
+Lanjutan §29, tabel KEDUA (dan TERAKHIR untuk Tahap 5 -- CEO instruksi
+eksplisit berhenti sebelum barang). `auth_outlet_ids(business_id)`
+DIPAKAI ULANG APA ADANYA (migrasi 0033) -- **tidak ada fungsi SQL baru**
+di migrasi 0034. Tiga policy `shifts` (select/insert/update) dapat AND
+kondisi outlet persis sama bentuknya dengan `orders` (§29), guard
+`IS NULL OR` di depan.
+
+### Temuan WAJIB dilaporkan SEBELUM policy dipasang — jalur PIN+shift
+
+CEO eksplisit meminta: kalau jalur PIN+shift lewat `authenticated`,
+laporkan dulu sebelum memasang policy. Ditelusuri lewat pembacaan
+kode (bukan tebakan):
+
+1. **Verifikasi PIN** (`verifyCashierPin()`, `lib/auth/pin.ts`) --
+   `createSupabaseAdminClient()`, **service_role, BYPASSRLS**. Tidak
+   tersentuh sama sekali oleh policy `shifts`.
+2. **Penulisan `shifts` sendiri** (`openShiftWithDb` dst,
+   `app/(pos)/pos/shift/actions.ts`) -- `requirePermissionDb()` ->
+   `getUserDb(accessToken)`, **role `authenticated`, RLS BENAR-BENAR
+   berlaku** -- dari sesi Supabase Auth SIAPA PUN YANG SEDANG LOGIN DI
+   BROWSER TABLET POS. `employees` (identitas PIN) **TIDAK wajib**
+   punya akun Supabase Auth sama sekali (BLUEPRINT §3.1) -- jadi
+   `auth_outlet_ids()` yang menggerbang `shifts` dibaca dari membership
+   TABLET, BUKAN dari kasir yang sedang PIN.
+
+**Akibatnya, dan ini kelas risiko yang beda dari `orders`**: kalau
+akun yang login di tablet itu dibatasi (`manager`/`cashier`) dan
+`outlet_ids`-nya tidak memuat outlet tablet itu sendiri, **SEMUA**
+kasir yang PIN di tablet itu gagal buka/tutup shift -- bukan satu
+laporan kosong, **seluruh outlet berhenti berjualan** lewat tablet
+itu. Risiko hari ini NOL (data dev masih semua membership `owner`,
+`outlet_ids` null, temuan Tahap 4). **Keputusan CEO: lanjut bangun,
+dicatat sebagai SYARAT PELUNCURAN** (pola sama gudang-wajib-ada-di-
+outlet_ids, Stock Transfers §28) -- siapa pun yang menyiapkan akun
+untuk login di tablet POS produksi harus memastikan `outlet_ids`-nya
+mencakup outlet tablet itu, atau memakai akun unrestricted.
+
+**Temuan tambahan, dicatat sebagai utang (di luar lingkup RLS, TIDAK
+diperbaiki di sini)**: dari 9 fungsi tulis di `lib/pos/shift.ts`, 8
+membungkus SEMUA error jadi pesan generik `"Terjadi kesalahan, coba
+lagi"` (aman tapi tidak diagnostik -- kasir tidak akan tahu ini soal
+`outlet_ids`). **`closeAndReopenShiftWithDb` satu-satunya
+pengecualian** -- meneruskan `err.message` MENTAH ke pengguna. Kalau
+RLS ini pernah menolak jalur itu, teks error Postgres asli ("new row
+violates row-level security policy...") bisa tampil di layar kasir.
+Perilaku LAMA (bukan diperkenalkan Tahap 5), tapi Tahap 5 pemicu
+pertama yang bisa membuatnya sungguh terjadi.
+
+### Kill-switch — pola sama `orders`, diverifikasi dua kali
+
+`scripts/rls-rollback-shifts.sql` -- revert tiga policy `shifts` ke
+business-only. `cash_movements` TIDAK perlu disentuh terpisah di file
+ini -- policy-nya (EXISTS ke `shifts`) pulih otomatis begitu
+`shifts_select` kembali business-only. Diverifikasi jalan sungguhan
+di dev, sebelum DAN sesudah migrasi maju dipasang.
+
+### Bukti lima skenario + temuan empiris `cash_movements`
+
+10 tes lewat koneksi RLS SUNGGUHAN:
+1-4. Sama persis pola `orders`: owner dan akuntan lihat shift semua
+outlet, manajer dibatasi outlet A lihat cuma outlet A, `outlet_ids`
+kosong nol baris.
+5. **INSERT diuji lewat `openShiftWithDb` SUNGGUHAN** (bukan raw
+   insert, supaya jalur produksi asli yang terbukti) -- manajer A
+   (login tablet-nya cuma outlet A) coba buka shift baru di outlet B:
+   **DITOLAK**, dan pesan generik yang dikembalikan terbukti EMPIRIS
+   (bukan cuma dibaca dari kode) -- error RLS asli muncul di
+   `console.error` SERVER, TIDAK PERNAH sampai ke pengguna. Manajer A
+   buka shift baru di outlet A sendiri (device beda): BERHASIL. UPDATE
+   langsung ke shift outlet B: nol baris berubah.
+
+**Temuan empiris**: `cash_movements` (policy-nya EXISTS ke `shifts`,
+cuma cek `business_id`) -- diuji langsung, manajer A SELECT
+`cash_movements` outlet B: **NOL baris, TERWARISI OTOMATIS**, sama
+persis pola `order_items` di §29. Bukan bug, bukan utang baru.
+
+### Regresi — dijalankan ulang APA ADANYA
+
+`shift.test.ts` (27 tes: buka shift, tutup shift, tutup-buka satu
+langkah §14, force-close manajer, reconcile, WRITE-ONCE counted_cash)
+dan `shift-outlet-scope.test.ts` (7 tes, Tahap 3 app-layer). **Semua
+hijau, tidak ada yang diakali.**
+
+### Cakupan — berhenti setelah `shifts`
+
+Barang **belum disentuh**. Commit pos-fnb: `8c14df8` (kill-switch),
+`fe2e70b` (migrasi + schema + tes). Push ke origin dilakukan sebelum
+migrasi 0034 dipasang (kelanjutan dari kebiasaan backup §29).
