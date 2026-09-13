@@ -1909,3 +1909,186 @@ dengan bawaan kolom DB), pola yang SAMA dengan `isCentralKitchen`/
 `cashEnabled` di skema yang sama -- field baru pada fungsi yang sudah
 dipakai banyak tempat harus punya nilai bawaan yang masuk akal, bukan
 wajib diisi pemanggil lama yang tidak tahu field itu ada.
+
+## §21 · Pembatasan akses per outlet — Tahap 0: kelola membership (13 September 2026)
+
+Tiga prasyarat §14 tuntas (bagian di atas) membuka pekerjaan lebih
+besar: **pembatasan akses per outlet**. Aturan yang sudah diputuskan
+CEO sebelum satu baris pun ditulis (rangkuman, bukan verbatim):
+
+- **Shift mempersempit, tidak pernah memberi.** Batas otorisasi tetap
+  di `memberships.outlet_ids` + RLS; shift aktif cuma MENYARING dari
+  yang sudah diizinkan. Alasannya kebingungan operasional (kasir
+  salah pilih outlet), BUKAN keamanan — tapi CEO menegaskan itu cuma
+  menjelaskan KENAPA lingkupnya dipersempit, bukan SEBERAPA KERAS
+  ditegakkan: penegakan tetap harus dobel, aplikasi DAN database,
+  sama seperti laporan akuntansi yang rahasia lewat RLS bukan lewat
+  menyembunyikan tombol.
+- **RLS ditambah SATU TABEL PER SATU TABEL** lewat fungsi baru
+  `auth_outlet_ids()` (belum dibangun — menyusul Tahap 5), bukan
+  mengubah `auth_business_ids()` yang sudah ada. Urutan tabel: orders
+  → shifts → barang, dilaporkan di antara tiap tabel.
+- **Owner dan akuntan tidak pernah dipersempit** — `allowedOutletIds`
+  dipaksa `null` untuk kedua role ini di SATU tempat (fondasi Tahap 1),
+  terlepas dari isi kolom `outlet_ids` mereka.
+- **Halaman kelola membership adalah TAHAP 0, wajib lebih dulu dari
+  apa pun** — investigasi menemukan tidak ada satu pun halaman
+  dashboard yang mengelola tabel `memberships` (baris cuma pernah
+  ditulis lewat skrip CLI). Tanpa halaman ini, siapa pun yang
+  terkunci gara-gara `outlet_ids` cuma bisa diselamatkan lewat SQL
+  langsung — persis ketergantungan yang jadi alasan sistem laporan
+  ini dibangun sejak awal.
+
+Urutan akhir yang diputuskan CEO: **Tahap 0** (halaman kelola
+membership, dikerjakan sekarang) → Tahap 1 (fondasi `allowedOutletIds`,
+aditif) → Tahap 2 (utilitas filter + assert) → Tahap 3 (halaman
+baca-saja) → Tahap 4 (halaman tulis, termasuk kasus khusus
+`stock_transfers` yang pakai `fromOutletId` ATAU `toOutletId`) →
+Tahap 5 (RLS `orders` → `shifts` → `barang`, satu per satu) → Tahap 6
+(sambungan shift-membership: `employees.userId` yang tertaut membership
+dibatasi menolak buka shift di outlet di luar `outlet_ids`).
+
+### Tahap 0 — dibangun dan diverifikasi
+
+**Migrasi 0032** (`schema.ts`, aditif, tidak menyentuh
+`auth_business_ids()`): tiga policy RLS baru —
+`profiles_select_business_owner` (owner bisa lihat profil anggota
+LAIN di bisnisnya; `profiles_select_own` sebelumnya cuma izinkan
+lihat diri sendiri, jadi halaman tim tidak mungkin menampilkan nama
+orang lain tanpa ini), `memberships_insert` dan `memberships_update`
+(baru pertama kali ada — sebelumnya `memberships` cuma punya policy
+SELECT, baris cuma pernah ditulis lewat skrip admin). Ketiganya
+mensyaratkan pemanggil adalah owner AKTIF di bisnis yang sama —
+jaring kedua di luar app layer, dibuktikan lewat tes RLS murni (lihat
+bawah), bukan cuma diasumsikan.
+
+**`membership.manage`** (`lib/auth/permissions.ts`) — permission key
+baru, OWNER-ONLY (`na` untuk semua role lain, tidak bisa
+di-override lewat `permissions_override`).
+
+**`lib/memberships/manage.ts`** + **`lib/memberships/roles.ts`** +
+halaman **`/team`**: `listMembershipsWithDb`, `inviteMembershipWithDb`,
+`updateMembershipWithDb`. `assignableMembershipRoles` sengaja TIDAK
+memuat `owner`/`accountant` — ditolak di skema zod, tidak pernah
+sampai ke database.
+
+**Dua pengaman ditambahkan TANPA diminta eksplisit dalam permintaan
+awal, PERTAHANKAN keduanya (dikonfirmasi CEO)**:
+1. Owner tidak bisa mengubah barisnya sendiri lewat halaman ini —
+   mencegah kunci-diri-sendiri (menonaktifkan diri, atau menurunkan
+   role sendiri kalau `assignableMembershipRoles` suatu saat berubah).
+2. **Baris yang SUDAH berrole owner/accountant tidak bisa DIUBAH sama
+   sekali lewat halaman ini** — bukan cuma dilarang MENJADI
+   owner/accountant (permintaan asli CEO), tapi juga dilarang
+   diturunkan DARI owner/accountant. Alasan: tanpa ini, satu owner
+   bisa menurunkan owner lain jadi kasir lewat halaman yang sama.
+   **Konsekuensi yang harus diingat**: satu-satunya cara mengubah role
+   atau menonaktifkan baris owner/accountant adalah lewat skrip CLI
+   (`scripts/bootstrap-production.ts`/`reset-owner.ts` atau SQL
+   langsung) — TIDAK ADA tombol di dashboard untuk ini, sengaja.
+   Jangan habiskan waktu mencarinya di UI.
+
+**Mekanisme undangan** — `admin.generateLink(type:"invite")`, BUKAN
+`inviteUserByEmail()` (bergantung SMTP yang belum tentu terkonfigurasi
+untuk bisnis ini, gagal diam-diam kalau tidak) atau `createUser()`
+dengan password (harus ditampilkan sekali, masalah yang sama yang
+dihindari `bootstrap-production.ts` untuk password owner). Tautan
+hasil `generateLink` ditampilkan SEKALI di dialog untuk owner salin
+dan kirim sendiri (WhatsApp/email) — **tidak pernah ditulis ke
+`audit_logs`** (itu bearer token, menyimpannya sama saja menyimpan
+kredensial). Audit log tetap mencatat BAHWA undangan dibuat: siapa
+mengundang siapa dan kapan (`action: "membership_invited"`,
+`metadata.actorUserId`/`targetEmail`/`inviteLinkGenerated`), tanpa
+tautannya. Dialog menampilkan waktu tautan dibuat + peringatan "kirim
+segera, biasanya berlaku 24 jam (default Supabase, project ini bisa
+beda)" — Supabase TIDAK mengembalikan waktu kedaluwarsa lewat API
+`generateLink` sama sekali (dicek langsung ke tipe
+`GenerateLinkProperties`), jadi UI sengaja tidak mengklaim angka pasti
+yang bisa salah untuk project ini.
+
+**Penjaga `listUsers({perPage:1000})`** (satu-satunya sumber email,
+`profiles` tidak punya kolom email) — cukup untuk 26 orang saat ini,
+tapi `listMembershipsWithDb` sekarang membandingkan `data.total`
+(dikembalikan Supabase) terhadap `data.users.length` untuk mendeteksi
+truncation dengan benar (bukan cuma `length === perPage`, yang salah
+kalau totalnya PERSIS 1000), dan halaman `/team` menampilkan
+peringatan eksplisit kalau batas ini mendekati/terlampaui — bukan
+gagal senyap.
+
+**Diverifikasi** — 15 tes baru (`lib/memberships/__tests__/manage.test.ts`)
+lewat db RLS asli (bukan admin bypass), dua kelas: (1) aturan bisnis
+lewat db owner — role owner/accountant ditolak, outlet asing ditolak,
+array outlet kosong ditolak, undang ulang email yang sama mengaktifkan
+baris LAMA, self-edit ditolak, baris accountant tidak bisa diubah,
+audit log berisi actor/target/waktu TANPA tautan undangan; (2) RLS
+MURNI dari sudut manajer (bukan owner) yang menulis LANGSUNG ke tabel
+`memberships`/`profiles` TANPA lewat `manage.ts` sama sekali — database
+menolak insert/update, manajer tidak bisa melihat profil owner. Full
+suite: 46 file, 381 tes hijau. Build + lint + typecheck bersih.
+
+Menunggu keputusan CEO untuk lanjut ke Tahap 1.
+
+### Tahap 0 — tiga koreksi CEO, semua diterapkan
+
+CEO menyetujui rancangan dengan tiga tambahan:
+1. **Tautan undangan**: tampilkan waktu dibuat + peringatan "biasanya
+   berlaku 24 jam (default Supabase)" di dialog -- supaya owner yang
+   menyalin ke WhatsApp tahu ada batas waktu, bukan kaget saat anggota
+   baru klik dan gagal tanpa penjelasan. Audit log mencatat bahwa
+   undangan dibuat (`inviteLinkGenerated: true`, siapa->siapa, kapan)
+   TANPA tautannya sendiri.
+2. **Dua pengaman tanpa diminta eksplisit (self-edit block, baris
+   owner/accountant tidak bisa diubah sama sekali)**: DIPERTAHANKAN
+   keduanya, dikonfirmasi CEO — poin kedua "lebih kuat dari yang saya
+   minta dan itu benar... tanpa itu satu owner bisa menurunkan owner
+   lain jadi kasir." Konsekuensinya sudah dicatat di bagian di atas:
+   satu-satunya cara mengubah baris owner/accountant adalah lewat
+   skrip CLI.
+3. **Penjaga `listUsers` mentok 1000**: `listMembershipsWithDb`
+   sekarang mengembalikan `emailListTruncated` (dari `data.total` vs
+   `data.users.length`, BUKAN cuma `length === perPage`), halaman
+   `/team` menampilkan peringatan eksplisit kalau ini terjadi — cukup
+   untuk 26 orang saat ini, tapi tidak gagal senyap kalau berubah.
+
+## §22 · Pembatasan akses per outlet — Tahap 1: fondasi `allowedOutletIds` (13 September 2026)
+
+Murni aditif, sesuai instruksi CEO ("jangan pasang ke halaman mana
+pun dulu") — TIDAK ADA halaman atau Server Action yang menyaring apa
+pun berdasarkan ini. Cuma menyediakan datanya.
+
+**`lib/auth/outlet-scope.ts`** (baru) — `computeAllowedOutletIds(role,
+outletIds)`: `UNRESTRICTED_OUTLET_ROLES = ["owner", "accountant"]`
+dipaksa `null` DI KODE, apa pun isi `outlet_ids` mereka di database
+(pertahanan berlapis — kalau nanti seseorang tidak sengaja mengisi
+`outlet_ids` untuk akun owner/akuntan lewat `/team`, laporan lintas
+outlet mereka TIDAK diam-diam menyusut). Peran lain meneruskan
+`outlet_ids` apa adanya (`null` = semua outlet, array = dipersempit).
+Fungsi murni, dites tanpa DB sama sekali.
+
+**`CurrentBusiness`** (`lib/auth/session.ts`) dan **`PermissionContext`**
+(`lib/auth/permissions.ts`) — field baru `allowedOutletIds: string[] |
+null`, dihitung di `getCurrentBusinessFromClient()` (sekarang ikut
+`select` kolom `outlet_ids`) dan diteruskan lewat `requirePermission`/
+`requirePermissionDb`. Ini SATU-SATUNYA titik penghitungan — setiap
+halaman/Server Action yang nanti memakainya (Tahap 3+) otomatis
+konsisten, tidak ada jalan lupa menerapkan pengecualian owner/akuntan
+di satu halaman tapi lupa di halaman lain.
+
+**Kenapa aman ditambahkan tanpa memecah apa pun**: `PermissionContext`
+dan `CurrentBusiness` cuma dapat field BARU (bukan field yang diubah/
+dihapus) — setiap pemanggil lama yang destructure field lama saja
+(`{ db, closeDb, businessId, role }` dst., dipakai di ~15 Server
+Action) tetap jalan tanpa perubahan, field baru cuma diam kalau tidak
+dipakai.
+
+**Diverifikasi**: `lib/auth/__tests__/outlet-scope.test.ts` (8 tes) —
+`computeAllowedOutletIds` dites murni per kombinasi role x outlet_ids
+(termasuk owner/akuntan dengan `outlet_ids` array DIPAKSA tetap null),
+plus satu tes end-to-end lewat sesi Supabase Auth sungguhan (owner yang
+`outlet_ids`-nya dipaksa berisi array langsung di database — skenario
+data rusak/diedit manual — tetap dapat `allowedOutletIds` null lewat
+`getCurrentBusinessFromClient()`). Full suite: **47 file, 389 tes
+hijau**. Build + lint + typecheck bersih.
+
+Menunggu keputusan CEO untuk lanjut ke Tahap 2 (utilitas filter +
+assert, masih belum dipasang ke halaman mana pun).
