@@ -2874,3 +2874,52 @@ penggantinya.
 
 Menunggu hasil pembangunan lima commit ini -- lapor setelah selesai,
 Tahap 4 tutup di situ.
+
+### SELESAI (13 September 2026) — lima bagian, lima commit, TAHAP 4 TUTUP
+
+Dibangun persis urutan di atas, satu commit per bagian (pos-fnb):
+
+1. `66b1015` -- List `/stock-transfers`: `outletScopeConditionForTransfer`
+   (OR) untuk visibilitas, tombol Approve/Reject disembunyikan kalau
+   `fromOutletId` di luar cakupan (poin 4, diterapkan langsung).
+2. `3410ab3` -- Dropdown outlet peminta di `/stock-transfers/new`:
+   `outletScopeCondition` (satu kolom).
+3. `0a697c6` -- `/[id]/send`, `/[id]/receive`: `isOutletAllowed`
+   digabung ke `notFound()` yang sudah ada (fromOutletId untuk send,
+   toOutletId untuk receive).
+4. `66f7041` -- Lima fungsi `*WithDb` (request/approve/reject/send/
+   receive/cancel): gerbang sesuai tabel di atas, TERMASUK
+   cancel-dari-received yang butuh KEDUA outlet -- dibuktikan lewat 4
+   tes eksplisit (satu outlet saja ditolak dari kedua arah, kedua
+   outlet berhasil).
+5. `95fb34e` -- `getLastRequestForOutlet`: gerbang sendiri, tidak
+   mengandalkan pemanggil.
+
+**Penyimpangan sengaja dari rancangan di poin 5, dicatat supaya tidak
+mengejutkan pembaca berikutnya**: rancangan di atas menyebut
+`assertOutletAllowed` (throw) sebagai mekanismenya. Yang dibangun
+malah `isOutletAllowed` + `return []` -- KARENA `getLastRequestForOutlet`
+dipanggil di DALAM LOOP per outlet saat render halaman
+`/stock-transfers/new` (satu panggilan per baris dropdown). `throw` di
+tengah loop itu akan menjatuhkan SELURUH halaman kalau satu saja
+outlet di luar cakupan ada di daftar -- padahal fungsi ini FUNGSI
+BACA dengan tipe kembalian array yang sudah punya makna "tidak ada
+riwayat" (`[]`) untuk kasus lain (belum pernah ada transfer). Menolak
+dengan array kosong konsisten dengan makna itu dan tidak meledakkan
+halaman untuk pengguna yang sah di outlet lain pada saat yang sama.
+`assertOutletAllowed` tetap mekanisme yang benar untuk fungsi yang
+BUKAN dipanggil berulang dalam loop render (lihat Tahap 3,
+`recordPemilikPayoutWithDb`) -- prinsipnya "gerbang sendiri, tidak
+mengandalkan pemanggil" dipertahankan penuh, cuma bentuk penolakannya
+menyesuaikan konteks pemanggilan.
+
+**Total pembatasan akses per outlet, Tahap 0-4**: enam halaman baca
+(Tahap 3) + saveBarangWithDb, Outlets, Employees, Devices, dan Stock
+Transfers lima-bagian (Tahap 4) -- semua diverifikasi lewat panggilan
+`*WithDb`/query langsung dengan bukti database, bukan cuma pembacaan
+kode. Tiga temuan proaktif tercatat di sepanjang jalan (confirmDayCutoff,
+resetPin/unlockEmployee, pairDevice) plus dua yang lebih dulu
+(setBarangStatusWithDb, addBarangFromShiftWithDb). Dua utang dicatat
+eksplisit untuk pekerjaan terpisah nanti, TIDAK dikerjakan sekarang:
+utang perilaku stok cancel (di atas) dan tinjauan
+`isOutletAllowed`-sebagai-boolean-yang-bisa-diabaikan (dicatat §27).
