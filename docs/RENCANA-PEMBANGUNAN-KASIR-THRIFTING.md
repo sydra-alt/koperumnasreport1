@@ -2418,3 +2418,98 @@ persis supaya tidak hilang di antara tahap.
 PERTAMA yang dipasangi `assertOutletAllowed(allowedOutletIds,
 data.outletId, "saveBarangWithDb")` sebelum insert/update apa pun,
 sebelum halaman tulis lain mana pun dikerjakan.
+
+## §26 · Pembatasan akses per outlet — Tahap 3, halaman 6/6 (TERAKHIR): Laporan Bagi Hasil (13 September 2026)
+
+Satu-satunya dari enam halaman yang menyentuh pembayaran ke pihak
+LUAR (pemilik titipan) -- CEO minta tiga hal spesifik dibuktikan,
+bukan cuma pola tiga-kasus generik yang sudah dipakai lima halaman
+sebelumnya.
+
+### Halaman utama (`reports/bagi-hasil/page.tsx`)
+
+Struktur PERSIS sama Laporan Stok -- satu outlet per tampilan,
+dropdown ganti-outlet, `getBagiHasilLaporan()` sudah menerima satu
+`outletId: string` wajib (signature TIDAK berubah). Disaring di query
+daftar outlet (sumber dropdown + fallback `selectedOutlet`), pesan
+scope kosong dicek sebelum query itu, sama pola Laporan Stok.
+
+### Ekspor Excel (`api/reports/bagi-hasil/export/route.ts` → `buildBagiHasilExport`)
+
+Jalur TERPISAH dari tabel -- `outletId` datang langsung dari
+`url.searchParams`, tidak lewat dropdown yang sudah disaring sama
+sekali. Ditambah `allowedOutletIds: OutletScope` wajib, dicek PERSIS
+di titik yang sama dengan gerbang SYARAT 3 (dayCutoffConfirmed) yang
+sudah ada -- SEBELUM `getBagiHasilLaporan` dipanggil, SEBELUM workbook
+dibangun sama sekali (instruksi CEO eksplisit: tolak dulu, jangan
+bangun dulu baru ditolak).
+
+**Dilipat jadi status `not_found` yang SAMA dengan outlet yang benar-
+benar tidak ada** -- bukan status baru semacam "forbidden" -- pola
+persis `notFound()` di `barang/[id]/label` (§25): mengetik `outletId`
+outlet lain lewat URL ekspor tidak bisa dipakai membedakan "outlet ini
+tidak ada" dari "outlet ini ada tapi di luar cakupan Anda".
+
+### "Tandai Sudah Dibayar" (`recordPemilikPayoutWithDb`)
+
+Jalur tulis KEDUA yang terpisah dari tabel. Ditambah
+`assertOutletAllowed(allowedOutletIds, data.outletId,
+"recordPemilikPayoutWithDb")` -- MELEMPAR, dicek sebelum gerbang
+SYARAT 3 dan sebelum insert. **Catatan penting**: gerbang Server Action
+pembungkusnya (`payroll.process`) HARI INI cuma bisa dipegang
+owner/akuntan -- KEDUA role itu SELALU `allowedOutletIds` null (tidak
+pernah dibatasi, keputusan Tahap 1). Artinya baris `assertOutletAllowed`
+ini SECARA PRAKTIS tidak pernah menolak siapa pun hari ini -- tetap
+dipasang untuk pertahanan berlapis, supaya kalau matriks izin berubah
+nanti (mis. manajer diizinkan proses payroll), gerbangnya sudah ada
+tanpa perlu diingat lagi terpisah.
+
+### `fetchPayoutHistory` — ditambah PROAKTIF, di luar permintaan eksplisit CEO
+
+Server Action ini (riwayat pembayaran per pemilik+outlet, dipakai
+komponen riwayat di halaman) menerima `outletId` langsung dari
+parameter panggilan, digerbang `report.sales` (izin LEBIH LONGGAR dari
+`payroll.process`, bisa dipegang role yang dibatasi) -- risiko
+strukturnya SAMA PERSIS dengan ekspor. CEO tidak menyebut fungsi ini
+secara eksplisit, tapi dicatat di sini karena satu-satunya alasan
+tidak disebut kemungkinan besar karena belum diketahui ada -- bukan
+karena dianggap aman. Ditolak dengan pesan generik yang sama dengan
+error tak terduga lain (pola sama `not_found`/`notFound()`: tidak
+membedakan "outlet tidak ada" dari "di luar cakupan").
+
+### Diverifikasi — tiga hal spesifik yang diminta CEO
+
+`lib/pemilik/__tests__/bagi-hasil-outlet-scope.test.ts` (8 tes baru),
+fixture pemilik **"Salma"** menjual satu barang **Rp100.000** (persenBagi
+60%) di outlet **"BTHR"**, ditambah satu outlet **"OTHER"** kosong:
+
+1. **Angka Salma IDENTIK, dilihat owner**: `getBagiHasilLaporan()`
+   (dipakai tabel di layar, signature TIDAK disentuh sama sekali) DAN
+   `buildBagiHasilExport()` dengan `allowedOutletIds: null` (owner)
+   SAMA-SAMA menghasilkan `bagianPemilik` = **60000** persis -- file
+   Excel dibaca ULANG dengan ExcelJS (bukan cuma bytes) untuk mencari
+   baris "Salma" dan membaca kolom "Bagian Pemilik"-nya. Kalau gerbang
+   baru ikut mengubah kalkulasi, angka ini akan meleset dari 60000.
+2. **Manajer dibatasi ke outlet LAIN (`allowedOutletIds: [OTHER]`)**:
+   daftar outlet TIDAK memuat BTHR sama sekali (dropdown/fallback
+   tidak mungkin memilihnya), DAN `buildBagiHasilExport` dengan
+   `outletId` BTHR dipaksa lewat parameter (mensimulasikan URL ekspor
+   diketik langsung) mengembalikan `not_found` -- data Salma tidak
+   pernah terbaca dari database sama sekali untuk permintaan ini.
+3. **Scope array KOSONG**: daftar outlet nol baris, `buildBagiHasilExport`
+   `not_found` juga -- BUKAN tabel/file kosong yang bisa disalahartikan
+   "belum ada penjualan bulan ini".
+
+Ditambah pengujian jalur "Tandai Sudah Dibayar" di
+`lib/pemilik/__tests__/payout-manage.test.ts`: `allowedOutletIds`
+tidak memuat outlet yang diminta -> `recordPemilikPayoutWithDb`
+MELEMPAR, dibuktikan TIDAK ADA baris `pemilik_payouts` baru tertulis
+(bukan cuma "melempar", tapi "melempar DAN tidak menulis apa pun").
+
+Full suite: dicatat di commit. Build + lint + typecheck bersih.
+
+**Tahap 3 TUTUP di sini** -- keenam halaman baca-saja selesai
+(Dashboard, Laporan Penjualan, Laporan Stok, Barang, Kartu Stok Bahan,
+Laporan Bagi Hasil). Menunggu keputusan CEO untuk Tahap 4 (halaman
+tulis) -- dengan `saveBarangWithDb` sebagai item PERTAMA (utang
+terbuka yang dicatat di atas).
