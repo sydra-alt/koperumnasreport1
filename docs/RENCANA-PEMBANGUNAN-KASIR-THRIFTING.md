@@ -2513,3 +2513,104 @@ Full suite: dicatat di commit. Build + lint + typecheck bersih.
 Laporan Bagi Hasil). Menunggu keputusan CEO untuk Tahap 4 (halaman
 tulis) -- dengan `saveBarangWithDb` sebagai item PERTAMA (utang
 terbuka yang dicatat di atas).
+
+## §27 · Pembatasan akses per outlet — Tahap 4: halaman tulis (13 September 2026)
+
+CEO menyetujui pola Tahap 3, catat tiga hal jadi kebiasaan tetap:
+lipat penolakan jadi status/pesan yang SAMA dengan "tidak ada" (bukan
+status forbidden terpisah) di SEMUA jalur; terus cari jalur yang tidak
+ada di daftar CEO sendiri; kegagalan infra (DNS dkk) dicek dulu,
+jangan langsung dianggap flaky.
+
+Urutan Tahap 4: (1) `saveBarangWithDb` [utang terbuka] → (2) Outlets →
+(3) Employees → (4) Devices → (5) Stock transfers [paling rumit,
+fromOutletId ATAU toOutletId — RANCANGAN dilaporkan dulu sebelum
+dibangun]. Satu per commit. Berbeda dari Tahap 3: (a) tiap jalur tulis
+butuh tes penolakan LANGSUNG ke *WithDb dengan pemeriksaan DATABASE
+sesudahnya (bukan cuma nilai balik), (b) UPDATE diuji dari DUA sumber
+outletId (baris yang diubah DAN input), (c) pesan penolakan manusiawi,
+TIDAK menyebut outlet mana yang ditolak.
+
+### Pesan penolakan — desain ulang, dipakai SEMUA jalur tulis ke depan
+
+`strings.common.outletAccessDenied` = **"Outlet ini di luar akses Anda
+-- hubungi admin."** -- satu pesan yang SAMA di semua jalur tulis,
+TIDAK PERNAH menyebut nama/kode outlet (persis permintaan CEO).
+
+`assertOutletAllowed()` (Tahap 2) DIUBAH: pesan yang DILEMPAR sekarang
+SELALU string manusiawi ini, `context` (nama fungsi) dipindah ke
+`console.error()` saja (log server, tidak pernah sampai ke pengguna) --
+sebelumnya `context` ikut tercetak di pesan yang dilempar, itu OK
+untuk debug tapi bukan sesuatu yang boleh dilihat pengguna kalau
+error-nya sampai bocor mentah ke UI.
+
+**Keputusan desain tambahan, dicatat eksplisit karena ini penyimpangan
+dari pola `assertOutletAllowed()` yang sudah dipakai Tahap 3**: untuk
+lima fungsi Tahap 4 (`saveBarangWithDb` dst.), penolakan outlet
+ditulis sebagai `if (!isOutletAllowed(...)) return { error:
+strings.common.outletAccessDenied }` -- BUKAN `assertOutletAllowed()`
+yang melempar. Alasannya teknis: Next.js Server Actions MENYAMARKAN
+pesan `Error` yang dilempar di production (diganti pesan generik demi
+keamanan) KECUALI dikembalikan lewat nilai balik terstruktur -- pola
+`{error, success}` yang SUDAH dipakai di setiap `*WithDb` lain di
+proyek ini untuk alasan yang sama. Melempar di sini berisiko pesan
+manusiawi yang CEO minta tidak pernah benar-benar sampai ke pengguna.
+`assertOutletAllowed()` (throw) tetap dipertahankan sebagai primitif
+untuk konteks yang BUKAN pola `{error}` (seperti gerbang
+`recordPemilikPayoutWithDb` Tahap 3, tidak diubah) -- dua alat untuk
+dua bentuk fungsi, bukan salah satu dihapus.
+
+### Tahap 4, item 1/5 — `saveBarangWithDb` (utang terbuka Tahap 3)
+
+`allowedOutletIds: OutletScope` ditambahkan sebagai parameter WAJIB.
+Dua sumber outletId diperiksa TERPISAH, sesuai bentuk fungsi ini:
+- **CREATE**: `data.outletId` (input pengguna, satu-satunya sumber
+  untuk barang baru) -- dicek SEBELUM lookup kode outlet, sebelum
+  insert apa pun.
+- **UPDATE**: outletId **BARIS YANG SEDANG DIUBAH** (diambil ulang
+  dari DB, BUKAN `data.outletId` dari input) -- edit barang TIDAK
+  PERNAH memindahkan outlet (kolom itu diabaikan total di SQL UPDATE,
+  lihat komentar lama di file), jadi input outletId tidak relevan
+  untuk cabang ini sama sekali. Manajer Outlet A tidak boleh mengedit
+  barang Outlet B walau cuma ganti harga/nama.
+
+**Ditambah PROAKTIF, di luar `saveBarangWithDb` yang eksplisit diminta
+CEO** (mengikuti pujian "terus cari jalur yang tidak ada di daftar
+saya"):
+- **`setBarangStatusWithDb`** -- fungsi TERPISAH di file yang sama,
+  gerbang izin sama (`barang.manage`), risiko identik (ubah status
+  barang outlet lain lewat id langsung). Dicek TERPISAH dari kondisi
+  `ne(status,'terjual')` yang sudah ada -- supaya pesan errornya
+  sesuai alasan sesungguhnya, bukan satu pesan generik untuk dua kasus
+  berbeda.
+- **`addBarangFromShiftWithDb`** (`lib/pos/pos-add-barang.ts`, jalur
+  "Ita super kasir" dari `/pos/thrift`) -- **TEMUAN PALING PENTING**:
+  identitas di jalur ini BUKAN membership Supabase Auth sama sekali
+  (gerbangnya sengaja role EMPLOYEE pemilik shift PIN, lihat komentar
+  lama di file itu) -- `allowedOutletIds` dashboard TIDAK relevan di
+  sini. Skop yang benar: shift yang sedang terbuka HANYA berhak
+  menulis ke outletnya SENDIRI. Sebelum diperbaiki, `rawInput.outletId`
+  (dikirim klien, bisa disunting) dipercaya MENTAH-MENTAH -- kasir
+  shift di Outlet A bisa mengirim `outletId` Outlet B di body request
+  dan barang tertambah di Outlet B walau dia fisik/shift di Outlet A.
+  Diperbaiki dengan memaksa `[shift.outletId]` sebagai
+  `allowedOutletIds` ke `saveBarangWithDb` -- REUSE mekanisme yang
+  sama, bukan pengecekan baru terpisah; `OutletScope` di sini bukan
+  turunan membership sama sekali, cuma daftar satu outlet yang sah
+  untuk shift ini.
+
+### Diverifikasi
+
+`lib/barang/__tests__/manage.test.ts` (10 tes, file BARU -- ketiga
+fungsi ini sebelumnya NOL tes) dan
+`lib/pos/__tests__/pos-add-barang-outlet-scope.test.ts` (3 tes, file
+BARU). Semua kasus penolakan diperiksa DUA arah sesuai permintaan CEO:
+nilai balik (`result.error`) DAN database (baris tidak baru/tidak
+berubah), termasuk kasus jahat "outletId input diisi outlet yang
+diizinkan padahal baris aslinya outlet lain" (update tetap ditolak,
+baris tetap di outlet asalnya, tidak pernah "berpindah").
+
+Full suite: dicatat di commit. Build + lint + typecheck bersih.
+
+Lanjut Outlets → Employees → Devices tanpa lapor di tengah (instruksi
+CEO). Berhenti SEBELUM Stock Transfers -- rancangan dilaporkan dulu.
