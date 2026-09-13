@@ -3276,4 +3276,100 @@ sebelum setiap migrasi maju dipasang.
 Commit pos-fnb: `a040281` (kill-switch), `906ed99` (migrasi + schema +
 tes, TAHAP 5 TUTUP).
 
-Menunggu instruksi CEO untuk Tahap 6 -- tidak lompat langsung.
+## §32 · Tahap 6 — sambungan shift-membership: DILEWATI, dicatat sebagai UTANG TERIKAT PEMICU (13 September 2026)
+
+**Keputusan CEO: Tahap 6 TIDAK dibangun sekarang.** Ini BUKAN
+kelalaian atau lupa dikerjakan -- rancangannya sudah dianalisis penuh
+(empat pertanyaan CEO dijawab lebih dulu, lihat di bawah), dan
+keputusan melewatinya diambil SADAR berdasarkan bukti, bukan
+diasumsikan.
+
+### Kenapa dilewati
+
+1. **Nol akun terlindungi hari ini.** `employees.userId` (kolom
+   "optional link ke akun" di skema) terisi di **0 dari 8** baris
+   `employees` di database dev, dicek langsung lewat query, bukan
+   ditebak.
+2. **Bukan "belum banyak dipakai" -- kolom DORMAN tanpa pintu masuk.**
+   Ditelusuri SELURUH jalur tulis ke tabel `employees`
+   (`lib/employees/manage.ts`, satu-satunya modul yang menulis ke
+   tabel ini): **tidak ada satu form, Server Action, atau baris kode
+   pun di seluruh aplikasi yang pernah mengisi `employees.userId`**.
+   Dua pemakaian yang ADA (`kasir-shortcut.ts` untuk tombol "Buka
+   Kasir", `void-refund.ts` untuk atribusi void/refund) cuma MEMBACA
+   kolom ini, keduanya eksplisit didokumentasikan BUKAN lapisan
+   otorisasi. Satu-satunya cara kolom ini pernah terisi adalah
+   intervensi SQL manual.
+3. **Risiko tidak simetris.** Tahap 6 salah pasang = kasir tidak bisa
+   buka shift, outlet berhenti berjualan (kelas risiko sama dengan
+   temuan akun tablet §30). Tahap 6 tidak dibangun = kehilangan
+   perlindungan terhadap skenario yang PRASYARAT-nya sendiri (mengisi
+   `employees.userId`) butuh SQL manual lebih dulu -- tidak bisa
+   dipicu lewat aplikasi manapun hari ini. Ongkos membangun sekarang
+   (risiko nyata: kasir terkunci) lebih besar dari manfaat sekarang
+   (menutup celah yang belum bisa dieksploitasi).
+
+### Analisis yang tetap berlaku (jangan diulang dari nol nanti)
+
+**Celahnya NYATA secara struktural**, bukan argumen kosong: RLS
+Postgres cuma tahu `auth.uid()` (sesi yang login), **RLS tidak bisa
+tahu PIN siapa yang dimasukkan di form** -- itu murni data aplikasi.
+Skenario yang tidak tertutup dua lapisan sebelumnya: tablet login
+sebagai **owner** (unrestricted, wajar -- biasanya owner yang setup
+tablet), lalu seorang MANAJER yang membership pribadinya dibatasi ke
+outlet lain berjalan ke tablet itu dan PIN masuk membuka shift di
+outlet yang bukan wewenangnya. Tahap 5 tidak menangkap ini (akun
+tablet = owner = lolos RLS). Tahap 4 tidak menangkap ini (tidak
+menyentuh `openShiftWithDb`). Cuma bisa ditutup oleh query
+`employees.userId -> memberships` DI DALAM `openShiftWithDb` sendiri
+-- app-layer, BUKAN RLS (RLS tidak punya akses ke `employeeId` yang
+dikirim lewat PIN, cuma ke `auth.uid()` sesi).
+
+**Rancangan siap pakai, tinggal diimplementasikan kalau pemicu di bawah terjadi:**
+- Di dalam `openShiftWithDb` (`lib/pos/shift.ts`), setelah PIN
+  terverifikasi (`identity.employeeId` didapat): `SELECT
+  memberships.outlet_ids, memberships.role FROM employees JOIN
+  memberships ON memberships.user_id = employees.user_id AND
+  memberships.business_id = employees.business_id WHERE
+  employees.id = identity.employeeId AND employees.user_id IS NOT
+  NULL AND memberships.is_active = true`.
+- **`employees.userId` NULL -> DILEWATKAN** (bukan ditolak) --
+  konsisten dengan prinsip inti proyek "pegawai TIDAK harus punya
+  akun auth" (BLUEPRINT §3.1). Menolak NULL akan mengunci SEMUA
+  kasir PIN-murni (100% hari ini) dari buka shift sama sekali --
+  regresi jauh lebih besar dari celah yang mau ditutup. NULL bukan
+  berarti "tidak ada gerbang" -- dua lapisan lain (Tahap 4 app-layer,
+  Tahap 5 RLS akun tablet) tetap berlaku penuh terlepas dari kolom
+  ini.
+- Kalau ketemu membership DAN `computeAllowedOutletIds(role,
+  outlet_ids)` bukan null DAN `shift.outletId` tidak ada di
+  dalamnya -> tolak buka shift dengan `strings.common
+  .outletAccessDenied`, pola sama seluruh Tahap 4.
+- **Bukan RLS, jadi bukan kill-switch `.sql`.** Pemulihan kalau salah
+  pasang dan mengunci kasir: revert deploy (kode biasa), ATAU --
+  lebih presisi, tanpa redeploy -- `UPDATE employees SET user_id =
+  NULL WHERE id = '...'` lewat service role untuk melepas SATU
+  karyawan yang salah kena, tanpa menyentuh siapa pun yang lain.
+  Blast radius jauh lebih kecil dari kill-switch RLS Tahap 5.
+
+### PEMICU — WAJIB dibaca sebelum melangkah, bukan sesudah
+
+**Siapa pun yang membangun jalur pengisian `employees.userId` (form
+"tautkan ke akun", impor massal, fitur undang karyawan yang
+otomatis menaut ke membership, atau apa pun yang membuat kolom ini
+punya nilai lewat aplikasi untuk PERTAMA KALINYA) WAJIB kembali ke
+§32 ini dan mengimplementasikan pemeriksaan di atas SEBELUM fitur
+itu diluncurkan ke produksi -- bukan sesudah.** Begitu ada jalur
+pengisian, poin 1-2 di atas (nol akun, kolom dorman) tidak lagi
+benar, dan celah yang dianalisis di atas jadi bisa dieksploitasi
+sungguhan.
+
+---
+
+## PEMBATASAN AKSES PER OUTLET — SELESAI (Tahap 0-5)
+
+Tahap 0 (kelola membership) -- Tahap 1 (fondasi `allowedOutletIds`) --
+Tahap 2 (utilitas filter+assert) -- Tahap 3 (enam halaman baca) --
+Tahap 4 (lima jalur tulis app-layer, termasuk tiga temuan proaktif) --
+Tahap 5 (RLS level database: `orders`, `shifts`, `barang`). Tahap 6
+dilewati sadar, dicatat sebagai utang terikat pemicu di atas.
