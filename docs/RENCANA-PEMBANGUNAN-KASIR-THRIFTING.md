@@ -2560,6 +2560,22 @@ untuk konteks yang BUKAN pola `{error}` (seperti gerbang
 `recordPemilikPayoutWithDb` Tahap 3, tidak diubah) -- dua alat untuk
 dua bentuk fungsi, bukan salah satu dihapus.
 
+**CATATAN UNTUK DITINDAKLANJUTI SETELAH TAHAP 4 SELESAI (bukan
+sekarang, instruksi CEO eksplisit)**: `isOutletAllowed()` mengembalikan
+boolean biasa -- persis bentuk yang Tahap 2 sengaja hindari lewat
+`assertOutletAllowed()` ("gagal diam-diam kalau pemanggil lupa
+mengecek nilai baliknya"). Di kelima fungsi Tahap 4 ini aman karena
+hasilnya SELALU langsung dipakai (`if (!isOutletAllowed(...)) return
+{error}`), tapi tidak ada yang MEMAKSA pemanggil BARU menulis pola itu
+-- lupa mengecek nilai balik `isOutletAllowed()` di fungsi kelima
+belas nanti tidak akan dihentikan siapa pun, beda dengan
+`assertOutletAllowed()` yang gagal keras kalau diabaikan. Perlu bentuk
+yang menggabungkan DUA sifat: pesan yang sampai ke pengguna (lolos
+penyamaran Next.js) DAN tidak bisa diam-diam diabaikan pemanggil.
+Usulan dilaporkan SETELAH Tahap 4 (Outlets/Employees/Devices/Stock
+Transfers) selesai, bukan sekarang -- supaya tidak menghentikan
+momentum jalur tulis yang sedang dikerjakan.
+
 ### Tahap 4, item 1/5 — `saveBarangWithDb` (utang terbuka Tahap 3)
 
 `allowedOutletIds: OutletScope` ditambahkan sebagai parameter WAJIB.
@@ -2584,20 +2600,36 @@ saya"):
   sesuai alasan sesungguhnya, bukan satu pesan generik untuk dua kasus
   berbeda.
 - **`addBarangFromShiftWithDb`** (`lib/pos/pos-add-barang.ts`, jalur
-  "Ita super kasir" dari `/pos/thrift`) -- **TEMUAN PALING PENTING**:
-  identitas di jalur ini BUKAN membership Supabase Auth sama sekali
+  "Ita super kasir" dari `/pos/thrift`) -- **LUBANG SUNGGUHAN YANG
+  SUDAH TERBUKA DI PRODUKSI, BUKAN PERTAHANAN BERLAPIS** (koreksi bobot
+  dari CEO, 13 September 2026 -- catatan pertama menyebutnya "temuan",
+  itu meremehkan). Sebelum diperbaiki: `rawInput.outletId` (dikirim
+  klien, bisa disunting) dipercaya MENTAH-MENTAH -- kasir yang shift-nya
+  di Outlet A bisa mengirim `outletId` Outlet B di body request dan
+  BERHASIL menambah barang ke Outlet B walau dia fisik/shift di Outlet
+  A. **Ini bukan cuma "data tidak rapi"**: barang thrifting selalu
+  terikat pemilik titipan dan persentase bagi hasil (lihat §17/§26) --
+  barang yang masuk ke outlet yang salah muncul di LAPORAN BAGI HASIL
+  OUTLET YANG SALAH, memindahkan uang pemilik titipan secara diam-diam
+  dari satu outlet ke outlet lain di angka yang dibayarkan. Ini uang
+  orang, bukan cuma kerapian data.
+
+  Identitas di jalur ini BUKAN membership Supabase Auth sama sekali
   (gerbangnya sengaja role EMPLOYEE pemilik shift PIN, lihat komentar
   lama di file itu) -- `allowedOutletIds` dashboard TIDAK relevan di
-  sini. Skop yang benar: shift yang sedang terbuka HANYA berhak
-  menulis ke outletnya SENDIRI. Sebelum diperbaiki, `rawInput.outletId`
-  (dikirim klien, bisa disunting) dipercaya MENTAH-MENTAH -- kasir
-  shift di Outlet A bisa mengirim `outletId` Outlet B di body request
-  dan barang tertambah di Outlet B walau dia fisik/shift di Outlet A.
-  Diperbaiki dengan memaksa `[shift.outletId]` sebagai
-  `allowedOutletIds` ke `saveBarangWithDb` -- REUSE mekanisme yang
-  sama, bukan pengecekan baru terpisah; `OutletScope` di sini bukan
-  turunan membership sama sekali, cuma daftar satu outlet yang sah
-  untuk shift ini.
+  sini sama sekali. Diperbaiki dengan memaksa `[shift.outletId]`
+  sebagai `allowedOutletIds` ke `saveBarangWithDb` -- REUSE mekanisme
+  yang sama, bukan pengecekan baru terpisah. **Ini penerapan LANGSUNG
+  prinsip "shift mempersempit, tidak pernah memberi" (§21, dasar
+  seluruh pekerjaan pembatasan akses per outlet) ke jalur yang aturan
+  itu belum pernah menyentuh sama sekali** -- shift PIN sudah lama ada
+  (§14 dan sebelumnya), tapi tidak pernah secara eksplisit dipakai
+  sebagai BATAS OUTLET untuk penulisan data sampai perbaikan ini.
+  `OutletScope` di titik ini bukan turunan membership sama sekali, cuma
+  daftar satu outlet yang sah untuk shift yang sedang terbuka --
+  konfirmasi bahwa `OutletScope`/`isOutletAllowed` adalah primitif
+  generik (bisa diisi dari SUMBER APA PUN yang punya makna "outlet mana
+  yang sah di titik ini"), bukan cuma pipa dari `memberships.outlet_ids`.
 
 ### Diverifikasi
 
