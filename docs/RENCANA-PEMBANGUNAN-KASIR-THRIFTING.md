@@ -1371,16 +1371,30 @@ sudah dibayarkan / sisa dibayar (`lib/db/queries/bagi-hasil-report.ts`,
 terjadi fan-out (cross product `barang` × `pemilik_payouts` yang
 mengalikan SUM/COUNT, bukan menjumlahkannya).
 
-**ASUMSI PENAFSIRAN yang belum dikonfirmasi CEO** (spesifikasi §7 tidak
-eksplisit soal ini): `dititipkan`/`terjual`/`belumTerjual`/`rusak`
-DIBUAT KUMULATIF sampai akhir periode (bukan dibatasi rentang tanggal
-laporan), supaya identitas tertutup `dititipkan = terjual + belumTerjual
-+ rusak` selalu berlaku — dites eksplisit. `totalPenjualan`/
-`bagianPemilik`/`bagianToko` SEBALIKNYA dibatasi ketat ke rentang
-tanggal laporan, karena itu dasar kewajiban bayar periode itu. **Kalau
-CEO memaksudkan keempat angka stok itu juga dibatasi periode, ini perlu
-diperbaiki** — ditulis di sini dan di komentar kode supaya mudah
-dikoreksi.
+**ASUMSI PENAFSIRAN — SUDAH DIKONFIRMASI CEO (13 September 2026),
+diselesaikan dengan PENYAJIAN GANDA, bukan menyamakan periode.**
+`dititipkan`/`terjual`/`belumTerjual`/`rusak` TETAP KUMULATIF sampai
+akhir periode (bukan dibatasi rentang tanggal laporan), supaya
+identitas tertutup `dititipkan = terjual + belumTerjual + rusak` tetap
+berlaku — CEO menegaskan menyamakan periode (membatasi kelompok stok
+ke startDate..endDate juga) akan MENGHILANGKAN barang lama yang
+menumpuk dari laporan, padahal itu justru salah satu tujuan laporan
+ini. Sebagai gantinya: `terjualPeriode` (dibatasi startDate..endDate
+ketat, sudah dihitung `moneyCte` sejak awal tapi belum pernah
+ditampilkan) sekarang punya kolom SENDIRI di layar dan ekspor Excel,
+diposisikan TEPAT SEBELUM Total Penjualan di kelompok uang — supaya
+tiap kelompok (stok kumulatif vs uang per periode) konsisten di
+dalam dirinya sendiri, dan pembaca yang membaca satu baris utuh lewat
+WhatsApp di HP tidak perlu memahami judul kolom kecil untuk tidak
+salah baca (alasan eksplisit CEO menolak opsi "cukup ganti label
+kolom" — itu taruhan pada orang membaca label, kalah di layar HP).
+Judul kolom "Terjual" (kumulatif) dan "Terjual Periode Ini" (baru)
+dibedakan dengan KATA, bukan tanda kurung kecil — kata persisnya
+diusulkan Claude, keputusan final CEO (lihat komentar
+`lib/i18n/id.ts`). Dibuktikan lewat test database sungguhan: pemilik
+yang jual di periode LAMA (businessDate dipaksa mundur) dan periode
+INI menghasilkan `terjualKumulatif` (2) berbeda dan lebih besar dari
+`terjualPeriode` (1) untuk periode yang sama.
 
 **LIMA SYARAT CEO, status masing-masing**:
 
@@ -1598,6 +1612,16 @@ berlaku konsisten sepanjang minggu. Ini bukan masalah dan tidak perlu
 diperbaiki, tapi harus tertulis di sini supaya tidak ada yang nanti
 mengira angka `04:00` di hari Sabtu/Minggu punya dasar operasional
 (jam tutup) yang sebenarnya tidak ada pada hari-hari itu.
+
+**Keputusan CEO, FINAL — batas bulan (13 September 2026), tidak
+dibahas ulang:** penjualan dini hari yang melewati pergantian bulan
+tetap ikut aturan `businessDate()`/`dayCutoffTime` yang sama (hari
+SHIFT-nya dibuka, lihat di atas) — CEO menerima konsekuensinya untuk
+laporan bulanan (bagi hasil, dll.): traffic di atas jam 12 malam
+sangat sepi, selisihnya paling satu-dua transaksi per bulan, dan
+uangnya tetap dibayarkan di periode mana pun transaksi itu akhirnya
+tercatat. Tidak ada perubahan kode — dicatat di sini supaya tidak ada
+yang nanti mengira ini celah yang perlu ditambal.
 
 ### Pengaman database uji — gagal-tertutup, bukan gagal-terbuka
 
