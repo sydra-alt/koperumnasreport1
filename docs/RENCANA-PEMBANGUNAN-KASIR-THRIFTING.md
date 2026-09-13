@@ -2732,3 +2732,145 @@ Build + lint + typecheck bersih.
 **Berhenti SEBELUM Stock Transfers** -- rancangan wajib dilaporkan
 dulu sebelum dibangun (gerbang per AKSI, bukan per baris: outlet ASAL
 vs outlet TUJUAN beda hak untuk aksi berbeda).
+
+## §28 · Pembatasan akses per outlet — Tahap 4, item 5/5: Stock Transfers (rancangan disetujui, 13 September 2026)
+
+### Prinsip: gerbang per AKSI, bukan per baris
+
+Satu baris `stock_transfers` punya `fromOutletId` (gudang pusat,
+SELALU hasil `getCentralKitchen()`, tidak pernah dari input) dan
+`toOutletId` (outlet peminta, dari input). Wewenang per AKSI:
+
+| Aksi | Outlet yang diperiksa |
+|---|---|
+| Request | `toOutletId` (input) |
+| Approve/Reject | `fromOutletId` (baris) |
+| Send | `fromOutletId` (baris) |
+| Receive | `toOutletId` (baris) |
+| Cancel dari `requested`/`approved` | `toOutletId` (baris) -- murni status, tidak ada stok bergerak |
+| **Cancel dari `received`** | **KEDUA outlet** (`fromOutletId` DAN `toOutletId`) -- lihat alasan di bawah |
+
+**Kenapa bukan `outletScopeConditionForTransfer` (OR, Tahap 2) untuk
+gerbang aksi**: utilitas itu untuk VISIBILITAS list (tampilkan baris
+kalau outlet manapun match). Dipakai untuk gerbang APPROVE, manajer
+outlet peminta bisa "menyetujui permintaannya sendiri" -- justru yang
+sudah dicegah di level role (`stock.transfer_approve`: warehouse
+sengaja `na`). OR cuma untuk daftar/tampilan, gerbang aksi selalu satu
+kolom spesifik (atau AND dua kolom, khusus cancel-dari-received).
+
+### Koreksi CEO — cancel dari `received` butuh KEDUA outlet, bukan `toOutletId` saja
+
+Cancel dari `received` adalah REVERSAL STOK, beda kelas dari cancel
+`requested`/`approved` (murni status). Kode yang ada (komentar asli,
+tidak diubah):
+
+> "reversal penuh di sisi OUTLET saja (mekanisme v1 dipertahankan)...
+> Stok GUDANG (transfer_out saat kirim) TIDAK direversal -- barang
+> memang sudah fisik meninggalkan gudang terlepas dari koreksi catatan
+> penerimaan outlet."
+
+**Pembedaan penting yang CEO minta ditulis eksplisit supaya tidak
+disalahpahami orang berikutnya**: keputusan AKUNTANSI di atas (gudang
+tidak ikut direversal) SENGAJA dan beralasan tertulis -- BUKAN yang
+sedang diubah oleh pekerjaan Tahap 4 ini. Yang BARU (dan memang baru,
+bukan pernah diputuskan sebelumnya) adalah pertanyaan AKSES: siapa
+yang boleh MEMICU reversal asimetris ini. Frasa "mekanisme v1
+dipertahankan" menandakan logika ini diwariskan dari versi
+satu-langkah sebelum alur request→approve→send→receive ada, dipindah
+apa adanya tanpa pernah ditinjau ulang untuk pertanyaan otorisasi --
+bukan karena ada yang lupa, tapi karena pertanyaannya belum pernah
+relevan sampai pembatasan akses per outlet ada.
+
+Efeknya: `sentQty` bersih HILANG dari pembukuan kedua sisi (gudang
+sudah -sentQty sejak SEND, outlet +receivedQty lalu -receivedQty saat
+cancel = bersih nol, tidak pernah kembali ke gudang). Ini masuk akal
+KALAU cancel-dari-received selalu berarti "barang ini pada dasarnya
+tidak pernah sungguh sampai" -- tapi sistem tidak pernah mengonfirmasi
+itu (lihat utang baru di bawah). Diputuskan: gerbang akses untuk kasus
+ini butuh KEDUA outlet (`fromOutletId` DAN `toOutletId`) -- outlet-saja
+membiarkan keputusan sepihak yang CEO ingin cegah, gudang-saja sama
+janggalnya (kenapa gudang membatalkan catatan PENERIMAAN outlet tanpa
+keterlibatan outlet itu). Keduanya adalah bar yang wajar untuk aksi
+berkonsekuensi "stok hilang dari pembukuan".
+
+### UTANG BARU — dicatat, TIDAK DIKERJAKAN sekarang (di luar lingkup Tahap 4)
+
+**Formulir cancel tidak membedakan "barang hilang" dari "salah klik
+terima, barangnya ada di outlet"** -- dua akibat yang seharusnya
+BERLAWANAN:
+- **Salah klik terima** (outlet fisik TIDAK punya barangnya, cuma
+  salah catat) -- stok SEHARUSNYA kembali ke gudang (reversal DUA
+  sisi: outlet turun, gudang naik lagi), bukan cuma turun di outlet.
+- **Barang hilang sungguhan** (rusak/hilang di outlet setelah
+  diterima) -- stok MEMANG harus hilang dari pembukuan, TAPI harus
+  tercatat sebagai KERUGIAN BERNAMA (pola sama `transfer_loss` yang
+  sudah ada untuk selisih sent vs received), bukan menguap tanpa jejak
+  seperti sekarang.
+
+Formulir cancel hari ini cuma minta alasan teks bebas, tidak
+membedakan dua skenario ini sama sekali -- keduanya berakhir di
+mekanisme yang SAMA (turun di outlet, gudang tidak tersentuh, tidak
+ada movement kerugian bernama). **Ini utang PERILAKU STOK, bukan
+akses** -- di luar lingkup pembatasan akses per outlet, dan CEO
+eksplisit melarang dikerjakan sekarang: mengubah perilaku stok di
+tengah pekerjaan akses adalah cara memastikan kedua-duanya rusak
+sekaligus kalau ada yang salah. Menyusul sebagai pekerjaan TERPISAH,
+kapan pun itu diputuskan, dengan kemungkinan solusi: tambah pilihan
+eksplisit di formulir cancel ("barang kembali ke gudang" vs "barang
+hilang/rusak"), masing-masing menulis movement yang benar.
+
+### SYARAT PELUNCURAN (bukan catatan biasa) — gudang wajib ada di outlet_ids sebelum manajer dibatasi dibuat
+
+Approve/send digerbang `fromOutletId` (gudang). Dicek langsung ke
+database dev (13 September 2026, bukan dari ingatan): **masih 6 baris
+membership, SEMUA role owner, SEMUA outlet_ids null** -- belum ada
+satu pun membership manager/warehouse dibuat lewat `/team`. Central
+kitchen ("Gudang", kode DEMO) sudah ada di bisnis "[DEV] Demo Cafe".
+
+**Artinya gerbang ini AMAN dipasang sekarang** (nol membership
+restricted yang bisa terkunci) -- TAPI begitu manajer sungguhan dibuat
+dengan `outlet_ids` dibatasi ke outlet retailnya lewat `/team`, dan
+dialah yang biasa approve/kirim transfer, alur BERHENTI DI HARI
+PERTAMA kecuali outlet gudang ditambahkan ke `outlet_ids`-nya LEBIH
+DULU. **Ini syarat operasional wajib sebelum peluncuran produksi**,
+bukan sekadar catatan: siapa pun yang menyiapkan membership produksi
+harus tahu peran approve/kirim transfer butuh akses ke outlet gudang
+juga, tidak cukup outlet retailnya sendiri.
+
+**Klarifikasi yang dicatat supaya tidak jadi sumber kebingungan
+berulang**: gerbang `stock.transfer_approve`/`stock.transfer` dicek
+dari **`memberships.role`** (identitas dashboard Supabase Auth) --
+BUKAN `employees.role` (identitas PIN kasir POS). Dua sistem identitas
+terpisah total (lihat catatan awal proyek ini soal itu) -- karyawan
+PIN berperan "manager" TIDAK relevan sama sekali untuk gerbang ini.
+
+### Temuan: list/dropdown/send/receive SUDAH BOCOR HARI INI, dicatat sebagai lubang terbuka
+
+Sama seperti `addBarangFromShiftWithDb` -- BUKAN pencegahan
+teoretis, ini kondisi SEKARANG sebelum diperbaiki:
+- `/stock-transfers` (list): `SELECT * FROM stock_transfers WHERE
+  business_id=...` -- NOL filter outlet. Siapa pun dengan izin
+  `stock.transfer` melihat SEMUA transfer semua outlet.
+- `/stock-transfers/new`: dropdown "outlet peminta" menampilkan SEMUA
+  outlet retail aktif, tidak disaring.
+- `/stock-transfers/[id]/send`, `/[id]/receive`: akses langsung by-id
+  lewat URL, sudah pakai `notFound()` untuk status salah, TAPI belum
+  ada pengecekan outlet sama sekali.
+
+### Urutan pembangunan (disepakati, satu per commit)
+
+1. List `/stock-transfers` -- pasang `outletScopeConditionForTransfer` (OR).
+2. Dropdown outlet di `/stock-transfers/new` -- `outletScopeCondition` (satu kolom).
+3. `/[id]/send`, `/[id]/receive` -- `isOutletAllowed` digabung ke `notFound()` yang sudah ada.
+4. Lima fungsi `*WithDb` -- gerbang sesuai tabel di atas, cancel-dari-received butuh KEDUA outlet.
+5. `getLastRequestForOutlet` -- gerbang DI FUNGSINYA SENDIRI (`assertOutletAllowed`), TIDAK mengandalkan pemanggil sudah menyaring dropdown lebih dulu (koreksi CEO: itu persis pola yang Tahap 2 hindari -- pemanggil baru lewat jalur lain tidak akan dihentikan siapa pun).
+
+**Poin 4 (jawaban desain CEO, diterapkan langsung)**: tombol
+Approve/Reject di halaman list DISEMBUNYIKAN kalau `fromOutletId`
+tidak ada di `allowedOutletIds` -- konsisten dengan keputusan dropdown
+Tahap 3 ("kontrol yang terlihat lalu gagal saat diklik itu
+membingungkan"). Gerbang server TETAP ada, penyembunyian bukan
+penggantinya.
+
+Menunggu hasil pembangunan lima commit ini -- lapor setelah selesai,
+Tahap 4 tutup di situ.
