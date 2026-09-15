@@ -3491,6 +3491,18 @@ pertama buka, atau kasir hari pertama menjual menu yang salah total.
 Ini pekerjaan DATA (CEO yang isi), bukan pekerjaan kode -- mekanismenya
 sudah ada dan terbukti benar (T22a).
 
+**Koreksi penting dari CEO, dicatat supaya tidak terlewat saat
+pengisian data**: whitelist `product_outlets` OPT-IN PER PRODUK, bukan
+per outlet. Artinya membatasi 25 produk demo yang ada sekarang HANYA
+untuk Indosteak TIDAK CUKUP -- kalau cuma menu Indosteak yang
+dicentang outlet-nya, ke-25 produk demo itu (tanpa baris
+`product_outlets` sama sekali) TETAP tersedia di SEMUA outlet lain
+termasuk Indokopi, karena aturan "tanpa baris = tersedia di mana-mana"
+berlaku PER PRODUK. Kalau Indokopi juga akan dipakai dengan katalog
+sungguhan sendiri, ke-25 produk demo itu (atau produk Indosteak yang
+baru dibuat) HARUS dibatasi keluar dari outlet Indokopi juga, bukan
+cuma "dipastikan masuk" ke Indosteak.
+
 ### Lima jalur ujung-ke-ujung dibuktikan lewat pembayaran sungguhan (nol kode produksi baru)
 
 Sebelumnya cuma teruji sebagai matematika murni (`order-calculator.test.ts`)
@@ -3568,8 +3580,94 @@ thrifting sudah akurat sejak awal, tidak menunggu Fase 2.
 
 Katalog menu+kategori+modifier Indosteak sungguhan (nol hari ini,
 25 produk yang ada = demo generik), `product_outlets`/`brand_id`
-(lihat penghalang di atas), karyawan+PIN sungguhan (cuma 5 untuk
-seluruh bisnis hari ini, jelas placeholder), device per outlet dicek
-ter-pairing (4 device untuk 5 outlet aktif -- perlu dicek per outlet
-mana yang belum), keputusan service charge (isi persen atau biarkan
-0%).
+(lihat penghalang di atas -- INGAT opt-in PER PRODUK, lihat koreksi
+CEO di atas), karyawan+PIN sungguhan (cuma 5 untuk seluruh bisnis hari
+ini, jelas placeholder), device per outlet dicek ter-pairing (4 device
+untuk 5 outlet aktif -- perlu dicek per outlet mana yang belum),
+keputusan service charge (isi persen atau biarkan 0%).
+
+---
+
+## §35 · T50 (Order Mandiri/QR Tamu) ditemukan belum ter-commit — diamankan, database dev dibersihkan (15 September 2026)
+
+### Temuan
+
+Saat investigasi `product_outlets` (§34), `git status` di working tree
+pos-fnb menunjukkan pekerjaan T50 (Fase 6 -- Kiosk/QR Order) milik CEO
+sendiri, **belum pernah ter-commit sama sekali**: layar order mandiri
+tamu berbasis token (`app/(guest)/order/[token]`), API
+`order-guest`/`order-guest-catalog`, badge pesanan masuk di layar
+kasir (`pending-orders-badge.tsx`), tabel baru `outlet_tokens`
+(migrasi `0037_outlet_tokens_self_order.sql`), dan penyesuaian
+`pos-screen.tsx`. Lebih rapuh dari commit-belum-push manapun
+sebelumnya -- satu `git clean`/`checkout` akan menghapusnya permanen.
+
+**Diamankan** (bukan dinilai/diperbaiki): branch `wip/t50-self-order`,
+commit apa adanya (`10fce87`, pos-fnb), push ke origin. `master`
+dikembalikan bersih, TIDAK di-merge.
+
+### Database dev sempat lebih maju dari `master` -- sudah dibersihkan
+
+Migrasi `0037` ternyata SUDAH diterapkan langsung ke database dev di
+luar `master` sebelum kode T50 pernah ter-commit. Bukti konkret:
+tabel `outlet_tokens` ada secara fisik di dev (bukan cuma di kode),
+`__drizzle_migrations` dev punya baris `id=38` yang tidak dikenal
+`_journal.json` `master`, dan tes permanen `rls.test.ts` ("tidak ada
+tabel tanpa RLS aktif") **gagal di `master` yang bersih sekalipun** --
+`outlet_tokens` sengaja dibuat tanpa RLS (desain token tamu), tapi tes
+itu tidak tahu pengecualian ini.
+
+Dibersihkan (15 September 2026), atas instruksi eksplisit -- **BUKAN
+menambah pengecualian ke `rls.test.ts`** (itu akan melumpuhkan gunanya
+tes itu selamanya):
+```sql
+drop table if exists outlet_tokens;  -- 0 baris, tidak ada data hilang
+delete from drizzle.__drizzle_migrations where id = 38;
+```
+`rls.test.ts` dikonfirmasi hijau lagi sesudahnya. Dicatat lengkap di
+`docs/T50-DEV-CLEANUP-2026-09-15.md` (branch `wip/t50-self-order`,
+pos-fnb) -- siapa pun lanjut T50 perlu `db:migrate` ulang migrasi 0037
+di branch itu sebelum kodenya jalan lagi terhadap dev.
+
+### SYARAT MERGE T50 (bukan catatan biasa) — keputusan RLS `outlet_tokens` WAJIB diambil dulu
+
+`outlet_tokens` adalah SATU-SATUNYA tabel di seluruh proyek ini tanpa
+RLS -- 28+ tabel lain semuanya punya pertahanan terakhir itu.
+Alasannya (tamu self-order tidak punya sesi Supabase Auth, jadi tidak
+ada `auth.uid()` untuk didasari policy) masuk akal secara teknis,
+TAPI harus ditinjau sadar sebelum merge, bukan diterima begitu saja
+karena "sudah ditulis alasannya di komentar kode". Tiga pertanyaan
+WAJIB dijawab saat peninjauan itu, SEBELUM T50 di-merge ke `master`:
+
+1. **Bisakah policy RLS dibuat berbasis token, bukan `auth.uid()`?**
+   Postgres RLS bisa memakai fungsi apa pun di `USING`/`WITH CHECK`,
+   termasuk membaca token dari `current_setting()`/parameter koneksi
+   kalau layer aplikasi mau mengirimkannya -- ini bukan mustahil
+   secara teknis, cuma belum pernah dicoba di proyek ini (pola
+   `auth_business_ids()`/`auth_outlet_ids()` semuanya berbasis
+   `auth.uid()`). Kalau bisa, `outlet_tokens` (dan tabel apa pun yang
+   nanti dibaca/ditulis alur tamu) tidak perlu jadi pengecualian sama
+   sekali.
+2. **Kalau tidak bisa (atau tidak sepadan usahanya) -- apa yang
+   menggantikan lapisan itu?** RLS bukan satu-satunya pertahanan yang
+   mungkin (lihat `getAdminDb()` yang sudah dipakai luas di
+   scripts/setup dengan alasan tertulis) -- tapi `outlet_tokens`
+   dipakai dari ROUTE HANDLER publik (`app/api/order-guest*`), bukan
+   skrip admin. Perlu jawaban eksplisit: validasi di app layer saja
+   sudah cukup, atau ada lapisan lain yang perlu dibangun (rate
+   limit? scoping token yang lebih ketat?).
+3. **Token bocor berarti apa -- cuma baca menu, atau bisa bikin
+   order?** Ini pertanyaan blast-radius: kalau token yang sama dipakai
+   untuk MEMBACA katalog (`order-guest-catalog`) DAN MENULIS order
+   (`order-guest`), satu token bocor (screenshot QR tersebar, URL
+   ke-forward) bisa berarti siapa pun bisa memesan atas nama outlet
+   itu tanpa batas. Perlu jawaban eksplisit sebelum merge: apakah itu
+   risiko yang diterima (order tamu toh perlu dikonfirmasi kasir
+   sebelum masuk `orders` beneran -- cek alur `pending_confirmation`
+   di T50 sendiri), atau perlu pembatasan tambahan (kadaluwarsa token,
+   rate limit per token, dst).
+
+**Ini ditulis sebagai SYARAT MERGE, bukan catatan biasa** -- T50 tidak
+boleh masuk `master` sebelum ketiga pertanyaan ini terjawab eksplisit,
+persis pola "syarat peluncuran" yang sudah dipakai proyek ini
+sebelumnya (gudang-di-outlet_ids §28, akun-tablet-di-outlet_ids §30-31).
