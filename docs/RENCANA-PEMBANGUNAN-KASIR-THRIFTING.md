@@ -3671,3 +3671,122 @@ WAJIB dijawab saat peninjauan itu, SEBELUM T50 di-merge ke `master`:
 boleh masuk `master` sebelum ketiga pertanyaan ini terjawab eksplisit,
 persis pola "syarat peluncuran" yang sudah dipakai proyek ini
 sebelumnya (gudang-di-outlet_ids §28, akun-tablet-di-outlet_ids §30-31).
+
+## §36 · Langkah A — Impor data produk & material, pajak outlet (15 September 2026) — PENGHALANG PELUNCURAN §34 DITUTUP
+
+Data master data asli (Excel, bukan PDF -- CEO mengirim ulang sebagai
+`.csv` langsung di pesan setelah sesi sebelumnya terpotong dan draf
+rekonstruksi dari ringatan yang sempat dibuat DIHAPUS sebelum
+dipakai -- lihat catatan proses di bawah) diimpor ke database dev
+`[DEV] Demo Cafe`. Sumber: `material.csv` (225 bahan) dan
+`produk.csv` (196 baris menu Indosteak/Indokopi/Indokopi Lite).
+Kedua file disimpan di `pos-fnb/scripts/import-langkah-a/` sebagai
+rujukan (instruksi eksplisit CEO untuk `material.csv`).
+
+**Pajak outlet** -- Indosteak Cempaka Putih & Pekansari (ISCP/ISPK)
+dinaikkan ke `taxPercent=15`; Indokopi Jatinegara & Indokopi Lite
+Kemayoran (IKJT/IKLK) tetap 10%. Service charge dibiarkan 0% di
+semua outlet. Diverifikasi lewat kode: `orders.taxAmount`/
+`serviceCharge` adalah kolom snapshot yang ditulis SEKALI saat
+checkout dari `outlet.taxPercent` saat itu (`pay-order.ts`) --
+TIDAK PERNAH dibaca ulang, jadi order historis tidak ikut berubah.
+
+**Blocker skema yang ditemukan saat dry-run (bukan sesuatu yang
+ditebak/diperbaiki sepihak):**
+1. `ingredients` tidak punya kolom harga sama sekali -- harga cuma
+   ada di `stock_movements.unit_cost` (per-kejadian, bukan master).
+   Keputusan CEO: impor bahan TANPA harga; `harga_beli` di
+   material.csv masuk nanti lewat stock opname pertama (Langkah C).
+2. `ingredients.base_unit`/`purchase_unit` butuh DUA satuan
+   tervalidasi terhadap katalog `units` milik bisnis, sedangkan
+   material.csv cuma punya SATU satuan per baris, dan katalog
+   `units` yang ada sebelumnya cuma 2 baris sampah uji coba manual
+   (`code=kg name="Es Batu"`, `code=pcs name="Syrup Lemon"`).
+   Keputusan CEO: `base_unit = purchase_unit`, faktor 1, untuk
+   SEMUA 225 bahan (konversi sungguhan diisi belakangan per bahan
+   saat data pembelian nyata ada -- tidak ditebak). Katalog `units`
+   dibangun ulang bersih: gram, kg, ml, liter, pcs, pack, porsi,
+   dirigen, botol, kotak, bungkus (semua faktor 1, self-referential
+   -- proyek ini belum punya data konversi antar-satuan apa pun).
+   Ingredient lama "Es Batu" (0 stock_movements, 0 stock_levels --
+   dicek eksplisit) dan dua baris `units` sampah dihapus permanen
+   sebelum katalog baru dibuat.
+
+**19 satuan ambigu** (dari 225) diselesaikan oleh CEO satu per satu
+(baca dari nama produk sendiri, atau sinonim jelas seperti "per
+porsi"=porsi) -- BUKAN ditebak sistem. Termasuk konfirmasi bahwa 7
+baris yang terdeteksi "satuan kosong" MEMANG kosong di file sumber.
+
+**Topping Extra (17) + Tambahan (11) -> MODIFIER**, bukan produk
+terpisah, sesuai rekomendasi yang diterima CEO. Dipecah jadi 5 grup
+modifier (`Topping Extra - Indokopi` 15 item, `Level Gula - Indokopi`
+2 item harga dipaksa Rp0 dari harga sumber Rp1 yang jelas bug data,
+`Tambahan - Indosteak` 7 item, `Tambahan - Indokopi` 3 item,
+`Tambahan - Indokopi Lite` 1 item) -- semua optional/multi-select
+(`minSelect=0`). **Belum di-assign ke produk induk mana pun** --
+CSV tidak menyebutkan topping mana berlaku untuk menu apa, jadi
+langkah ini SENGAJA ditinggalkan sebagai pekerjaan manual berikutnya
+di UI produk, bukan ditebak.
+
+**Produk (167 dari 196 baris, 29 tidak jadi produk: 28 jadi modifier
++ 1 duplikat persis "Mie Bestie" id 461 di-skip, impor id 460 saja).**
+Setiap baris CSV = satu baris `products` independen (nama sama antar
+outlet seperti "Americano"/"Kopi Aren Tua" TIDAK digabung -- harga
+beda per outlet, dan `product_prices` per tier tidak bisa membedakan
+per outlet; konsekuensi diterima CEO: laporan penjualan memecah nama
+yang sama jadi beberapa baris). Dua produk di kategori "Kopi 1 Liter"
+diganti nama untuk disambiguasi dari versi reguler: "Jasmine Honey
+Latte" -> "Jasmine Honey Latte 1 Liter" (id 424) dan "Butterscotch
+Latte" -> "Butterscotch Latte 1 Liter" (id 423, satu-satunya item di
+kategori itu yang sebelumnya belum punya penanda ukuran).
+`brandId` diisi dari kolom Resto (Indosteak/Indokopi) -- perbaikan
+tambahan yang sekalian menutup temuan "products.brand_id 100% NULL"
+dari §34 (brand tetap label/laporan saja, BUKAN penentu ketersediaan
+katalog). 22 kategori dipakai (2 lama dipakai ulang persis: "Kopi",
+"Snack"; 20 baru dibuat dari nama kategori CSV apa adanya -- TIDAK
+digabung ke kategori lama yang mirip tapi beda ejaan seperti
+"Non Kopi" vs "Non-Kopi" lama, supaya tidak menebak taksonomi CEO).
+
+**Harga jual diisi HANYA ke tier DINEIN** (tier default). Tiga tier
+lain (TAKEAWAY/GOFOOD/MEMBER) sengaja dibiarkan kosong -- dikonfirmasi
+dari kode (`product-card.tsx`) bahwa produk tanpa harga di suatu tier
+membuat tombolnya nonaktif total di kasir, BUKAN terjual gratis. Diisi
+nanti kalau kanal itu benar-benar mulai dipakai.
+
+**`product_outlets`** diisi PERSIS mengikuti keputusan §34: Indosteak
+-> kedua outlet (ISCP+ISPK), Indokopi -> Jatinegara saja, Indokopi
+Lite -> Kemayoran saja. **Penghalang peluncuran dari §34 (kasir
+Indosteak melihat menu Indokopi) sekarang TERTUTUP** -- diverifikasi
+lewat query nyata: ISCP/ISPK masing-masing melihat 51 produk,
+Jatinegara 100, Kemayoran 16, dan Bestie Thrift (thrifting) 0 --
+tanpa tumpang tindih.
+
+**25 produk demo lama dinonaktifkan** (bukan dihapus), diidentifikasi
+lewat ID yang diambil SEBELUM produk baru dibuat -- bukan lewat nama
+setelah impor, karena beberapa produk baru (Americano, Kentang
+Goreng, Lemon Tea, Thai Tea) kebetulan punya nama persis sama dengan
+produk demo; mencocokkan lewat nama setelah insert akan ikut
+mematikan produk baru yang baru saja dibuat.
+
+**Verifikasi sesudah impor:** `rls.test.ts` tetap hijau (2/2), dan
+`pay-order-fnb-integration.test.ts` (5 skenario checkout ujung-ke-
+ujung dari §34) tetap hijau (6/6) tanpa perubahan apa pun pada
+kodenya -- katalog baru tidak mengganggu jalur pembayaran yang sudah
+terbukti jalan.
+
+**Catatan proses (bukan tentang data, tentang cara kerja):** pada
+percobaan pertama sesi ini, sebelum CEO mengirim ulang file asli,
+sempat dibuat draf rekonstruksi 225 baris material dari ringkasan
+percakapan yang terpotong -- BUKAN dari file sungguhan. Ini ditangkap
+dan dihapus sebelum dipakai untuk apa pun. Aturan yang berlaku mulai
+sekarang (instruksi eksplisit CEO): kalau konteks terpotong dan file
+sumber tidak ada di tangan, BERHENTI dan minta dikirim ulang -- jangan
+pernah merekonstruksi harga/satuan/stok dari ingatan sebagian pun,
+karena angka salah di sini mengendap ke HPP dan laporan laba tanpa
+kelihatan salah.
+
+**Belum disentuh (menunggu Langkah B-D, instruksi CEO):** resep/BOM
+per produk (jadi HPP tetap 0, lihat peringatan §34), pengurangan stok
+otomatis saat penjualan, stock opname (termasuk titik nol harga bahan
+dari material.csv), foto transfer stok, dan assignment grup modifier
+ke produk induknya (lihat catatan Topping Extra/Tambahan di atas).
