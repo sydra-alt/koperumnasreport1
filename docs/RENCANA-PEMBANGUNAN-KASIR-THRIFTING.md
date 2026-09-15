@@ -3785,6 +3785,25 @@ pernah merekonstruksi harga/satuan/stok dari ingatan sebagian pun,
 karena angka salah di sini mengendap ke HPP dan laporan laba tanpa
 kelihatan salah.
 
+**Pelajaran proses -- cocokkan lewat ID, bukan nama, kalau nama bisa
+kebetulan sama:** rancangan awal nonaktifkan-25-produk-demo memakai
+pencocokan NAMA setelah semua produk baru selesai dibuat. Sebelum
+dijalankan, ketahuan sendiri: 4 produk baru (Americano, Kentang
+Goreng, Lemon Tea, Thai Tea) kebetulan punya nama PERSIS SAMA dengan
+produk demo lama. Kalau rancangan itu jalan, keempatnya akan ikut
+dinonaktifkan bersama 25 demo lama -- dan baru ketahuan saat kasir
+Indosteak mencari "Americano" di layar kasir dan tidak menemukannya,
+bukan saat impor selesai (tidak ada error, tidak ada test yang gagal,
+angkanya di laporan `run-import.ts` akan tetap terlihat benar).
+Diperbaiki SEBELUM dijalankan: ambil ID 25 produk demo lama DULU,
+sebelum satu pun produk baru dibuat, lalu nonaktifkan lewat ID itu
+persis, bukan lewat nama. Pelajaran untuk pekerjaan sejenis nanti
+(Langkah B dst, atau migrasi data apa pun yang mencampur data lama
+dan baru dalam satu tabel): kalau langkah "hapus/nonaktifkan yang
+lama" berjalan SETELAH "buat yang baru", dan keduanya bisa berbagi
+nama/kode yang sama, cocokkan lewat ID yang diambil sebelum penulisan
+dimulai -- jangan lewat atribut yang bisa kebetulan sama.
+
 **Belum disentuh (menunggu Langkah B-D, instruksi CEO):** resep/BOM
 per produk (jadi HPP tetap 0, lihat peringatan §34), pengurangan stok
 otomatis saat penjualan, stock opname (termasuk titik nol harga bahan
