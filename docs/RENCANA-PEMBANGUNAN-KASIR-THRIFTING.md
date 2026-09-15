@@ -3809,3 +3809,100 @@ per produk (jadi HPP tetap 0, lihat peringatan §34), pengurangan stok
 otomatis saat penjualan, stock opname (termasuk titik nol harga bahan
 dari material.csv), foto transfer stok, dan assignment grup modifier
 ke produk induknya (lihat catatan Topping Extra/Tambahan di atas).
+
+## §37 · Langkah B — Resep & pengurangan stok: rancangan disetujui, B1+B2 selesai (15 September 2026)
+
+**Rancangan tujuh poin (investigasi, bukan kode) disetujui penuh oleh
+CEO**, dengan satu perubahan urutan penting: **Langkah C (stock opname)
+harus selesai LEBIH DULU sebelum B3 (potong stok saat bayar)
+dinyalakan** -- alasan CEO: `stock_levels` kosong untuk 225 bahan hasil
+Langkah A, jadi kalau B3 dinyalakan sekarang, SEMUA bahan langsung
+minus di hari pertama, peringatan `stockWarnings` (poin 2) akan
+diabaikan dalam 2-3 hari dan kehilangan gunanya persis saat benar-benar
+dibutuhkan. Urutan final: **B1 → B2 → (Langkah C penuh) → B3 → B4 → B5**.
+
+Ringkasan tujuh keputusan (detail lengkap ada di transkrip kerja, ini
+cuma poin yang mengikat pembangunan selanjutnya):
+1. Skema `recipes`/`recipe_items` persis BLUEPRINT §3.3 + trigger
+   tenancy. `productType='simple'` sengaja diabaikan untuk sekarang --
+   tidak ada satu pun dari 167 produk yang polanya cocok (semua olahan,
+   bukan produk=bahan-dijual-utuh).
+2. Stok tidak cukup saat bayar -> **opsi (b)**: tidak pernah menolak
+   transaksi, tulis movement `sale` + kembalikan `stockWarnings`
+   (ingredient + saldo minus) SETELAH struk tercetak, pola sama persis
+   `cancelStockTransferWithDb`. Ini BUKAN keputusan baru -- sudah
+   terkunci sejak `docs/05-RENCANA-FASE-2.md` §4, ditemukan lagi saat
+   Langkah B, sekarang dikonfirmasi ulang.
+3. Produk tanpa resep tetap bisa dijual, HPP tetap "0", tidak pernah
+   memblokir -- cukup "tidak ketemu resep aktif -> lewati potong
+   stok", tidak perlu pengecualian eksplisit.
+4. **Refund**: sambungkan `refunds.restock` (sudah ada, belum
+   diproses) + movement `refund_in` (sudah ada di enum, belum pernah
+   dipakai). **Void**: TAMBAH field `restock` eksplisit ke
+   `voidOrderSchema` -- tidak diasumsikan, karena sistem tidak bisa
+   tahu makanan sudah dimasak atau belum.
+5. Modifier pakai kolom `modifiers.ingredient_id`+`ingredient_qty`
+   yang SUDAH ADA di skema sejak awal (belum pernah dipakai) -- tidak
+   perlu tabel `modifier_recipe_items` baru. Konsumsi ikut skala qty
+   baris produk.
+6. UI resep: halaman `/recipes` terpisah (bukan ditambah ke form edit
+   produk), daftar + panel samping, simpan -> lompat otomatis ke
+   produk berikutnya yang belum ada resep. Hak edit `product.manage`,
+   HPP (kalau nanti ditampilkan) digerbang `recipe.view_hpp`.
+7. Urutan bertahap B1-B5, masing-masing titik henti aman -- lihat di
+   atas untuk perubahan urutan (Langkah C disisipkan sebelum B3).
+
+**Pertanyaan snapshot HPP dari CEO -- dijawab, bukan diputuskan
+sepihak:** apakah `unitCogs` (kolom snapshot yang sudah ada di
+`order_items`) cukup menjamin HPP order lama tidak ikut berubah kalau
+resep diedit bulan depan, atau perlu kolom `recipe_version` tambahan?
+**Jawaban: `unitCogs` saja SUDAH CUKUP, tidak perlu kolom versi
+tambahan.** Dibuktikan lewat preseden yang SUDAH ADA di tabel yang
+sama: `order_items.pemilikBagiPercentAtSale` (thrifting) membekukan
+ANGKA HASIL HITUNG saat transaksi (bukan pointer/versi ke pengaturan
+`pemilik`), dan itu sudah cukup -- persis prinsip yang diminta CEO.
+`unitCogs` akan bekerja identik: dihitung sekali dari resep+harga bahan
+SAAT itu lewat `calculateRecipeCost()` (`lib/calc/cogs.ts`, sudah ada
+sejak T04), lalu dibekukan permanen -- tidak pernah dihitung ulang saat
+laporan dibuka, tidak peduli resep atau harga bahan berubah setelahnya.
+`recipes.version` (kolom di BLUEPRINT) TETAP disiapkan di skema apa
+adanya per keputusan poin 1, tapi tidak dipakai jalur mana pun di
+B1/B2 -- gunanya nanti murni untuk riwayat EDIT resep sendiri (audit
+trail "resep V2 mulai kapan"), bukan bagian dari jaminan snapshot ini.
+
+**B1 selesai (migration 0037, pos-fnb):** tabel `recipes`+`recipe_items`
+sesuai BLUEPRINT §3.3, RLS + trigger `check_recipe_business_id`/
+`check_recipe_item_business_id` (pola sama migration 0017), dibuktikan
+lewat `recipe-tenancy-trigger.test.ts` (8 skenario tolak/terima
+lintas-bisnis, bukan cuma "terpasang tanpa error"). `rls.test.ts` dan
+seluruh suite `ingredients`/`units`/`stock-transfers` (68 tes) tetap
+hijau setelah migration.
+
+**B2 selesai:** halaman `/recipes` -- daftar 167 produk (filter
+belum/sudah ada resep, cari nama) + panel isi bahan (pemilih custom
+teks-filter, BUKAN komponen combobox baru -- CLAUDE.md melarang
+dependency baru tanpa izin) + qty + opsional + susut, simpan -> lompat
+otomatis ke produk berikutnya yang belum ada resep. Sengaja BELUM
+menampilkan angka HPP apa pun -- `avg_cost` semua 225 bahan masih 0 di
+semua outlet (Langkah C belum jalan), menampilkan angka sekarang cuma
+akan menyesatkan, bukan cuma "belum lengkap". `recipe.view_hpp` karena
+itu belum dipakai di B2 -- akan relevan begitu ada angka HPP sungguhan
+untuk digerbang (B3 atau laporan setelahnya).
+
+**Temuan sampingan (bukan bagian B1/B2, dilaporkan bukan diperbaiki
+sepihak):** `npm run build` di pos-fnb saat ini GAGAL type-check --
+tapi HANYA karena error TypeScript di `scripts/import-langkah-a/*.ts`
+(skrip audit trail Langkah A, commit `5f9fe1a`), bukan karena kode B1/B2.
+Dikonfirmasi lewat `tsc --noEmit` disaring per folder: nol error di luar
+`scripts/import-langkah-a/`. Skrip-skrip itu jalan lewat `tsx` (tidak
+type-check) saat Langkah A dieksekusi, jadi lolos tanpa ketahuan.
+Belum diperbaiki -- menunggu keputusan CEO (perbaiki type-safety-nya,
+atau kecualikan `scripts/` dari type-check `next build`), supaya tidak
+menyentuh isi skrip audit trail itu tanpa izin.
+
+**Verifikasi UI belum lengkap:** build/tes otomatis hijau dan rute
+`/recipes` dikonfirmasi tidak crash (redirect 307 ke `/login` untuk
+request tanpa sesi, identik `/ingredients`), tapi alur isi-resep
+sungguhan BELUM diverifikasi visual di browser dengan sesi asli --
+lingkungan kerja ini headless. CEO perlu mencoba sendiri di
+`/recipes` sebelum dianggap benar-benar siap dipakai Ita/dapur.
