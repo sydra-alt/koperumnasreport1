@@ -4129,3 +4129,81 @@ wajib mutlak (tanpa pengecualian) atau opsional penuh, itu keputusan
 CEO -- rekomendasi ini bukan keputusan final.
 
 **Menunggu keputusan CEO sebelum satu baris kode Langkah D ditulis.**
+
+## §41 · Langkah D selesai dibangun -- foto wajib di transfer stok, commit `2077401` (17 September 2026)
+
+CEO memutuskan: **WAJIB dengan pengecualian kegagalan kamera**, sesuai
+rekomendasi §40, plus rincian tambahan dari CEO sendiri -- foto wajib
+di KEDUA tahap (kirim DAN terima, bukan cuma salah satu), live-capture
+murni (tidak ada jalur galeri sama sekali), kamera belakang default
+dengan tombol balik kamera, dan foto kirim/terima wajib tampil
+berdampingan di halaman detail supaya bisa dibandingkan.
+
+**Skema & trigger** -- 4 kolom baru di `stock_transfers`
+(`sent_photo_path`, `sent_photo_missing_reason`, `received_photo_path`,
+`received_photo_missing_reason`, semua nullable). `check_stock_transfer_
+transition()` (migrasi 0039, menulis ulang seluruh fungsi dari migrasi
+0024 supaya cabang lama tidak hilang) menegakkan tepat satu dari
+pasangan path/alasan terisi pada transisi `approved->sent` dan
+`sent->received`, dan melarang kolom foto berubah di transisi lain
+apa pun -- penegakan di level database, independen dari kode aplikasi,
+pola sama presisi yang sudah dipakai untuk kolom lain di trigger yang
+sama.
+
+**Bucket Storage** `stock-transfers` (privat, RLS per `business_id`
+lewat `(storage.foldername(name))[1]`, pola disalin persis dari bucket
+`products` migrasi 0012). Path deterministik
+`{businessId}/{transferId}/{send|receive}.jpg`.
+
+**Komponen `CameraCapture` ditulis ulang dari nol** (bukan diimpor
+dari repo ini, seperti sudah diperkirakan §40) --
+`getUserMedia({facingMode})` menjamin live capture (tidak ada
+`<input type=file>` sama sekali di jalur ini), tombol balik kamera
+meminta stream BARU (sensor fisik lain, bukan cermin CSS), `srcObject`
+disambungkan di effect terpisah setelah `<video>` benar-benar
+ter-mount -- ketiga pelajaran dari komponen referensi proyek ini
+terbukti relevan dan diterapkan apa adanya. Kompresi gambar
+(`compress-image.ts`) diekstrak dari `product-image-field.tsx` yang
+sudah ada, dipakai bersama oleh keduanya -- tidak ada logika kompresi
+kedua ditulis.
+
+**Kegagalan kamera**: status `denied`/`failed`/`not_supported` di
+`CameraCapture` memunculkan tombol "lanjut tanpa foto", dengan
+`window.confirm` sebagai gerbang terakhir dan alasan tersimpan OTOMATIS
+(bukan diketik manual, supaya seragam dan tidak bisa disalahgunakan
+sebagai jalan pintas). Baris yang lolos lewat jalur ini ditandai badge
+"Tanpa foto" di **daftar** transfer (bukan cuma di halaman detail) --
+instruksi eksplisit CEO "jangan diam-diam lolos" dipenuhi di titik
+paling sering dilihat, bukan titik yang perlu diklik masuk dulu.
+
+**Halaman detail baru** `/stock-transfers/[id]` menampilkan foto kirim
+vs terima berdampingan (atau status "belum sampai tahap ini" / badge
+"Tanpa foto" + alasan), akses dibatasi ke outlet yang boleh melihat
+gudang ATAU tujuan transfer itu (pola visibilitas sama halaman daftar).
+
+**Bug ditemukan & diperbaiki sebelum commit** -- skema Zod
+`transferPhotoSchema` awalnya ditulis sebagai `z.union` dua varian
+dengan field lawan wajib `z.undefined()`; ternyata rapuh terhadap
+input yang field lawannya sama sekali TIDAK ADA sebagai key (bukan
+`undefined` eksplisit) -- pola umum saat field datang dari
+`FormData`/objek yang dibangun manual di kode aplikasi maupun test.
+Ini membuat hampir semua panggilan uji dengan foto "alasan kosong"
+gagal dengan pesan generik "Invalid input" Zod, termasuk 2 test
+pembatasan akses per outlet yang jadi tidak bisa dibedakan dari
+kegagalan validasi Zod murni. **Pelajaran**: untuk "tepat satu dari
+dua field opsional", pola `.object({a: z.string().optional(), b:
+z.string().optional()}).refine(v => Boolean(v.a) !== Boolean(v.b))`
+lebih tahan banting daripada union dengan `z.undefined()` eksplisit --
+dicatat di sini supaya tidak terulang di skema serupa berikutnya.
+
+**Verifikasi**: 51 test `src/lib/stock-transfers` hijau (termasuk 2
+test pembatasan akses per outlet yang sempat gagal karena bug di
+atas), `npx tsc --noEmit` bersih, `npm run lint` bersih, suite penuh
+615 test/67 file hijau (termasuk `pay-order-fnb-integration.test.ts`
+tidak tersentuh sama sekali oleh Langkah D, sesuai dugaan), `npm run
+build` bersih termasuk rute baru `/stock-transfers/[id]`. Migrasi 0039
+sudah diterapkan ke database dev.
+
+**Status**: dikomit lokal di `pos-fnb` (`2077401`), **BELUM di-push**
+-- classifier auto-mode menahan `git push` sebagai "Out-of-Place
+Publication", menunggu konfirmasi eksplisit CEO sebelum dicoba lagi.
