@@ -3994,3 +3994,138 @@ perilaku runtime (dicek: output `analyze.ts` identik sebelum/sesudah).
 B4 (void/refund reversal), B5 (konsumsi bahan modifier) -- ketiganya
 menunggu CEO menjalankan opname pertama sungguhan di `/stock-opnames`
 lebih dulu.
+
+## §39 · B3-B5 selesai (opname pertama sudah dijalankan CEO) -- potong stok, HPP sungguhan, restock void/refund (17 September 2026)
+
+Dikerjakan setelah CEO mengonfirmasi opname pertama sungguhan sudah
+dijalankan di `/stock-opnames` (syarat dari §37/§38). `lib/pos/stock-
+deduction.ts` (pos-fnb, commit `95d4cda`) jadi SATU mekanisme untuk
+semua jenis produk -- ada-tidaknya baris `recipes` aktif untuk
+(productId, variantId) tetap satu-satunya sumber kebenaran potong
+stok, `productType` tidak pernah dibaca di sana (konsisten §38).
+
+**B3** -- pola SELECT FOR UPDATE + `calculateNewAvgCost` +
+`stock_movements('sale')` di TRANSAKSI YANG SAMA dengan order,
+diproses SEKUENSIAL per baris (bukan `Promise.all`) supaya dua produk
+beda yang pakai bahan sama saling melihat saldo ter-update, bukan
+snapshot sebelum transaksi -- dibuktikan test nyata. Stok tidak cukup
+TIDAK PERNAH menolak transaksi (`stockWarnings` dikembalikan setelah
+struk, pola sama `cancelStockTransferWithDb`). `unit_cogs`/
+`cogs_amount`/`orders.cogs_total` sekarang dihitung SUNGGUHAN dari
+`avg_cost` bahan saat transaksi (`lib/calc/cogs.ts`, sudah ada+teruji
+sejak T04) dan dibekukan permanen di `order_items` -- resep diedit
+bulan depan tidak mengubah HPP order lama (dibuktikan test: qty resep
+diubah SETELAH transaksi tersimpan, `unit_cogs` order lama tidak
+berubah sama sekali -- pola sama `pemilikBagiPercentAtSale`).
+
+**B4** -- `refunds.restock` (sudah ada di skema, dulu disimpan tapi
+tidak pernah diproses) sekarang benar-benar menulis `refund_in`.
+`voidOrderSchema` dapat field `restock` BARU, WAJIB diisi eksplisit
+(bukan `.default()`) -- alasannya sama dengan yang CEO tulis sendiri:
+sistem tidak bisa tahu makanan sudah dimasak atau belum. Restock
+memakai resep AKTIF SAAT INI, bukan snapshot resep saat jual --
+sistem ini tidak menyimpan breakdown bahan per `order_item` saat
+transaksi (cuma `unit_cogs` agregat yang sudah dibekukan), jadi kalau
+resep berubah di antara jual dan void/refund, restock ikut resep yang
+ADA SEKARANG. **Keterbatasan yang diketahui, dicatat eksplisit di kode
+(`lib/pos/stock-deduction.ts`), bukan bug tersembunyi** -- kalau nanti
+ternyata bermasalah di praktik (resep sering berubah di antara jual
+dan refund), perbaikannya adalah menyimpan breakdown ingredient per
+order_item saat jual (kolom/tabel baru), bukan pekerjaan kecil.
+
+**B5** -- `modifiers.ingredient_id`+`ingredient_qty` (sudah ada di
+skema sejak awal, belum pernah dipakai) sekarang memotong stok
+sungguhan saat modifier itu dipilih, skala ikut qty baris sama seperti
+harga modifier yang juga ikut terkali qty.
+
+**Verifikasi:** `pay-order-fnb-integration.test.ts` (5 jalur F&B dari
+§34, 6 tes) **tetap hijau tanpa satu baris pun diubah** -- syarat
+eksplisit CEO. Suite baru (6 skenario B3, termasuk "dua produk beda
+pakai bahan sama" dan "stok tidak cukup tetap sukses") + 3 skenario
+B4 baru di `void-refund.test.ts`. **Satu regresi ditemukan sendiri
+lewat full suite, bukan lolos diam-diam**: 4 test lama (sales-report,
+void-refund) memanggil `voidOrderWithDb` tanpa field `restock` baru --
+`safeParse` menolaknya (field wajib, bukan opsional), keempat test
+gagal dengan jelas. Diperbaiki dengan menambah `restock: false`
+eksplisit di tiap pemanggilan itu, BUKAN dengan melonggarkan skema
+jadi opsional/`.default()` -- itu akan mengalahkan maksud
+"jangan diasumsikan" yang jadi alasan field ini ditambahkan sama
+sekali. Full suite proyek: 615 tes, 0 gagal setelah perbaikan.
+`npm run build` bersih.
+
+## §40 · Langkah D (foto transfer stok) — investigasi reuse CameraCapture, BELUM dibangun (17 September 2026)
+
+Sesuai instruksi CEO sendiri ("kalau tidak bisa dipakai ulang,
+laporkan sebelum bangun"): diinvestigasi, BELUM ada satu baris kode
+pun ditulis untuk Langkah D.
+
+**Reuse langsung (impor file) TIDAK MUNGKIN** -- `components/
+CameraCapture.tsx` + `lib/gambar.ts` ada di repo `reportkoperumnasgroup`
+(proyek Next.js TERPISAH, remote git berbeda, tanpa hubungan
+monorepo/package bersama dengan `pos-fnb`). Ditambah lagi
+`CameraCapture.tsx` ditulis pakai gaya styling proyek itu sendiri
+(inline style + CSS custom property `var(--biru)` dst, bukan
+Tailwind/shadcn) -- kalaupun file itu disalin mentah, tidak akan
+cocok dengan `Button`/`Dialog` dari `@/components/ui/` yang dipakai
+`pos-fnb` di mana-mana.
+
+**Yang BISA dipakai ulang: POLA-nya, ditulis ulang, bukan file-nya.**
+Tiga bagian bernilai nyata di `CameraCapture.tsx` (hasil perbaikan
+bug produksi sungguhan di proyek itu, bukan kode coba-coba):
+1. `getUserMedia({facingMode})`, BUKAN `<input type=file capture>` --
+   alasannya eksplisit di komentar file itu sendiri: `capture` tidak
+   konsisten memaksa kamera tertentu lintas browser, `getUserMedia`
+   yang benar-benar menjaminnya. **Relevan untuk transfer stok**:
+   kalau tujuannya bukti barang BENAR-BENAR difoto saat itu (bukan
+   pilih foto lama dari galeri), pola ini yang menjaminnya --
+   `pos-fnb` sendiri SUDAH punya pola kompresi kanvas yang mirip
+   (`product-image-field.tsx`) tapi itu pakai `<input type=file>`
+   biasa (galeri, TIDAK menjamin live capture) -- beda kelas jaminan.
+2. Bug nyata yang sudah dipecahkan di sana, akan terulang kalau
+   ditulis dari nol tanpa tahu: (a) `srcObject` harus disambungkan di
+   effect TERPISAH setelah elemen `<video>` benar-benar ter-mount,
+   bukan langsung di dalam `.then()` `getUserMedia` (elemen belum ada
+   di DOM di titik itu); (b) `navigator.mediaDevices` bisa `undefined`
+   di konteks tidak aman (http:// non-localhost) dan melempar
+   `TypeError` SINKRON di luar promise chain -- perlu pengecekan
+   eksplisit sebelum memanggil; (c) tombol balik kamera harus minta
+   stream BARU (`getUserMedia` lagi), bukan mencerminkan CSS -- video
+   dari sensor kamera lain, bukan gambar yang sama dibalik.
+3. Kompresi kanvas (`lib/gambar.ts`) -- fungsi murni, TIDAK terikat
+   framework/styling apa pun, bisa dipakai ulang HAMPIR verbatim.
+   Tapi ternyata `pos-fnb` **sudah punya versi sendiri**
+   (`product-image-field.tsx#compressImage`) dengan pendekatan sama
+   (canvas + `createImageBitmap`) plus tambahan: turun kualitas
+   bertahap sampai di bawah batas ukuran file. Tidak perlu
+   mengimpor apa pun dari repo lain untuk bagian ini.
+
+**Rekomendasi konkret**: tulis ulang `CameraCapture` versi `pos-fnb`
+(komponen baru, Tailwind + `Button`/`Dialog` dari `@/components/ui/`,
+`facingMode='environment'` -- motret barang, bukan wajah, sama alasan
+Laporan Kebersihan di proyek asal), pakai `compressImage` yang SUDAH
+ADA di `product-image-field.tsx` (dipindah jadi util bersama kalau
+dipakai dua tempat), PORT tiga perbaikan bug di atas apa adanya
+(sudah terbukti perlu, bukan spekulasi).
+
+**Penyimpanan foto**: belum ada bucket Storage untuk transfer stok
+(baru ada `products`, kemungkinan `barang` untuk thrifting) --
+`getAdminDb()`/service role bisa membuatnya via Supabase Storage
+Admin API dalam skrip setup (pola sama `setup-dev-outlets.ts`), path
+deterministik `{businessId}/{transferId}/{step}.jpg` (`step` = `send`
+atau `receive`), bucket privat + signed URL, sama arsitektur
+`products`.
+
+**Pertanyaan yang CEO minta jawab sendiri**: foto WAJIB atau
+opsional di `send`/`receive`. **Rekomendasi: WAJIB, dengan satu
+pengecualian** -- kalau kamera gagal dibuka sama sekali (status
+`gagal`/`tidak_didukung` di komponen referensi, mis. HP lama atau
+akses bukan https://), izinkan lanjut TANPA foto tapi catatan alasan
+otomatis tersimpan ("foto tidak tersedia: kamera tidak bisa dibuka")
+-- supaya satu perangkat rusak/situasi darurat tidak mengunci seluruh
+alur transfer stok, tapi kelonggaran ini TERCATAT (bukan diam-diam),
+sama semangat "stok minus tidak memblokir, tapi tetap diperingatkan"
+yang sudah dipakai berkali-kali di proyek ini. Kalau CEO memilih
+wajib mutlak (tanpa pengecualian) atau opsional penuh, itu keputusan
+CEO -- rekomendasi ini bukan keputusan final.
+
+**Menunggu keputusan CEO sebelum satu baris kode Langkah D ditulis.**
