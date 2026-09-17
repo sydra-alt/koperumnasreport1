@@ -3906,3 +3906,91 @@ request tanpa sesi, identik `/ingredients`), tapi alur isi-resep
 sungguhan BELUM diverifikasi visual di browser dengan sesi asli --
 lingkungan kerja ini headless. CEO perlu mencoba sendiri di
 `/recipes` sebelum dianggap benar-benar siap dipakai Ita/dapur.
+
+## §38 · Koreksi "barang jadi" + Langkah C (stock opname) selesai + visibilitas stok gudang (16-17 September 2026)
+
+**Koreksi CEO terhadap §37:** klaim "tidak ada produk berpola `simple`"
+SALAH -- Aqua, Badak, Cristalin, Yakult (beli per botol, jual per
+botol) memang berpola begitu. Keputusan: **BUKAN jalur potong-stok
+kedua** -- barang jadi = resep dengan SATU bahan, qty 1, lewat mesin
+yang SAMA PERSIS dengan produk racikan (satu jalur potong stok, satu
+jalur HPP, satu jalur void/refund -- dua jalur berarti dua tempat bisa
+salah). `products.productType` ('simple'/'recipe'/'service') dipilih
+di panel `/recipes`, ditegakkan bentuknya di SERVER (simple=1 baris
+qty 1, service=0 baris), MURNI untuk tampilan+filter -- keberadaan
+baris `recipes` tetap satu-satunya sumber kebenaran potong stok, tidak
+pernah dicabangkan dua kali. Kolom "Jenis" + filter "Barang jadi belum
+ditautkan" ditambahkan di daftar `/recipes` supaya belasan produk
+botolan bisa diselesaikan sekaligus (commit `a4d84f1`, pos-fnb).
+
+**Langkah C (stock opname) selesai — B3 (potong stok saat bayar)
+sekarang menunggu CEO menjalankan opname pertama sungguhan, per
+urutan §37.** Migration 0038: tabel `stock_opnames`/`stock_opname_items`
+(pola tenancy sama B1 -- trigger `check_opname_business_id`/
+`check_opname_item_business_id`), UI di `/stock-opnames` (pilih outlet
+-> mulai/lanjut sesi -> daftar bahan dengan stok sistem ditampilkan ->
+isi qty fisik + harga (bisa diedit) + alasan kalau perlu -> submit).
+
+Poin-poin CEO (a-f) terpenuhi:
+- **(a)** tabel + tenancy -- selesai.
+- **(b)** alur masuk akal untuk opname PERTAMA (qty sistem 0 untuk
+  semua bahan) -- diverifikasi lewat test 225-bahan-dari-nol (versi
+  kecil, 1 bahan representatif + assertion avg_cost).
+- **(c)** harga awal opname pertama dibaca LANGSUNG dari
+  `scripts/import-langkah-a/material.csv` (satu sumber, dicocokkan
+  lewat nama bahan persis dengan yang diimpor Langkah A -- BUKAN
+  disalin ke tabel/JSON kedua yang bisa diam-diam tidak sinkron),
+  editable sebelum submit.
+- **(d)** write-once: transisi status `draft`->`submitted` digerbang
+  atomik di klausa WHERE (bukan cek-lalu-tulis) -- pola persis
+  `submitCountedCashWithDb`. Kalau race lolos sampai titik commit
+  terakhir, SELURUH transaksi (termasuk stock_movements yang sudah
+  ditulis) di-rollback, bukan menyisakan movement ganda.
+- **(e)** alasan wajib untuk selisih besar, ambang dari
+  `outlets.varianceAlertPercent`/`varianceAlertValue` (kolom setting
+  yang sudah ada sejak T21, bukan angka baru).
+- **(f)** bahan yang tidak dihitung dalam satu sesi dilewati
+  sepenuhnya (tidak pernah masuk query movement), stoknya tidak
+  tersentuh -- dibuktikan test opname parsial.
+
+**Bug ditemukan & diperbaiki saat verifikasi (bukan di draf akhir):**
+pengecekan ambang selisih awalnya berlaku untuk SEMUA baris termasuk
+yang `system_qty = 0` -- akibatnya opname pertama untuk 225 bahan akan
+memaksa alasan di HAMPIR SEMUA baris (nilai wajar bahan dalam jumlah
+normal saja sudah pasti melebihi ambang rupiah, dan bahan dengan
+saldo lama nol tidak punya basis persentase untuk dibandingkan).
+Ditangkap lewat test yang gagal, bukan lolos diam-diam. Perbaikan:
+ambang HANYA berlaku kalau `system_qty > 0` -- baris tanpa saldo lama
+adalah pencatatan stok awal, bukan koreksi yang perlu dijelaskan.
+
+Terverifikasi: 10 skenario data-layer (opname pertama, parsial,
+selisih negatif/positif dengan blend avg_cost, write-once dua arah,
+alasan wajib, submit tanpa item) + 6 skenario trigger tenancy lintas-
+bisnis + suite penuh proyek (606 tes, 66 file) tetap hijau. Commit
+`7573300`, pos-fnb.
+
+**Visibilitas stok saat request transfer (temuan CEO):** kasir
+mengetik jumlah permintaan tanpa tahu gudang pusat sisa berapa, Ita
+harus menolak manual kalau ternyata tidak cukup. `/stock-transfers/new`
+sekarang menampilkan, per bahan: stok gudang pusat DAN stok outlet
+peminta saat ini. Bahan dengan stok gudang 0 ditandai jelas ("HABIS di
+gudang"), TIDAK disembunyikan. Jumlah diminta melebihi stok gudang
+tercatat TIDAK memblokir pengajuan -- cuma peringatan (pola sama "stok
+minus tidak memblokir penjualan", §37 poin 2) -- barang fisik bisa ada
+tapi belum tercatat, keputusan akhir tetap di tangan Ita saat approve.
+Commit `4d5156e`, pos-fnb.
+
+**Skrip Langkah A diperbaiki (bukan dikecualikan):** temuan build
+gagal di §37 (error TypeScript di `scripts/import-langkah-a/*.ts`,
+lolos dulu karena dijalankan lewat `tsx` yang tidak type-check) --
+CEO eksplisit menolak opsi "kecualikan `scripts/` dari type-check":
+*"Skrip yang menyentuh data produksi justru paling butuh jaring
+pengaman."* Diperbaiki dengan mengetatkan tipe baris CSV (`parseCsv<T>`
+generik + bentuk kolom eksplisit per pemanggil) tanpa mengubah
+perilaku runtime (dicek: output `analyze.ts` identik sebelum/sesudah).
+`npm run build` lolos bersih. Commit `5406c96`, pos-fnb.
+
+**Belum disentuh, menunggu urutan §37:** B3 (potong stok saat bayar),
+B4 (void/refund reversal), B5 (konsumsi bahan modifier) -- ketiganya
+menunggu CEO menjalankan opname pertama sungguhan di `/stock-opnames`
+lebih dulu.
