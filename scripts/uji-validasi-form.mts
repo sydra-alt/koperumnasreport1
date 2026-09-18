@@ -43,7 +43,10 @@ catat(
   'field angka OPSIONAL dikosongkan (NaN)',
   'validasi lolos (sukses), prospek_aktif jadi undefined',
   `success=${r1.success}; data=${r1.success ? JSON.stringify(r1.data) : JSON.stringify(r1.error.issues)}`,
-  r1.success && r1.data.prospek_aktif === undefined,
+  // buildZodSchema membangun shape-nya DINAMIS saat runtime (Record<string,
+  // ZodTypeAny>) -- TypeScript tidak bisa tahu key spesifiknya, jadi diakses
+  // lewat cast di sini, bukan properti langsung.
+  r1.success && (r1.data as Record<string, unknown>).prospek_aktif === undefined,
 );
 
 // #2 -- field WAJIB dikosongkan (NaN) -- ditolak, pesan MENYEBUT NAMA field, bukan teks Zod mentah.
