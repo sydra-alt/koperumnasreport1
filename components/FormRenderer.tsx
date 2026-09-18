@@ -357,10 +357,14 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
                         {field.type === 'ya_tidak' && <YaTidak field={field} />}
                         {field.type === 'centang' && <Centang field={field} />}
                         {field.type === 'status_warna' && <StatusWarna field={field} />}
-                        {field.type === 'tabel' && <Tabel field={field} />}
+                        {field.type === 'tabel' && <Tabel field={field} reportId={reportId} />}
                         {field.type === 'lampiran' && <Lampiran field={field} reportId={reportId} />}
 
-                        {field.buktiWajib && (
+                        {/* type:'tabel' dengan buktiPerBaris merender LampiranInput-nya
+                            SENDIRI, satu per baris, di dalam Tabel.tsx -- bukan di sini
+                            (satu bukti per FIELD tidak masuk akal kalau field ini punya
+                            banyak baris yang masing-masing perlu buktinya sendiri). */}
+                        {field.buktiWajib && !(field.type === 'tabel' && field.buktiPerBaris) && (
                           <LampiranInput name={`_bukti.${field.key}`} label="Lampirkan bukti" reportId={reportId} fieldKeyAsli={field.buktiKunci ?? field.key} />
                         )}
 

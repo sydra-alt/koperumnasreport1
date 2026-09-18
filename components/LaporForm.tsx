@@ -6,7 +6,9 @@ import { KerangkaForm } from './Kerangka';
 import { useAuth } from '../lib/auth/AuthProvider';
 import { usePolicy } from '../lib/api/policy';
 import { statusClosing, statusUndangan, useProgresBulananSaya } from '../lib/api/marketing';
-import { hitungKelayakanBonus, hitungPotongan, ringkasanPteHariIni, sinkronClosing, sinkronPteDaily } from '../lib/api/pte';
+import { hitungPotongan, sinkronClosing } from '../lib/api/pte';
+import { ringkasanPteHarian, sinkronPteHarian, useLabelUndanganOutlet, type PoinPteHarian } from '../lib/api/pteHarian';
+import { buatF01PersonalMarketing } from '../forms/f01-personal-marketing';
 import { useDaftarLokasi } from '../lib/api/lokasi';
 import { useDaftarOutlet } from '../lib/api/outlet';
 import { useDaftarShift } from '../lib/api/shift';
@@ -43,49 +45,6 @@ const LABEL_CAPAIAN_TARGET: Record<'hijau' | 'kuning' | 'merah', { teks: string;
   merah: { teks: 'Jauh dari target', warna: 'var(--merah)' },
 };
 
-type StatusPteItem = 'selesai' | 'perlu_bukti' | 'belum';
-interface ItemPte {
-  key: string;
-  label: string;
-  status: StatusPteItem;
-  keterangan: string;
-}
-
-/**
- * Panel PTE (DESIGN.md §9) -- daftar 6 kewajiban jadi baris, bukan grid
- * ✅/❌. TIDAK mengubah aturan bisnis: syarat "selesai" per item SAMA PERSIS
- * dengan `ringkasanPteHariIni()` (lib/api/pte.ts) -- fungsi ini cuma
- * memecah hasil boolean itu jadi 3 keadaan (belum diisi / sudah diisi
- * tapi bukti belum ada / lengkap) supaya keterangannya lebih jelas
- * ("Belum diisi" vs "Belum ada bukti"), bukan logika baru.
- */
-function itemsPteHariIni(data: Record<string, unknown>, kontenMinimal: number): ItemPte[] {
-  const bukti = (data._bukti as Record<string, unknown[]> | undefined) ?? {};
-  const adaBukti = (kunci: string) => (bukti[kunci]?.length ?? 0) > 0;
-
-  function baris(key: string, label: string, terisi: boolean, buktiKunci: string, keteranganSelesai: string): ItemPte {
-    if (!terisi) return { key, label, status: 'belum', keterangan: 'Belum diisi' };
-    if (!adaBukti(buktiKunci)) return { key, label, status: 'perlu_bukti', keterangan: 'Belum ada bukti' };
-    return { key, label, status: 'selesai', keterangan: keteranganSelesai };
-  }
-
-  const undangJumlah = Number(data.undang_jumlah) || 0;
-  const kontenJumlah = Number(data.konten_jumlah) || 0;
-
-  return [
-    baris('live', 'Live', data.live === 'ya', 'live', 'Sudah ada bukti'),
-    baris('undang', 'Undangan', undangJumlah > 0, 'undang', `${undangJumlah} orang`),
-    baris('kesaksian', 'Kesaksian / Testimoni', Number(data.kesaksian_jumlah) > 0, 'kesaksian', 'Sudah ada bukti'),
-    baris('review', 'Google Review', Number(data.review_jumlah) > 0, 'review', 'Sudah ada bukti'),
-    baris('konten', `${kontenMinimal} Konten`, kontenJumlah >= kontenMinimal, 'konten', `${kontenJumlah} konten`),
-    baris('mentahan', 'Video Mentahan', Number(data.mentahan_jumlah) > 0, 'mentahan', 'Sudah ada bukti'),
-  ];
-}
-
-const SIMBOL_STATUS_PTE: Record<StatusPteItem, string> = { selesai: '✓', perlu_bukti: '!', belum: '○' };
-const RAIL_STATUS_PTE: Record<StatusPteItem, string> = { selesai: 'rail-hijau', perlu_bukti: 'rail-kuning', belum: 'rail-netral' };
-const WARNA_STATUS_PTE: Record<StatusPteItem, string> = { selesai: 'var(--hijau)', perlu_bukti: 'var(--kuning)', belum: 'var(--kosong)' };
-
 interface KombinasiScope {
   lokasiId: string | null;
   outletId: string | null;
@@ -93,8 +52,18 @@ interface KombinasiScope {
 }
 
 export function LaporForm({ formKey }: { formKey: string }) {
-  const schema = formRegistry[formKey];
   const { session, profile, assignments } = useAuth();
+
+  // Label "Undangan" beda per unit (Indokopi/Indosteak, migrasi
+  // 0057_pte_harian.sql) -- ditautkan lewat outlet penugasan personal_marketing
+  // pengisi, BUKAN profile.divisi (nilainya sekarang "Resto"/"Marketing", tidak
+  // membedakan restonya yang mana -- lihat laporan investigasi sebelum build).
+  // `null` (outlet belum ditautkan unit, atau unitnya belum punya aturan PTE)
+  // otomatis jatuh ke label placeholder netral di buatF01PersonalMarketing().
+  const outletPenugasanMarketing =
+    formKey === 'personal_marketing' ? (assignments.find((a) => a.form_key === 'personal_marketing')?.outlet_id ?? null) : null;
+  const { data: labelUndanganUnit } = useLabelUndanganOutlet(outletPenugasanMarketing);
+  const schema = formKey === 'personal_marketing' ? buatF01PersonalMarketing(labelUndanganUnit ?? undefined) : formRegistry[formKey];
   const { data: daftarLokasi } = useDaftarLokasi();
   const { data: daftarOutlet } = useDaftarOutlet();
   const { data: daftarShift } = useDaftarShift();
@@ -295,7 +264,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
       });
 
       if (formKey === 'personal_marketing') {
-        await sinkronPteDaily(idAkhir, session.user.id, isiKirim);
+        await sinkronPteHarian(idAkhir, session.user.id, isiKirim, policy);
         await sinkronClosing(
           session.user.id,
           idAkhir,
@@ -352,10 +321,17 @@ export function LaporForm({ formKey }: { formKey: string }) {
   const invitTarget = policy ? Number(policy.invite_target) : null;
   const closingTarget = policy ? Number(policy.closing_target) : null;
 
-  const ringkasanPte = formKey === 'personal_marketing' && policy ? ringkasanPteHariIni(nilaiUntukPratinjau, policy) : null;
-  const infoBonus =
-    formKey === 'personal_marketing' && policy && progres
-      ? hitungKelayakanBonus(policy, progres.pte_berlaku, progres.hari_bolong, progres.hari_lengkap, progres.hari_wajib)
+  const poinPte: PoinPteHarian | null = formKey === 'personal_marketing' && policy ? ringkasanPteHarian(nilaiUntukPratinjau, policy) : null;
+  // Poin maksimal HARIAN (bukan bulanan) -- dari policy.pte_poin_*, dipakai
+  // cuma sebagai penyebut progress bar, bukan aturan bonus/potongan (CEO
+  // eksplisit: itu belum dibangun untuk skema poin ini, 6 pertanyaan masih
+  // terbuka).
+  const poinMaksimalHarian =
+    formKey === 'personal_marketing' && policy
+      ? Number(policy.pte_poin_digital_per_platform) * 3 +
+        Number(policy.pte_poin_undangan_per_orang) * Number(policy.pte_poin_undangan_target) +
+        Number(policy.pte_poin_review_lengkap) +
+        Number(policy.pte_poin_kesaksian_lengkap)
       : null;
   const infoPotongan =
     formKey === 'personal_marketing' && policy && progres ? hitungPotongan(policy, progres.pte_berlaku, progres.closing) : null;
@@ -420,9 +396,6 @@ export function LaporForm({ formKey }: { formKey: string }) {
         }
       : null;
 
-  const itemsPte = formKey === 'personal_marketing' && policy ? itemsPteHariIni(nilaiUntukPratinjau, Number(policy.pte_konten_minimal)) : null;
-  const pteSelesaiCount = itemsPte ? itemsPte.filter((it) => it.status === 'selesai').length : 0;
-  const pteBerlaku = infoBonus?.berlaku ?? false;
 
   return (
     <main className="flex flex-col gap-6 p-6">
@@ -471,54 +444,56 @@ export function LaporForm({ formKey }: { formKey: string }) {
             <span className="status-teks" style={{ color: LABEL_CAPAIAN_TARGET[statusUndangan(progres.undangan, invitTarget)].warna }}>
               Undangan: {LABEL_CAPAIAN_TARGET[statusUndangan(progres.undangan, invitTarget)].teks}
             </span>
-            <span className="status-teks" style={{ color: ringkasanPte ? (ringkasanPte.lengkap ? 'var(--hijau)' : 'var(--merah)') : 'var(--kosong)' }}>
-              PTE: {ringkasanPte ? (ringkasanPte.lengkap ? 'Lengkap' : 'Belum lengkap') : '—'}
+            <span className="status-teks" style={{ color: 'var(--biru)' }}>
+              PTE hari ini: {poinPte ? `${poinPte.poinTotal} poin` : '—'}
             </span>
           </div>
         </div>
       )}
 
-      {/* Panel PTE (DESIGN.md §9) -- daftar 6 kewajiban, rail per baris,
-          bukan grid ✅/❌. Ringkasan di atas TETAP netral/soft kalau
-          pte_mulai_berlaku belum diisi (bukan diperlakukan sebagai "gagal"). */}
-      {formKey === 'personal_marketing' && itemsPte && ringkasanPte && (
+      {/* Panel PTE Harian (18 September 2026, MENGGANTIKAN daftar 6 kewajiban
+          lama) -- rincian per komponen, poin SEMUA dari policy.pte_poin_*
+          (lib/api/pteHarian.ts), TIDAK ADA klaim bonus/potongan di sini --
+          instruksi eksplisit CEO: itu belum dibangun untuk skema poin ini. */}
+      {formKey === 'personal_marketing' && poinPte && poinMaksimalHarian !== null && policy && (
         <div className="flex flex-col gap-3">
-          <div className={`kartu-status ${!pteBerlaku ? 'rail-netral' : ringkasanPte.lengkap ? 'rail-hijau' : 'rail-merah'} flex flex-col gap-2`}>
+          <div className="kartu-status rail-biru flex flex-col gap-2">
             <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>PTE hari ini</p>
             <div className="flex items-baseline gap-2">
-              <span className="angka-kecil" style={{ color: !pteBerlaku ? 'var(--tinta)' : ringkasanPte.lengkap ? 'var(--hijau)' : 'var(--merah)' }}>
-                {pteSelesaiCount}
-              </span>
-              <span className="text-sm" style={{ color: 'var(--label)' }}>dari 6 kewajiban selesai</span>
+              <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{poinPte.poinTotal}</span>
+              <span className="text-sm" style={{ color: 'var(--label)' }}>dari maksimal {poinMaksimalHarian} poin</span>
             </div>
             <div className="progres-bar">
-              <div className="progres-bar-isi" style={{ width: `${Math.round((pteSelesaiCount / 6) * 100)}%` }} />
+              <div className="progres-bar-isi" style={{ width: `${Math.round((poinPte.poinTotal / poinMaksimalHarian) * 100)}%` }} />
             </div>
-            <p className="text-sm" style={{ color: 'var(--label)' }}>
-              {!pteBerlaku
-                ? 'Ketentuan belum berlaku.'
-                : ringkasanPte.lengkap
-                  ? infoBonus?.layak
-                    ? `Layak bonus Rp${infoBonus.nominal?.toLocaleString('id-ID')}.`
-                    : 'Semua kewajiban lengkap.'
-                  : `Tinggal ${6 - pteSelesaiCount} kegiatan + bukti.`}
-            </p>
+            <p className="text-sm" style={{ color: 'var(--label)' }}>Bonus/potongan gaji belum aktif untuk skema poin ini.</p>
           </div>
 
           <div className="flex flex-col gap-2">
-            {itemsPte.map((item) => (
-              <div key={item.key} className={`kartu-status ${RAIL_STATUS_PTE[item.status]} flex items-center justify-between gap-2`}>
-                <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>
-                  <span aria-hidden style={{ color: WARNA_STATUS_PTE[item.status] }}>
-                    {SIMBOL_STATUS_PTE[item.status]}
-                  </span>{' '}
-                  {item.label}
-                </span>
-                <span className="status-teks" style={{ color: WARNA_STATUS_PTE[item.status], flexShrink: 0 }}>
-                  {item.keterangan}
-                </span>
-              </div>
-            ))}
+            <div className="kartu-status rail-netral flex items-center justify-between gap-2">
+              <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Digital (TikTok/IG/Threads)</span>
+              <span className="status-teks">
+                {poinPte.poinDigital} / {Number(policy.pte_poin_digital_per_platform) * 3} poin
+              </span>
+            </div>
+            <div className="kartu-status rail-netral flex items-center justify-between gap-2">
+              <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Undangan</span>
+              <span className="status-teks">
+                {poinPte.poinUndangan} / {Number(policy.pte_poin_undangan_per_orang) * Number(policy.pte_poin_undangan_target)} poin
+              </span>
+            </div>
+            <div className="kartu-status rail-netral flex items-center justify-between gap-2">
+              <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Google Review</span>
+              <span className="status-teks">
+                {poinPte.poinReview} / {Number(policy.pte_poin_review_lengkap)} poin
+              </span>
+            </div>
+            <div className="kartu-status rail-netral flex items-center justify-between gap-2">
+              <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Kesaksian / Testimoni</span>
+              <span className="status-teks">
+                {poinPte.poinKesaksian} / {Number(policy.pte_poin_kesaksian_lengkap)} poin
+              </span>
+            </div>
           </div>
         </div>
       )}

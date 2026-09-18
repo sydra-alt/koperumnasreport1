@@ -2,8 +2,18 @@
 
 import { useFieldArray, useFormContext } from 'react-hook-form';
 import type { Field } from '../../forms/types';
+import { LampiranInput } from './LampiranInput';
 
-export function Tabel({ field }: { field: Field }) {
+/**
+ * `kunci` -- id stabil PER BARIS, dibuat sekali saat baris ditambah dan ikut
+ * tersimpan sebagai data biasa (BUKAN id internal react-hook-form, yang
+ * dibuat ULANG setiap form dibuka kembali -- lihat forms/types.ts komentar
+ * `buktiPerBaris`). Bukti baris memakai kunci ini supaya tetap terhubung ke
+ * baris yang benar walau laporan dibuka-tutup berkali-kali sebelum dikirim.
+ * Cuma dibuat kalau field ini memang butuh bukti per baris -- baris tabel
+ * biasa (tanpa buktiPerBaris) tidak perlu kunci ini sama sekali.
+ */
+export function Tabel({ field, reportId }: { field: Field; reportId?: string | null }) {
   const { control, register } = useFormContext();
   const { fields, append, remove } = useFieldArray({ control, name: field.key });
   const kolom = field.kolom ?? [];
@@ -15,6 +25,7 @@ export function Tabel({ field }: { field: Field }) {
           {kolom.map((k) => (
             <label key={k.key} className="flex flex-col gap-1 text-sm">
               {k.label}
+              {k.wajib && <span style={{ color: 'var(--merah)' }}> *</span>}
               {k.type === 'pilih' && k.pilihan ? (
                 <select
                   className="border px-2 py-2"
@@ -35,6 +46,16 @@ export function Tabel({ field }: { field: Field }) {
               )}
             </label>
           ))}
+
+          {field.buktiPerBaris && (
+            <LampiranInput
+              name={`_bukti.${field.key}.${(baris as { kunci?: string }).kunci ?? baris.id}`}
+              label="Lampirkan bukti"
+              reportId={reportId}
+              fieldKeyAsli={`${field.buktiKunci ?? field.key}_${(baris as { kunci?: string }).kunci ?? baris.id}`}
+            />
+          )}
+
           <button
             type="button"
             onClick={() => remove(i)}
@@ -47,7 +68,7 @@ export function Tabel({ field }: { field: Field }) {
       ))}
       <button
         type="button"
-        onClick={() => append({})}
+        onClick={() => append(field.buktiPerBaris ? { kunci: crypto.randomUUID() } : {})}
         className="self-start border px-3 py-2 text-sm"
         style={{ borderColor: 'var(--garis)', minHeight: 44 }}
       >

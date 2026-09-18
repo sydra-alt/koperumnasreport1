@@ -1,7 +1,100 @@
-import type { FormSchema } from './types';
+import type { Block, FormSchema } from './types';
+
+/** Label default kalau outlet pengisi belum ditautkan ke unit manapun, atau
+ * unitnya belum punya aturan PTE (Koperumnas/DTI-Precast/Rukost/Thrifting
+ * sekarang -- lihat migrasi 0057_pte_harian.sql). BUKAN tebakan nama unit --
+ * cuma placeholder netral supaya form tetap bisa dibuka, keputusan poin
+ * sungguhan tetap menunggu label per unit diisi CEO lewat Admin. */
+const LABEL_UNDANGAN_DEFAULT = 'Undangan Customer';
 
 /**
- * Sesuai docs/REFERENSI-FORMAT-LAPORAN.md §2 (versi benar, 23 Agustus 2026).
+ * Blok "PTE Harian" (18 September 2026, MENGGANTIKAN "Enam Kewajiban" lama --
+ * lihat lib/api/pte.ts, dinonaktifkan bukan dihapus). Empat komponen:
+ * Digital (30 = 3 platform x 10), Undangan (20 = maks 2 orang x 10),
+ * Google Review (10, all-or-nothing di 2), Kesaksian (20, all-or-nothing di
+ * 2) -- nilai poin & target SEMUA dari policy.pte_poin_* (lib/api/pteHarian.ts),
+ * bukan angka di sini. Label "Undangan" beda per unit (Indokopi/Indosteak,
+ * disimpan di tabel unit_bisnis, bukan switch kode) -- makanya blok ini
+ * FUNGSI, bukan objek statis, dipanggil LaporForm.tsx dengan label yang
+ * sudah di-resolve dari outlet penugasan pengisi.
+ */
+function blokPteHarian(labelUndangan: string): Block {
+  return {
+    id: 'pte',
+    judul: 'PTE Harian',
+    catatan:
+      'Poin dihitung otomatis dari isian + bukti, sesuai kebijakan yang berlaku sekarang -- tidak pernah diketik manual. Bonus/potongan gaji belum aktif.',
+    fields: [
+      {
+        key: 'digital_tiktok_tautan',
+        label: 'TikTok -- Tautan Postingan',
+        type: 'teks',
+        buktiWajib: true,
+        buktiKunci: 'digital_tiktok',
+        bantuan: 'Tautan wajib diisi supaya bisa diverifikasi ulang kapan saja. Sertakan tangkapan layar sebagai bukti.',
+      },
+      {
+        key: 'digital_ig_tautan',
+        label: 'Instagram/Reels -- Tautan Postingan',
+        type: 'teks',
+        buktiWajib: true,
+        buktiKunci: 'digital_ig',
+        bantuan: 'Tautan wajib diisi. Sertakan tangkapan layar sebagai bukti.',
+      },
+      {
+        key: 'digital_threads_tautan',
+        label: 'Threads -- Tautan Postingan',
+        type: 'teks',
+        buktiWajib: true,
+        buktiKunci: 'digital_threads',
+        bantuan: 'Tautan wajib diisi. Sertakan tangkapan layar sebagai bukti.',
+      },
+      {
+        key: 'undangan_list',
+        label: labelUndangan,
+        type: 'tabel',
+        buktiWajib: true,
+        buktiPerBaris: true,
+        buktiKunci: 'undangan',
+        kolom: [
+          { key: 'nama', label: 'Nama', type: 'teks', wajib: true },
+          { key: 'kontak', label: 'Nomor Kontak', type: 'teks', wajib: true },
+        ],
+        bantuan: '1 orang = 10 poin, 2 orang = 20 poin (maksimal 2 dihitung). Bukti follow-up wajib per orang.',
+      },
+      {
+        key: 'review_list',
+        label: 'Google Review',
+        type: 'tabel',
+        buktiWajib: true,
+        buktiPerBaris: true,
+        buktiKunci: 'review',
+        kolom: [
+          { key: 'nama', label: 'Nama Reviewer', type: 'teks', wajib: true },
+          { key: 'tanggal', label: 'Tanggal Review (YYYY-MM-DD)', type: 'teks', wajib: true },
+        ],
+        bantuan: '2 review = 10 poin, 1 review = 0 poin (semua atau tidak sama sekali). Tangkapan layar wajib per review.',
+      },
+      {
+        key: 'kesaksian_list',
+        label: 'Kesaksian / Testimoni',
+        type: 'tabel',
+        buktiWajib: true,
+        buktiPerBaris: true,
+        buktiKunci: 'kesaksian',
+        kolom: [
+          { key: 'nama', label: 'Nama Customer', type: 'teks', wajib: true },
+          { key: 'setuju_publikasi', label: 'Setuju Dipublikasikan', type: 'pilih', pilihan: ['ya', 'tidak'], wajib: true },
+        ],
+        bantuan: '2 testimoni = 20 poin, 1 testimoni = 0 poin (semua atau tidak sama sekali). Video/foto wajib per testimoni.',
+      },
+    ],
+  };
+}
+
+/**
+ * Sesuai docs/REFERENSI-FORMAT-LAPORAN.md §2 (versi benar, 23 Agustus 2026),
+ * blok PTE diperbarui 18 September 2026 (lihat blokPteHarian di atas).
  *
  * Blok 1 (Identitas) SENGAJA tidak ada di sini -- spesifikasi bilang "hanya
  * baca dari profile, tidak perlu field". Ditampilkan di LaporForm.tsx dari
@@ -10,15 +103,15 @@ import type { FormSchema } from './types';
  *
  * Baris "*dihitung*" di Blok 2/3/5/6/8 (closing ___/2, undangan ___/20, status
  * PTE, status warna) juga tidak berupa field -- ditampilkan LaporForm.tsx dari
- * `useProgresBulananSaya()` + `hitungKelayakanBonus`/`hitungPotongan`/
- * `ringkasanPteHariIni`, supaya benar-benar "dihitung sistem", bukan schema
- * statis yang bisa disalahartikan sebagai field yang diketik user.
+ * `useProgresBulananSaya()` + `ringkasanPteHarian` (lib/api/pteHarian.ts),
+ * supaya benar-benar "dihitung sistem", bukan schema statis yang bisa
+ * disalahartikan sebagai field yang diketik user.
  *
- * `undang_jumlah` cuma didefinisikan SEKALI, di Blok 4 (tempat buktiWajib-nya
- * ada) -- Blok 3 cuma catatan yang merujuk ke situ, sesuai instruksi "jangan
- * dibuat dua field".
+ * `undang_jumlah` LAMA (Enam Kewajiban) sudah tidak ada -- diganti
+ * `undangan_list` (tabel anak, satu baris per orang) di blokPteHarian().
  */
-export const f01PersonalMarketing: FormSchema = {
+export function buatF01PersonalMarketing(labelUndangan: string = LABEL_UNDANGAN_DEFAULT): FormSchema {
+  return {
   key: 'personal_marketing',
   nama: 'Laporan Personal Marketing',
   scope: 'user',
@@ -43,44 +136,14 @@ export const f01PersonalMarketing: FormSchema = {
     {
       id: 'undangan',
       judul: 'Target Undangan Konsumen Baru',
-      catatan: 'Target minimal sesuai kebijakan undangan bulanan perusahaan. "Undangan hari ini" diisi di bagian "PTE Hari Ini — Enam Kewajiban" -- satu field yang sama, tidak diulang di sini. Progres "___/20" ditampilkan di atas.',
+      catatan: 'Target minimal sesuai kebijakan undangan bulanan perusahaan. "Undangan hari ini" diisi di bagian "PTE Harian" -- satu daftar yang sama, tidak diulang di sini. Progres "___/20" ditampilkan di atas.',
       fields: [
         { key: 'undang_merespons', label: 'Yang Merespons', type: 'angka' },
         { key: 'undang_mau_presentasi', label: 'Yang Mau Presentasi', type: 'angka' },
         { key: 'undang_jadi_prospek', label: 'Yang Menjadi Prospek', type: 'angka' },
       ],
     },
-    {
-      id: 'pte',
-      judul: 'PTE Hari Ini — Enam Kewajiban',
-      catatan: 'Tidak cukup hanya menulis "sudah". Harus ada bukti. Tanpa bukti, jumlahnya dianggap nol.',
-      fields: [
-        { key: 'live', label: 'Live', type: 'ya_tidak', buktiWajib: true, buktiKunci: 'live' },
-        { key: 'live_platform', label: 'Platform Live', type: 'teks', bantuan: 'Isi kalau Live = Ya' },
-        {
-          key: 'undang_jumlah',
-          label: 'Undang Konsumen Baru (orang)',
-          type: 'angka',
-          buktiWajib: true,
-          buktiKunci: 'undang',
-          bantuan: 'Bukti: undangan / follow-up. Angka ini juga dipakai untuk progres undangan yang ditampilkan di bagian atas.',
-        },
-        { key: 'kesaksian_jumlah', label: 'Kesaksian / Testimoni', type: 'angka', buktiWajib: true, buktiKunci: 'kesaksian', bantuan: 'Bukti: video atau foto' },
-        { key: 'review_jumlah', label: 'Google Review', type: 'angka', buktiWajib: true, buktiKunci: 'review', bantuan: 'Bukti: link atau screenshot' },
-        {
-          key: 'konten_jumlah',
-          label: 'VT / Konten Medsos',
-          type: 'angka',
-          buktiWajib: true,
-          buktiKunci: 'konten',
-          bantuan: 'Minimal sesuai policy.pte_konten_minimal. Bukti: link, minimal 3 konten.',
-        },
-        { key: 'konten_1', label: 'Konten 1 (judul/tautan)', type: 'teks' },
-        { key: 'konten_2', label: 'Konten 2 (judul/tautan)', type: 'teks' },
-        { key: 'konten_3', label: 'Konten 3 (judul/tautan)', type: 'teks' },
-        { key: 'mentahan_jumlah', label: 'Video Mentahan', type: 'angka', buktiWajib: true, buktiKunci: 'mentahan', bantuan: 'Bukti: file video' },
-      ],
-    },
+    blokPteHarian(labelUndangan),
     {
       id: 'funnel',
       judul: 'Funnel Marketing Pribadi',
@@ -116,5 +179,13 @@ export const f01PersonalMarketing: FormSchema = {
         },
       ],
     },
-  ],
-};
+    ],
+  };
+}
+
+/** Untuk formRegistry (forms/index.ts) -- butuh objek FormSchema statis di
+ * situ, label undangan di-resolve ULANG dengan label yang benar di
+ * LaporForm.tsx (lihat useLabelUndanganOutlet, lib/api/pteHarian.ts)
+ * sebelum dirender ke pengguna. Registry-nya sendiri cuma dipakai untuk
+ * lookup formKey -> nama/scope, bukan buat menampilkan field ke pengguna. */
+export const f01PersonalMarketing: FormSchema = buatF01PersonalMarketing();

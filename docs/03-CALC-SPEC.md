@@ -47,6 +47,12 @@ Kedua-duanya harus didukung kode sejak awal, karena klien belum memastikan yang 
 
 ## §2 · PTE harian
 
+> ⚠️ **DIPENSIUNKAN 18 September 2026** (bukan dihapus) — skema "Enam
+> Kewajiban" di bawah TIDAK LAGI ditulis dari `LaporForm.tsx` sejak PTE
+> Harian versi poin (§2b) dibangun. Kode (`lib/api/pte.ts`, tabel
+> `pte_daily`) tetap ada, tidak dipanggil. Dibiarkan di dokumen ini sebagai
+> riwayat/referensi kalau ada baris `pte_daily` lama yang masih perlu dibaca.
+
 ### Enam kewajiban
 
 | Kunci | Terpenuhi kalau |
@@ -89,6 +95,70 @@ await supabase.from('pte_daily').upsert({
 Perhatikan polanya: **kalau bukti tidak ada, jumlahnya dianggap nol** — bukan diterima lalu ditandai bermasalah. Tidak ada bukti berarti tidak dikerjakan.
 
 Kolom `lengkap` adalah generated column di Postgres, tidak dihitung di frontend.
+
+---
+
+## §2b · PTE Harian versi poin (18 September 2026 — MENGGANTIKAN §2 di atas)
+
+Cakupan cuma **Indosteak & Indokopi** (instruksi eksplisit CEO) — Koperumnas/
+DTI-Precast/Rukost diabaikan (nol orang ditugaskan sejak pivot 2 September
+2026), tapi baris unitnya tetap ada di `unit_bisnis` (label kosong) supaya
+tinggal diisi lewat Admin kalau dipakai lagi. Thrifting sengaja dikosongkan
+juga — belum ada aturan PTE-nya sama sekali.
+
+Bonus Rp500.000 / potongan Rp300.000 **SENGAJA TIDAK dibangun ulang** untuk
+skema poin ini — 6 pertanyaan aturan bonus/potongan masih terbuka.
+`policy.pte_mulai_berlaku` tetap `null`, tidak disentuh.
+
+### Empat komponen (maks 80 poin/hari)
+
+| Komponen | Maks | Aturan |
+|---|---|---|
+| Digital (TikTok/IG/Threads) | 30 | `policy.pte_poin_digital_per_platform` (10) **per platform** — tautan terisi **dan** ada ≥1 lampiran per platform |
+| Undangan | 20 | `policy.pte_poin_undangan_per_orang` (10) **per orang lengkap** (nama+kontak+bukti), dihitung maksimal `policy.pte_poin_undangan_target` (2) orang — orang ke-3 dst. tidak menambah poin |
+| Google Review | 10 | All-or-nothing: `policy.pte_poin_review_lengkap` (10) kalau baris lengkap (nama+tanggal+bukti) ≥ `policy.pte_poin_review_target` (2), kalau tidak = 0 |
+| Kesaksian/Testimoni | 20 | All-or-nothing: `policy.pte_poin_kesaksian_lengkap` (20) kalau baris lengkap (nama+centang persetujuan+bukti) ≥ `policy.pte_poin_kesaksian_target` (2), kalau tidak = 0 |
+
+Label field Undangan **beda per unit** (`unit_bisnis.label_undangan`, lewat
+`outlet.unit_kode` — bukan switch di kode): Indokopi = "Undangan Customer
+Datang", Indosteak = "Undangan Customer Makan". Struktur poinnya sama,
+cuma labelnya beda.
+
+### Bentuk isian
+
+Digital = 3 kolom tetap di `pte_harian` (`tiktok_tautan`/`ig_tautan`/
+`threads_tautan`), jumlahnya memang selalu tiga. Undangan/Review/Kesaksian
+= **tabel anak** `pte_harian_item` (bukan slot tetap) — jumlah baris tidak
+dibatasi form, poin tetap mentok di target kebijakan di atas. Tiap baris
+tabel butuh buktinya SENDIRI (field `buktiPerBaris` baru di
+`forms/types.ts` — lihat `components/fields/Tabel.tsx`), bukan satu bukti
+untuk seluruh tabel — supaya foto/tautan tiap orang/review/testimoni bisa
+diverifikasi ulang siapa buktinya siapa.
+
+### Sinkronisasi saat laporan dikirim
+
+Poin **dihitung dari bukti sungguhan di tabel `attachment`** (bukan
+dipercaya dari state form), pola sama §2 lama — kalau bukti tidak ada,
+baris itu tidak dihitung sama sekali. Lihat `lib/api/pteHarian.ts`
+(`sinkronPteHarian`) untuk implementasi persis. Poin **DISIMPAN** (snapshot)
+di `pte_harian.poin_*` saat kirim — BUKAN dihitung ulang tiap dibaca dari
+view, supaya perubahan `policy.pte_poin_*` bulan depan tidak diam-diam
+mengubah angka bulan lalu (prinsip sama `unitCogs` di pos-fnb: dikunci di
+titik hitung).
+
+### Write-once + koreksi atasan
+
+Baris `pte_harian`/`pte_harian_item` **tidak bisa diubah langsung** lewat
+klien begitu `tanggal` baris itu sudah lewat hari WIB (trigger
+`jaga_pte_harian_write_once`/`jaga_pte_harian_item_write_once`,
+`supabase/migrations/0057_pte_harian.sql`) — RLS mengatur SIAPA boleh
+menulis datanya sendiri, trigger ini mengatur KAPAN, independen dari role.
+Koreksi HANYA lewat `koreksi_pte_harian()` (security definer, ceo ATAU
+`is_hrd_kadiv()` — gerbang sama `putuskan_cuti()`), wajib alasan, kolom
+yang boleh dikoreksi dibatasi whitelist, dan setiap koreksi tercatat
+lengkap (siapa, kapan, dari apa ke apa) di `pte_koreksi_log`. Koreksi
+baris `pte_harian_item` (nama/kontak per orang) **belum ada RPC-nya** —
+utang, belum dibangun.
 
 ---
 

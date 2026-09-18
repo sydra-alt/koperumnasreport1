@@ -81,7 +81,13 @@ export function buildZodSchema(schema: FormSchema) {
     for (const f of block.fields) {
       shape[f.key] = skemaPerField(f);
       if (f.buktiWajib) {
-        buktiShape[f.key] = z.array(z.object({ nama: z.string() })).optional();
+        // Tabel+buktiPerBaris: satu bukti PER BARIS, kunci dinamis (id baris)
+        // -- bentuknya record, bukan array tetap seperti field biasa (lihat
+        // forms/types.ts komentar buktiPerBaris dan Tabel.tsx).
+        buktiShape[f.key] =
+          f.type === 'tabel' && f.buktiPerBaris
+            ? z.record(z.string(), z.array(z.object({ nama: z.string() }))).optional()
+            : z.array(z.object({ nama: z.string() })).optional();
       }
     }
   }
@@ -90,12 +96,32 @@ export function buildZodSchema(schema: FormSchema) {
 
   return dasar.superRefine((val, ctx) => {
     const record = val as Record<string, unknown>;
-    const bukti = (record._bukti as Record<string, { nama: string }[]> | undefined) ?? {};
+    const bukti = (record._bukti as Record<string, unknown> | undefined) ?? {};
     for (const block of blokBerlakuHariIni(schema)) {
       for (const f of block.fields) {
+        if (f.buktiWajib && f.type === 'tabel' && f.buktiPerBaris) {
+          const buktiPerBarisField = (bukti[f.key] as Record<string, { nama: string }[]> | undefined) ?? {};
+          const baris = (record[f.key] as Record<string, unknown>[] | undefined) ?? [];
+          baris.forEach((b, i) => {
+            for (const k of f.kolom ?? []) {
+              if (!k.wajib) continue;
+              const nilai = b[k.key];
+              const kosong = typeof nilai === 'string' ? nilai.trim().length === 0 : nilai == null;
+              if (kosong) {
+                ctx.addIssue({ code: 'custom', path: [f.key, i, k.key], message: `${k.label} wajib diisi` });
+              }
+            }
+            const kunciBaris = typeof b.kunci === 'string' ? b.kunci : null;
+            const jumlahBukti = kunciBaris ? (buktiPerBarisField[kunciBaris]?.length ?? 0) : 0;
+            if (jumlahBukti === 0) {
+              ctx.addIssue({ code: 'custom', path: [f.key, i], message: `Baris ${i + 1} pada "${f.label}" belum ada bukti` });
+            }
+          });
+          continue;
+        }
         if (f.buktiWajib) {
           const isiTerisi = terisi(f.type, record[f.key]);
-          const jumlahBukti = bukti[f.key]?.length ?? 0;
+          const jumlahBukti = (bukti[f.key] as { nama: string }[] | undefined)?.length ?? 0;
           if (isiTerisi && jumlahBukti === 0) {
             ctx.addIssue({
               code: 'custom',
