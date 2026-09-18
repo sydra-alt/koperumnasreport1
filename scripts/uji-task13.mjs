@@ -143,5 +143,14 @@ try {
   console.error('GAGAL:', err.message);
   process.exit(1);
 } finally {
+  // Jaring pengaman -- ROLLBACK eksplisit TERLEPAS dari client.end() (yang
+  // secara implisit sudah membatalkan transaksi terbuka saat koneksi ditutup,
+  // tapi tidak digantungkan ke perilaku implisit itu saja). Aman dipanggil
+  // walau tidak ada transaksi aktif (no-op + NOTICE, bukan error).
+  try {
+    await client.query('rollback');
+  } catch {
+    // tidak ada transaksi aktif -- abaikan
+  }
   await client.end();
 }
