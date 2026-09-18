@@ -51,6 +51,13 @@ export interface Block {
   fields: Field[];
   hanyaHari?: number[]; // blok cuma tampil & tervalidasi kalau hari ISO (1=Senin..7=Minggu, lib/tanggal.ts)
                         // ada di daftar ini -- dipakai utk "Stock Opname" ita yang cuma muncul Senin.
+  arsip?: boolean;      // blok skema LAMA yang sudah dipensiunkan (field-nya tidak lagi diisi) --
+                        // DISEMBUNYIKAN dari FormRenderer/validasi (blokBerlakuHariIni, forms/validasi.ts)
+                        // supaya tidak ada yang bisa mengisi ulang, TAPI TETAP dirender
+                        // LaporanBacaSaja/riwayat (yang tidak memfilter `arsip`) supaya laporan
+                        // lama yang datanya masih memakai field-field ini tidak tampak kosong di
+                        // riwayat. Dipakai pertama kali 18 September 2026 saat blok "PTE Hari Ini --
+                        // Enam Kewajiban" diganti "PTE Harian" versi poin (forms/f01-personal-marketing.ts).
 }
 
 export interface FormSchema {

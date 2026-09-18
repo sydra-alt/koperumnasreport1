@@ -9,7 +9,9 @@ import { hariISOWIB } from '../lib/tanggal';
  * pernah dituntut wajib. */
 export function blokBerlakuHariIni(schema: FormSchema, tanggal = new Date()): FormSchema['blocks'] {
   const hariIni = hariISOWIB(tanggal);
-  return schema.blocks.filter((b) => !b.hanyaHari || b.hanyaHari.includes(hariIni));
+  // `arsip` disaring DI SINI (bukan di LaporanBacaSaja/riwayat, yang punya
+  // filter blok sendiri dan SENGAJA tidak memfilternya) -- lihat forms/types.ts.
+  return schema.blocks.filter((b) => !b.arsip && (!b.hanyaHari || b.hanyaHari.includes(hariIni)));
 }
 
 function skemaPerField(f: Field): z.ZodTypeAny {

@@ -93,6 +93,53 @@ function blokPteHarian(labelUndangan: string): Block {
 }
 
 /**
+ * Blok ARSIP -- "Enam Kewajiban" lama (dipensiunkan 18 September 2026,
+ * digantikan blokPteHarian() di atas). Field-nya PERSIS SAMA seperti
+ * sebelum diganti -- TUJUANNYA SATU: supaya laporan lama yang datanya
+ * masih memakai field-field ini (live, undang_jumlah, dst.) TETAP terbaca
+ * di /riwayat, bukan tampak kosong. `arsip: true` (forms/types.ts)
+ * menyembunyikannya dari FormRenderer/validasi form AKTIF (blokBerlakuHariIni,
+ * forms/validasi.ts) -- tidak ada yang bisa mengisi ulang field-field ini,
+ * tapi LaporanBacaSaja/riwayat SENGAJA tidak memfilter `arsip`, jadi blok
+ * ini tetap dirender di sana. id DIBEDAKAN ('pte_arsip', bukan 'pte') dari
+ * blok PTE Harian baru supaya tidak tabrakan key React/anchor.
+ */
+function blokPteArsipEnamKewajiban(): Block {
+  return {
+    id: 'pte_arsip',
+    judul: 'PTE Hari Ini — Enam Kewajiban (arsip, sebelum 18 September 2026)',
+    arsip: true,
+    catatan: 'Tidak cukup hanya menulis "sudah". Harus ada bukti. Tanpa bukti, jumlahnya dianggap nol.',
+    fields: [
+      { key: 'live', label: 'Live', type: 'ya_tidak', buktiWajib: true, buktiKunci: 'live' },
+      { key: 'live_platform', label: 'Platform Live', type: 'teks', bantuan: 'Isi kalau Live = Ya' },
+      {
+        key: 'undang_jumlah',
+        label: 'Undang Konsumen Baru (orang)',
+        type: 'angka',
+        buktiWajib: true,
+        buktiKunci: 'undang',
+        bantuan: 'Bukti: undangan / follow-up. Angka ini juga dipakai untuk progres undangan yang ditampilkan di bagian atas.',
+      },
+      { key: 'kesaksian_jumlah', label: 'Kesaksian / Testimoni', type: 'angka', buktiWajib: true, buktiKunci: 'kesaksian', bantuan: 'Bukti: video atau foto' },
+      { key: 'review_jumlah', label: 'Google Review', type: 'angka', buktiWajib: true, buktiKunci: 'review', bantuan: 'Bukti: link atau screenshot' },
+      {
+        key: 'konten_jumlah',
+        label: 'VT / Konten Medsos',
+        type: 'angka',
+        buktiWajib: true,
+        buktiKunci: 'konten',
+        bantuan: 'Minimal sesuai policy.pte_konten_minimal. Bukti: link, minimal 3 konten.',
+      },
+      { key: 'konten_1', label: 'Konten 1 (judul/tautan)', type: 'teks' },
+      { key: 'konten_2', label: 'Konten 2 (judul/tautan)', type: 'teks' },
+      { key: 'konten_3', label: 'Konten 3 (judul/tautan)', type: 'teks' },
+      { key: 'mentahan_jumlah', label: 'Video Mentahan', type: 'angka', buktiWajib: true, buktiKunci: 'mentahan', bantuan: 'Bukti: file video' },
+    ],
+  };
+}
+
+/**
  * Sesuai docs/REFERENSI-FORMAT-LAPORAN.md §2 (versi benar, 23 Agustus 2026),
  * blok PTE diperbarui 18 September 2026 (lihat blokPteHarian di atas).
  *
@@ -144,6 +191,7 @@ export function buatF01PersonalMarketing(labelUndangan: string = LABEL_UNDANGAN_
       ],
     },
     blokPteHarian(labelUndangan),
+    blokPteArsipEnamKewajiban(),
     {
       id: 'funnel',
       judul: 'Funnel Marketing Pribadi',
