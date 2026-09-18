@@ -15,7 +15,13 @@ export function Angka({ field }: { field: Field }) {
       className="border px-2 py-2"
       style={{ borderColor: 'var(--garis)', fontFamily: 'var(--mono)', minHeight: 44 }}
       {...register(field.key, {
-        valueAsNumber: true,
+        // `setValueAs`, BUKAN `valueAsNumber` -- `valueAsNumber` mengubah input
+        // KOSONG jadi NaN (DOM `input.valueAsNumber` utk number input kosong),
+        // bukan undefined. NaN bertipe 'number' jadi lolos typeof-check tapi
+        // gagal di z.number(), membuat field OPSIONAL yang dikosongkan ikut
+        // ditolak (ditemukan lewat uji HP sungguhan 18 September 2026) --
+        // lihat forms/validasi.ts (bersihkanNaN) untuk jaring pengaman kedua.
+        setValueAs: (v) => (v === '' || v === null ? undefined : Number(v)),
         min: { value: min, message: `${field.label} tidak boleh kurang dari ${min}` },
       })}
     />

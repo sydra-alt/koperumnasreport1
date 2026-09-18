@@ -384,17 +384,27 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
           );
         })}
 
-        {/* Menempel di atas nav bawah pada layar sempit (§2 06-RENCANA-PRESENSI-MOBILE.md) --
-            form personal_marketing 9 blok baru terlihat tombolnya kalau digulir sampai
-            bawah tanpa ini; dengan sticky, selalu terlihat. Background solid wajib supaya
-            konten yang lewat di baliknya tidak tembus pandang. */}
+        {/* IKUT TER-SCROLL bersama form (app/globals.css .tombol-kirim-menempel
+            sekarang position:static) -- sebelumnya sticky, tapi itu menutupi
+            daftar galat validasi tepat saat paling perlu dibaca (uji HP
+            sungguhan 18 September 2026). Background solid dipertahankan
+            (tidak berpengaruh saat static, tapi tidak salah juga). */}
         <div className="tombol-kirim-menempel flex flex-col gap-3" style={{ background: 'var(--kertas)', paddingTop: 12 }}>
           {pesanError.length > 0 && (
             <div className="kartu-status rail-merah">
               <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--merah)' }}>Periksa kembali sebelum mengirim:</p>
               <ul className="list-disc pl-5 text-sm" style={{ color: 'var(--merah)' }}>
                 {pesanError.map((e) => (
-                  <li key={e.key}>{e.pesan}</li>
+                  <li key={e.key}>
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById(`baris-${e.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                      className="text-left underline"
+                      style={{ color: 'var(--merah)', minHeight: 44 }}
+                    >
+                      {e.pesan}
+                    </button>
+                  </li>
                 ))}
               </ul>
             </div>

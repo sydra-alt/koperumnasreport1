@@ -304,13 +304,14 @@ body { padding-bottom: calc(var(--tinggi-nav-bawah) + var(--tambahan-fab-absen) 
   body { padding-bottom: 0; }
 }
 
-/* Tombol Kirim yang menempel di atas nav bawah pada form panjang (LaporForm/FormRenderer). */
+/* Tombol Kirim IKUT TER-SCROLL bersama form (bukan menempel/melayang) --
+   sebelumnya `position: sticky`, tapi itu membuatnya mengambang menutupi
+   daftar galat validasi tepat saat paling perlu dibaca, ditemukan lewat uji
+   HP sungguhan 18 September 2026 (instruksi eksplisit CEO: lebih suka ikut
+   ter-scroll daripada melayang, walau diberi jarak aman). Nama kelas
+   dipertahankan (dipakai components/FormRenderer.tsx) walau perilakunya
+   sekarang statis di semua lebar layar. */
 .tombol-kirim-menempel {
-  position: sticky;
-  bottom: calc(var(--tinggi-nav-bawah) + var(--tambahan-fab-absen) + env(safe-area-inset-bottom));
-  z-index: 10;
-}
-@media (min-width: 768px) {
-  .tombol-kirim-menempel { position: static; }
+  position: static;
 }
 

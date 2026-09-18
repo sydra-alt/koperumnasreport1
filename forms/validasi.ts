@@ -14,13 +14,28 @@ export function blokBerlakuHariIni(schema: FormSchema, tanggal = new Date()): Fo
   return schema.blocks.filter((b) => !b.arsip && (!b.hanyaHari || b.hanyaHari.includes(hariIni)));
 }
 
+/** Input angka kosong (`<input type="number">` DOM API, atau field yang belum
+ * disentuh) menghasilkan `NaN` -- BUKAN `undefined` -- lewat `valueAsNumber`
+ * react-hook-form (lihat components/fields/Angka.tsx). `NaN` bertipe
+ * JS `'number'`, jadi `z.number().optional()` TIDAK menganggapnya kosong --
+ * field angka OPSIONAL yang dibiarkan kosong ikut ditolak validasi, dengan
+ * pesan Zod mentah pula ("Invalid input: expected number, received NaN"),
+ * ditemukan lewat uji HP sungguhan 18 September 2026. Preprocess ini
+ * mengubah NaN jadi undefined SEBELUM divalidasi -- field opsional lolos
+ * (persis sama seperti kosong), field wajib ditolak dengan pesan manusiawi
+ * yang sama seperti field kosong biasa (bukan pesan "harus angka" yang keliru
+ * konteksnya untuk field yang memang belum diisi). */
+function bersihkanNaN(v: unknown): unknown {
+  return typeof v === 'number' && Number.isNaN(v) ? undefined : v;
+}
+
 function skemaPerField(f: Field): z.ZodTypeAny {
   switch (f.type) {
     case 'angka':
     case 'uang':
       return f.wajib
-        ? z.number({ error: `${f.label} wajib diisi` })
-        : z.number().optional();
+        ? z.preprocess(bersihkanNaN, z.number({ error: `${f.label} wajib diisi` }))
+        : z.preprocess(bersihkanNaN, z.number({ error: `${f.label} harus berupa angka` }).optional());
     case 'teks':
     case 'teks_panjang':
       return f.wajib ? z.string().min(1, `${f.label} wajib diisi`) : z.string().optional();
