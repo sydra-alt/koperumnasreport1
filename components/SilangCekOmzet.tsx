@@ -73,7 +73,13 @@ function Sel({ label, children, sub }: { label: string; children: React.ReactNod
 const nilaiGaya = { fontFamily: 'var(--mono)', fontSize: 14, fontWeight: 600 } as const;
 const kosongGaya = { fontSize: 14, color: 'var(--kosong)' } as const;
 
-function KartuOutlet({ r, tampilPos }: { r: OmzetTigaSumberRow; tampilPos: boolean }) {
+/**
+ * `datar` (dipakai Beranda saja): tiap outlet jadi BARIS dalam satu panel, bukan
+ * kartu berbayangan sendiri-sendiri -- status (selisih/lengkap) tetap membawa
+ * bahasa warna yang sama lewat rail 4px + latar lembut. Terpusat memakai
+ * tampilan kartu lama (belum di-redesign).
+ */
+function KartuOutlet({ r, tampilPos, datar = false }: { r: OmzetTigaSumberRow; tampilPos: boolean; datar?: boolean }) {
   const daftar: { nama: string; nilai: number | null }[] = [
     { nama: 'Manager vs Kontrol F&B', nilai: r.selisihManagerKontrol },
     ...(tampilPos
@@ -94,7 +100,7 @@ function KartuOutlet({ r, tampilPos }: { r: OmzetTigaSumberRow; tampilPos: boole
   // bukan kartu penuh berisi enam kalimat "belum ada" -- di HP itu menenggelamkan outlet yang punya angka.
   if (r.manager === null && r.kontrolFnb === null && !posAdaAngka) {
     return (
-      <div className="kartu-status rail-netral flex flex-col gap-0.5" style={{ padding: '10px 16px' }}>
+      <div className={datar ? 'panel-baris flex flex-col gap-0.5' : 'kartu-status rail-netral flex flex-col gap-0.5'} style={{ padding: '10px 16px' }}>
         <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{r.outlet}</p>
         <p style={{ fontSize: 13, color: 'var(--kosong)', lineHeight: 1.35 }}>
           Belum ada laporan Manager Resto maupun Kontrol F&amp;B
@@ -105,7 +111,7 @@ function KartuOutlet({ r, tampilPos }: { r: OmzetTigaSumberRow; tampilPos: boole
   }
 
   return (
-    <div className={`kartu-status ${RAIL[rail]} flex flex-col gap-3`}>
+    <div className={datar ? `panel-baris ${rail === 'kuning' ? 'status-kuning' : rail === 'hijau' ? 'status-hijau' : ''} flex flex-col gap-3` : `kartu-status ${RAIL[rail]} flex flex-col gap-3`}>
       <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{r.outlet}</p>
       <div className={`grid grid-cols-1 gap-2 ${tampilPos ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
         <Sel label="Manager Resto · diketik">
@@ -238,7 +244,7 @@ function CatatanHari({ rows, tampilPos }: { rows: OmzetTigaSumberRow[]; tampilPo
   );
 }
 
-function BlokTanggal({ tanggal, judul, tampilPos, tampilkanCatatan = true }: { tanggal: string; judul: string | null; tampilPos: boolean; tampilkanCatatan?: boolean }) {
+function BlokTanggal({ tanggal, judul, tampilPos, tampilkanCatatan = true, datar = false }: { tanggal: string; judul: string | null; tampilPos: boolean; tampilkanCatatan?: boolean; datar?: boolean }) {
   const { data, isLoading, isError, refetch } = useOmzetTigaSumberUntukTanggal(tanggal);
   return (
     <div className="flex flex-col gap-2">
@@ -254,9 +260,9 @@ function BlokTanggal({ tanggal, judul, tampilPos, tampilkanCatatan = true }: { t
         <p style={{ color: 'var(--kosong)' }}>Belum ada outlet aktif.</p>
       ) : (
         <>
-          <div className="flex flex-col gap-2">
+          <div className={datar ? 'panel' : 'flex flex-col gap-2'}>
             {data.map((r) => (
-              <KartuOutlet key={r.outletId} r={r} tampilPos={tampilPos} />
+              <KartuOutlet key={r.outletId} r={r} tampilPos={tampilPos} datar={datar} />
             ))}
           </div>
           {tampilkanCatatan && <CatatanHari rows={data} tampilPos={tampilPos} />}
@@ -279,10 +285,12 @@ export function SilangCekOmzetBeranda({ tampilPos }: { tampilPos: boolean }) {
   const hariIni = tanggalWIB();
   return (
     <div className="flex flex-col gap-3">
-      <p className="judul-bagian">Silang-Cek Omzet Resto</p>
+      <p className="judul-seksi">Silang-Cek Omzet Resto</p>
       <StatusBlok tampilPos={tampilPos} />
-      <BlokTanggal tanggal={geserTanggalYmd(hariIni, -1)} judul="Kemarin" tampilPos={tampilPos} />
-      <BlokTanggal tanggal={hariIni} judul="Hari ini" tampilPos={tampilPos} tampilkanCatatan={false} />
+      <div className="grid gap-5 lg:grid-cols-2 lg:gap-8 lg:items-start">
+        <BlokTanggal tanggal={geserTanggalYmd(hariIni, -1)} judul="Kemarin" tampilPos={tampilPos} datar />
+        <BlokTanggal tanggal={hariIni} judul="Hari ini" tampilPos={tampilPos} tampilkanCatatan={false} datar />
+      </div>
     </div>
   );
 }

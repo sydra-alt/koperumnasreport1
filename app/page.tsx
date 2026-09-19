@@ -27,7 +27,7 @@ import {
   usePteHarianBulanIniUntuk,
   type PteHarianBulanRow,
 } from '../lib/api/pteHarian';
-import { AngkaGrid } from '../components/AngkaGrid';
+import type { AngkaButir } from '../components/AngkaGrid';
 import { KeadaanGagal } from '../components/KeadaanGagal';
 import { KerangkaBeranda, KerangkaDaftarKartu } from '../components/Kerangka';
 import { usePembangunanUntukTanggal } from '../lib/api/pembangunan';
@@ -36,6 +36,43 @@ import { SilangCekOmzetBeranda } from '../components/SilangCekOmzet';
 import { useLaporanAccountingHariIni, hitungRingkasanKeuanganCeo } from '../lib/api/accounting';
 import { formatRupiah } from '../lib/rupiah';
 import { bolehLihatTautanPos, URL_LAPORAN_PENJUALAN_POS } from '../lib/posLink';
+
+/**
+ * Lembar angka datar untuk rekap Beranda: label kecil + angka mono, dipisah
+ * garis tipis (bukan sembilan kartu berbayangan). Di HP satu kolom (baris
+ * label kiri / angka kanan -- mudah dipindai ke bawah), di desktop grid.
+ * `utama` = jumlah angka pertama yang diberi ukuran lebih besar.
+ * Jumlah butir HARUS habis dibagi `kolom` (lihat .panel-garis di globals.css).
+ * AngkaGrid (components/AngkaGrid.tsx) TIDAK diubah -- masih dipakai halaman lain.
+ */
+function LembarAngka({ butir, utama = 0, kolom = 3 }: { butir: AngkaButir[]; utama?: number; kolom?: 2 | 3 }) {
+  return (
+    <div className={`panel-garis ${kolom === 2 ? 'kolom-2' : 'kolom-3'}`}>
+      {butir.map((b, i) => (
+        <div key={b.label} className="sel-angka">
+          <p style={{ fontSize: 13, color: 'var(--label)', lineHeight: 1.3 }}>{b.label}</p>
+          <p
+            style={{
+              fontFamily: 'var(--mono)',
+              fontWeight: 700,
+              fontVariantNumeric: 'tabular-nums',
+              fontSize: i < utama ? 18 : 15,
+              lineHeight: 1.2,
+              color: b.warna ?? 'var(--tinta)',
+              textAlign: 'right',
+            }}
+          >
+            {b.nilai}
+          </p>
+        </div>
+      ))}
+      {/* sel kosong penutup baris terakhir (desktop) supaya celah grid tidak tampak sebagai blok gelap */}
+      {Array.from({ length: (kolom - (butir.length % kolom)) % kolom }, (_, i) => (
+        <div key={`isi-${i}`} aria-hidden="true" className="hidden md:block" />
+      ))}
+    </div>
+  );
+}
 
 function DashboardCeo() {
   // 03-CALC-SPEC.md §4.3 -- v_keuangan_rekap (4 angka agregat) sengaja
@@ -57,16 +94,17 @@ function DashboardCeo() {
   const ringkasanKeuangan = laporanAccounting ? hitungRingkasanKeuanganCeo(laporanAccounting) : null;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="grid gap-x-8 gap-y-6 lg:grid-cols-2">
       {bolehKeuangan && (
-        <div>
-          <p className="judul-bagian mb-2">
+        <section className={bolehOperasional ? '' : 'lg:col-span-2'}>
+          <p className="judul-seksi mb-2">
             Keuangan Hari Ini
           </p>
           {!keuangan ? (
             <p style={{ color: 'var(--kosong)' }}>Belum ada laporan Accounting hari ini.</p>
           ) : (
-            <AngkaGrid
+            <LembarAngka
+              utama={3}
               butir={[
                 { label: 'Uang masuk', nilai: formatRupiah(keuangan.totalMasuk) },
                 { label: 'Uang keluar', nilai: formatRupiah(keuangan.totalKeluar) },
@@ -87,15 +125,16 @@ function DashboardCeo() {
               ]}
             />
           )}
-        </div>
+        </section>
       )}
 
       {bolehOperasional && (
-        <div>
-          <p className="judul-bagian mb-2">
+        <section>
+          <p className="judul-seksi mb-2">
             Rekap Unit Pembangunan Hari Ini
           </p>
-          <AngkaGrid
+          <LembarAngka
+            kolom={2}
             butir={[
               { label: 'Sedang dibangun', nilai: String(pembangunan?.sedangDibangun ?? 0) },
               { label: 'Finishing', nilai: String(pembangunan?.finishing ?? 0) },
@@ -103,27 +142,34 @@ function DashboardCeo() {
               { label: 'Belum mulai', nilai: String(pembangunan?.belumMulai ?? 0) },
             ]}
           />
-        </div>
+        </section>
       )}
 
       {/* Silang-Cek Omzet Resto: TIGA sumber (Manager, Kontrol F&B, POS) -- lihat components/SilangCekOmzet.tsx. */}
       {/* CEO dan accounting (keputusan CEO 19 September 2026: Shabita perlu melihat perbandingan ini; RLS POS + laporan ketikan sudah mengizinkan accounting). */}
-      {bolehKeuangan && (roles.includes('ceo') || roles.includes('accounting')) && <SilangCekOmzetBeranda tampilPos />}
+      {bolehKeuangan && (roles.includes('ceo') || roles.includes('accounting')) && (
+        <section className="lg:col-span-2">
+          <SilangCekOmzetBeranda tampilPos />
+        </section>
+      )}
 
       {bolehTautanPos && (
-        <div>
-          <p className="judul-bagian mb-2">
+        <section className="lg:col-span-2">
+          <p className="judul-seksi mb-2">
             Telusuri di POS
           </p>
-          <div className="kartu-status rail-netral flex flex-col gap-3">
-            <p className="text-sm">
-              Untuk menelusuri lebih dalam (per produk, per transaksi), buka Laporan Penjualan di sistem kasir yang <b>terpisah</b> dari laporan ini.
-            </p>
-            <p className="text-sm" style={{ color: 'var(--label)' }}>
-              Terbuka di tab baru dan meminta masuk sendiri dengan akun POS — sesi Anda di sini tidak menyambung ke sana.
-            </p>
+          <div className="panel panel-baris flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
+            <div className="flex flex-col gap-1">
+              <p className="text-sm">
+                Untuk menelusuri lebih dalam (per produk, per transaksi), buka Laporan Penjualan di sistem kasir yang <b>terpisah</b> dari laporan ini.
+              </p>
+              <p className="text-sm" style={{ color: 'var(--label)' }}>
+                Terbuka di tab baru dan meminta masuk sendiri dengan akun POS — sesi Anda di sini tidak menyambung ke sana.
+              </p>
+            </div>
             <a
               className="tombol-sekunder"
+              style={{ flexShrink: 0 }}
               href={URL_LAPORAN_PENJUALAN_POS}
               target="_blank"
               rel="noopener noreferrer"
@@ -132,7 +178,7 @@ function DashboardCeo() {
               Buka Penjualan di POS ↗
             </a>
           </div>
-        </div>
+        </section>
       )}
     </div>
   );
@@ -182,10 +228,12 @@ function KartuTugasUtama({ t, jam }: { t: TugasDenganUrgensi; jam: string }) {
   );
 }
 
-/** Tugas berikutnya: kartu ringkas, tombol lebar TETAP dan lebih ringan supaya judul tidak berebut ruang. */
-function KartuTugasSekunder({ t, jam }: { t: TugasDenganUrgensi; jam: string }) {
+const STATUS_BARIS: Record<Urgensi, string> = { lewat: 'status-merah', mendekati: 'status-kuning', santai: '' };
+
+/** Tugas berikutnya: BARIS dalam satu panel (bukan kartu per tugas); tombol lebar tetap dan lebih ringan supaya judul tidak berebut ruang. */
+function BarisTugas({ t, jam }: { t: TugasDenganUrgensi; jam: string }) {
   return (
-    <div className={`kartu-status ${RAIL_URGENSI[t.urgensi]} flex items-center gap-3`} style={{ padding: '12px 14px 12px 16px' }}>
+    <div className={`panel-baris ${STATUS_BARIS[t.urgensi]} flex items-center gap-3`} style={{ padding: '12px 14px 12px 16px' }}>
       <div className="min-w-0 flex-1">
         <p style={{ fontFamily: 'var(--display)', fontWeight: 600, fontSize: 'var(--ukuran-isi)', lineHeight: 1.3 }}>{t.namaForm}</p>
         {t.scopeLabel && (
@@ -221,8 +269,8 @@ function BagianPte({ policy, poinBulanIni, progres }: { policy: PolicyMap; poinB
   const targetPoinBulanIni = hariWajibBulanIni * poinMaksimal;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="kartu-status rail-biru flex flex-col gap-1">
+    <div className="panel">
+      <div className="panel-baris status-biru flex flex-col gap-1">
         <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--biru)' }}>PTE poin hari ini</p>
         <div className="flex items-baseline gap-2">
           <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{poinHariIni?.poin_total ?? 0}</span>
@@ -239,7 +287,7 @@ function BagianPte({ policy, poinBulanIni, progres }: { policy: PolicyMap; poinB
       {/* Akumulasi bulanan -- "hari mencapai poin penuh" LEBIH PENTING dari
           totalnya sendirian (instruksi eksplisit user, 20 September 2026):
           kekurangan satu hari tidak bisa ditutup poin besok. */}
-      <div className="kartu-status rail-netral flex flex-col gap-1">
+      <div className="panel-baris flex flex-col gap-1">
         <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>PTE poin bulan ini</p>
         <div className="flex items-baseline gap-2">
           <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{poinTotalBulanIni}</span>
@@ -260,7 +308,7 @@ function BagianPte({ policy, poinBulanIni, progres }: { policy: PolicyMap; poinB
           sendiri >=2/bulan, bukan komponen 80 poin harian, instruksi
           eksplisit user 20 September 2026). */}
       {progres?.pte_berlaku && (
-        <div className="kartu-status rail-biru flex flex-col gap-1">
+        <div className="panel-baris status-biru flex flex-col gap-1">
           <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--biru)' }}>Closing bulan ini</p>
           <div className="flex items-baseline gap-2">
             <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{progres.closing}</span>
@@ -354,10 +402,13 @@ function DaftarTugas() {
   const tampilPte = profile?.wajib_pte !== false && adaAturanPteDiOutlet === true;
   const bagianPte = tampilPte ? <BagianPte policy={policy} poinBulanIni={poinBulanIni} progres={progres} /> : null;
 
+  // Tata letak saja: di desktop tugas di kolom kiri (maks. 720px), PTE di kolom kanan kalau ada.
+  const tataLetak = bagianPte ? 'lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8 lg:items-start' : '';
+
   if (tugasBelum.length === 0) {
     return (
-      <div className="flex flex-col gap-6">
-        <div className="kartu-status rail-hijau flex flex-col gap-2">
+      <div className={`grid gap-5 ${tataLetak}`}>
+        <div className="kartu-status rail-hijau flex flex-col gap-2 lg:max-w-[720px]">
           <p className="angka-kecil" style={{ color: 'var(--hijau)' }}>
             Semua laporan hari ini sudah dikirim
           </p>
@@ -374,27 +425,29 @@ function DaftarTugas() {
   const [tugasUtama, ...tugasLain] = tugasBelum;
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Ringkasan sengaja KECIL (bukan angka besar): yang harus menonjol
-          adalah tugas pertama, bukan skornya. */}
-      <div>
-        <p className="judul-bagian">Yang perlu dikerjakan hari ini</p>
-        <div className="progres-bar mt-2" style={{ height: 4 }}>
-          <div className="progres-bar-isi" style={{ width: `${persen}%` }} />
+    <div className={`grid gap-5 ${tataLetak}`}>
+      <div className="flex flex-col gap-3 lg:max-w-[720px]">
+        {/* Ringkasan sengaja KECIL (bukan angka besar): yang harus menonjol
+            adalah tugas pertama, bukan skornya. */}
+        <div>
+          <p className="judul-bagian">Yang perlu dikerjakan hari ini</p>
+          <div className="progres-bar mt-2" style={{ height: 4 }}>
+            <div className="progres-bar-isi" style={{ width: `${persen}%` }} />
+          </div>
+          <p className="text-sm mt-1.5" style={{ color: 'var(--label)' }}>
+            {tugasSelesai} dari {tugas.length} laporan terkirim · {tugasBelum.length} masih ditunggu
+          </p>
         </div>
-        <p className="text-sm mt-1.5" style={{ color: 'var(--label)' }}>
-          {tugasSelesai} dari {tugas.length} laporan terkirim · {tugasBelum.length} masih ditunggu
-        </p>
-      </div>
 
-      <KartuTugasUtama t={tugasUtama} jam={jam} />
-      {tugasLain.length > 0 && (
-        <div className="flex flex-col gap-3">
-          {tugasLain.map((t) => (
-            <KartuTugasSekunder key={`${t.formKey}-${t.scopeLabel ?? ''}`} t={t} jam={jam} />
-          ))}
-        </div>
-      )}
+        <KartuTugasUtama t={tugasUtama} jam={jam} />
+        {tugasLain.length > 0 && (
+          <div className="panel">
+            {tugasLain.map((t) => (
+              <BarisTugas key={`${t.formKey}-${t.scopeLabel ?? ''}`} t={t} jam={jam} />
+            ))}
+          </div>
+        )}
+      </div>
 
       {bagianPte}
     </div>
@@ -441,7 +494,7 @@ function AbsenRingkas() {
   return (
     <Link
       href="/absen"
-      className={`kartu-status ${semuaSudah ? 'rail-hijau' : 'rail-netral'} flex items-center justify-between gap-3`}
+      className={`panel panel-baris ${semuaSudah ? 'status-hijau' : ''} flex items-center justify-between gap-3 md:min-w-[340px]`}
       style={{ minHeight: 48, color: 'var(--tinta)', textDecoration: 'none' }}
     >
       <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
@@ -459,16 +512,17 @@ export default function Home() {
   const { profile, roles, loading } = useAuth();
 
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-[760px] flex-col gap-6 p-6">
+    <main className="mx-auto flex min-h-svh w-full max-w-[1120px] flex-col gap-5 px-4 py-5 md:gap-7 md:px-8 md:py-8">
       {loading ? (
         <KerangkaBeranda />
       ) : (
         <>
-          <h1 style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-angka-besar)', lineHeight: 1.2, color: 'var(--biru)' }}>
-            {sapaanWaktu(jamWIB())}, {profile?.nama ?? '—'}.
-          </h1>
-
-          <AbsenRingkas />
+          <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
+            <h1 className="sapaan">
+              {sapaanWaktu(jamWIB())}, {profile?.nama ?? '—'}.
+            </h1>
+            <AbsenRingkas />
+          </header>
 
           <DaftarTugas />
 

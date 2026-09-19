@@ -343,3 +343,76 @@ nextjs-portal, [data-nextjs-dev-tools], [data-next-badge], div[data-nextjs-toast
   display: none !important;
 }
 
+/* ================================
+   BERANDA -- refinement visual (19 September 2026)
+   Tujuan: satu keluarga dengan POS -- krem hangat, lega, mudah dipindai,
+   tidak seperti template admin. HANYA token yang sudah ada (tidak ada warna,
+   gradient, atau bayangan baru). Prinsip:
+   - KARTU (.kartu-status, rail 4px + latar lembut) dipakai untuk hal yang
+     BERSTATUS dan jadi pusat perhatian (tugas utama). Bahasa warna status TIDAK berubah.
+   - PANEL datar (.panel) untuk kelompok informasi biasa: satu permukaan putih
+     bergaris tipis, isinya dipisah garis -- bukan tumpukan kartu berbayangan.
+   - Baris di dalam panel bisa membawa status yang sama (rail 4px + latar lembut)
+     lewat .status-merah/.status-kuning/.status-hijau.
+   ================================ */
+.panel {
+  background: var(--permukaan);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-besar);
+  overflow: hidden;
+}
+.panel-baris { padding: 12px 16px; }
+.panel-baris + .panel-baris { border-top: 1px solid var(--garis); }
+.panel-baris.status-merah  { background: var(--merah-lembut);  box-shadow: inset var(--lebar-rail) 0 0 var(--merah); }
+.panel-baris.status-kuning { background: var(--kuning-lembut); box-shadow: inset var(--lebar-rail) 0 0 var(--kuning); }
+.panel-baris.status-hijau  { background: var(--hijau-lembut);  box-shadow: inset var(--lebar-rail) 0 0 var(--hijau); }
+.panel-baris.status-biru   { background: var(--biru-lembut);   box-shadow: inset var(--lebar-rail) 0 0 var(--biru); }
+
+/* Judul seksi pendukung (rekap, PTE, dsb.) -- SATU tingkat di bawah .judul-bagian
+   (judul bagian utama: "Yang perlu dikerjakan hari ini"), supaya rekap tidak
+   berebut perhatian dengan pekerjaan hari ini. */
+.judul-seksi {
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--biru);
+}
+
+/* Lembar angka: garis tipis antar sel lewat celah 1px di atas latar --garis
+   (tanpa sel yang tidak penuh, jadi jumlah sel HARUS habis dibagi jumlah kolom). */
+.panel-garis {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1px;
+  background: var(--garis);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-besar);
+  overflow: hidden;
+}
+.panel-garis > * { background: var(--permukaan); }
+.sel-angka {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+}
+@media (min-width: 768px) {
+  .panel-garis.kolom-2 { grid-template-columns: repeat(2, 1fr); }
+  .panel-garis.kolom-3 { grid-template-columns: repeat(3, 1fr); }
+  .sel-angka { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 2px; padding: 12px 16px; }
+}
+
+/* Sapaan Beranda: lebih kecil dari angka hero supaya TUGAS yang jadi pusat perhatian, bukan judul halaman. */
+.sapaan {
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--biru);
+}
+@media (min-width: 768px) {
+  .sapaan { font-size: 28px; }
+}
