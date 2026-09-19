@@ -5,7 +5,8 @@ import { useAuth } from '../../lib/auth/AuthProvider';
 import { usePolicy } from '../../lib/api/policy';
 import { useTitikAbsenSaya, useAbsenHariIni, useKirimAbsen, useSetujuiPrivasiPresensi } from '../../lib/api/absensi';
 import { urutkanTitikTerdekat, statusDariJarak, type TitikDenganJarak } from '../../lib/absen';
-import { jamWIB, tanggalWIB } from '../../lib/tanggal';
+import { jamWIB, tanggalIndonesiaWIB, tanggalWIB } from '../../lib/tanggal';
+import { pesanKesalahanDb } from '../../lib/pesanErrorDb';
 import { CameraCapture } from '../../components/CameraCapture';
 import { KerangkaAbsen } from '../../components/Kerangka';
 import {
@@ -84,7 +85,7 @@ export default function AbsenPage() {
   }, [userId]);
 
   if (!session || titikLoading || absenLoading || !policy || layar === 'memuat') {
-    return <main className="p-6"><KerangkaAbsen /></main>;
+    return <main className={KELAS_HALAMAN}><KerangkaAbsen /></main>;
   }
 
   if (!sudahSetujuiPrivasi) {
@@ -192,7 +193,7 @@ export default function AbsenPage() {
       };
       simpanAbsenPending(draft);
       setDraftPending(draft);
-      setPesanError(err instanceof Error ? err.message : 'Gagal mengirim.');
+      setPesanError(pesanGalatAbsen(err));
       setLayar('belum_terkirim');
     }
   }
@@ -221,7 +222,7 @@ export default function AbsenPage() {
       setLayar('berhasil');
       muatUlangAbsenHariIni();
     } catch (err) {
-      setPesanError(err instanceof Error ? err.message : 'Gagal mengirim. Coba lagi.');
+      setPesanError(pesanGalatAbsen(err));
       setLayar('belum_terkirim');
     }
   }
@@ -233,72 +234,101 @@ export default function AbsenPage() {
     setLayar('ringkasan');
   }
 
+  const label = tipeAktif === 'masuk' ? 'Absen masuk' : tipeAktif === 'pulang' ? 'Absen pulang' : null;
+  const luarRadiusDipilih = titikDipilih ? statusDariJarak(titikDipilih.jarakMeter, titikDipilih.radiusMeter) !== 'valid' : false;
+
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-4 p-6">
-      <h1 style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-angka-besar)', lineHeight: 1.2, color: 'var(--biru)' }}>
-        Absen
-      </h1>
-      {profile?.divisi && (
-        <p className="text-sm" style={{ color: 'var(--label)' }}>
-          {profile.divisi}
-        </p>
-      )}
+    <main className={KELAS_HALAMAN}>
+      <h1 className="sapaan">Absen</h1>
 
       {layar === 'ringkasan' && (
-        <div className="flex flex-col gap-3">
-          <BarisAbsen label="Masuk" data={sudahMasuk} onTekan={() => mulaiAbsen('masuk')} />
-          <BarisAbsen label="Pulang" data={sudahPulang} onTekan={() => mulaiAbsen('pulang')} />
-        </div>
+        <section className="panel">
+          <div className="panel-baris">
+            <p className="judul-seksi" suppressHydrationWarning>{tanggalIndonesiaWIB()}</p>
+            {(profile?.nama || profile?.divisi) && (
+              <p className="text-sm" style={{ color: 'var(--label)' }}>
+                {[profile?.nama, profile?.divisi].filter(Boolean).join(' · ')}
+              </p>
+            )}
+          </div>
+          <div className="panel-baris flex flex-col gap-2">
+            <p style={{ fontSize: 12, color: 'var(--label)' }}>Titik absen</p>
+            {titikSaya && titikSaya.length > 0 ? (
+              titikSaya.map((t) => (
+                <div key={t.id}>
+                  <p style={{ fontFamily: 'var(--display)', fontWeight: 600, fontSize: 15, lineHeight: 1.3 }}>{t.nama}</p>
+                  {(t.jamMasuk || t.jamPulang) && (
+                    <p className="text-sm" style={{ fontFamily: 'var(--mono)', color: 'var(--label)' }}>
+                      {[t.jamMasuk ? `Masuk ${String(t.jamMasuk).slice(0, 5)}` : null, t.jamPulang ? `Pulang ${String(t.jamPulang).slice(0, 5)}` : null].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p className="text-sm" style={{ color: 'var(--kosong)' }}>Belum ada titik absen yang ditugaskan.</p>
+            )}
+          </div>
+          <BarisAbsen label="Masuk" data={sudahMasuk} onTekan={() => mulaiAbsen('masuk')} utama />
+          <BarisAbsen label="Pulang" data={sudahPulang} onTekan={() => mulaiAbsen('pulang')} utama={Boolean(sudahMasuk)} />
+        </section>
       )}
 
       {layar === 'tidak_ada_titik' && (
-        <div className="kartu-status rail-merah">
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--merah)' }}>Tidak ada titik absen</p>
+        <PanelPesan status="merah" konteks={label} judul="Tidak ada titik absen">
           <p className="text-sm" style={{ color: 'var(--label)' }}>Kamu belum punya titik absen yang ditugaskan. Hubungi Admin.</p>
-        </div>
+        </PanelPesan>
       )}
 
-      {layar === 'mencari_lokasi' && <p>Mencari lokasimu…</p>}
+      {layar === 'mencari_lokasi' && <PanelTunggu konteks={label} judul="Mencari lokasimu…" keterangan="Biarkan halaman ini tetap terbuka." />}
 
       {layar === 'gps_ditolak' && (
-        <div className="kartu-status rail-merah flex flex-col gap-2">
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--merah)' }}>Izin lokasi ditolak</p>
+        <PanelPesan status="merah" konteks={label} judul="Izin lokasi ditolak">
           <p className="text-sm">Butuh izin lokasi untuk absen. Buka Pengaturan → Situs → izinkan Lokasi, lalu coba lagi.</p>
-          <button type="button" onClick={() => tipeAktif && mulaiAbsen(tipeAktif)} className="tombol-utama" style={{ alignSelf: 'flex-start' }}>
+          <button type="button" onClick={() => tipeAktif && mulaiAbsen(tipeAktif)} className="tombol-utama w-full">
             Coba Lagi
           </button>
-        </div>
+        </PanelPesan>
       )}
 
       {layar === 'gps_gagal' && (
-        <div className="kartu-status rail-merah flex flex-col gap-2">
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--merah)' }}>GPS tidak tersedia</p>
+        <PanelPesan status="merah" konteks={label} judul="GPS tidak tersedia">
           <p className="text-sm">Periksa GPS HP kamu aktif, lalu coba lagi.</p>
-          <button type="button" onClick={() => tipeAktif && mulaiAbsen(tipeAktif)} className="tombol-utama" style={{ alignSelf: 'flex-start' }}>
+          <button type="button" onClick={() => tipeAktif && mulaiAbsen(tipeAktif)} className="tombol-utama w-full">
             Coba Lagi
           </button>
-        </div>
+        </PanelPesan>
       )}
 
       {layar === 'gps_lemah' && (
-        <div className="kartu-status rail-kuning flex flex-col gap-2">
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--kuning)' }}>Sinyal GPS lemah</p>
+        <PanelPesan status="kuning" konteks={label} judul="Sinyal GPS lemah">
           <p className="text-sm">Akurasi ±{Math.round(akurasiTerakhir ?? 0)} meter. Coba keluar ruangan atau dekat jendela, lalu ulangi.</p>
-          <button type="button" onClick={() => tipeAktif && mulaiAbsen(tipeAktif)} className="tombol-utama" style={{ alignSelf: 'flex-start' }}>
+          <button type="button" onClick={() => tipeAktif && mulaiAbsen(tipeAktif)} className="tombol-utama w-full">
             Coba Lagi
           </button>
-        </div>
+        </PanelPesan>
       )}
 
       {layar === 'konfirmasi_titik' && titikDipilih && (
-        <div className="flex flex-col gap-3">
-          <div className="kartu-status rail-biru">
-            <p className="judul-bagian">{titikDipilih.nama}</p>
-            <p className="text-sm mt-1" style={{ fontFamily: 'var(--mono)', color: 'var(--label)' }}>{Math.round(titikDipilih.jarakMeter)} meter dari lokasi Anda</p>
+        <section className="panel">
+          <div className="panel-baris status-biru">
+            {label && <p style={{ fontSize: 12, color: 'var(--label)' }}>{label} · titik terdekat</p>}
+            <p className="judul-seksi">{titikDipilih.nama}</p>
+            <p className="text-sm" style={{ fontFamily: 'var(--mono)', color: 'var(--label)' }}>{Math.round(titikDipilih.jarakMeter)} meter dari lokasi Anda</p>
           </div>
-          <div className="flex gap-2">
+          <div className="panel-baris flex items-baseline justify-between gap-3">
+            <span className="text-sm" style={{ color: 'var(--label)' }}>Radius titik {titikDipilih.radiusMeter} meter</span>
+            <span className="status-teks" style={{ color: luarRadiusDipilih ? 'var(--kuning)' : 'var(--hijau)' }}>
+              {luarRadiusDipilih ? 'Di luar radius' : 'Dalam radius'}
+            </span>
+          </div>
+          {posisi && (
+            <div className="panel-baris">
+              <span className="text-sm" style={{ color: 'var(--label)' }}>Akurasi GPS ±{Math.round(posisi.akurasi)} meter</span>
+            </div>
+          )}
+          <div className="panel-baris flex gap-2">
             {titikTerurut.length > 1 && (
-              <button type="button" onClick={() => setLayar('pilih_titik')} className="tombol-sekunder">
+              <button type="button" onClick={() => setLayar('pilih_titik')} className="tombol-sekunder" style={{ minWidth: 88 }}>
                 Ganti
               </button>
             )}
@@ -306,11 +336,14 @@ export default function AbsenPage() {
               Lanjutkan
             </button>
           </div>
-        </div>
+        </section>
       )}
 
       {layar === 'pilih_titik' && (
-        <div className="flex flex-col gap-2">
+        <section className="panel">
+          <div className="panel-baris">
+            <p className="judul-seksi">Pilih titik absen</p>
+          </div>
           {titikTerurut.map((t) => (
             <button
               key={t.id}
@@ -319,44 +352,48 @@ export default function AbsenPage() {
                 setTitikDipilih(t);
                 setLayar('konfirmasi_titik');
               }}
-              className="kartu-status rail-netral flex items-center justify-between text-left"
+              className="panel-baris flex w-full items-center justify-between gap-3 text-left"
+              style={{ minHeight: 56, borderRadius: 0 }}
             >
-              <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>{t.nama}</span>
+              <span style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{t.nama}</span>
               <span className="text-sm" style={{ fontFamily: 'var(--mono)', color: 'var(--label)' }}>{Math.round(t.jarakMeter)} m</span>
             </button>
           ))}
-        </div>
+          <div className="panel-baris">
+            <button type="button" onClick={() => setLayar('konfirmasi_titik')} className="tombol-sekunder w-full">
+              Kembali
+            </button>
+          </div>
+        </section>
       )}
 
       {layar === 'luar_radius_tolak' && titikDipilih && (
-        <div className="kartu-status rail-merah flex flex-col gap-3">
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--merah)' }}>Di luar jangkauan</p>
+        <PanelPesan status="merah" konteks={label} judul="Di luar jangkauan">
           <p className="text-sm">
             Kamu {Math.round(titikDipilih.jarakMeter)} meter dari {titikDipilih.nama} (radius {titikDipilih.radiusMeter} meter). Absen cuma
             bisa dilakukan di lokasi penugasan. Kalau kamu yakin ini keliru, hubungi HRD.
           </p>
-          <button type="button" onClick={() => setLayar('konfirmasi_titik')} className="tombol-sekunder" style={{ alignSelf: 'flex-start' }}>
+          <button type="button" onClick={() => setLayar('konfirmasi_titik')} className="tombol-sekunder w-full">
             Coba Lagi
           </button>
-        </div>
+        </PanelPesan>
       )}
 
       {layar === 'luar_radius_tanda' && titikDipilih && (
-        <div className="kartu-status rail-kuning flex flex-col gap-3">
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--kuning)' }}>Di luar jangkauan</p>
+        <PanelPesan status="kuning" konteks={label} judul="Di luar jangkauan">
           <p className="text-sm">
             Kamu {Math.round(titikDipilih.jarakMeter)} meter dari {titikDipilih.nama}. Absen tetap bisa dilakukan, tapi
             akan ditandai untuk diperiksa HRD.
           </p>
           <div className="flex gap-2">
-            <button type="button" onClick={() => setLayar('konfirmasi_titik')} className="tombol-sekunder">
+            <button type="button" onClick={() => setLayar('konfirmasi_titik')} className="tombol-sekunder" style={{ minWidth: 88 }}>
               Batal
             </button>
             <button type="button" onClick={() => setLayar('kamera')} className="tombol-utama flex-1">
               Lanjutkan Absen
             </button>
           </div>
-        </div>
+        </PanelPesan>
       )}
 
       {layar === 'kamera' && (
@@ -375,11 +412,10 @@ export default function AbsenPage() {
         />
       )}
 
-      {layar === 'mengirim' && <p>Mengirim…</p>}
+      {layar === 'mengirim' && <PanelTunggu konteks={label} judul="Mengirim…" keterangan="Jangan tutup halaman sampai selesai." />}
 
       {layar === 'belum_terkirim' && draftPending && (
-        <div className="kartu-status rail-kuning flex flex-col gap-3">
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--kuning)' }}>Belum terkirim</p>
+        <PanelPesan status="kuning" konteks={null} judul="Belum terkirim">
           {pesanError && (
             <p className="text-sm" style={{ color: 'var(--merah)' }}>
               {pesanError}
@@ -388,32 +424,93 @@ export default function AbsenPage() {
           <p className="text-sm" style={{ color: 'var(--label)' }}>
             {draftPending.tipe === 'masuk' ? 'Absen masuk' : 'Absen pulang'} · {draftPending.lokasiNama} · {Math.round(draftPending.jarak)} meter
           </p>
-          <div className="flex gap-2">
-            <button type="button" onClick={batalDraft} className="tombol-sekunder">
-              Batal, mulai ulang
-            </button>
-            <button type="button" onClick={cobaKirimUlang} className="tombol-utama flex-1">
+          <div className="flex flex-col gap-2">
+            <button type="button" onClick={cobaKirimUlang} className="tombol-utama w-full">
               Coba Kirim Lagi
             </button>
+            <button type="button" onClick={batalDraft} className="tombol-sekunder w-full">
+              Batal, mulai ulang
+            </button>
           </div>
-        </div>
+        </PanelPesan>
       )}
 
       {layar === 'berhasil' && hasilBerhasil && (
-        <div className={`kartu-status ${hasilBerhasil.keteranganLuarRadius ? 'rail-kuning' : 'rail-hijau'} flex flex-col gap-3`}>
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: hasilBerhasil.keteranganLuarRadius ? 'var(--kuning)' : 'var(--hijau)' }}>
-            Absen {tipeAktif} berhasil
-          </p>
+        <PanelPesan status={hasilBerhasil.keteranganLuarRadius ? 'kuning' : 'hijau'} konteks={null} judul={`Absen ${tipeAktif} berhasil`}>
           <p className="text-sm" style={{ color: 'var(--label)' }}>
             {hasilBerhasil.label}
             {hasilBerhasil.keteranganLuarRadius ? ' — di luar radius, akan diperiksa HRD.' : ''}
           </p>
-          <button type="button" onClick={() => setLayar('ringkasan')} className="tombol-sekunder" style={{ alignSelf: 'flex-start' }}>
+          <button type="button" onClick={() => setLayar('ringkasan')} className="tombol-sekunder w-full">
             Kembali
           </button>
-        </div>
+        </PanelPesan>
       )}
     </main>
+  );
+}
+
+/**
+ * Teks galat yang ditampilkan di layar "Belum terkirim" -- memakai pemetaan yang SUDAH ada
+ * (lib/pesanErrorDb.ts). `new TypeError()` (pesan kosong) dipakai untuk kegagalan jaringan
+ * ("Failed to fetch") supaya cabang TypeError di pemetaan itu terpakai -- kalau pesan aslinya
+ * diteruskan, pemetaan menganggapnya sudah manusiawi dan menampilkannya mentah.
+ * HANYA teks yang berubah; penanganan galat (draft lokal, retry) tidak disentuh.
+ */
+function pesanGalatAbsen(err: unknown): string {
+  return pesanKesalahanDb(err instanceof TypeError ? new TypeError() : err, 'mengirim absen');
+}
+
+/** Kelas halaman satu-tugas: kolom ~448px di tengah, gutter px-4 (sama dengan halaman yang sudah di-redesign). */
+const KELAS_HALAMAN = 'mx-auto flex w-full max-w-md flex-col gap-3 px-4 py-5 md:gap-4 md:py-8';
+
+const WARNA_STATUS_PESAN = { merah: 'var(--merah)', kuning: 'var(--kuning)', hijau: 'var(--hijau)' } as const;
+
+/** Panel pesan/status: satu `.panel` datar, rail inset berwarna, judul berwarna status, isi + tombol di dalamnya (bukan kartu bersarang). */
+function PanelPesan({
+  status,
+  konteks,
+  judul,
+  children,
+}: {
+  status: 'merah' | 'kuning' | 'hijau';
+  konteks: string | null;
+  judul: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="panel">
+      <div className={`panel-baris status-${status} flex flex-col gap-2`} style={{ padding: 16 }}>
+        {konteks && <p style={{ fontSize: 12, color: 'var(--label)' }}>{konteks}</p>}
+        <p style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 16, color: WARNA_STATUS_PESAN[status] }}>{judul}</p>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/** Panel tunggu (mencari lokasi / mengirim): judul + bilah kerangka beranimasi (pola kerangka yang sudah ada, tanpa pemutar/spinner) + keterangan. */
+function PanelTunggu({ konteks, judul, keterangan }: { konteks: string | null; judul: string; keterangan: string }) {
+  return (
+    <section className="panel" role="status" aria-live="polite">
+      <div className="panel-baris status-biru flex flex-col gap-3" style={{ padding: 16 }}>
+        {konteks && <p style={{ fontSize: 12, color: 'var(--label)' }}>{konteks}</p>}
+        <p className="judul-seksi">{judul}</p>
+        <div className="progres-bar" aria-hidden="true">
+          <div
+            style={{
+              height: '100%',
+              width: '100%',
+              borderRadius: 999,
+              background: 'linear-gradient(90deg, var(--garis) 25%, var(--biru) 37%, var(--garis) 63%)',
+              backgroundSize: '400% 100%',
+              animation: 'kerangka-geser 1.4s ease infinite',
+            }}
+          />
+        </div>
+        <p className="text-sm" style={{ color: 'var(--label)' }}>{keterangan}</p>
+      </div>
+    </section>
   );
 }
 
@@ -421,31 +518,46 @@ function BarisAbsen({
   label,
   data,
   onTekan,
+  utama,
 }: {
   label: string;
-  data: { waktu: string; status: string; jarakMeter: number | null } | undefined;
+  data: { waktu: string; status: string; jarakMeter: number | null; terlambatMenit?: number | null } | undefined;
   onTekan: () => void;
+  utama: boolean;
 }) {
+  const tipe = label.toLowerCase() as 'masuk' | 'pulang';
   if (data) {
     const jam = new Date(data.waktu).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
     const luarRadius = data.status === 'di_luar_radius';
     return (
-      <div className={`kartu-status ${luarRadius ? 'rail-kuning' : 'rail-hijau'}`}>
-        <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Absen {label.toLowerCase()}</p>
+      <div className={`panel-baris ${luarRadius ? 'status-kuning' : 'status-hijau'}`} style={{ minHeight: 64 }}>
+        <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Absen {tipe}</p>
         <p className="text-sm">
           <span style={{ fontFamily: 'var(--mono)' }}>{jam}</span>
           {' · '}
           <span className="status-teks" style={{ color: luarRadius ? 'var(--kuning)' : 'var(--hijau)' }}>
             {luarRadius ? 'Di luar radius' : 'Dalam radius'}
           </span>
+          <span style={{ color: 'var(--label)' }}>{labelTerlambat(tipe, data.terlambatMenit ?? null)}</span>
         </p>
       </div>
     );
   }
   return (
-    <button type="button" onClick={onTekan} className="tombol-utama w-full text-left">
-      Absen {label}
-    </button>
+    <div className="panel-baris flex items-center justify-between gap-3" style={{ minHeight: 64 }}>
+      <div>
+        <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Absen {tipe}</p>
+        <p className="status-teks" style={{ color: 'var(--kosong)' }}>Belum absen</p>
+      </div>
+      <button
+        type="button"
+        onClick={onTekan}
+        className={utama ? 'tombol-utama' : 'tombol-sekunder'}
+        style={{ flexShrink: 0, minWidth: 132, minHeight: 44, padding: '8px 16px' }}
+      >
+        Absen {label}
+      </button>
+    </div>
   );
 }
 
@@ -457,6 +569,8 @@ function BarisAbsen({
  * dihitung SERVER (`now()`), bukan dipercaya dari klien, supaya catatan
  * persetujuan ini kuat sebagai bukti. Tersimpan sekali seumur akun (RPC
  * idempoten lewat `where ... is null`).
+ *
+ * Tampilan: satu `.panel`, empat baris label + isi (isi kalimat tidak diubah).
  */
 function PersetujuanPrivasi({
   onSetuju,
@@ -467,38 +581,37 @@ function PersetujuanPrivasi({
   sedangMenyimpan: boolean;
   error: string | null;
 }) {
+  const baris: { judul: string; isi: React.ReactNode }[] = [
+    {
+      judul: 'Apa yang direkam',
+      isi: (
+        <>
+          titik lokasi Anda, foto wajah, dan jam -- <b>hanya SAAT Anda menekan tombol absen</b>, bukan pelacakan sepanjang hari. Di luar momen itu, lokasi
+          Anda tidak direkam sama sekali.
+        </>
+      ),
+    },
+    { judul: 'Untuk apa', isi: 'rekap kehadiran (hadir, terlambat, lokasi dalam/luar radius penugasan Anda).' },
+    { judul: 'Berapa lama disimpan', isi: 'foto disimpan 90 hari lalu dihapus. Catatan kehadiran (waktu, lokasi, status) tetap disimpan.' },
+    { judul: 'Siapa yang bisa melihat', isi: 'HRD dan CEO.' },
+  ];
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-4 p-6">
-      <h1 className="text-2xl" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
-        Sebelum Anda Absen
-      </h1>
-      <div className="flex flex-col gap-3 border p-4 text-sm" style={{ borderColor: 'var(--garis)', borderRadius: 'var(--radius-besar)' }}>
-        <p>
-          <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Apa yang direkam:</b> titik lokasi Anda, foto wajah, dan jam --
-          <b> hanya SAAT Anda menekan tombol absen</b>, bukan pelacakan sepanjang hari. Di luar momen itu, lokasi Anda tidak direkam sama sekali.
-        </p>
-        <p>
-          <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Untuk apa:</b> rekap kehadiran (hadir, terlambat, lokasi dalam/luar radius penugasan Anda).
-        </p>
-        <p>
-          <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Berapa lama disimpan:</b> foto disimpan 90 hari lalu dihapus. Catatan kehadiran (waktu, lokasi, status) tetap disimpan.
-        </p>
-        <p>
-          <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Siapa yang bisa melihat:</b> HRD dan CEO.
-        </p>
-      </div>
+    <main className={KELAS_HALAMAN}>
+      <h1 className="sapaan">Sebelum Anda Absen</h1>
+      <section className="panel">
+        {baris.map((b) => (
+          <div key={b.judul} className="panel-baris flex flex-col gap-1">
+            <p style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, color: 'var(--biru)' }}>{b.judul}</p>
+            <p className="text-sm" style={{ lineHeight: 1.5 }}>{b.isi}</p>
+          </div>
+        ))}
+      </section>
       {error && (
         <p className="text-sm" style={{ color: 'var(--merah)' }}>
           {error}
         </p>
       )}
-      <button
-        type="button"
-        disabled={sedangMenyimpan}
-        onClick={() => void onSetuju()}
-        className="tombol-utama"
-        style={{ borderRadius: 'var(--radius-pil)' }}
-      >
+      <button type="button" disabled={sedangMenyimpan} onClick={() => void onSetuju()} className="tombol-utama w-full">
         {sedangMenyimpan ? 'Menyimpan…' : 'Saya mengerti dan setuju'}
       </button>
     </main>
