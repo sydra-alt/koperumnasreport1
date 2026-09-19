@@ -156,7 +156,7 @@ export default function AbsenPage() {
     try {
       // Keterlambatan dihitung SERVER (trigger, migrasi 0059) -- yang
       // ditampilkan di bawah adalah nilai yang dikembalikan server.
-      const { terlambatMenit } = await kirimAbsen.mutateAsync({
+      const { terlambatMenit, status: statusServer } = await kirimAbsen.mutateAsync({
         tipe: tipeAktif,
         lokasiAbsenId: titikDipilih.id,
         lat: posisi.lat,
@@ -169,7 +169,7 @@ export default function AbsenPage() {
       hapusAbsenPending();
       setHasilBerhasil({
         label: `${jamWIB()} · ${titikDipilih.nama}${labelTerlambat(tipeAktif, terlambatMenit)}`,
-        keteranganLuarRadius: status === 'di_luar_radius',
+        keteranganLuarRadius: statusServer === 'di_luar_radius',
       });
       setLayar('berhasil');
       muatUlangAbsenHariIni();
@@ -202,7 +202,7 @@ export default function AbsenPage() {
     setLayar('mengirim');
     try {
       const blob = base64KeBlob(draftPending.fotoBase64);
-      const { terlambatMenit } = await kirimAbsen.mutateAsync({
+      const { terlambatMenit, status: statusServer } = await kirimAbsen.mutateAsync({
         tipe: draftPending.tipe,
         lokasiAbsenId: draftPending.lokasiAbsenId,
         lat: draftPending.lat,
@@ -216,7 +216,7 @@ export default function AbsenPage() {
       setDraftPending(null);
       setHasilBerhasil({
         label: `${draftPending.lokasiNama}${labelTerlambat(draftPending.tipe, terlambatMenit)}`,
-        keteranganLuarRadius: draftPending.status === 'di_luar_radius',
+        keteranganLuarRadius: statusServer === 'di_luar_radius',
       });
       setLayar('berhasil');
       muatUlangAbsenHariIni();

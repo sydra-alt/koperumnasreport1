@@ -1309,10 +1309,34 @@ CEO: bangun PENCATATAN poin PTE harian saja, JANGAN bangun bonus/potongan (6 per
 
 **Dibangun.** Trigger `BEFORE INSERT` pada `absensi` (`absensi_hitung_server`) menimpa `waktu` (= `now()` server), `tanggal` (= tanggal WIB server), dan `terlambat_menit` (= `hitung_terlambat_menit()`), serta menolak titik yang tidak ditugaskan ke orang itu. Insert tanpa JWT (owner/skrip/service_role) tidak ditimpa. Aturan hitung: hari di luar `policy.workdays` -> `null`; cuti/sakit/izin `disetujui` -> `null`; selain itu menit setelah (jam acuan + toleransi), minimal 0. **`null` = tidak dinilai, bukan 0 (tepat waktu).** `hitung_terlambat_menit()` EXECUTE-nya dicabut dari klien (membaca `cuti` orang lain).
 
-**Jam acuan ada di SATU fungsi: `jam_masuk_acuan(user, titik, tanggal)`.** Saat ini urutannya masih `penugasan_absen.jam_masuk` -> `policy.jam_masuk` (sama dengan perilaku lama klien). `jadwal_operasional` (0055) BELUM dipakai -- menunggu keputusan CEO; mengganti urutan cukup mengubah isi fungsi itu. `presensi_untuk_tanggal()` (kolom `masuk_jam_efektif`) kini memanggil fungsi yang sama.
+**Jam acuan ada di SATU fungsi: `jam_masuk_acuan(user, titik, tanggal)`.** Di 0059 urutannya `penugasan_absen.jam_masuk` -> `policy.jam_masuk`; sejak 0060 lihat bagian "Acuan jam masuk" di bawah. `presensi_untuk_tanggal()` (kolom `masuk_jam_efektif`) memanggil fungsi yang sama.
 
 **Klien.** `lib/api/absensi.ts` tidak lagi mengirim `terlambat_menit`; insert mengembalikan nilai server dan halaman Absen menampilkan nilai itu. Tinjau Absensi menampilkan "tidak dinilai" untuk `null`.
 
 **Diverifikasi.** `scripts/uji-terlambat-server.mjs` (23 skenario, semua di-ROLLBACK): 404 kasus asli, batas toleransi 08:15/08:16, Minggu -> null, batas hari lewat konversi WIB (bukan UTC), override per orang, cuti disetujui/diajukan/ditolak + batas inklusif, klien memalsukan tanggal/waktu/terlambat=0, titik tak ditugaskan ditolak, 'pulang' selalu null, EXECUTE dicabut, jalur owner tidak ditimpa. `uji-absen.mjs` dan `uji-presensi-rls.mjs` tetap lolos. `tsc`/`build` bersih.
 
-**Belum / menunggu keputusan CEO:** (1) urutan acuan jam masuk + shift sore; (2) 6 baris lama yang terlanjur salah -- TIDAK diubah; (3) kasus kirim-ulang offline (lihat laporan). Hari kerja outlet 7-hari (Indosteak, Indokopi akhir pekan 24 jam) vs `policy.workdays` Senin-Sabtu: sementara Minggu tidak dinilai untuk semua orang.
+## Acuan jam masuk + hari kerja dari jadwal_operasional (migrasi 0060, 19 September 2026)
+
+**Keputusan CEO.** Urutan acuan jam masuk: (1) `penugasan_absen.jam_masuk` (override per orang per titik) -> (2) `jadwal_operasional` untuk titik yang terhubung outlet (`lokasi_absen.outlet_id`), baris hari itu -> (3) `policy.jam_masuk` global.
+- Outlet **24 jam** (Indokopi Sabtu-Minggu) -> **tidak dinilai (`null`)** kecuali ada override. Baris hari itu tanpa `jam_buka`, atau hari tanpa baris di outlet yang jadwalnya terisi -> juga `null`.
+- **Hari kerja** untuk titik outlet dari `jadwal_operasional` (ada baris hari itu = hari kerja; Indosteak 7 hari, jadi Minggu tetap dinilai), BUKAN `policy.workdays`. `policy.workdays` hanya untuk titik tanpa outlet (Kantor Pusat, Bekasi, Tajur).
+- **Shift sore: override per orang saja.** Jadwal per shift SENGAJA belum dibangun -- bangun hanya kalau rotasi benar-benar terjadi. (Tabel `shift` yang ada = jenis hari untuk batas lapor, bukan penugasan orang ke shift; semua `assignment.shift_id` masih null.)
+- **Keputusan turunan (dicatat, bukan ditanyakan):** outlet yang `jadwal_operasional`-nya BELUM terisi sama sekali jatuh ke `policy.jam_masuk` + `policy.workdays`. Jam buka dipakai sebagai jam masuk (karyawan wajib hadir jam buka + toleransi 15 menit).
+- Yang diganti: isi `jam_masuk_acuan()`, fungsi baru `hari_kerja_titik()`, dan aturan 1 di `hitung_terlambat_menit()`. Trigger tidak disentuh.
+
+## Status radius dan jarak dihitung SERVER (migrasi 0061, 19 September 2026)
+
+Trigger `absensi_hitung_server` kini juga menimpa `jarak_meter` (haversine SQL, rumus sama dengan `lib/absen.ts`, selisih < 0,01 m) dan `status` ('valid' bila jarak <= `radius_meter` titik yang ditugaskan, selain itu 'di_luar_radius') dari koordinat yang dikirim. Koordinat tetap dari klien (GPS palsu di HP tidak terdeteksi server -- batas yang diketahui). `policy.absen_di_luar_radius='tolak'` kini ditegakkan di server. Koordinat kosong ditolak. Halaman Absen menampilkan status DARI SERVER.
+
+**Koreksi saya sendiri.** Awalnya trigger juga menimpa `status`='manual_hrd' dan menge-null-kan `keputusan_hrd`/`disetujui_oleh` dengan dugaan "karyawan bisa menyetujui diri sendiri" -- SALAH: RLS `absensi_insert` (0027) sudah menolak keduanya. Lebih buruk, BEFORE trigger berjalan sebelum cek RLS, jadi menimpa nilai itu mengubah penolakan keras jadi normalisasi diam-diam (dan uji lama `uji-perbaikan-insert-policy` lolos karena alasan yang salah). Diperbaiki sebelum commit: `manual_hrd` dari klien ditolak eksplisit di trigger; `keputusan_hrd`/`disetujui_oleh` tidak disentuh trigger (tetap dijaga RLS 0027).
+
+**Diverifikasi.** `scripts/uji-terlambat-server.mjs` 47 skenario (semua di-ROLLBACK): acuan per urutan, Minggu Indosteak dinilai, Indokopi 24 jam null, override menang, outlet tanpa jadwal jatuh ke policy, cuti, pemalsuan tanggal/waktu/menit/status/jarak, titik tak ditugaskan, `manual_hrd` ditolak, keputusan_hrd ditolak RLS, kebijakan 'tolak', paritas haversine, jalur owner tidak ditimpa. `uji-perbaikan-insert-policy` diperbaiki (penugasan + koordinat) dan lolos. **Tidak diuji end-to-end lewat HTTP/PostgREST nyata** (butuh menulis baris ke produksi yang tak bisa di-rollback): `.insert().select().single()` di klien diverifikasi hanya lewat `tsc`/`build` dan uji trigger sebagai peran `authenticated`.
+
+## ⚠️ UTANG: kirim-ulang absen offline memakai jam server, bukan jam ambil foto (19 September 2026)
+
+Absen yang gagal terkirim disimpan di HP (`lib/absenDraftLokal.ts`) lalu dikirim ulang. Trigger 0059 memakai `now()` server, jadi orang yang absen 08:10 tanpa sinyal lalu tersinkron 11:00 tercatat terlambat ~165 menit. (Sebelum 0059, `waktu` sudah jam server tapi `terlambat_menit` memakai jam HP -- tidak konsisten.) **Sengaja TIDAK dibangun**: menerima jam dari HP membuka celah manipulasi. **Putuskan bersama saat potongan keterlambatan dibangun** (opsi: terima jam ambil-foto dari klien dengan batas ketat -- mis. tidak di masa depan dan tidak lebih dari N jam ke belakang -- dan tandai barisnya agar HRD bisa meninjau).
+
+## Catatan uji lama yang basi (ditemukan 19 September 2026, TIDAK terkait 0059-0061)
+
+- `scripts/uji-cuti-rls.mjs` #12: `marketing_bulanan_untuk()` tidak lagi mengembalikan baris untuk akun uji Toyib (PTE Harian 0057 membatasi ke divisi Indosteak/Indokopi), jadi `hari_wajib` = undefined. Tidak menyentuh absensi/keterlambatan; penyebab dibaca dari definisi fungsi, tidak dijalankan di versi kode sebelumnya.
+- `scripts/uji-radius-gps-palsu.mjs`: butuh server dev di localhost:3000 dan Playwright; gagal kalau server tidak jalan. **Peringatan:** skrip ini mengubah `policy.absen_di_luar_radius` SEMENTARA di database bersama (produksi) lalu mengembalikannya -- jangan dijalankan sembarangan.

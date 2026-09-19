@@ -42,8 +42,15 @@ try {
       values (gen_random_uuid(), 'personal_marketing', current_date, id_toyib, 'terkirim')
       returning id into report_id;
 
+      -- Trigger absensi_hitung_server (0059/0061) mensyaratkan titik ditugaskan
+      -- ke orangnya + koordinat terisi; tanpa ini insert "wajar" ditolak duluan
+      -- oleh trigger dan uji ini menguji hal yang salah.
+      insert into public.penugasan_absen (user_id, lokasi_absen_id) values (id_toyib, titik_id) on conflict do nothing;
+
       perform set_config('uji.id_toyib', id_toyib::text, true);
       perform set_config('uji.titik_id', titik_id::text, true);
+      perform set_config('uji.lat', (select latitude::text from lokasi_absen where id = titik_id), true);
+      perform set_config('uji.lon', (select longitude::text from lokasi_absen where id = titik_id), true);
       perform set_config('uji.report_id', report_id::text, true);
     end $$;
   `);
@@ -83,8 +90,8 @@ try {
   await q(`
     do $$
     begin
-      insert into public.absensi (user_id, tanggal, tipe, lokasi_absen_id, status, foto_path, keputusan_hrd, disetujui_oleh)
-      values (current_setting('uji.id_toyib')::uuid, current_date, 'masuk', current_setting('uji.titik_id')::uuid, 'di_luar_radius', 'uji/x.jpg', 'diterima', current_setting('uji.id_toyib')::uuid);
+      insert into public.absensi (user_id, tanggal, tipe, lokasi_absen_id, latitude, longitude, status, foto_path, keputusan_hrd, disetujui_oleh)
+      values (current_setting('uji.id_toyib')::uuid, current_date, 'masuk', current_setting('uji.titik_id')::uuid, current_setting('uji.lat')::float8, current_setting('uji.lon')::float8, 'di_luar_radius', 'uji/x.jpg', 'diterima', current_setting('uji.id_toyib')::uuid);
       perform set_config('uji.h3', 'LOLOS_SALAH: insert keputusan_hrd berhasil', true);
     exception when others then
       perform set_config('uji.h3', 'DITOLAK_BENAR: '||sqlerrm, true);
@@ -97,8 +104,8 @@ try {
   await q(`
     do $$
     begin
-      insert into public.absensi (user_id, tanggal, tipe, lokasi_absen_id, status, foto_path)
-      values (current_setting('uji.id_toyib')::uuid, current_date, 'pulang', current_setting('uji.titik_id')::uuid, 'manual_hrd', 'uji/y.jpg');
+      insert into public.absensi (user_id, tanggal, tipe, lokasi_absen_id, latitude, longitude, status, foto_path)
+      values (current_setting('uji.id_toyib')::uuid, current_date, 'pulang', current_setting('uji.titik_id')::uuid, current_setting('uji.lat')::float8, current_setting('uji.lon')::float8, 'manual_hrd', 'uji/y.jpg');
       perform set_config('uji.h4', 'LOLOS_SALAH: insert manual_hrd berhasil', true);
     exception when others then
       perform set_config('uji.h4', 'DITOLAK_BENAR: '||sqlerrm, true);
@@ -109,8 +116,8 @@ try {
 
   // #5 -- absensi: insert WAJAR (persis useKirimAbsen -- status valid, tanpa keputusan_hrd/disetujui_oleh) -- harus berhasil
   const r5 = await q(`
-    insert into public.absensi (user_id, tanggal, tipe, lokasi_absen_id, status, foto_path, jarak_meter)
-    values (current_setting('uji.id_toyib')::uuid, current_date, 'masuk', current_setting('uji.titik_id')::uuid, 'valid', 'uji/z.jpg', 15)
+    insert into public.absensi (user_id, tanggal, tipe, lokasi_absen_id, latitude, longitude, status, foto_path, jarak_meter)
+    values (current_setting('uji.id_toyib')::uuid, current_date, 'masuk', current_setting('uji.titik_id')::uuid, current_setting('uji.lat')::float8, current_setting('uji.lon')::float8, 'valid', 'uji/z.jpg', 15)
     returning status, keputusan_hrd, disetujui_oleh;
   `);
   catat(

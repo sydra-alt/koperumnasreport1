@@ -90,13 +90,15 @@ interface KirimAbsenInput {
 }
 
 /**
- * Yang dikembalikan server SETELAH insert. `terlambat_menit` (juga `waktu`
- * dan `tanggal`) DITIMPA trigger `absensi_hitung_server` (migrasi 0059) dari
- * jam server -- klien tidak mengirimnya, dan yang ditampilkan ke pengguna
- * harus nilai ini, bukan hitungan lokal.
+ * Yang dikembalikan server SETELAH insert. `terlambat_menit`, `status`,
+ * `jarak_meter`, `waktu`, dan `tanggal` DITIMPA trigger
+ * `absensi_hitung_server` (migrasi 0059/0061) dari jam dan koordinat yang
+ * diterima server -- yang ditampilkan ke pengguna harus nilai ini, bukan
+ * hitungan lokal di HP.
  */
 export interface HasilKirimAbsen {
   terlambatMenit: number | null;
+  status: 'valid' | 'di_luar_radius';
 }
 
 async function unggahFotoAbsen(userId: string, blob: Blob, accessToken: string): Promise<string> {
@@ -135,9 +137,10 @@ export function useKirimAbsen(userId: string | undefined) {
 
       const fotoPath = await unggahFotoAbsen(userId, input.fotoBlob, session.access_token);
 
-      // `tanggal` tetap dikirim (kolom NOT NULL, dipakai sebagai nilai awal) tapi
-      // trigger menimpanya dengan tanggal WIB server; `terlambat_menit` sengaja
-      // TIDAK dikirim sama sekali.
+      // `tanggal`, `status`, dan `jarak_meter` tetap dikirim (kolom NOT NULL /
+      // dipakai sebagai nilai awal) tapi trigger MENIMPA-nya: tanggal dari jam
+      // server, status+jarak dihitung ulang dari lat/lon vs titik yang
+      // ditugaskan. `terlambat_menit` sengaja TIDAK dikirim sama sekali.
       const { data, error } = await supabase
         .from('absensi')
         .insert({
@@ -152,10 +155,14 @@ export function useKirimAbsen(userId: string | undefined) {
           status: input.status,
           foto_path: fotoPath,
         })
-        .select('terlambat_menit')
+        .select('terlambat_menit, status')
         .single();
       if (error) throw error;
-      return { terlambatMenit: data.terlambat_menit };
+      return {
+        terlambatMenit: data.terlambat_menit,
+        // 'manual_hrd' tidak mungkin dari jalur klien (ditolak trigger), jadi aman disempitkan.
+        status: data.status === 'di_luar_radius' ? 'di_luar_radius' : 'valid',
+      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['absen-hari-ini', userId] });
