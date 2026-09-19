@@ -217,6 +217,116 @@ export async function sinkronPteHarian(reportId: string, userId: string, data: R
 }
 
 /**
+ * Poin maksimal HARIAN (skema PTE Harian, bukan bulanan) -- SATU tempat,
+ * dipakai panel "PTE hari ini" (LaporForm.tsx), ringkasan harian di form
+ * lain, beranda, dan tabel /marketing. Sebelumnya dihitung inline di
+ * LaporForm.tsx sendiri -- diekstrak di sini (audit tampilan skema poin,
+ * 20 September 2026) supaya SEMUA konsumen memakai rumus yang SAMA persis,
+ * bukan disalin ulang dan berisiko menyimpang.
+ */
+export function poinMaksimalHarian(policy: PolicyMap): number {
+  return (
+    Number(policy.pte_poin_digital_per_platform) * 3 +
+    Number(policy.pte_poin_undangan_per_orang) * Number(policy.pte_poin_undangan_target) +
+    Number(policy.pte_poin_review_lengkap) +
+    Number(policy.pte_poin_kesaksian_lengkap)
+  );
+}
+
+export interface PteHarianBulanRow {
+  tanggal: string;
+  poin_digital: number;
+  poin_undangan: number;
+  poin_review: number;
+  poin_kesaksian: number;
+  poin_total: number;
+}
+
+/**
+ * Baris `pte_harian` bulan berjalan MILIK SATU USER -- dipakai untuk (a)
+ * ringkasan HARI INI (filter tanggal = hari ini dari hasil ini, per
+ * komponen, tidak perlu query terpisah) dan (b) akumulasi BULANAN (jumlahkan
+ * `poin_total`, hitung berapa hari mencapai `poinMaksimalHarian()` penuh).
+ * Pola query SAMA PERSIS `usePteBulanIniUntuk` (lib/api/marketing.ts, tabel
+ * `pte_daily` lama) -- cuma tabel & kolomnya beda.
+ */
+export function usePteHarianBulanIniUntuk(userId: string | null) {
+  return useQuery({
+    queryKey: ['pte-harian-bulan-ini', userId],
+    enabled: Boolean(userId),
+    queryFn: async (): Promise<PteHarianBulanRow[]> => {
+      const supabase = createClient();
+      const [tahun, bulan] = tanggalWIB().split('-');
+      const awalBulan = `${tahun}-${bulan}-01`;
+      const { data, error } = await supabase
+        .from('pte_harian')
+        .select('tanggal, poin_digital, poin_undangan, poin_review, poin_kesaksian, poin_total')
+        .eq('user_id', userId as string)
+        .gte('tanggal', awalBulan)
+        .order('tanggal');
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+/**
+ * Sama seperti di atas, tapi SEMUA user sekaligus -- untuk tabel Dashboard
+ * Kontrol Marketing (`/marketing`). `pte_harian_select` (migrasi 0057)
+ * sudah mengizinkan kontrol_marketing/ceo/pusat/manager_resto/hrd-kadiv
+ * membaca baris siapa pun, jadi satu query tanpa filter user_id cukup --
+ * dikelompokkan per user_id di sini, bukan N query terpisah.
+ */
+export function usePteHarianBulananSemua() {
+  return useQuery({
+    queryKey: ['pte-harian-bulan-ini-semua'],
+    queryFn: async (): Promise<Map<string, PteHarianBulanRow[]>> => {
+      const supabase = createClient();
+      const [tahun, bulan] = tanggalWIB().split('-');
+      const awalBulan = `${tahun}-${bulan}-01`;
+      const { data, error } = await supabase
+        .from('pte_harian')
+        .select('user_id, tanggal, poin_digital, poin_undangan, poin_review, poin_kesaksian, poin_total')
+        .gte('tanggal', awalBulan);
+      if (error) throw error;
+      const peta = new Map<string, PteHarianBulanRow[]>();
+      for (const r of (data ?? []) as (PteHarianBulanRow & { user_id: string })[]) {
+        const arr = peta.get(r.user_id) ?? [];
+        arr.push({
+          tanggal: r.tanggal,
+          poin_digital: r.poin_digital,
+          poin_undangan: r.poin_undangan,
+          poin_review: r.poin_review,
+          poin_kesaksian: r.poin_kesaksian,
+          poin_total: r.poin_total,
+        });
+        peta.set(r.user_id, arr);
+      }
+      return peta;
+    },
+  });
+}
+
+/**
+ * Ringkasan bulanan (murni, tidak query) dari baris `pte_harian` -- total
+ * poin dan berapa HARI yang mencapai poin maksimal harian PENUH. Yang kedua
+ * lebih berarti daripada totalnya sendirian (instruksi eksplisit user, 20
+ * September 2026): kekurangan satu hari tidak bisa ditutup poin lebih besar
+ * di hari lain, jadi "hari penuh" mencerminkan konsistensi, bukan cuma
+ * akumulasi. `hariWajib`/`targetBulan` SENGAJA tidak dihitung di sini --
+ * `hari_wajib` sudah tersedia dari `v_marketing_bulanan`
+ * (`ProgresBulanan.hari_wajib`, lib/api/marketing.ts) yang SUDAH benar
+ * mengecualikan cuti disetujui; menghitung ulang di sini berisiko
+ * menyimpang dari satu-satunya sumber kebenaran itu.
+ */
+export function ringkasanPoinBulanan(rows: PteHarianBulanRow[], poinMaksimal: number): { totalPoin: number; hariPenuh: number } {
+  return {
+    totalPoin: rows.reduce((jumlah, r) => jumlah + r.poin_total, 0),
+    hariPenuh: rows.filter((r) => r.poin_total >= poinMaksimal).length,
+  };
+}
+
+/**
  * Label "Undangan" untuk outlet tertentu -- lewat outlet.unit_kode ->
  * unit_bisnis.label_undangan (migrasi 0057), BUKAN dari profile.divisi
  * (nilainya sekarang cuma "Resto"/"Marketing", tidak membedakan Indosteak

@@ -183,7 +183,7 @@ export function buatF01PersonalMarketing(labelUndangan: string = LABEL_UNDANGAN_
     {
       id: 'undangan',
       judul: 'Target Undangan Konsumen Baru',
-      catatan: 'Target minimal sesuai kebijakan undangan bulanan perusahaan. "Undangan hari ini" diisi di bagian "PTE Harian" -- satu daftar yang sama, tidak diulang di sini. Progres "___/20" ditampilkan di atas.',
+      catatan: '"Undangan hari ini" diisi di bagian "PTE Harian" -- satu daftar yang sama, tidak diulang di sini. Poin undangan (bagian dari 80 poin harian) dan akumulasi bulanan ditampilkan di atas.',
       fields: [
         { key: 'undang_merespons', label: 'Yang Merespons', type: 'angka' },
         { key: 'undang_mau_presentasi', label: 'Yang Mau Presentasi', type: 'angka' },
@@ -195,7 +195,7 @@ export function buatF01PersonalMarketing(labelUndangan: string = LABEL_UNDANGAN_
     {
       id: 'funnel',
       judul: 'Funnel Marketing Pribadi',
-      catatan: 'Undangan & closing bulan ini (dihitung sistem) ditampilkan di atas.',
+      catatan: 'Poin PTE (Digital/Undangan/Review/Kesaksian) dan closing bulan ini (dihitung sistem) ditampilkan di atas.',
       fields: [
         { key: 'funnel_prospek_aktif', label: 'Prospek Aktif', type: 'angka' },
         { key: 'funnel_presentasi', label: 'Presentasi', type: 'angka' },

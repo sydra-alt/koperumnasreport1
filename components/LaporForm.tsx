@@ -5,9 +5,17 @@ import type { FieldValues } from 'react-hook-form';
 import { KerangkaForm } from './Kerangka';
 import { useAuth } from '../lib/auth/AuthProvider';
 import { usePolicy } from '../lib/api/policy';
-import { statusClosing, statusUndangan, useProgresBulananSaya } from '../lib/api/marketing';
+import { statusClosing, useProgresBulananSaya } from '../lib/api/marketing';
 import { hitungPotongan, sinkronClosing } from '../lib/api/pte';
-import { ringkasanPteHarian, sinkronPteHarian, useLabelUndanganOutlet, type PoinPteHarian } from '../lib/api/pteHarian';
+import {
+  poinMaksimalHarian,
+  ringkasanPoinBulanan,
+  ringkasanPteHarian,
+  sinkronPteHarian,
+  useLabelUndanganOutlet,
+  usePteHarianBulanIniUntuk,
+  type PoinPteHarian,
+} from '../lib/api/pteHarian';
 import { buatF01PersonalMarketing } from '../forms/f01-personal-marketing';
 import { useDaftarLokasi } from '../lib/api/lokasi';
 import { useDaftarOutlet } from '../lib/api/outlet';
@@ -124,6 +132,11 @@ export function LaporForm({ formKey }: { formKey: string }) {
   // Query ini cuma perlu jalan utk form SELAIN personal_marketing itu sendiri.
   const perluRollupMarketing = formKey !== 'personal_marketing';
   const { data: laporanMarketingHariIni } = useReportHariIni('personal_marketing', { aktif: perluRollupMarketing });
+  // Poin PTE Harian bulan berjalan MILIK SENDIRI -- dipakai baik oleh panel
+  // "PTE hari ini" (dalam form personal_marketing sendiri) MAUPUN rollup
+  // ringkas di form lain (`perluRollupMarketing`, lihat komentar di atas) --
+  // satu query, dua tempat pakai (audit tampilan skema poin, 20 September 2026).
+  const { data: poinBulanIni } = usePteHarianBulanIniUntuk(session?.user.id ?? null);
   const simpanDraft = useSimpanDraft(formKey, opsi);
   const kirimReport = useKirimReport(formKey, opsi);
 
@@ -318,21 +331,23 @@ export function LaporForm({ formKey }: { formKey: string }) {
     }
   }
 
-  const invitTarget = policy ? Number(policy.invite_target) : null;
   const closingTarget = policy ? Number(policy.closing_target) : null;
 
   const poinPte: PoinPteHarian | null = formKey === 'personal_marketing' && policy ? ringkasanPteHarian(nilaiUntukPratinjau, policy) : null;
   // Poin maksimal HARIAN (bukan bulanan) -- dari policy.pte_poin_*, dipakai
   // cuma sebagai penyebut progress bar, bukan aturan bonus/potongan (CEO
   // eksplisit: itu belum dibangun untuk skema poin ini, 6 pertanyaan masih
-  // terbuka).
-  const poinMaksimalHarian =
-    formKey === 'personal_marketing' && policy
-      ? Number(policy.pte_poin_digital_per_platform) * 3 +
-        Number(policy.pte_poin_undangan_per_orang) * Number(policy.pte_poin_undangan_target) +
-        Number(policy.pte_poin_review_lengkap) +
-        Number(policy.pte_poin_kesaksian_lengkap)
-      : null;
+  // terbuka). Dipakai di form personal_marketing SENDIRI (panel detail) DAN
+  // rollup ringkas di form lain (`perluRollupMarketing`) -- satu fungsi
+  // (lib/api/pteHarian.ts), tidak dihitung ulang per tempat pakai.
+  const poinMaksimal = policy ? poinMaksimalHarian(policy) : null;
+  // Akumulasi bulanan (poin PTE Harian, BUKAN Undangan/Closing lama) --
+  // `hari_wajib` diambil dari `v_marketing_bulanan` (progres.hari_wajib, SUDAH
+  // mengecualikan cuti disetujui, lihat migrasi 0035) -- TIDAK dihitung ulang
+  // di sini supaya tidak menyimpang dari satu-satunya sumber kebenaran itu.
+  const ringkasanBulanIni = poinMaksimal !== null ? ringkasanPoinBulanan(poinBulanIni ?? [], poinMaksimal) : null;
+  const hariWajibBulanIni = progres?.hari_wajib ?? 0;
+  const targetPoinBulanIni = poinMaksimal !== null ? hariWajibBulanIni * poinMaksimal : null;
   const infoPotongan =
     formKey === 'personal_marketing' && policy && progres ? hitungPotongan(policy, progres.pte_berlaku, progres.closing) : null;
   const kebutuhanBesokResto = formKey === 'manager_resto' ? ringkasanKebutuhanBesok(nilaiUntukPratinjau) : null;
@@ -422,27 +437,16 @@ export function LaporForm({ formKey }: { formKey: string }) {
 
       {/* Progres closing SEKARANG di dalam kartu bagian "Target Closing Pribadi"
           sendiri (ringkasanBlokPersonalMarketing di atas, diteruskan ke
-          FormRenderer) -- tidak diulang di sini lagi. Undangan belum
-          disentuh batch ini (satu bagian dulu, instruksi eksplisit user). */}
-      {formKey === 'personal_marketing' && progres && invitTarget !== null && (
-        <div className="kartu-status rail-biru flex flex-col gap-1">
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--biru)' }}>Target undangan</p>
-          <div className="flex items-baseline gap-2">
-            <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{progres.undangan}</span>
-            <span className="text-sm" style={{ color: 'var(--label)' }}>dari {invitTarget} bulan ini</span>
-          </div>
-        </div>
-      )}
-
-      {formKey === 'personal_marketing' && progres && invitTarget !== null && closingTarget !== null && (
+          FormRenderer) -- tidak diulang di sini lagi. Undangan bulanan lama
+          (progres.undangan/invite_target) DIHAPUS (20 September 2026) --
+          Undangan sekarang komponen HARIAN skema poin (panel di bawah),
+          bukan target kumulatif bulanan terpisah lagi. */}
+      {formKey === 'personal_marketing' && progres && closingTarget !== null && (
         <div className="kartu-status rail-netral flex flex-col gap-2">
           <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Status Personal Marketing</p>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             <span className="status-teks" style={{ color: LABEL_CAPAIAN_TARGET[statusClosing(progres.closing, closingTarget)].warna }}>
               Closing: {LABEL_CAPAIAN_TARGET[statusClosing(progres.closing, closingTarget)].teks}
-            </span>
-            <span className="status-teks" style={{ color: LABEL_CAPAIAN_TARGET[statusUndangan(progres.undangan, invitTarget)].warna }}>
-              Undangan: {LABEL_CAPAIAN_TARGET[statusUndangan(progres.undangan, invitTarget)].teks}
             </span>
             <span className="status-teks" style={{ color: 'var(--biru)' }}>
               PTE hari ini: {poinPte ? `${poinPte.poinTotal} poin` : '—'}
@@ -454,17 +458,20 @@ export function LaporForm({ formKey }: { formKey: string }) {
       {/* Panel PTE Harian (18 September 2026, MENGGANTIKAN daftar 6 kewajiban
           lama) -- rincian per komponen, poin SEMUA dari policy.pte_poin_*
           (lib/api/pteHarian.ts), TIDAK ADA klaim bonus/potongan di sini --
-          instruksi eksplisit CEO: itu belum dibangun untuk skema poin ini. */}
-      {formKey === 'personal_marketing' && poinPte && poinMaksimalHarian !== null && policy && (
+          instruksi eksplisit CEO: itu belum dibangun untuk skema poin ini.
+          Akumulasi bulanan (20 September 2026) ditambahkan di kartu KEDUA --
+          "hari mencapai poin penuh" lebih berarti daripada total sendirian,
+          kekurangan satu hari tidak bisa ditutup poin besok. */}
+      {formKey === 'personal_marketing' && poinPte && poinMaksimal !== null && policy && (
         <div className="flex flex-col gap-3">
           <div className="kartu-status rail-biru flex flex-col gap-2">
             <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>PTE hari ini</p>
             <div className="flex items-baseline gap-2">
               <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{poinPte.poinTotal}</span>
-              <span className="text-sm" style={{ color: 'var(--label)' }}>dari maksimal {poinMaksimalHarian} poin</span>
+              <span className="text-sm" style={{ color: 'var(--label)' }}>dari maksimal {poinMaksimal} poin</span>
             </div>
             <div className="progres-bar">
-              <div className="progres-bar-isi" style={{ width: `${Math.round((poinPte.poinTotal / poinMaksimalHarian) * 100)}%` }} />
+              <div className="progres-bar-isi" style={{ width: `${Math.round((poinPte.poinTotal / poinMaksimal) * 100)}%` }} />
             </div>
             <p className="text-sm" style={{ color: 'var(--label)' }}>Bonus/potongan gaji belum aktif untuk skema poin ini.</p>
           </div>
@@ -495,17 +502,43 @@ export function LaporForm({ formKey }: { formKey: string }) {
               </span>
             </div>
           </div>
+
+          <div className="kartu-status rail-netral flex flex-col gap-1">
+            <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>PTE poin bulan ini</p>
+            <div className="flex items-baseline gap-2">
+              <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{ringkasanBulanIni?.totalPoin ?? 0}</span>
+              <span className="text-sm" style={{ color: 'var(--label)' }}>
+                {progres?.pte_berlaku
+                  ? `dari ${(targetPoinBulanIni ?? 0).toLocaleString('id-ID')} poin target (${hariWajibBulanIni} hari kerja)`
+                  : 'poin (target bulanan belum berlaku -- PTE belum dimulai)'}
+              </span>
+            </div>
+            {progres?.pte_berlaku && (
+              <p className="text-sm" style={{ color: 'var(--label)' }}>
+                {ringkasanBulanIni?.hariPenuh ?? 0} dari {hariWajibBulanIni} hari mencapai poin penuh
+              </p>
+            )}
+          </div>
         </div>
       )}
 
-      {perluRollupMarketing && progres && invitTarget !== null && closingTarget !== null && (
+      {/* Rollup ringkas di form SELAIN personal_marketing (mis. layar Lapor
+          Resto) -- MENGGANTIKAN "Undangan bulan ini X/20 · Closing bulan ini
+          X/2" lama (20 September 2026). Poin hari ini + akumulasi bulanan
+          milik SENDIRI (pengisi form ini), Closing tetap ditampilkan
+          terpisah (aturan CEO: bonus sendiri, bukan komponen 80 poin). */}
+      {perluRollupMarketing && progres && closingTarget !== null && poinMaksimal !== null && (
         <div className="kartu-status rail-netral flex flex-col gap-1">
           <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Laporan Personal Marketing</p>
           <p className="status-teks" style={{ color: laporanMarketingHariIni?.status && laporanMarketingHariIni.status !== 'draft' ? 'var(--hijau)' : 'var(--merah)' }}>
             {laporanMarketingHariIni?.status && laporanMarketingHariIni.status !== 'draft' ? 'Sudah dikirim' : 'Belum dikirim'}
           </p>
           <p className="text-sm" style={{ color: 'var(--label)' }}>
-            Undangan bulan ini: {progres.undangan} / {invitTarget} · Closing bulan ini: {progres.closing} / {closingTarget}
+            PTE hari ini: {poinBulanIni?.find((r) => r.tanggal === tanggalWIB())?.poin_total ?? 0} / {poinMaksimal} poin
+            {progres.pte_berlaku
+              ? ` · Poin bulan ini: ${ringkasanBulanIni?.totalPoin ?? 0} / ${(targetPoinBulanIni ?? 0).toLocaleString('id-ID')} (${ringkasanBulanIni?.hariPenuh ?? 0} dari ${hariWajibBulanIni} hari penuh)`
+              : ''}
+            {' · '}Closing bulan ini: {progres.closing} / {closingTarget}
           </p>
         </div>
       )}

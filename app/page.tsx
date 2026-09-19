@@ -10,7 +10,8 @@ import { useLaporanHariIniSaya } from '../lib/api/beranda';
 import { useProgresBulananSaya } from '../lib/api/marketing';
 import { useTitikAbsenSaya, useAbsenHariIni } from '../lib/api/absensi';
 import { hitungTugasHariIni, sapaanWaktu } from '../lib/tugasHariIni';
-import { hariISOWIB, jamWIB } from '../lib/tanggal';
+import { hariISOWIB, jamWIB, tanggalWIB } from '../lib/tanggal';
+import { poinMaksimalHarian, ringkasanPoinBulanan, usePteHarianBulanIniUntuk } from '../lib/api/pteHarian';
 import { AngkaGrid } from '../components/AngkaGrid';
 import { KeadaanGagal } from '../components/KeadaanGagal';
 import { KerangkaBeranda, KerangkaDaftarKartu } from '../components/Kerangka';
@@ -114,13 +115,14 @@ const WARNA_STATUS_TEKS: Record<'belum' | 'draft' | 'selesai', string> = {
 };
 
 function DaftarTugas() {
-  const { assignments, roles, authGagal, refetchAuth } = useAuth();
+  const { assignments, roles, authGagal, refetchAuth, session } = useAuth();
   const { data: policy, isError: policyGagal, refetch: refetchPolicy } = usePolicy();
   const { data: lokasi } = useDaftarLokasi();
   const { data: outlet } = useDaftarOutlet();
   const { data: shift } = useDaftarShift();
   const { data: laporanHariIni, isLoading, isError: laporanGagal, refetch: refetchLaporan } = useLaporanHariIniSaya();
   const { data: progres } = useProgresBulananSaya();
+  const { data: poinBulanIni } = usePteHarianBulanIniUntuk(session?.user.id ?? null);
 
   // Keadaan GAGAL (query error) -- BEDA dari keadaan KOSONG (memang belum
   // ada tugas) di bawah. Tanpa ini, kegagalan jaringan/server terlihat
@@ -169,8 +171,13 @@ function DaftarTugas() {
   const tugas = hitungTugasHariIni(assignments, roles, laporanHariIni ?? [], policy, jamWIB(), namaLokasi, namaOutlet, namaShift, batasLaporShift);
   const tugasBelum = tugas.filter((t) => t.status !== 'selesai');
   const tugasSelesai = tugas.length - tugasBelum.length;
-  const invitTarget = Number(policy.invite_target);
   const closingTarget = Number(policy.closing_target);
+  const poinMaksimal = poinMaksimalHarian(policy);
+  const hariIni = tanggalWIB();
+  const poinHariIni = poinBulanIni?.find((r) => r.tanggal === hariIni) ?? null;
+  const { totalPoin: poinTotalBulanIni, hariPenuh } = ringkasanPoinBulanan(poinBulanIni ?? [], poinMaksimal);
+  const hariWajibBulanIni = progres?.hari_wajib ?? 0;
+  const targetPoinBulanIni = hariWajibBulanIni * poinMaksimal;
 
   if (tugasBelum.length === 0) {
     return (
@@ -240,21 +247,53 @@ function DaftarTugas() {
         })}
       </div>
 
-      {/* Target bulanan (DESIGN.md §6.1) */}
+      {/* PTE poin hari ini (MENGGANTIKAN "Undangan bulan ini" lama, 20
+          September 2026) -- tanpa gerbang pte_berlaku, sama seperti panel
+          serupa di LaporForm.tsx: informasi poin harian tetap berguna
+          dilihat SEBELUM bonus/potongan resmi berlaku. */}
+      <div className="kartu-status rail-biru flex flex-col gap-1">
+        <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--biru)' }}>PTE poin hari ini</p>
+        <div className="flex items-baseline gap-2">
+          <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{poinHariIni?.poin_total ?? 0}</span>
+          <span className="text-sm" style={{ color: 'var(--label)' }}>dari {poinMaksimal} poin</span>
+        </div>
+        <p className="text-sm" style={{ color: 'var(--label)' }}>
+          Digital {poinHariIni?.poin_digital ?? 0}/{Number(policy.pte_poin_digital_per_platform) * 3} · Undangan{' '}
+          {poinHariIni?.poin_undangan ?? 0}/{Number(policy.pte_poin_undangan_per_orang) * Number(policy.pte_poin_undangan_target)} · Review{' '}
+          {poinHariIni?.poin_review ?? 0}/{Number(policy.pte_poin_review_lengkap)} · Kesaksian {poinHariIni?.poin_kesaksian ?? 0}/
+          {Number(policy.pte_poin_kesaksian_lengkap)}
+        </p>
+      </div>
+
+      {/* Akumulasi bulanan -- "hari mencapai poin penuh" LEBIH PENTING dari
+          totalnya sendirian (instruksi eksplisit user, 20 September 2026):
+          kekurangan satu hari tidak bisa ditutup poin besok. */}
+      <div className="kartu-status rail-netral flex flex-col gap-1">
+        <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>PTE poin bulan ini</p>
+        <div className="flex items-baseline gap-2">
+          <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{poinTotalBulanIni}</span>
+          <span className="text-sm" style={{ color: 'var(--label)' }}>
+            {progres?.pte_berlaku
+              ? `dari ${targetPoinBulanIni.toLocaleString('id-ID')} poin target (${hariWajibBulanIni} hari kerja)`
+              : 'poin (target bulanan belum berlaku -- PTE belum dimulai)'}
+          </span>
+        </div>
+        {progres?.pte_berlaku && (
+          <p className="text-sm" style={{ color: 'var(--label)' }}>
+            {hariPenuh} dari {hariWajibBulanIni} hari mencapai poin penuh
+          </p>
+        )}
+      </div>
+
+      {/* Closing -- TETAP TERPISAH dari poin PTE (aturan CEO: closing bonus
+          sendiri >=2/bulan, bukan komponen 80 poin harian, instruksi
+          eksplisit user 20 September 2026). */}
       {progres?.pte_berlaku && (
         <div className="kartu-status rail-biru flex flex-col gap-1">
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--biru)' }}>Target bulan ini</p>
-          <div className="flex gap-4">
-            <div>
-              <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{progres.undangan}</span>
-              <span className="text-sm" style={{ color: 'var(--label)' }}> dari {invitTarget}</span>
-              <p className="text-sm" style={{ color: 'var(--label)' }}>Undangan</p>
-            </div>
-            <div>
-              <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{progres.closing}</span>
-              <span className="text-sm" style={{ color: 'var(--label)' }}> dari {closingTarget}</span>
-              <p className="text-sm" style={{ color: 'var(--label)' }}>Closing</p>
-            </div>
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--biru)' }}>Closing bulan ini</p>
+          <div className="flex items-baseline gap-2">
+            <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{progres.closing}</span>
+            <span className="text-sm" style={{ color: 'var(--label)' }}>dari {closingTarget}</span>
           </div>
         </div>
       )}

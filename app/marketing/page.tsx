@@ -13,6 +13,7 @@ import {
   type ProgresBulanan,
 } from '../../lib/api/marketing';
 import { hitungKelayakanBonus, hitungPotongan } from '../../lib/api/pte';
+import { poinMaksimalHarian, ringkasanPoinBulanan, usePteHarianBulananSemua } from '../../lib/api/pteHarian';
 import { kalenderPteBulanIni } from '../../lib/kalenderPte';
 import { TombolEkspor } from '../../components/TombolEkspor';
 import { tanggalWIB } from '../../lib/tanggal';
@@ -75,12 +76,13 @@ function KalenderKaryawan({ userId }: { userId: string }) {
 function Isi() {
   const { data: policy } = usePolicy();
   const { data: semua, isLoading } = useMarketingBulananSemua();
+  const { data: poinBulananSemua } = usePteHarianBulananSemua();
   const [divisiFilter, setDivisiFilter] = useState<string>('semua');
   const [urutan, setUrutan] = useState<'tertinggal' | 'nama'>('tertinggal');
   const [terpilih, setTerpilih] = useState<ProgresBulanan | null>(null);
 
-  const invitTarget = policy ? Number(policy.invite_target) : 20;
   const closingTarget = policy ? Number(policy.closing_target) : 2;
+  const poinMaksimal = policy ? poinMaksimalHarian(policy) : 80;
 
   const daftarDivisi = useMemo(() => {
     const set = new Set((semua ?? []).map((r) => r.divisi ?? '(tanpa divisi)'));
@@ -139,7 +141,7 @@ function Isi() {
         <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              {['Nama', 'Divisi', 'Undangan', 'Closing', 'Hari bolong', 'Bonus Rp500rb', 'Potongan Rp300rb'].map((k) => (
+              {['Nama', 'Divisi', 'Poin bulan ini', 'Hari penuh', 'Closing', 'Hari bolong', 'Bonus Rp500rb', 'Potongan Rp300rb'].map((k) => (
                 <th key={k} className="border px-2 py-1 text-left" style={{ borderColor: 'var(--garis)', background: 'var(--kertas-2)' }}>
                   {k}
                 </th>
@@ -150,6 +152,13 @@ function Isi() {
             {barisTersaring.map((r) => {
               const bonus = hitungKelayakanBonus(policy, r.pte_berlaku, r.hari_bolong, r.hari_lengkap, r.hari_wajib);
               const potongan = hitungPotongan(policy, r.pte_berlaku, r.closing);
+              // Poin bulan ini/Hari penuh MENGGANTIKAN kolom Undangan lama
+              // (20 September 2026) -- Closing TETAP kolom terpisah tidak
+              // berubah (aturan CEO: bonus sendiri, bukan komponen 80 poin).
+              // `hari_wajib` dari v_marketing_bulanan (r.hari_wajib, SUDAH
+              // mengecualikan cuti disetujui) -- tidak dihitung ulang di sini.
+              const { totalPoin, hariPenuh } = ringkasanPoinBulanan(poinBulananSemua?.get(r.user_id) ?? [], poinMaksimal);
+              const targetPoinBulan = r.hari_wajib * poinMaksimal;
               return (
                 <tr
                   key={r.user_id}
@@ -163,7 +172,12 @@ function Isi() {
                     {r.divisi ?? '—'}
                   </td>
                   <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)', fontFamily: 'var(--mono)' }}>
-                    {IKON[statusUndangan(r.undangan, invitTarget)]} {r.undangan}/{invitTarget}
+                    {r.pte_berlaku
+                      ? `${IKON[statusUndangan(totalPoin, targetPoinBulan)]} ${totalPoin}/${targetPoinBulan.toLocaleString('id-ID')}`
+                      : 'Belum berlaku'}
+                  </td>
+                  <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)', fontFamily: 'var(--mono)' }}>
+                    {r.pte_berlaku ? `${hariPenuh}/${r.hari_wajib}` : '—'}
                   </td>
                   <td className="border px-2 py-1" style={{ borderColor: 'var(--garis)', fontFamily: 'var(--mono)' }}>
                     {IKON[statusClosing(r.closing, closingTarget)]} {r.closing}/{closingTarget}
