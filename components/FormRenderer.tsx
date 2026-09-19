@@ -2,9 +2,9 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { FormProvider, useForm, useWatch, type FieldValues } from 'react-hook-form';
-import type { Block, FormSchema } from '../forms/types';
+import type { Block, Field, FormSchema } from '../forms/types';
 import { blokBerlakuHariIni, buildZodSchema, terisi } from '../forms/validasi';
 import { tanggalIndonesiaWIB, jamWIB } from '../lib/tanggal';
 import { Angka } from './fields/Angka';
@@ -56,6 +56,8 @@ interface FormRendererProps {
    * diisi -- form dirender seperti biasa (belum pernah dikirim hari ini).
    */
   laporanTerkirim?: LaporanTerkirim | null;
+  /** Teks status draft singkat ("Menyimpan draft…", "Draft tersimpan."), dari pemanggil -- murni tampilan di panel progres; kosong/tidak diisi = tidak ada teks. */
+  catatanStatus?: string;
 }
 
 const WARNA_STATUS: Record<NonNullable<RingkasanBlok['status']>, string> = {
@@ -119,6 +121,47 @@ function LayarKonfirmasiKirim({ schema, info, onUbah }: { schema: FormSchema; in
 }
 
 /**
+ * Penyusunan TAMPILAN saja: field `angka`/`uang` yang berurutan dan sekelompok secara alami
+ * ditata sebagai grid berpasangan. Kelompok = label berawalan sama sebelum " -- " (mis.
+ * "Live -- lengkap" + "Live -- dari total", "Es batu -- stok awal" ...), atau -- kalau tidak ada
+ * awalan -- 2 sampai 4 field berurutan bertipe sama. Urutan, key, dan nilai field TIDAK berubah.
+ */
+type ButirTampil = { jenis: 'satu'; field: Field } | { jenis: 'grup'; tipe: 'angka' | 'uang'; kunci: string; fields: Field[] };
+
+function kunciKelompok(f: Field): string {
+  const i = f.label.indexOf(' -- ');
+  return i >= 0 ? f.label.slice(0, i) : '';
+}
+
+function labelTanpaKunci(label: string): string {
+  const i = label.indexOf(' -- ');
+  const sisa = i >= 0 ? label.slice(i + 4) : label;
+  return sisa.charAt(0).toUpperCase() + sisa.slice(1);
+}
+
+function susunButir(fields: Field[]): ButirTampil[] {
+  const hasil: ButirTampil[] = [];
+  let i = 0;
+  while (i < fields.length) {
+    const f = fields[i];
+    if ((f.type === 'angka' || f.type === 'uang') && !f.buktiWajib) {
+      const kunci = kunciKelompok(f);
+      let j = i + 1;
+      while (j < fields.length && fields[j].type === f.type && !fields[j].buktiWajib && kunciKelompok(fields[j]) === kunci) j++;
+      const n = j - i;
+      if (n >= 2 && (kunci !== '' || n <= 4)) {
+        hasil.push({ jenis: 'grup', tipe: f.type, kunci, fields: fields.slice(i, j) });
+        i = j;
+        continue;
+      }
+    }
+    hasil.push({ jenis: 'satu', field: f });
+    i++;
+  }
+  return hasil;
+}
+
+/**
  * Pola hierarki form (DESIGN.md §5) -- pengganti "9 kartu setara" lama, satu
  * `<fieldset>` datar per blok tanpa konteks. Sekarang: peta kemajuan di atas
  * + tiap bagian punya 4 lapisan (indeks, progres, konsekuensi, detail field)
@@ -131,7 +174,7 @@ function LayarKonfirmasiKirim({ schema, info, onUbah }: { schema: FormSchema; in
  * bagian yang diringkas akan membuat pengguna tidak pernah tahu kenapa
  * kirim ditolak.
  */
-export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, ringkasanBlok, laporanTerkirim }: FormRendererProps) {
+export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, ringkasanBlok, laporanTerkirim, catatanStatus }: FormRendererProps) {
   const methods = useForm({
     defaultValues: nilaiAwal,
     resolver: zodResolver(buildZodSchema(schema)),
@@ -226,193 +269,317 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
     return <LayarKonfirmasiKirim schema={schema} info={laporanTerkirim} onUbah={() => setModeEdit(true)} />;
   }
 
+  // ── Susunan visual (TIDAK mengubah data/validasi): satu `.panel` datar per bagian, baris field
+  // ringkas, angka berpasangan dalam grid. Elemen pembungkus tiap field memakai id `baris-${key}`
+  // (target gulir galat, sama seperti sebelumnya).
+  const labelNode = (f: Field, teks: string) => (
+    <span style={{ fontSize: 'var(--ukuran-label)', color: 'var(--label)', lineHeight: 1.35 }}>
+      {teks}
+      {f.wajib && <span style={{ color: 'var(--merah)' }}> *</span>}
+    </span>
+  );
+  const pesanGalat = (f: Field) =>
+    errors[f.key] ? (
+      <span className="text-sm" style={{ color: 'var(--merah)' }}>
+        {String(errors[f.key]?.message ?? '')}
+      </span>
+    ) : null;
+  const bantuanNode = (f: Field) => (f.bantuan ? <span className="teks-penjelasan">{f.bantuan}</span> : null);
+  // type:'tabel' dengan buktiPerBaris merender LampiranInput-nya SENDIRI, satu per baris, di dalam
+  // Tabel.tsx -- bukan di sini (satu bukti per FIELD tidak masuk akal kalau field ini punya banyak
+  // baris yang masing-masing perlu buktinya sendiri).
+  const buktiNode = (f: Field) =>
+    f.buktiWajib && !(f.type === 'tabel' && f.buktiPerBaris) ? (
+      <LampiranInput name={`_bukti.${f.key}`} label="Lampirkan bukti" reportId={reportId} fieldKeyAsli={f.buktiKunci ?? f.key} />
+    ) : null;
+  const kontrolNode = (f: Field) => (
+    <>
+      {f.type === 'angka' && <Angka field={f} />}
+      {f.type === 'uang' && <Uang field={f} />}
+      {f.type === 'teks' && <Teks field={f} />}
+      {f.type === 'teks_panjang' && <TeksPanjang field={f} />}
+      {f.type === 'pilih' && <Pilih field={f} />}
+      {f.type === 'ya_tidak' && <YaTidak field={f} />}
+      {f.type === 'centang' && <Centang field={f} />}
+      {f.type === 'status_warna' && <StatusWarna field={f} />}
+      {f.type === 'tabel' && <Tabel field={f} reportId={reportId} />}
+      {f.type === 'lampiran' && <Lampiran field={f} reportId={reportId} />}
+    </>
+  );
+
+  function barisField(f: Field) {
+    const galat = Boolean(errors[f.key]);
+    const kelas = `panel-baris flex flex-col gap-2${galat ? ' status-merah' : ''}`;
+
+    if (f.type === 'ya_tidak') {
+      return (
+        <div key={f.key} id={`baris-${f.key}`} className={kelas} style={{ minHeight: 56 }}>
+          <div className="flex items-center justify-between gap-3">
+            {labelNode(f, f.label)}
+            <YaTidak field={f} />
+          </div>
+          {buktiNode(f)}
+          {bantuanNode(f)}
+          {pesanGalat(f)}
+        </div>
+      );
+    }
+
+    if (f.type === 'centang') {
+      return (
+        <div key={f.key} id={`baris-${f.key}`} className={kelas}>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <label className="flex min-w-0 flex-1 items-center gap-3" style={{ flexBasis: 200 }}>
+              <Centang field={f} />
+              {labelNode(f, f.label)}
+            </label>
+            {buktiNode(f)}
+          </div>
+          {bantuanNode(f)}
+          {pesanGalat(f)}
+        </div>
+      );
+    }
+
+    // tabel / lampiran / status_warna memegang banyak kontrol -- BUKAN <label> (klik pada teks label
+    // tidak boleh meneruskan klik ke tombol pertama di dalamnya).
+    if (f.type === 'tabel' || f.type === 'lampiran' || f.type === 'status_warna') {
+      return (
+        <div key={f.key} id={`baris-${f.key}`} className={kelas}>
+          {labelNode(f, f.label)}
+          {kontrolNode(f)}
+          {buktiNode(f)}
+          {bantuanNode(f)}
+          {pesanGalat(f)}
+        </div>
+      );
+    }
+
+    const sempit = f.type === 'angka' || f.type === 'uang';
+    return (
+      <div key={f.key} id={`baris-${f.key}`} className={kelas}>
+        <label className={`flex flex-col gap-1${sempit ? ' md:max-w-[320px]' : ''}`}>
+          {labelNode(f, f.label)}
+          {kontrolNode(f)}
+        </label>
+        {buktiNode(f)}
+        {bantuanNode(f)}
+        {pesanGalat(f)}
+      </div>
+    );
+  }
+
+  function barisGrup(butir: Extract<ButirTampil, { jenis: 'grup' }>) {
+    const { fields, kunci } = butir;
+    const kolomMd = fields.length === 2 ? 2 : fields.length === 4 ? 2 : 3;
+    return (
+      <div key={fields[0].key} className="panel-baris flex flex-col gap-2">
+        {kunci && (
+          <p style={{ fontFamily: 'var(--display)', fontSize: 14, fontWeight: 700, color: 'var(--biru)' }}>{kunci}</p>
+        )}
+        <div
+          role="group"
+          aria-label={kunci || undefined}
+          className={`grup-isian${butir.tipe === 'uang' ? ' grup-uang' : ''}`}
+          style={{ ['--kolom-md' as string]: kolomMd } as CSSProperties}
+        >
+          {fields.map((f) => {
+            const galat = Boolean(errors[f.key]);
+            return (
+              <div
+                key={f.key}
+                id={`baris-${f.key}`}
+                className="flex flex-col gap-1"
+                style={{ background: galat ? 'var(--merah-lembut)' : undefined, borderRadius: 10, padding: galat ? 6 : 0 }}
+              >
+                <label className="flex flex-col gap-1">
+                  {labelNode(f, kunci ? labelTanpaKunci(f.label) : f.label)}
+                  {kontrolNode(f)}
+                </label>
+                {bantuanNode(f)}
+                {pesanGalat(f)}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  const labelStatusBlok = (block: Block) => {
+    const selesai = blokSelesai(block);
+    if (blokBermasalah(block)) return { teks: 'Periksa lagi', warna: 'var(--merah)' };
+    if (selesai === true) return { teks: 'Selesai', warna: 'var(--hijau)' };
+    if (selesai === false) return { teks: 'Belum diisi', warna: 'var(--label)' };
+    return { teks: `${block.fields.length} isian`, warna: 'var(--kosong)' };
+  };
+
   return (
     <FormProvider {...methods}>
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col" style={{ gap: 'var(--jarak-bagian)' }}>
-        {/* Peta kemajuan (§5.1) -- lihat semua bagian & status sebelum masuk detail. */}
-        <div className="flex flex-col gap-3 border p-4" style={{ borderColor: 'var(--garis)', borderRadius: 'var(--radius-besar)', background: 'var(--kertas-2)' }}>
-          <p className="judul-bagian">Ringkasan pekerjaan hari ini</p>
-          {blokBerwajib.length > 0 && (
-            <>
-              <div className="flex items-baseline gap-2">
-                <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{totalSelesai}</span>
-                <span className="text-sm" style={{ color: 'var(--label)' }}>dari {blokBerwajib.length} bagian wajib selesai</span>
-              </div>
-              <div className="progres-bar">
-                <div
-                  className="progres-bar-isi"
-                  style={{ width: `${Math.round((totalSelesai / blokBerwajib.length) * 100)}%` }}
-                />
-              </div>
-              {blokBerwajib.length - totalSelesai > 0 && (
-                <p className="text-sm" style={{ color: 'var(--label)' }}>
-                  {blokBerwajib.length - totalSelesai} masih perlu diisi
-                </p>
+      <form onSubmit={handleSubmit(onSubmit)} className="grid gap-3 lg:grid-cols-[minmax(0,720px)_300px] lg:items-start lg:gap-x-8">
+        {/* Progres (§5.1) -- SATU panel: angka, bilah, dan lompat-ke-bagian. Di HP: deretan nomor
+            bagian (ketuk = buka + gulir, sama seperti tombol peta lama); di desktop: kolom samping
+            berisi nama + status. Murni navigasi UI -- tidak mengubah data. */}
+        <aside className="panel lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1" aria-label="Progres laporan">
+          <div className="panel-baris flex flex-col gap-2" style={{ padding: 16 }}>
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="judul-seksi">Progres laporan</p>
+              {catatanStatus && (
+                <span className="text-sm" style={{ color: 'var(--kosong)' }} aria-live="polite">
+                  {catatanStatus}
+                </span>
               )}
-            </>
-          )}
-          <div className="flex flex-col">
+            </div>
+            {blokBerwajib.length > 0 ? (
+              <>
+                <div className="flex items-baseline gap-2">
+                  <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{totalSelesai}</span>
+                  <span className="text-sm" style={{ color: 'var(--label)' }}>
+                    dari {blokBerwajib.length} bagian wajib selesai · {blocks.length} bagian
+                  </span>
+                </div>
+                <div className="progres-bar">
+                  <div className="progres-bar-isi" style={{ width: `${Math.round((totalSelesai / blokBerwajib.length) * 100)}%` }} />
+                </div>
+                {blokBerwajib.length - totalSelesai > 0 && (
+                  <p className="text-sm" style={{ color: 'var(--label)' }}>
+                    {blokBerwajib.length - totalSelesai} masih perlu diisi
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm" style={{ color: 'var(--label)' }}>
+                {blocks.length} bagian · tidak ada yang wajib
+              </p>
+            )}
+          </div>
+          <nav className="panel-baris flex flex-wrap gap-2 lg:flex-col lg:gap-1.5" aria-label="Lompat ke bagian" style={{ padding: 12 }}>
             {blocks.map((block, i) => {
-              const selesai = blokSelesai(block);
+              const st = labelStatusBlok(block);
               const bermasalah = blokBermasalah(block);
-              const label = bermasalah
-                ? 'Periksa lagi'
-                : selesai === true
-                  ? 'Selesai'
-                  : selesai === false
-                    ? (ringkasanBlok?.[block.id]?.progres ?? 'Belum diisi')
-                    : 'Tidak wajib';
+              const selesai = blokSelesai(block) === true;
               return (
                 <button
                   key={block.id}
                   type="button"
                   onClick={() => bukaDanGulir(block.id)}
-                  className="flex items-center justify-between gap-2 py-2 text-left text-sm"
-                  style={{ minHeight: 44 }}
+                  aria-label={`${block.judul}: ${st.teks}`}
+                  className="flex items-center justify-center gap-2 text-sm lg:justify-between lg:px-2"
+                  style={{
+                    minHeight: 44,
+                    minWidth: 44,
+                    borderRadius: 10,
+                    border: '1px solid var(--garis)',
+                    background: bermasalah ? 'var(--merah-lembut)' : selesai ? 'var(--hijau-lembut)' : 'var(--kertas)',
+                    color: bermasalah ? 'var(--merah)' : selesai ? 'var(--hijau)' : 'var(--tinta)',
+                    fontWeight: 600,
+                  }}
                 >
-                  <span>
-                    <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--kosong)' }}>{String(i + 1).padStart(2, '0')}</span>{' '}
-                    <span style={{ fontWeight: 500 }}>{block.judul}</span>
+                  <span className="flex items-baseline gap-2 text-left">
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{String(i + 1).padStart(2, '0')}</span>
+                    <span className="sr-only lg:not-sr-only lg:font-medium">{block.judul}</span>
                   </span>
-                  <span className="status-teks" style={{ color: bermasalah ? 'var(--merah)' : selesai === true ? 'var(--hijau)' : 'var(--kosong)', flexShrink: 0 }}>{label}</span>
+                  <span className="status-teks hidden lg:inline" style={{ color: st.warna, flexShrink: 0 }}>{st.teks}</span>
                 </button>
               );
             })}
-          </div>
-        </div>
+          </nav>
+        </aside>
 
-        {blocks.map((block, i) => {
-          const bermasalah = blokBermasalah(block);
-          const terbuka = bermasalah || dibukaManual.has(block.id);
-          const ringkasan = ringkasanBlok?.[block.id];
+        <div className="flex flex-col gap-3 lg:col-start-1 lg:row-start-1">
+          {blocks.map((block, i) => {
+            const bermasalah = blokBermasalah(block);
+            const terbuka = bermasalah || dibukaManual.has(block.id);
+            const ringkasan = ringkasanBlok?.[block.id];
+            const st = labelStatusBlok(block);
 
-          return (
-            <fieldset
-              key={block.id}
-              id={`bagian-${block.id}`}
-              className="bagian-form flex flex-col border"
-              style={{
-                borderColor: bermasalah ? 'var(--merah-garis)' : 'var(--garis)',
-                borderLeftWidth: terbuka ? 'var(--lebar-rail)' : 1,
-                borderLeftColor: bermasalah ? 'var(--merah)' : terbuka ? 'var(--biru)' : 'var(--garis)',
-                borderRadius: 'var(--radius-besar)',
-                padding: 16,
-                gap: terbuka ? 'var(--jarak-field)' : 6,
-                background: bermasalah ? 'var(--merah-lembut)' : 'transparent',
-              }}
-            >
-              <legend className="w-full px-1">
-                <button type="button" onClick={() => togel(block.id)} className="flex w-full items-start justify-between gap-2 text-left" style={{ minHeight: 44 }}>
-                  <span>
-                    <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--kosong)' }}>{String(i + 1).padStart(2, '0')}</span>{' '}
-                    <span className="judul-bagian">{block.judul}</span>
+            return (
+              <section key={block.id} id={`bagian-${block.id}`} className="panel">
+                <button
+                  type="button"
+                  onClick={() => togel(block.id)}
+                  aria-expanded={terbuka}
+                  className={`panel-baris flex w-full items-center justify-between gap-3 text-left${bermasalah ? ' status-merah' : ''}`}
+                  style={{ minHeight: 56 }}
+                >
+                  <span className="flex min-w-0 items-baseline gap-2">
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--kosong)' }}>{String(i + 1).padStart(2, '0')}</span>
+                    <span className="judul-seksi">{block.judul}</span>
                   </span>
-                  <span style={{ color: 'var(--kosong)', fontSize: 'var(--ukuran-label)' }}>{terbuka ? '▲' : '▼'}</span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="status-teks" style={{ color: st.warna }}>{st.teks}</span>
+                    <span aria-hidden="true" style={{ color: 'var(--kosong)', fontSize: 12 }}>{terbuka ? '▲' : '▼'}</span>
+                  </span>
                 </button>
-              </legend>
 
-              {ringkasan?.progres && (
-                <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-progres)', fontWeight: 700, color: ringkasan.status ? WARNA_STATUS[ringkasan.status] : 'var(--tinta)' }}>
-                  {ringkasan.progres}
-                </p>
-              )}
-              {ringkasan?.konsekuensi && (
-                <p className="text-sm" style={{ color: 'var(--label)' }}>
-                  {ringkasan.konsekuensi}
-                </p>
-              )}
+                {ringkasan?.progres && (
+                  <div className="panel-baris">
+                    <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-progres)', fontWeight: 700, color: ringkasan.status ? WARNA_STATUS[ringkasan.status] : 'var(--tinta)' }}>
+                      {ringkasan.progres}
+                    </p>
+                    {ringkasan.konsekuensi && (
+                      <p className="text-sm" style={{ color: 'var(--label)' }}>
+                        {ringkasan.konsekuensi}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {!ringkasan?.progres && ringkasan?.konsekuensi && (
+                  <div className="panel-baris">
+                    <p className="text-sm" style={{ color: 'var(--label)' }}>
+                      {ringkasan.konsekuensi}
+                    </p>
+                  </div>
+                )}
 
-              {/* Konten bagian — beranimasi buka/tutup lewat .bagian-isi
-                  (DESIGN-MODERN.md §M4: tinggi + opasitas). Semua anak
-                  SELALU di-render (bukan kondisional) supaya transisi
-                  height:0→auto berjalan mulus. */}
-              <div className={`bagian-isi${terbuka ? ' bagian-isi-terbuka' : ''}`}>
-                <div className="flex flex-col" style={{ gap: terbuka ? 'var(--jarak-field)' : 0 }}>
-                  {!terbuka && (
-                    <button type="button" onClick={() => togel(block.id)} className="w-fit text-sm" style={{ color: 'var(--biru-3)', minHeight: 44, display: 'flex', alignItems: 'center' }}>
-                      Buka bagian →
-                    </button>
-                  )}
-
-                  {block.catatan && <p className="teks-penjelasan">{block.catatan}</p>}
-                  {block.fields.map((field) => {
-                    const bermasalahField = Boolean(errors[field.key]);
-                    return (
-                      <label
-                        key={field.key}
-                        id={`baris-${field.key}`}
-                        className="flex flex-col gap-1 p-2"
-                        style={{ background: bermasalahField ? 'rgba(166,43,43,0.12)' : 'transparent', borderRadius: 'var(--radius-kecil)' }}
-                      >
-                        <span style={{ fontSize: 'var(--ukuran-label)', color: 'var(--label)' }}>
-                          {field.label}
-                          {field.wajib && <span style={{ color: 'var(--merah)' }}> *</span>}
-                        </span>
-
-                        {field.type === 'angka' && <Angka field={field} />}
-                        {field.type === 'uang' && <Uang field={field} />}
-                        {field.type === 'teks' && <Teks field={field} />}
-                        {field.type === 'teks_panjang' && <TeksPanjang field={field} />}
-                        {field.type === 'pilih' && <Pilih field={field} />}
-                        {field.type === 'ya_tidak' && <YaTidak field={field} />}
-                        {field.type === 'centang' && <Centang field={field} />}
-                        {field.type === 'status_warna' && <StatusWarna field={field} />}
-                        {field.type === 'tabel' && <Tabel field={field} reportId={reportId} />}
-                        {field.type === 'lampiran' && <Lampiran field={field} reportId={reportId} />}
-
-                        {/* type:'tabel' dengan buktiPerBaris merender LampiranInput-nya
-                            SENDIRI, satu per baris, di dalam Tabel.tsx -- bukan di sini
-                            (satu bukti per FIELD tidak masuk akal kalau field ini punya
-                            banyak baris yang masing-masing perlu buktinya sendiri). */}
-                        {field.buktiWajib && !(field.type === 'tabel' && field.buktiPerBaris) && (
-                          <LampiranInput name={`_bukti.${field.key}`} label="Lampirkan bukti" reportId={reportId} fieldKeyAsli={field.buktiKunci ?? field.key} />
-                        )}
-
-                        {field.bantuan && <span className="teks-penjelasan">{field.bantuan}</span>}
-
-                        {bermasalahField && (
-                          <span className="text-sm" style={{ color: 'var(--merah)' }}>
-                            {String(errors[field.key]?.message ?? '')}
-                          </span>
-                        )}
-                      </label>
-                    );
-                  })}
+                {/* Konten bagian — beranimasi buka/tutup lewat .bagian-isi (DESIGN-MODERN.md §M4:
+                    tinggi + opasitas). Semua anak SELALU di-render (bukan kondisional) supaya
+                    transisi height:0→auto berjalan mulus. Jarak/garis ada di div DALAM (bukan di
+                    div yang di-clip) supaya bagian yang diciutkan setinggi 0 -- tanpa strip kosong. */}
+                <div className={`bagian-isi${terbuka ? ' bagian-isi-terbuka' : ''}`}>
+                  <div>
+                    <div style={{ borderTop: '1px solid var(--garis)' }}>
+                      {block.catatan && (
+                        <div className="panel-baris">
+                          <p className="teks-penjelasan">{block.catatan}</p>
+                        </div>
+                      )}
+                      {susunButir(block.fields).map((butir) => (butir.jenis === 'grup' ? barisGrup(butir) : barisField(butir.field)))}
+                    </div>
+                  </div>
                 </div>
+              </section>
+            );
+          })}
+
+          {/* IKUT TER-SCROLL bersama form (app/globals.css .tombol-kirim-menempel sekarang
+              position:static) -- sebelumnya sticky, tapi itu menutupi daftar galat validasi tepat
+              saat paling perlu dibaca (uji HP sungguhan 18 September 2026). */}
+          <div className="tombol-kirim-menempel flex flex-col gap-3" style={{ paddingTop: 4 }}>
+            {pesanError.length > 0 && (
+              <div className="kartu-status rail-merah">
+                <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--merah)' }}>Periksa kembali sebelum mengirim:</p>
+                <ul className="list-disc pl-5 text-sm" style={{ color: 'var(--merah)' }}>
+                  {pesanError.map((e) => (
+                    <li key={e.key}>
+                      <button
+                        type="button"
+                        onClick={() => document.getElementById(`baris-${e.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                        className="text-left underline"
+                        style={{ color: 'var(--merah)', minHeight: 44 }}
+                      >
+                        {e.pesan}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </fieldset>
-          );
-        })}
+            )}
 
-        {/* IKUT TER-SCROLL bersama form (app/globals.css .tombol-kirim-menempel
-            sekarang position:static) -- sebelumnya sticky, tapi itu menutupi
-            daftar galat validasi tepat saat paling perlu dibaca (uji HP
-            sungguhan 18 September 2026). Background solid dipertahankan
-            (tidak berpengaruh saat static, tapi tidak salah juga). */}
-        <div className="tombol-kirim-menempel flex flex-col gap-3" style={{ background: 'var(--kertas)', paddingTop: 12 }}>
-          {pesanError.length > 0 && (
-            <div className="kartu-status rail-merah">
-              <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--merah)' }}>Periksa kembali sebelum mengirim:</p>
-              <ul className="list-disc pl-5 text-sm" style={{ color: 'var(--merah)' }}>
-                {pesanError.map((e) => (
-                  <li key={e.key}>
-                    <button
-                      type="button"
-                      onClick={() => document.getElementById(`baris-${e.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                      className="text-left underline"
-                      style={{ color: 'var(--merah)', minHeight: 44 }}
-                    >
-                      {e.pesan}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <button type="submit" className="tombol-utama w-full">
-            Kirim
-          </button>
+            <button type="submit" className="tombol-utama w-full">
+              Kirim
+            </button>
+          </div>
         </div>
       </form>
     </FormProvider>

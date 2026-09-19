@@ -416,3 +416,26 @@ nextjs-portal, [data-nextjs-dev-tools], [data-next-badge], div[data-nextjs-toast
 @media (min-width: 768px) {
   .sapaan { font-size: 28px; }
 }
+
+/* ================================
+   FORM LAPOR -- grup isian berpasangan (components/FormRenderer.tsx, 20 September 2026).
+   Murni tata letak: field angka/uang sekelompok ditata dalam grid. HP: kolom otomatis
+   (angka min 130px = 2 kolom di 360px; uang min 150px supaya "Rp 999.999.999" tidak terpotong);
+   md+: jumlah kolom dari --kolom-md yang diset FormRenderer. Tinggi baris sama (align-items:end)
+   supaya kolom input sejajar walau label membungkus beda baris.
+   ================================ */
+.grup-isian {
+  display: grid;
+  gap: 12px;
+  align-items: end;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+.grup-isian.grup-uang {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+@media (min-width: 768px) {
+  .grup-isian,
+  .grup-isian.grup-uang {
+    grid-template-columns: repeat(var(--kolom-md, 3), minmax(0, 1fr));
+  }
+}

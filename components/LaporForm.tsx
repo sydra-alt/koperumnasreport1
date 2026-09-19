@@ -413,25 +413,45 @@ export function LaporForm({ formKey }: { formKey: string }) {
 
 
   return (
-    <main className="flex flex-col gap-6 p-6">
-      <h1 style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-angka-besar)', lineHeight: 1.2 }}>{schema.nama}</h1>
+    <main className="mx-auto flex w-full max-w-[1120px] flex-col gap-3 px-4 py-5 md:gap-4 md:px-8 md:py-8">
+      <h1 className="sapaan">{schema.nama}</h1>
 
-      {formKey === 'personal_marketing' && profile && (
-        <div className="kartu-status rail-netral">
-          <p className="text-sm" style={{ color: 'var(--label)' }}>Identitas</p>
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>
-            {profile.nama} · {profile.divisi ?? '—'} · {profile.jabatan ?? '—'}
-          </p>
-        </div>
-      )}
-
-      {formKey !== 'personal_marketing' && profile && (
-        <div className="kartu-status rail-netral" suppressHydrationWarning>
-          <p className="text-sm" style={{ color: 'var(--label)' }}>Identitas</p>
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>
-            {tanggalIndonesiaWIB()}
-            {kombinasiAktif ? ` · ${labelKombinasi(kombinasiAktif)}` : ''} · PIC: {profile.nama}
-          </p>
+      {/* Identitas + status Personal Marketing dalam SATU panel ringkas (sebelumnya dua kartu
+          terpisah) -- isi/angka sama persis. */}
+      {profile && (
+        <div className="panel" suppressHydrationWarning>
+          <div className="panel-baris">
+            <p style={{ fontSize: 12, color: 'var(--label)' }}>Identitas</p>
+            <p style={{ fontFamily: 'var(--display)', fontWeight: 600, fontSize: 15, lineHeight: 1.35 }}>
+              {formKey === 'personal_marketing' ? (
+                <>
+                  {profile.nama} · {profile.divisi ?? '—'} · {profile.jabatan ?? '—'}
+                </>
+              ) : (
+                <>
+                  {tanggalIndonesiaWIB()}
+                  {kombinasiAktif ? ` · ${labelKombinasi(kombinasiAktif)}` : ''} · PIC: {profile.nama}
+                </>
+              )}
+            </p>
+          </div>
+          {perluRollupMarketing && progres && closingTarget !== null && poinMaksimal !== null && (
+            <div className="panel-baris">
+              <div className="flex items-baseline justify-between gap-3">
+                <p style={{ fontFamily: 'var(--display)', fontWeight: 600, fontSize: 15 }}>Laporan Personal Marketing</p>
+                <p className="status-teks" style={{ color: laporanMarketingHariIni?.status && laporanMarketingHariIni.status !== 'draft' ? 'var(--hijau)' : 'var(--merah)' }}>
+                  {laporanMarketingHariIni?.status && laporanMarketingHariIni.status !== 'draft' ? 'Sudah dikirim' : 'Belum dikirim'}
+                </p>
+              </div>
+              <p className="text-sm" style={{ color: 'var(--label)' }}>
+                PTE hari ini: {poinBulanIni?.find((r) => r.tanggal === tanggalWIB())?.poin_total ?? 0} / {poinMaksimal} poin
+                {progres.pte_berlaku
+                  ? ` · Poin bulan ini: ${ringkasanBulanIni?.totalPoin ?? 0} / ${(targetPoinBulanIni ?? 0).toLocaleString('id-ID')} (${ringkasanBulanIni?.hariPenuh ?? 0} dari ${hariWajibBulanIni} hari penuh)`
+                  : ''}
+                {' · '}Closing bulan ini: {progres.closing} / {closingTarget}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -522,27 +542,6 @@ export function LaporForm({ formKey }: { formKey: string }) {
         </div>
       )}
 
-      {/* Rollup ringkas di form SELAIN personal_marketing (mis. layar Lapor
-          Resto) -- MENGGANTIKAN "Undangan bulan ini X/20 · Closing bulan ini
-          X/2" lama (20 September 2026). Poin hari ini + akumulasi bulanan
-          milik SENDIRI (pengisi form ini), Closing tetap ditampilkan
-          terpisah (aturan CEO: bonus sendiri, bukan komponen 80 poin). */}
-      {perluRollupMarketing && progres && closingTarget !== null && poinMaksimal !== null && (
-        <div className="kartu-status rail-netral flex flex-col gap-1">
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Laporan Personal Marketing</p>
-          <p className="status-teks" style={{ color: laporanMarketingHariIni?.status && laporanMarketingHariIni.status !== 'draft' ? 'var(--hijau)' : 'var(--merah)' }}>
-            {laporanMarketingHariIni?.status && laporanMarketingHariIni.status !== 'draft' ? 'Sudah dikirim' : 'Belum dikirim'}
-          </p>
-          <p className="text-sm" style={{ color: 'var(--label)' }}>
-            PTE hari ini: {poinBulanIni?.find((r) => r.tanggal === tanggalWIB())?.poin_total ?? 0} / {poinMaksimal} poin
-            {progres.pte_berlaku
-              ? ` · Poin bulan ini: ${ringkasanBulanIni?.totalPoin ?? 0} / ${(targetPoinBulanIni ?? 0).toLocaleString('id-ID')} (${ringkasanBulanIni?.hariPenuh ?? 0} dari ${hariWajibBulanIni} hari penuh)`
-              : ''}
-            {' · '}Closing bulan ini: {progres.closing} / {closingTarget}
-          </p>
-        </div>
-      )}
-
       {formKey === 'pembangunan' && rekapPembangunan && <RekapPembangunanOtomatis data={rekapPembangunan} />}
 
       {formKey === 'it' && belumUpload && <BelumUploadOtomatis data={belumUpload} />}
@@ -561,12 +560,6 @@ export function LaporForm({ formKey }: { formKey: string }) {
 
       {formKey === 'hrd' && cutiHariIni && <AbsensiCutiOtomatis data={cutiHariIni} />}
 
-      <p className="text-sm" style={{ color: 'var(--kosong)' }}>
-        {statusSimpan === 'menyimpan' && 'Menyimpan draft…'}
-        {statusSimpan === 'tersimpan' && 'Draft tersimpan.'}
-        {statusSimpan === 'gagal' && 'Gagal menyimpan draft.'}
-      </p>
-
       <FormRenderer
         schema={schema}
         nilaiAwal={reportHariIni?.data}
@@ -575,6 +568,15 @@ export function LaporForm({ formKey }: { formKey: string }) {
         onSubmit={tanganiKirim}
         ringkasanBlok={ringkasanBlokPersonalMarketing}
         laporanTerkirim={laporanTerkirim}
+        catatanStatus={
+          statusSimpan === 'menyimpan'
+            ? 'Menyimpan draft…'
+            : statusSimpan === 'tersimpan'
+              ? 'Draft tersimpan.'
+              : statusSimpan === 'gagal'
+                ? 'Gagal menyimpan draft.'
+                : undefined
+        }
       />
 
       {mengirim && <p>Mengirim…</p>}
@@ -622,8 +624,8 @@ function RekapUnitOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
   const sel = (n: number | null) => (n ?? 0).toString();
 
   return (
-    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
+    <div className="panel p-4">
+      <p className="judul-seksi">
         Rekap Unit Seluruh Lokasi (dari PIC Lokasi)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
@@ -683,8 +685,8 @@ function RekapMaterialOtomatis({ data }: { data: PembangunanPerLokasiRow[] }) {
   const yaTidak = (v: boolean | null) => (v === null ? '—' : v ? '✅' : '❌');
 
   return (
-    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
+    <div className="panel p-4">
+      <p className="judul-seksi">
         Material per Lokasi (dari PIC Lokasi)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
@@ -724,8 +726,8 @@ function RekapInfrastrukturOtomatis({ data }: { data: PembangunanPerLokasiRow[] 
   const yaTidak = (v: boolean | null) => (v === null ? '—' : v ? '✅' : '❌');
 
   return (
-    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
+    <div className="panel p-4">
+      <p className="judul-seksi">
         Kondisi Infrastruktur per Lokasi (dari PIC Lokasi)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
@@ -765,8 +767,8 @@ function RekapInfrastrukturOtomatis({ data }: { data: PembangunanPerLokasiRow[] 
  */
 function BelumUploadOtomatis({ data }: { data: LokasiBelumUpload[] }) {
   return (
-    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
+    <div className="panel p-4">
+      <p className="judul-seksi">
         PIC Lokasi yang Belum Mengirim Foto/Video Pembangunan
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
@@ -796,19 +798,25 @@ function BelumUploadOtomatis({ data }: { data: LokasiBelumUpload[] }) {
  */
 function KebutuhanBesokRestoOtomatis({ data }: { data: ReturnType<typeof ringkasanKebutuhanBesok> }) {
   const adaKebutuhan = data.stokHabis.length > 0 || data.stokAkanHabis.length > 0 || data.esBatu || data.air || data.gas;
+  if (!adaKebutuhan) {
+    return (
+      <div className="panel panel-baris flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="judul-seksi">Kebutuhan untuk Besok</p>
+        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+          Belum ada kebutuhan tercatat di atas.
+        </p>
+      </div>
+    );
+  }
   return (
-    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
+    <div className="panel p-4">
+      <p className="judul-seksi">
         Kebutuhan untuk Besok
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
         Ringkasan otomatis dari &quot;Stok Habis / Kebutuhan Kiriman Pusat&quot; dan &quot;Utilitas&quot; di atas. Hanya baca.
       </p>
-      {!adaKebutuhan ? (
-        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
-          Belum ada kebutuhan tercatat di atas.
-        </p>
-      ) : (
+      {(
         <div className="flex flex-col gap-2 text-sm">
           {data.stokHabis.map((b, i) => (
             <p key={`habis-${i}`}>
@@ -840,8 +848,8 @@ function KebutuhanBesokRestoOtomatis({ data }: { data: ReturnType<typeof ringkas
  */
 function StokManagerUntukKontrolFnbOtomatis({ data }: { data: ManagerRestoUntukKontrolFnbRow[] }) {
   return (
-    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
+    <div className="panel p-4">
+      <p className="judul-seksi">
         Angka Manager Resto (pembanding &amp; kebutuhan stok)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
@@ -895,8 +903,8 @@ function StokManagerUntukKontrolFnbOtomatis({ data }: { data: ManagerRestoUntukK
 function KebutuhanPembangunanAccountingOtomatis({ data }: { data: KebutuhanPembangunanAccounting }) {
   const rupiah = (n: number) => `Rp${n.toLocaleString('id-ID')}`;
   return (
-    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
+    <div className="panel p-4">
+      <p className="judul-seksi">
         Kebutuhan Pembangunan
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
@@ -946,8 +954,8 @@ function KebutuhanPembangunanAccountingOtomatis({ data }: { data: KebutuhanPemba
 function OmzetRestoOtomatis({ data }: { data: OmzetRestoRow[] }) {
   const rupiah = (n: number | null) => (n === null ? '—' : `Rp${n.toLocaleString('id-ID')}`);
   return (
-    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
+    <div className="panel p-4">
+      <p className="judul-seksi">
         Omzet Resto -- Tiga Pengukuran
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
@@ -984,8 +992,8 @@ function OmzetRestoOtomatis({ data }: { data: OmzetRestoRow[] }) {
 function CashflowOtomatis({ data }: { data: ReturnType<typeof hitungCashflowHariIni> }) {
   const rupiah = (n: number) => `Rp${n.toLocaleString('id-ID')}`;
   return (
-    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
+    <div className="panel p-4">
+      <p className="judul-seksi">
         Cashflow Hari Ini (dihitung otomatis)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
@@ -1009,8 +1017,8 @@ const LABEL_CUTI_JENIS: Record<CutiUntukTanggal['jenis'], string> = { cuti: 'Cut
  */
 function AbsensiCutiOtomatis({ data }: { data: CutiUntukTanggal[] }) {
   return (
-    <div className="border p-4" style={{ borderColor: 'var(--garis)' }}>
-      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
+    <div className="panel p-4">
+      <p className="judul-seksi">
         Sakit / Izin / Cuti Hari Ini (dari halaman Cuti)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>

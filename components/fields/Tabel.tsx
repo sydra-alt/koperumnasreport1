@@ -21,7 +21,8 @@ export function Tabel({ field, reportId }: { field: Field; reportId?: string | n
   return (
     <div className="flex flex-col gap-2">
       {fields.map((baris, i) => (
-        <div key={baris.id} className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
+        <div key={baris.id} className="flex flex-col gap-3 p-3" style={{ background: 'var(--kertas)', borderRadius: 12 }}>
+          <div className="grid gap-3 md:grid-cols-2">
           {kolom.map((k) => (
             <label key={k.key} className="flex flex-col gap-1 text-sm">
               {k.label}
@@ -46,6 +47,7 @@ export function Tabel({ field, reportId }: { field: Field; reportId?: string | n
               )}
             </label>
           ))}
+          </div>
 
           {field.buktiPerBaris && (
             <LampiranInput
@@ -60,7 +62,7 @@ export function Tabel({ field, reportId }: { field: Field; reportId?: string | n
             type="button"
             onClick={() => remove(i)}
             className="self-start border px-3 py-2 text-sm"
-            style={{ borderColor: 'var(--merah)', color: 'var(--merah)', minHeight: 44 }}
+            style={{ borderColor: 'var(--merah-garis)', color: 'var(--merah)', background: 'var(--permukaan)', minHeight: 44 }}
           >
             Hapus baris
           </button>
@@ -69,8 +71,8 @@ export function Tabel({ field, reportId }: { field: Field; reportId?: string | n
       <button
         type="button"
         onClick={() => append(field.buktiPerBaris ? { kunci: crypto.randomUUID() } : {})}
-        className="self-start border px-3 py-2 text-sm"
-        style={{ borderColor: 'var(--garis)', minHeight: 44 }}
+        className="tombol-sekunder self-start"
+        style={{ fontSize: 14, padding: '8px 16px' }}
       >
         + Tambah baris
       </button>

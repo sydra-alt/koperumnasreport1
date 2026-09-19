@@ -67,9 +67,9 @@ export function LampiranInput({ name, label = 'Lampirkan bukti', reportId, field
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <label
-        className="tombol-pil inline-flex w-fit items-center border px-4"
+        className="tombol-pil inline-flex w-fit shrink-0 items-center border px-4"
         style={{
           borderColor: siapUnggah ? 'var(--biru)' : 'var(--kosong)',
           color: siapUnggah ? 'var(--biru)' : 'var(--kosong)',
@@ -93,13 +93,17 @@ export function LampiranInput({ name, label = 'Lampirkan bukti', reportId, field
       </label>
 
       {!reportId && (
-        <span className="text-sm" style={{ color: 'var(--kosong)' }}>
-          Simpan draft dulu sebelum melampirkan bukti.
+        <span style={{ fontSize: 12, color: 'var(--kosong)', lineHeight: 1.3 }}>
+          Simpan draft dulu.
         </span>
       )}
 
+      {siapUnggah && items.length === 0 && (
+        <span style={{ fontSize: 12, color: 'var(--kosong)', lineHeight: 1.3 }}>Belum ada bukti</span>
+      )}
+
       {pesanError && (
-        <span className="text-sm" style={{ color: 'var(--merah)' }}>
+        <span className="w-full text-sm" style={{ color: 'var(--merah)' }}>
           {pesanError}
         </span>
       )}
@@ -107,7 +111,7 @@ export function LampiranInput({ name, label = 'Lampirkan bukti', reportId, field
       {Object.entries(progres)
         .filter(([, p]) => p < 100)
         .map(([nama, p]) => (
-          <div key={nama} className="text-sm">
+          <div key={nama} className="w-full text-sm">
             Mengunggah {nama}… {p}%
             <div className="h-2 w-full" style={{ background: 'var(--garis)' }}>
               <div className="h-2" style={{ width: `${p}%`, background: 'var(--biru)' }} />
@@ -116,7 +120,7 @@ export function LampiranInput({ name, label = 'Lampirkan bukti', reportId, field
         ))}
 
       {items.length > 0 && (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex w-full flex-col gap-2">
           {items.map((it, i) => (
             <li
               key={it.id}
