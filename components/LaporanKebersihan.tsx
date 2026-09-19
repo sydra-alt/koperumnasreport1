@@ -16,7 +16,7 @@ import {
   apakahTerlambatKebersihan,
   type SlotKebersihan,
 } from '../lib/api/kebersihan';
-import { jamWIB, tanggalWIB } from '../lib/tanggal';
+import { jamWIB, tanggalIndonesiaWIB, tanggalWIB } from '../lib/tanggal';
 import { CameraCapture } from './CameraCapture';
 import { KerangkaDaftarKartu } from './Kerangka';
 import {
@@ -115,11 +115,12 @@ export function LaporanKebersihan() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [semuaSelesai, idLaporan, reportHariIni?.status]);
 
-  const judul = <h1 style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-angka-besar)', lineHeight: 1.2 }}>Laporan Kebersihan</h1>;
+  const kelasHalaman = 'mx-auto flex w-full max-w-[1120px] flex-col gap-3 px-4 py-5 md:gap-4 md:px-8 md:py-8';
+  const judul = <h1 className="sapaan">Laporan Kebersihan</h1>;
 
   if (outletLoading) {
     return (
-      <main className="flex flex-col gap-6 p-6">
+      <main className={kelasHalaman}>
         {judul}
         <KerangkaDaftarKartu jumlah={2} />
       </main>
@@ -128,11 +129,13 @@ export function LaporanKebersihan() {
 
   if (!outletSaya || outletSaya.length === 0) {
     return (
-      <main className="flex flex-col gap-6 p-6">
+      <main className={kelasHalaman}>
         {judul}
-        <div className="kartu-status rail-netral">
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Tidak ada penugasan</p>
-          <p className="text-sm" style={{ color: 'var(--label)' }}>Anda belum ditugaskan mengisi Laporan Kebersihan untuk outlet mana pun.</p>
+        <div className="panel">
+          <div className="panel-baris">
+            <p className="judul-seksi">Tidak ada penugasan</p>
+            <p className="text-sm" style={{ color: 'var(--label)' }}>Anda belum ditugaskan mengisi Laporan Kebersihan untuk outlet mana pun.</p>
+          </div>
         </div>
       </main>
     );
@@ -140,13 +143,22 @@ export function LaporanKebersihan() {
 
   if (!outletId) {
     return (
-      <main className="flex flex-col gap-6 p-6">
+      <main className={kelasHalaman}>
         {judul}
-        <div className="flex flex-col gap-2">
-          <p>Pilih outlet untuk laporan hari ini:</p>
+        <div className="panel md:max-w-[720px]">
+          <div className="panel-baris">
+            <p className="judul-seksi">Pilih outlet untuk laporan hari ini:</p>
+          </div>
           {outletSaya.map((o) => (
-            <button key={o.id} type="button" onClick={() => setOutletId(o.id)} className="kartu-status rail-netral text-left">
-              {o.nama}
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => setOutletId(o.id)}
+              className="panel-baris flex w-full items-center justify-between gap-3 text-left"
+              style={{ minHeight: 56, borderRadius: 0 }}
+            >
+              <span style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{o.nama}</span>
+              <span aria-hidden="true" style={{ color: 'var(--kosong)' }}>›</span>
             </button>
           ))}
         </div>
@@ -221,10 +233,10 @@ export function LaporanKebersihan() {
   if (slotAktif) {
     const label = SLOT_KEBERSIHAN.find((s) => s.key === slotAktif)?.label ?? slotAktif;
     return (
-      <main className="flex flex-col gap-6 p-6">
+      <main className={kelasHalaman}>
         {judul}
-        <div className="flex flex-col gap-3">
-          <p className="judul-bagian">Foto: {label}</p>
+        <div className="flex flex-col gap-3 md:max-w-[720px]">
+          <p className="judul-seksi">Foto: {label}</p>
           <CameraCapture
             onGunakan={(blob) => void setelahFoto(slotAktif, blob)}
             onBatal={() => setSlotAktif(null)}
@@ -236,81 +248,116 @@ export function LaporanKebersihan() {
     );
   }
 
+  const slotMuat = reportLoading || !idLaporan;
+  const jumlahPending = SLOT_KEBERSIHAN.filter((s) => draftPending[s.key] && !fotoTersimpan?.some((f) => f.slot === s.key)).length;
+
   return (
-    <main className="flex flex-col gap-6 p-6">
+    <main className={kelasHalaman}>
       {judul}
-      <div>
-        <p className="judul-bagian">{outlet?.nama}</p>
-        {batas ? (
-          <p className="text-sm" style={{ color: terlambatKalauSekarang && !semuaSelesai ? 'var(--merah)' : 'var(--label)' }}>
-            {jadwalHariIni?.buka24Jam ? `Buka 24 jam hari ini · Batas kirim ${batas} WIB` : `Batas kirim ${batas} WIB`}
-          </p>
-        ) : (
-          <p className="text-sm" style={{ color: 'var(--kosong)' }}>Batas kirim belum diatur -- hubungi Admin untuk mengisi jadwal operasional outlet.</p>
-        )}
-      </div>
 
-      {reportLoading || !idLaporan ? (
-        <KerangkaDaftarKartu jumlah={5} />
-      ) : (
-        <div className="flex flex-col gap-3">
-          {SLOT_KEBERSIHAN.map((slot) => {
-            const foto = fotoTersimpan?.find((f) => f.slot === slot.key);
-            const diambilOrangLain = Boolean(foto) && foto?.uploadedByNama && foto.uploadedByNama !== profile?.nama;
-            const pending = draftPending[slot.key];
-            const sedangKirim = mengirimSlot === slot.key;
-            const rail = foto ? 'rail-hijau' : pending ? 'rail-kuning' : 'rail-netral';
-            return (
-              <div key={slot.key} className={`kartu-status ${rail} flex items-center justify-between gap-3`}>
-                <div>
-                  <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{slot.label}</p>
-                  <p className="status-teks" style={{ color: foto ? 'var(--hijau)' : pending ? 'var(--kuning)' : 'var(--kosong)' }}>
-                    {foto
-                      ? diambilOrangLain
-                        ? `Sudah dikirim ${foto.uploadedByNama}, ${jamWIB(new Date(foto.createdAt))}`
-                        : 'Sudah diambil'
-                      : pending
-                        ? 'Belum terkirim'
-                        : 'Belum diambil'}
-                  </p>
-                  {pesanErrorSlot[slot.key] && (
-                    <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanErrorSlot[slot.key]}</p>
-                  )}
-                </div>
-                {foto ? null : pending ? (
-                  <button
-                    type="button"
-                    disabled={sedangKirim}
-                    onClick={() => void cobaKirimUlang(slot.key)}
-                    className="tombol-sekunder"
-                    style={{ flexShrink: 0 }}
-                  >
-                    {sedangKirim ? 'Mengirim…' : 'Coba Lagi'}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={sedangKirim}
-                    onClick={() => mulaiAmbil(slot.key)}
-                    className="tombol-utama"
-                    style={{ flexShrink: 0, fontSize: 14, padding: '8px 16px', minHeight: 44 }}
-                  >
-                    {sedangKirim ? 'Mengirim…' : 'Ambil Foto'}
-                  </button>
-                )}
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,720px)_300px] lg:items-start lg:gap-x-8">
+        {/* Konteks (outlet, tanggal, batas kirim) + progres -- SATU panel; di desktop jadi kolom samping. */}
+        <aside className="panel lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1" aria-label="Ringkasan laporan">
+          <div className="panel-baris flex flex-col gap-1">
+            <p className="judul-seksi">{outlet?.nama}</p>
+            <p className="text-sm" style={{ color: 'var(--label)' }} suppressHydrationWarning>{tanggalIndonesiaWIB()}</p>
+            {batas ? (
+              <p className="text-sm" style={{ color: terlambatKalauSekarang && !semuaSelesai ? 'var(--merah)' : 'var(--label)' }}>
+                {jadwalHariIni?.buka24Jam ? `Buka 24 jam hari ini · Batas kirim ${batas} WIB` : `Batas kirim ${batas} WIB`}
+              </p>
+            ) : (
+              <p className="text-sm" style={{ color: 'var(--kosong)' }}>Batas kirim belum diatur -- hubungi Admin untuk mengisi jadwal operasional outlet.</p>
+            )}
+          </div>
+          {!slotMuat && (
+            <div className={`panel-baris flex flex-col gap-2${semuaSelesai ? ' status-hijau' : ''}`}>
+              <div className="flex items-baseline gap-2">
+                <span className="angka-kecil" style={{ color: semuaSelesai ? 'var(--hijau)' : 'var(--biru)' }}>{jumlahTerisi}</span>
+                <span className="text-sm" style={{ color: 'var(--label)' }}>dari {SLOT_KEBERSIHAN.length} foto</span>
               </div>
-            );
-          })}
-        </div>
-      )}
+              <div className="progres-bar">
+                <div className="progres-bar-isi" style={{ width: `${Math.round((jumlahTerisi / SLOT_KEBERSIHAN.length) * 100)}%` }} />
+              </div>
+              {semuaSelesai && (
+                <p className="status-teks" style={{ color: 'var(--hijau)' }}>
+                  {reportHariIni?.status === 'terlambat' ? 'Laporan hari ini lengkap (terlambat)' : 'Laporan hari ini lengkap'}
+                </p>
+              )}
+              {!semuaSelesai && jumlahPending > 0 && (
+                <p className="status-teks" style={{ color: 'var(--kuning)' }}>
+                  {jumlahPending} foto belum terkirim
+                </p>
+              )}
+            </div>
+          )}
+        </aside>
 
-      {semuaSelesai && (
-        <div className="kartu-status rail-hijau">
-          <p className="status-teks" style={{ color: 'var(--hijau)' }}>
-            {reportHariIni?.status === 'terlambat' ? 'Laporan hari ini lengkap (terlambat)' : 'Laporan hari ini lengkap'}
-          </p>
+        <div className="lg:col-start-1 lg:row-start-1">
+          {slotMuat ? (
+            <KerangkaDaftarKartu jumlah={5} />
+          ) : (
+            <section className="panel">
+              <div className="panel-baris flex items-baseline justify-between gap-3">
+                <h2 className="judul-seksi">Foto kebersihan</h2>
+                <span className="text-sm" style={{ fontFamily: 'var(--mono)', color: 'var(--label)' }}>{jumlahTerisi}/{SLOT_KEBERSIHAN.length}</span>
+              </div>
+              {SLOT_KEBERSIHAN.map((slot, i) => {
+                const foto = fotoTersimpan?.find((f) => f.slot === slot.key);
+                const diambilOrangLain = Boolean(foto) && foto?.uploadedByNama && foto.uploadedByNama !== profile?.nama;
+                const pending = draftPending[slot.key];
+                const sedangKirim = mengirimSlot === slot.key;
+                return (
+                  <div
+                    key={slot.key}
+                    className={`panel-baris flex items-center justify-between gap-3${foto ? ' status-hijau' : pending ? ' status-kuning' : ''}`}
+                    style={{ minHeight: 68 }}
+                  >
+                    <div className="flex min-w-0 items-baseline gap-3">
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--kosong)' }}>{String(i + 1).padStart(2, '0')}</span>
+                      <div className="min-w-0">
+                        <p style={{ fontFamily: 'var(--display)', fontWeight: 600, fontSize: 15, lineHeight: 1.3 }}>{slot.label}</p>
+                        <p className="status-teks" style={{ color: foto ? 'var(--hijau)' : pending ? 'var(--kuning)' : 'var(--kosong)' }}>
+                          {foto
+                            ? diambilOrangLain
+                              ? `Sudah dikirim ${foto.uploadedByNama}, ${jamWIB(new Date(foto.createdAt))}`
+                              : 'Sudah diambil'
+                            : pending
+                              ? 'Belum terkirim'
+                              : 'Belum diambil'}
+                        </p>
+                        {pesanErrorSlot[slot.key] && (
+                          <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanErrorSlot[slot.key]}</p>
+                        )}
+                      </div>
+                    </div>
+                    {foto ? null : pending ? (
+                      <button
+                        type="button"
+                        disabled={sedangKirim}
+                        onClick={() => void cobaKirimUlang(slot.key)}
+                        className="tombol-sekunder"
+                        style={{ flexShrink: 0, minWidth: 112 }}
+                      >
+                        {sedangKirim ? 'Mengirim…' : 'Coba Lagi'}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={sedangKirim}
+                        onClick={() => mulaiAmbil(slot.key)}
+                        className="tombol-utama"
+                        style={{ flexShrink: 0, minWidth: 112, fontSize: 14, padding: '8px 16px', minHeight: 44 }}
+                      >
+                        {sedangKirim ? 'Mengirim…' : 'Ambil Foto'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </section>
+          )}
         </div>
-      )}
+      </div>
     </main>
   );
 }
