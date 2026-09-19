@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+// 🛑🛑 BAHAYA -- NAMA FILE INI MENYESATKAN: BUKAN untuk akun uji, BUKAN alat pemulih. 🛑🛑
+// Mereset password SEMUA akun di akun.json (40+ KARYAWAN SUNGGUHAN, database produksi) ke 'admin123'
+// TANPA menyentuh harus_ganti_password -- yang sudah pernah ganti password akan bisa dimasuki siapa pun
+// yang tahu 'admin123'. Karena itu skrip ini MENOLAK jalan tanpa flag eksplisit di bawah.
+// Untuk memulihkan akun UJI saja: node scripts/pulihkan-akun-uji.mjs
 // ⚠️ Terapkan password seragam 'admin123' ke SEMUA akun di scripts/akun.json
 // -- akun.json sekarang berisi 40+ KARYAWAN SUNGGUHAN, bukan "7 akun uji"
 // seperti header ini sebelumnya menyebut (istilah dari 30 Agustus 2026, saat
@@ -23,6 +28,14 @@ import { createClient } from '@supabase/supabase-js';
 import { Client } from 'pg';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const FLAG_BAHAYA = '--saya-paham-ini-mereset-password-SEMUA-karyawan-sungguhan';
+if (!process.argv.includes(FLAG_BAHAYA)) {
+  console.error(`DITOLAK. Skrip ini mereset password SEMUA akun di akun.json (karyawan sungguhan) ke 'admin123'.
+Untuk memulihkan akun UJI saja jalankan: node scripts/pulihkan-akun-uji.mjs
+Kalau memang itu yang dimaksud, tambahkan flag: ${FLAG_BAHAYA}`);
+  process.exit(1);
+}
 dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -34,7 +47,7 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRe
 const db = new Client({ connectionString: dbUrl });
 await db.connect();
 
-console.log('Menyamakan password 7 akun uji ke "admin123" (harus_ganti_password sudah true lewat DEFAULT kolom)...\n');
+console.log(`Menyamakan password ${daftarAkun.length} akun di akun.json ke "admin123" (KARYAWAN SUNGGUHAN)...\n`);
 
 let berhasil = 0;
 for (const akun of daftarAkun) {

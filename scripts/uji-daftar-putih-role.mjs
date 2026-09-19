@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+// ⚠️⚠️ PERINGATAN -- SKRIP INI MENULIS SUNGGUHAN KE DATABASE YANG JUGA PRODUKSI (26 orang) ⚠️⚠️
+// TIDAK bisa di-ROLLBACK (server yang diuji membaca lewat koneksi lain, jadi transaksi mustahil).
+// Yang diubah: password + profile.harus_ganti_password akun uji6, dan baris role akun uji5 (percobaan insert, dibersihkan) -- HANYA akun uji, tabel: auth.users, profile, role.
+// Dipulihkan otomatis di finally DAN saat Ctrl-C/galat (scripts/_pengaman-uji.mjs). Kalau proses
+// DIMATIKAN PAKSA (kill -9): jalankan `node scripts/pulihkan-akun-uji.mjs` SEBELUM akun uji dipakai lagi.
 // Uji SUNGGUHAN (login HTTP nyata, BUKAN penyamaran JWT) untuk perbaikan
 // celah eskalasi privilese role (migrasi 0050, 6 September 2026). Pola
 // login sama persis dengan uji-ekspor-keuangan-curl.mjs: createServerClient
@@ -30,6 +35,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
+import { pasangPemulih } from './_pengaman-uji.mjs';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { Client as PgClient } from 'pg';
@@ -57,6 +63,27 @@ const admin = createAdminClient(supabaseUrl, serviceRoleKey, { auth: { autoRefre
 const passwordSementara = crypto.randomBytes(12).toString('base64url').slice(0, 16);
 
 const hasil = [];
+
+// Pemulihan idempoten -- dipanggil dari finally DAN dari penangan sinyal/galat.
+const pulihkan = pasangPemulih('uji-daftar-putih-role', async () => {
+  // Pastikan AKUN UJI - Tanpa Peran kembali PERSIS ke baseline-nya (TIDAK
+  // ADA role sama sekali -- itu identitasnya, beda dari Anne dulu yang
+  // baseline-nya 'karyawan'), apa pun hasil uji di atas.
+  await db.query('delete from public.role where user_id = $1', [idAkunTarget]);
+
+  const { error: errPw } = await admin.auth.admin.updateUserById(idAkunAdmin, { password: 'admin123' });
+  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI - Admin ke admin123: ${errPw.message}`);
+  await db.query('update public.profile set harus_ganti_password = true where id = $1;', [idAkunAdmin]);
+  const { rows: cekAkun } = await db.query(
+    `select p.harus_ganti_password, u.updated_at, u.last_sign_in_at from public.profile p join auth.users u on u.id = p.id where p.id = $1`,
+    [idAkunAdmin],
+  );
+  const pulihSempurna = cekAkun[0]?.harus_ganti_password === true && new Date(cekAkun[0].updated_at) > new Date(cekAkun[0].last_sign_in_at);
+  console.log(pulihSempurna
+    ? '\nDibersihkan: AKUN UJI - Tanpa Peran kembali tanpa role, AKUN UJI - Admin dikembalikan (dibuktikan lewat updated_at > last_sign_in_at).'
+    : `\n🛑 AKUN UJI - Admin BELUM PULIH SEPENUHNYA -- ${JSON.stringify(cekAkun[0])}.`);
+  await db.end();
+});
 
 try {
   const { error: errReset } = await admin.auth.admin.updateUserById(idAkunAdmin, { password: passwordSementara });
@@ -98,21 +125,5 @@ try {
   console.log(semuaLolos ? '\n✅ SEMUA LOLOS -- daftar putih menahan role terkunci, kontrol positif membuktikan policy tidak cuma menolak semuanya.' : '\n🛑 ADA YANG GAGAL -- lihat tabel di atas.');
   process.exitCode = semuaLolos ? 0 : 1;
 } finally {
-  // Pastikan AKUN UJI - Tanpa Peran kembali PERSIS ke baseline-nya (TIDAK
-  // ADA role sama sekali -- itu identitasnya, beda dari Anne dulu yang
-  // baseline-nya 'karyawan'), apa pun hasil uji di atas.
-  await db.query('delete from public.role where user_id = $1', [idAkunTarget]);
-
-  const { error: errPw } = await admin.auth.admin.updateUserById(idAkunAdmin, { password: 'admin123' });
-  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI - Admin ke admin123: ${errPw.message}`);
-  await db.query('update public.profile set harus_ganti_password = true where id = $1;', [idAkunAdmin]);
-  const { rows: cekAkun } = await db.query(
-    `select p.harus_ganti_password, u.updated_at, u.last_sign_in_at from public.profile p join auth.users u on u.id = p.id where p.id = $1`,
-    [idAkunAdmin],
-  );
-  const pulihSempurna = cekAkun[0]?.harus_ganti_password === true && new Date(cekAkun[0].updated_at) > new Date(cekAkun[0].last_sign_in_at);
-  console.log(pulihSempurna
-    ? '\nDibersihkan: AKUN UJI - Tanpa Peran kembali tanpa role, AKUN UJI - Admin dikembalikan (dibuktikan lewat updated_at > last_sign_in_at).'
-    : `\n🛑 AKUN UJI - Admin BELUM PULIH SEPENUHNYA -- ${JSON.stringify(cekAkun[0])}.`);
-  await db.end();
+  await pulihkan();
 }

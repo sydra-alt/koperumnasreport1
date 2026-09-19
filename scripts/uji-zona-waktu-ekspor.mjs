@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+// ⚠️⚠️ PERINGATAN -- SKRIP INI MENULIS SUNGGUHAN KE DATABASE YANG JUGA PRODUKSI (26 orang) ⚠️⚠️
+// TIDAK bisa di-ROLLBACK (server yang diuji membaca lewat koneksi lain, jadi transaksi mustahil).
+// Yang diubah: password + profile.harus_ganti_password akun uji4, dan baris absensi uji2 HARI INI (dihapus lalu dibuat ulang) -- HANYA akun uji, tabel: auth.users, profile, absensi.
+// Dipulihkan otomatis di finally DAN saat Ctrl-C/galat (scripts/_pengaman-uji.mjs). Kalau proses
+// DIMATIKAN PAKSA (kill -9): jalankan `node scripts/pulihkan-akun-uji.mjs` SEBELUM akun uji dipakai lagi.
 // Uji regresi ZONA WAKTU EKSPOR ABSENSI (dilaporkan user 31 Agustus 2026):
 // layar menunjukkan 09.23 WIB, Excel menulis 02:23 -- selisih TEPAT 7 jam
 // (UTC vs WIB) karena `new Date(r.waktu)` dikirim mentah ke ExcelJS, yang
@@ -29,6 +34,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
+import { pasangPemulih } from './_pengaman-uji.mjs';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { Client as PgClient } from 'pg';
@@ -57,6 +63,34 @@ const JAM_WIB = { jam: 9, menit: 23, detik: 44 };
 let idBaris = null;
 let idPenguji = null;
 let admin = null;
+// Pemulihan idempoten -- dipanggil dari finally DAN dari penangan sinyal/galat.
+const pulihkan = pasangPemulih('uji-zona-waktu-ekspor', async () => {
+  // Bersihkan baris uji, tidak peduli lolos/gagal -- tidak boleh menyentuh
+  // presensi sungguhan siapa pun.
+  if (idBaris) {
+    await db.query('delete from public.absensi where id = $1', [idBaris]);
+    console.log(`\nBaris absensi uji (id=${idBaris}) dihapus.`);
+  }
+  // Kembalikan AKUN UJI ke keadaan semula -- password admin123 seragam +
+  // harus_ganti_password=true, DIBUKTIKAN lewat baca ulang DB (bukan
+  // dipercaya dari nilai kembalian -- pelajaran insiden Qasim/Ryan, 7
+  // September 2026, lihat docs/04-CATATAN-TEKNIS.md §7).
+  if (idPenguji && admin) {
+    const { error: errPw } = await admin.auth.admin.updateUserById(idPenguji, { password: 'admin123' });
+    if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke admin123: ${errPw.message}`);
+    await db.query('update public.profile set harus_ganti_password = true where id = $1;', [idPenguji]);
+    const { rows: cekAkun } = await db.query(
+      `select p.harus_ganti_password, u.updated_at, u.last_sign_in_at from public.profile p join auth.users u on u.id = p.id where p.id = $1`,
+      [idPenguji],
+    );
+    const pulihSempurna = cekAkun[0]?.harus_ganti_password === true && new Date(cekAkun[0].updated_at) > new Date(cekAkun[0].last_sign_in_at);
+    console.log(pulihSempurna
+      ? 'AKUN UJI dikembalikan: password admin123 (dibuktikan lewat updated_at > last_sign_in_at), harus_ganti_password = true.'
+      : `🛑 AKUN UJI BELUM PULIH SEPENUHNYA -- ${JSON.stringify(cekAkun[0])}.`);
+  }
+  await db.end();
+});
+
 try {
   // 1) AKUN UJI - Karyawan Resto (uji2@koperumnas.local) -- bukan karyawan
   //    sungguhan yang dicari otomatis lagi (diganti 7 September 2026, lihat
@@ -171,28 +205,5 @@ try {
     process.exitCode = 1;
   }
 } finally {
-  // Bersihkan baris uji, tidak peduli lolos/gagal -- tidak boleh menyentuh
-  // presensi sungguhan siapa pun.
-  if (idBaris) {
-    await db.query('delete from public.absensi where id = $1', [idBaris]);
-    console.log(`\nBaris absensi uji (id=${idBaris}) dihapus.`);
-  }
-  // Kembalikan AKUN UJI ke keadaan semula -- password admin123 seragam +
-  // harus_ganti_password=true, DIBUKTIKAN lewat baca ulang DB (bukan
-  // dipercaya dari nilai kembalian -- pelajaran insiden Qasim/Ryan, 7
-  // September 2026, lihat docs/04-CATATAN-TEKNIS.md §7).
-  if (idPenguji && admin) {
-    const { error: errPw } = await admin.auth.admin.updateUserById(idPenguji, { password: 'admin123' });
-    if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke admin123: ${errPw.message}`);
-    await db.query('update public.profile set harus_ganti_password = true where id = $1;', [idPenguji]);
-    const { rows: cekAkun } = await db.query(
-      `select p.harus_ganti_password, u.updated_at, u.last_sign_in_at from public.profile p join auth.users u on u.id = p.id where p.id = $1`,
-      [idPenguji],
-    );
-    const pulihSempurna = cekAkun[0]?.harus_ganti_password === true && new Date(cekAkun[0].updated_at) > new Date(cekAkun[0].last_sign_in_at);
-    console.log(pulihSempurna
-      ? 'AKUN UJI dikembalikan: password admin123 (dibuktikan lewat updated_at > last_sign_in_at), harus_ganti_password = true.'
-      : `🛑 AKUN UJI BELUM PULIH SEPENUHNYA -- ${JSON.stringify(cekAkun[0])}.`);
-  }
-  await db.end();
+  await pulihkan();
 }

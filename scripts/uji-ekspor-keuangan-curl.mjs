@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+// ⚠️⚠️ PERINGATAN -- SKRIP INI MENULIS SUNGGUHAN KE DATABASE YANG JUGA PRODUKSI (26 orang) ⚠️⚠️
+// TIDAK bisa di-ROLLBACK (server yang diuji membaca lewat koneksi lain, jadi transaksi mustahil).
+// Yang diubah: password + profile.harus_ganti_password akun uji4 -- HANYA akun uji, tabel: auth.users, profile.
+// Dipulihkan otomatis di finally DAN saat Ctrl-C/galat (scripts/_pengaman-uji.mjs). Kalau proses
+// DIMATIKAN PAKSA (kill -9): jalankan `node scripts/pulihkan-akun-uji.mjs` SEBELUM akun uji dipakai lagi.
 // Uji HTTP SUNGGUHAN (bukan penyamaran RLS di Postgres) -- AKUN UJI - HRD
 // Kadiv (uji4@koperumnas.local, role kadiv + divisi HRD -- BUKAN
 // ceo/accounting) memanggil endpoint ekspor keuangan langsung lewat HTTP,
@@ -30,6 +35,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
+import { pasangPemulih } from './_pengaman-uji.mjs';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { Client as PgClient } from 'pg';
@@ -61,6 +67,26 @@ const idPenguji = rows[0].id;
 const admin = createAdminClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
 let hasil = [];
 let semuaLolos = false;
+
+// Pemulihan idempoten -- dipanggil dari finally DAN dari penangan sinyal/galat.
+const pulihkan = pasangPemulih('uji-ekspor-keuangan-curl', async () => {
+  // Kembalikan AKUN UJI ke keadaan semula -- password admin123 seragam +
+  // harus_ganti_password=true, DIBUKTIKAN lewat baca ulang DB (versi
+  // sebelumnya TIDAK PERNAH memulihkan Sabrina sama sekali -- ditemukan
+  // lewat sisir skrip 7 September 2026, lihat docs/04-CATATAN-TEKNIS.md §7).
+  const { error: errPw } = await admin.auth.admin.updateUserById(idPenguji, { password: 'admin123' });
+  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke admin123: ${errPw.message}`);
+  await db.query('update public.profile set harus_ganti_password = true where id = $1;', [idPenguji]);
+  const { rows: cekAkun } = await db.query(
+    `select p.harus_ganti_password, u.updated_at, u.last_sign_in_at from public.profile p join auth.users u on u.id = p.id where p.id = $1`,
+    [idPenguji],
+  );
+  const pulihSempurna = cekAkun[0]?.harus_ganti_password === true && new Date(cekAkun[0].updated_at) > new Date(cekAkun[0].last_sign_in_at);
+  console.log(pulihSempurna
+    ? 'AKUN UJI dikembalikan: password admin123 (dibuktikan lewat updated_at > last_sign_in_at), harus_ganti_password = true.'
+    : `🛑 AKUN UJI BELUM PULIH SEPENUHNYA -- ${JSON.stringify(cekAkun[0])}.`);
+  await db.end();
+});
 
 try {
   // 1) Reset password AKUN UJI SAJA, matikan harus_ganti_password sementara
@@ -108,22 +134,7 @@ try {
   semuaLolos = hasil.every((h) => h.lolos);
   console.log(semuaLolos ? '\n✅ SEMUA LOLOS -- endpoint keuangan menolak AKUN UJI sungguhan lewat HTTP, endpoint lain tetap bisa (bukan salah cookie).' : '\n🛑 ADA YANG GAGAL');
 } finally {
-  // Kembalikan AKUN UJI ke keadaan semula -- password admin123 seragam +
-  // harus_ganti_password=true, DIBUKTIKAN lewat baca ulang DB (versi
-  // sebelumnya TIDAK PERNAH memulihkan Sabrina sama sekali -- ditemukan
-  // lewat sisir skrip 7 September 2026, lihat docs/04-CATATAN-TEKNIS.md §7).
-  const { error: errPw } = await admin.auth.admin.updateUserById(idPenguji, { password: 'admin123' });
-  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke admin123: ${errPw.message}`);
-  await db.query('update public.profile set harus_ganti_password = true where id = $1;', [idPenguji]);
-  const { rows: cekAkun } = await db.query(
-    `select p.harus_ganti_password, u.updated_at, u.last_sign_in_at from public.profile p join auth.users u on u.id = p.id where p.id = $1`,
-    [idPenguji],
-  );
-  const pulihSempurna = cekAkun[0]?.harus_ganti_password === true && new Date(cekAkun[0].updated_at) > new Date(cekAkun[0].last_sign_in_at);
-  console.log(pulihSempurna
-    ? 'AKUN UJI dikembalikan: password admin123 (dibuktikan lewat updated_at > last_sign_in_at), harus_ganti_password = true.'
-    : `🛑 AKUN UJI BELUM PULIH SEPENUHNYA -- ${JSON.stringify(cekAkun[0])}.`);
-  await db.end();
+  await pulihkan();
 }
 
 process.exit(semuaLolos ? 0 : 1);

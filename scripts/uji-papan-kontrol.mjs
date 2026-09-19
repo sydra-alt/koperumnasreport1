@@ -117,5 +117,8 @@ try {
   console.error('ERROR:', err);
   process.exitCode = 1;
 } finally {
+  // ROLLBACK eksplisit (aman dipanggil tanpa transaksi aktif) -- jangan bergantung
+  // pada perilaku implisit "koneksi ditutup = rollback".
+  try { await client.query('rollback;'); } catch { /* tidak ada transaksi aktif */ }
   await client.end();
 }

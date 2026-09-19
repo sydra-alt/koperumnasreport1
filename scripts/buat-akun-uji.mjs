@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// ⚠️ MENULIS SUNGGUHAN ke database yang juga PRODUKSI (26 orang) -- HANYA akun uji1..uji6 dan uji-*:
+// auth.users, profile (menimpa nama/jabatan/divisi akun uji), role, penugasan_absen, assignment.
+// Idempoten dan TIDAK menyentuh karyawan sungguhan. Tidak dalam satu transaksi (createUser lewat
+// Auth API) -- kalau gagal di tengah, jalankan ulang (email yang sudah ada dilewati).
 // Akun UJI KHUSUS (7 September 2026) -- lahir dari insiden Qasim & Ryan:
 // skrip uji sebelumnya memakai akun karyawan SUNGGUHAN untuk menguji
 // Laporan Kebersihan, gagal memulihkan password mereka SENYAP ({error}

@@ -1,4 +1,10 @@
 #!/usr/bin/env node
+// 🛑 HANYA UNTUK PENGISIAN AWAL (30 Agustus 2026) -- JANGAN DIJALANKAN ULANG. 🛑
+// MENULIS SUNGGUHAN ke database yang juga PRODUKSI (26 orang): tabel assignment, penugasan_absen, dan
+// profile.wajib_pte (Rika). Data di file ini SNAPSHOT lama -- menjalankannya lagi menghidupkan kembali
+// penugasan yang sudah dihapus/dinonaktifkan sejak itu (migrasi 0045-0049) dan menimpa wajib_pte Rika.
+// Semua tulisan dibungkus SATU transaksi (commit hanya kalau seluruhnya sukses; galat di tengah =
+// koneksi putus = rollback otomatis).
 // Isi assignment (form) + penugasan_absen (titik absen) untuk 40 akun asli,
 // dari docs/DATA-KARYAWAN.md §1/§2 -- instruksi eksplisit user, 30 Agustus
 // 2026 ("jangan aku isi manual satu-satu"). Idempoten: cek dulu sebelum
@@ -38,6 +44,7 @@ dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
 
 const db = new Client({ connectionString: process.env.SUPABASE_DB_URL });
 await db.connect();
+await db.query('begin'); // semua-atau-tidak-sama-sekali; commit di akhir
 
 async function userId(email) {
   const { rows } = await db.query('select id from auth.users where email = $1', [email]);
@@ -186,4 +193,5 @@ if (rikaSebelum[0]?.wajib_pte !== false) {
   console.log('Rika: wajib_pte sudah false sebelumnya, dilewati.');
 }
 
+await db.query('commit');
 await db.end();

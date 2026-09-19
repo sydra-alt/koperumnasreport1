@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+// ⚠️⚠️ PERINGATAN -- SKRIP INI MENULIS SUNGGUHAN KE DATABASE YANG JUGA PRODUKSI (26 orang) ⚠️⚠️
+// TIDAK bisa di-ROLLBACK (server yang diuji membaca lewat koneksi lain, jadi transaksi mustahil).
+// Yang diubah: password + profile.harus_ganti_password akun uji5 -- HANYA akun uji, tabel: auth.users, profile.
+// KEBIJAKAN PRODUKSI (policy.absen_di_luar_radius) TIDAK LAGI DIUBAH (19 September 2026): dulu skrip ini
+// meng-UPDATE policy di database bersama -- kalau mati di tengah, semua karyawan kena kebijakan uji.
+// Sekarang kebijakan dan titik uji disuntikkan di BROWSER lewat intersepsi respons REST (Playwright route).
+// Dipulihkan otomatis di finally DAN saat Ctrl-C/galat (scripts/_pengaman-uji.mjs). Kalau proses
+// DIMATIKAN PAKSA (kill -9): jalankan `node scripts/pulihkan-akun-uji.mjs` SEBELUM akun uji dipakai lagi.
+//
 // Uji radius presensi dengan koordinat GPS PALSU ~150 km dari titik absen,
 // lewat browser SUNGGUHAN (Playwright, Chromium) yang meng-override
 // geolocation persis mekanisme Chrome DevTools Sensors panel
@@ -8,15 +17,18 @@
 // AKUN UJI - Tanpa Peran (uji5@koperumnas.local) dipakai -- BUKAN Dadang
 // sungguhan lagi (diganti 7 September 2026, insiden Qasim/Ryan: skrip uji
 // tidak boleh pernah menyentuh akun orang sungguhan, lihat
-// docs/04-CATATAN-TEKNIS.md §7 dan scripts/buat-akun-uji.mjs). uji5 diberi
-// penugasan_absen di "Lokasi Uji" (migrasi 0032,
-// -6.982980702734919, 107.63522500320248) persis untuk uji ini -- posisi
-// PALSU digeser ~150 km ke utara (1 derajat lintang ~= 111.32 km).
+// docs/04-CATATAN-TEKNIS.md §7 dan scripts/buat-akun-uji.mjs). Posisi PALSU
+// digeser ~150 km ke utara dari titik uji (1 derajat lintang ~= 111.32 km).
 //
-// Dua skenario, policy.absen_di_luar_radius DIUBAH SEMENTARA lalu
-// DIKEMBALIKAN (transaksi terpisah, bukan BEGIN/ROLLBACK karena Playwright
-// perlu koneksi HTTP nyata ke server yang membaca policy dari koneksi LAIN):
-//   1. 'izinkan_dengan_tanda' (NILAI PRODUKSI SAAT INI) -- harap DITANDAI
+// Dua skenario. Kebijakan (policy.absen_di_luar_radius) dan titik absen uji
+// SAMA SEKALI TIDAK ditulis ke database -- browser meminta `policy` dan
+// `penugasan_absen` lewat REST, dan Playwright mengganti RESPONS-nya:
+//   - policy: nilai absen_di_luar_radius diganti sesuai skenario
+//   - penugasan_absen: diganti satu titik SINTETIS (bukan lokasi siapa pun --
+//     "Lokasi Uji" lama sengaja dihapus di migrasi 0054 karena itu koordinat
+//     rumah CEO, dan uji5 tidak punya titik absen lagi)
+// Skrip ini berhenti SEBELUM kamera, tidak pernah insert ke `absensi`.
+//   1. 'izinkan_dengan_tanda' (nilai produksi normal) -- harap DITANDAI
 //      (layar "Di luar jangkauan" + "ditandai", rail kuning -- BUKAN emoji
 //      di teks, koreksi 7 September 2026), TIDAK diterima diam-diam tanpa
 //      peringatan.
@@ -28,6 +40,7 @@ import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { chromium } from 'playwright';
 import { Client } from 'pg';
+import { pasangPemulih } from './_pengaman-uji.mjs';
 import { createClient } from '@supabase/supabase-js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -48,9 +61,11 @@ await db0.end();
 // Qasim/Ryan.
 const PASSWORD_UJI = 'uji-radius-sementara-2026';
 
-// Lokasi Uji (migrasi 0032) + ~150 km ke utara (murni offset lintang).
-const LOKASI_ASLI = { lat: -6.982980702734919, lon: 107.63522500320248 };
-const POSISI_PALSU = { latitude: LOKASI_ASLI.lat + 150 / 111.32, longitude: LOKASI_ASLI.lon };
+// Titik uji SINTETIS (bukan lokasi siapa pun) -- hanya disuntikkan ke respons
+// REST di browser, tidak pernah ditulis ke database. Posisi PALSU = ~150 km ke
+// utara dari titik ini (murni offset lintang).
+const TITIK_UJI = { lat: -6.1754, lon: 106.8272 };
+const POSISI_PALSU = { latitude: TITIK_UJI.lat + 150 / 111.32, longitude: TITIK_UJI.lon };
 
 const db = new Client({ connectionString: process.env.SUPABASE_DB_URL });
 await db.connect();
@@ -59,22 +74,56 @@ const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUP
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-async function setPolicy(nilai) {
-  await db.query(`update policy set value = to_jsonb($1::text) where key = 'absen_di_luar_radius';`, [nilai]);
-}
-const { rows: policyAsli } = await db.query(`select value from policy where key = 'absen_di_luar_radius';`);
-const nilaiAsli = policyAsli[0].value.replace(/"/g, '');
-console.log(`policy.absen_di_luar_radius SAAT INI (produksi): "${nilaiAsli}"\n`);
+// Bentuk persis select di lib/api/absensi.ts useTitikAbsenSaya.
+const PENUGASAN_UJI = [
+  {
+    jam_masuk: null,
+    jam_pulang: null,
+    lokasi_absen: {
+      id: '00000000-0000-4000-8000-0000000000a5',
+      nama: 'Titik Uji (sintetis, hanya di browser)',
+      latitude: TITIK_UJI.lat,
+      longitude: TITIK_UJI.lon,
+      radius_meter: 200,
+      aktif: true,
+    },
+  },
+];
 
-// Set password uji sementara utk AKUN UJI lewat Auth Admin API (satu-satunya
-// jalur resmi -- lihat scripts/set-password.mjs) supaya Playwright bisa
-// login sungguhan lewat /masuk, bukan penyamaran JWT.
-{
-  const { error } = await admin.auth.admin.updateUserById(AKUN_UJI_ID, { password: PASSWORD_UJI });
-  if (error) throw new Error(`Gagal set password uji: ${error.message}`);
-  await db.query(`update profile set harus_ganti_password = false where id = $1;`, [AKUN_UJI_ID]);
-  console.log('Password uji sementara berhasil diset, harus_ganti_password dikosongkan sementara.\n');
+// Ganti respons REST di sisi browser. Header dikopi tanpa content-encoding /
+// content-length karena body diganti (CORS + tipe konten tetap dipertahankan).
+async function pasangIntersepsi(context, nilaiPolicy) {
+  const balas = async (route, ubah) => {
+    const resp = await route.fetch();
+    const headers = { ...resp.headers() };
+    delete headers['content-encoding'];
+    delete headers['content-length'];
+    await route.fulfill({ status: resp.status(), headers, body: JSON.stringify(ubah(await resp.json())) });
+  };
+  await context.route('**/rest/v1/policy*', (route) =>
+    balas(route, (rows) => rows.map((r) => (r.key === 'absen_di_luar_radius' ? { ...r, value: nilaiPolicy } : r))),
+  );
+  await context.route('**/rest/v1/penugasan_absen*', (route) => balas(route, () => PENUGASAN_UJI));
 }
+
+// Pemulihan akun uji -- idempoten, DIDAFTARKAN SEBELUM password diubah supaya
+// tidak ada celah "sudah berubah tapi belum terdaftar". Dipanggil dari finally
+// DAN dari penangan sinyal/galat. Dibuktikan lewat baca ulang DB, bukan dipercaya
+// dari nilai kembalian (pelajaran insiden Qasim/Ryan, 7 September 2026).
+const pulihkan = pasangPemulih('uji-radius-gps-palsu', async () => {
+  const { error: errPw } = await admin.auth.admin.updateUserById(AKUN_UJI_ID, { password: 'admin123' });
+  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke admin123: ${errPw.message}`);
+  await db.query(`update profile set harus_ganti_password = true where id = $1;`, [AKUN_UJI_ID]);
+  const { rows: cekAkun } = await db.query(
+    `select p.harus_ganti_password, u.updated_at, u.last_sign_in_at from public.profile p join auth.users u on u.id = p.id where p.id = $1`,
+    [AKUN_UJI_ID],
+  );
+  const pulihSempurna = cekAkun[0]?.harus_ganti_password === true && new Date(cekAkun[0].updated_at) > new Date(cekAkun[0].last_sign_in_at);
+  console.log(pulihSempurna
+    ? 'AKUN UJI dikembalikan: password admin123 (dibuktikan lewat updated_at > last_sign_in_at), harus_ganti_password = true.'
+    : `🛑 AKUN UJI BELUM PULIH SEPENUHNYA -- ${JSON.stringify(cekAkun[0])}. Jalankan: node scripts/pulihkan-akun-uji.mjs`);
+  await db.end();
+});
 
 const hasil = [];
 function catat(nomor, skenario, harapan, mentah, lolos) {
@@ -84,6 +133,7 @@ function catat(nomor, skenario, harapan, mentah, lolos) {
 async function jalankanSkenario(nomorUji, labelPolicy) {
   const browser = await chromium.launch();
   const context = await browser.newContext({ geolocation: POSISI_PALSU, permissions: ['geolocation'] });
+  await pasangIntersepsi(context, labelPolicy);
   const page = await context.newPage();
 
   try {
@@ -168,35 +218,21 @@ async function jalankanSkenario(nomorUji, labelPolicy) {
 }
 
 try {
-  console.log('════ SKENARIO 1 -- policy.absen_di_luar_radius = "izinkan_dengan_tanda" (NILAI PRODUKSI SAAT INI) ════\n');
+  // Set password uji sementara utk AKUN UJI lewat Auth Admin API (satu-satunya
+  // jalur resmi -- lihat scripts/set-password.mjs) supaya Playwright bisa
+  // login sungguhan lewat /masuk, bukan penyamaran JWT.
+  const { error } = await admin.auth.admin.updateUserById(AKUN_UJI_ID, { password: PASSWORD_UJI });
+  if (error) throw new Error(`Gagal set password uji: ${error.message}`);
+  await db.query(`update profile set harus_ganti_password = false where id = $1;`, [AKUN_UJI_ID]);
+  console.log('Password uji sementara berhasil diset, harus_ganti_password dikosongkan sementara.\n');
+
+  console.log('════ SKENARIO 1 -- policy.absen_di_luar_radius = "izinkan_dengan_tanda" (disuntikkan di browser) ════\n');
   await jalankanSkenario(1, 'izinkan_dengan_tanda');
 
-  console.log('════ SKENARIO 2 -- policy.absen_di_luar_radius = "tolak" (diubah sementara utk uji ini) ════\n');
-  await setPolicy('tolak');
+  console.log('════ SKENARIO 2 -- policy.absen_di_luar_radius = "tolak" (disuntikkan di browser) ════\n');
   await jalankanSkenario(2, 'tolak');
 } finally {
-  await setPolicy(nilaiAsli);
-  const { rows: cekKembali } = await db.query(`select value from policy where key = 'absen_di_luar_radius';`);
-  console.log(`policy.absen_di_luar_radius DIKEMBALIKAN ke nilai produksi: ${cekKembali[0].value}`);
-
-  // Kembalikan AKUN UJI ke keadaan semula -- password admin123 seragam +
-  // harus_ganti_password=true. DIBUKTIKAN lewat baca ulang dari DB, bukan
-  // dipercaya dari nilai kembalian -- persis kegagalan senyap yang membuat
-  // Qasim & Ryan (akun SUNGGUHAN, dipakai skrip uji SEBELUM aturan ini)
-  // nyaris tidak bisa masuk kerja, 7 September 2026.
-  const { error: errPw } = await admin.auth.admin.updateUserById(AKUN_UJI_ID, { password: 'admin123' });
-  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke admin123: ${errPw.message}`);
-  await db.query(`update profile set harus_ganti_password = true where id = $1;`, [AKUN_UJI_ID]);
-  const { rows: cekAkun } = await db.query(
-    `select p.harus_ganti_password, u.updated_at, u.last_sign_in_at from public.profile p join auth.users u on u.id = p.id where p.id = $1`,
-    [AKUN_UJI_ID],
-  );
-  const pulihSempurna = cekAkun[0]?.harus_ganti_password === true && new Date(cekAkun[0].updated_at) > new Date(cekAkun[0].last_sign_in_at);
-  console.log(pulihSempurna
-    ? 'AKUN UJI dikembalikan: password admin123 (dibuktikan lewat updated_at > last_sign_in_at), harus_ganti_password = true.'
-    : `🛑 AKUN UJI BELUM PULIH SEPENUHNYA -- ${JSON.stringify(cekAkun[0])}. Jalankan ulang pemulihan manual sebelum akun ini dipakai lagi.`);
-
-  await db.end();
+  await pulihkan();
 }
 
 console.table(hasil.map((h) => ({ '#': h.nomor, skenario: h.skenario, harapan: h.harapan, 'hasil mentah': h.mentah, 'lolos?': h.lolos ? 'LOLOS' : 'GAGAL' })));

@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// ⚠️ MEMBUAT LALU MENGHAPUS TABEL public._uji_db_mjs_scratch di database yang juga PRODUKSI (26 orang),
+// dan menjalankan scripts/db.mjs SUNGGUHAN dengan --jalankan=HAPUS terhadap tabel itu SAJA (menulis ke
+// docs/LOG-PERINTAH-MERUSAK.md lalu memulihkannya). Tidak menyentuh data produksi; tabel sekali pakai
+// dibersihkan di finally. Jangan ubah nama tabel/perintah di sini menjadi tabel sungguhan.
 // Uji pengaman operasi merusak di scripts/db.mjs (18 September 2026, instruksi
 // eksplisit CEO -- repo ini SATU database dev+produksi, db.mjs adalah
 // satu-satunya titik yang perlu dijaga). Menjalankan scripts/db.mjs SUNGGUHAN

@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+// ⚠️⚠️ PERINGATAN -- SKRIP INI MENULIS SUNGGUHAN KE DATABASE YANG JUGA PRODUKSI (26 orang) ⚠️⚠️
+// TIDAK bisa di-ROLLBACK (server yang diuji membaca lewat koneksi lain, jadi transaksi mustahil).
+// Yang diubah: password + profile.harus_ganti_password akun uji2 (bolak-balik puluhan kali) -- HANYA akun uji, tabel: auth.users, profile.
+// Dipulihkan otomatis di finally DAN saat Ctrl-C/galat (scripts/_pengaman-uji.mjs). Kalau proses
+// DIMATIKAN PAKSA (kill -9): jalankan `node scripts/pulihkan-akun-uji.mjs` SEBELUM akun uji dipakai lagi.
 // Uji BERULANG (10 September 2026) untuk bug "kadang gagal login, refresh
 // baru bisa" -- race cookie sesi @supabase/ssr: signInWithPassword menulis
 // cookie lewat storage adapter, tapi `router.push()` (App Router, client-
@@ -26,6 +31,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
+import { pasangPemulih } from './_pengaman-uji.mjs';
 import { chromium } from 'playwright';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { Client as PgClient } from 'pg';
@@ -116,6 +122,17 @@ async function ujiGantiPasswordSekali(browser) {
   }
 }
 
+// Pemulihan idempoten -- dipanggil dari finally DAN dari penangan sinyal/galat.
+const pulihkan = pasangPemulih('uji-login-berulang', async () => {
+  // Pulihkan uji2 ke baseline admin123 + harus_ganti_password=true.
+  const { error: errPw } = await admin.auth.admin.updateUserById(idAkun, { password: 'admin123' });
+  if (errPw) console.error(`🛑 GAGAL memulihkan password uji2: ${errPw.message}`);
+  await db.query('update public.profile set harus_ganti_password = true where id = $1', [idAkun]);
+  const { rows: cek } = await db.query('select harus_ganti_password from public.profile where id = $1', [idAkun]);
+  console.log(cek[0]?.harus_ganti_password === true ? '\nuji2 dipulihkan ke baseline (admin123, harus_ganti_password=true).' : '\n🛑 uji2 BELUM PULIH.');
+  await db.end();
+});
+
 try {
   const browser = await chromium.launch();
 
@@ -145,11 +162,5 @@ try {
   console.log(`/ganti-password : ${gagalGanti} gagal dari ${N}`);
   process.exitCode = gagalMasuk === 0 && gagalGanti === 0 ? 0 : 1;
 } finally {
-  // Pulihkan uji2 ke baseline admin123 + harus_ganti_password=true.
-  const { error: errPw } = await admin.auth.admin.updateUserById(idAkun, { password: 'admin123' });
-  if (errPw) console.error(`🛑 GAGAL memulihkan password uji2: ${errPw.message}`);
-  await db.query('update public.profile set harus_ganti_password = true where id = $1', [idAkun]);
-  const { rows: cek } = await db.query('select harus_ganti_password from public.profile where id = $1', [idAkun]);
-  console.log(cek[0]?.harus_ganti_password === true ? '\nuji2 dipulihkan ke baseline (admin123, harus_ganti_password=true).' : '\n🛑 uji2 BELUM PULIH.');
-  await db.end();
+  await pulihkan();
 }

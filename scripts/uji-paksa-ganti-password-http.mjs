@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+// ⚠️⚠️ PERINGATAN -- SKRIP INI MENULIS SUNGGUHAN KE DATABASE YANG JUGA PRODUKSI (26 orang) ⚠️⚠️
+// TIDAK bisa di-ROLLBACK (server yang diuji membaca lewat koneksi lain, jadi transaksi mustahil).
+// Yang diubah: password + profile.harus_ganti_password akun uji2 -- HANYA akun uji, tabel: auth.users, profile.
+// Dipulihkan otomatis di finally DAN saat Ctrl-C/galat (scripts/_pengaman-uji.mjs). Kalau proses
+// DIMATIKAN PAKSA (kill -9): jalankan `node scripts/pulihkan-akun-uji.mjs` SEBELUM akun uji dipakai lagi.
 // Uji HTTP SUNGGUHAN (bukan penyamaran JWT), instruksi eksplisit user, 30
 // Agustus 2026: login sebagai akun dengan harus_ganti_password=true lewat
 // sesi cookie sungguhan (pola sama uji-ekspor-keuangan-curl.mjs --
@@ -19,6 +24,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
+import { pasangPemulih } from './_pengaman-uji.mjs';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { Client as PgClient } from 'pg';
@@ -53,6 +59,24 @@ function catat(nomor, skenario, harapan, mentah, lolos) {
   hasil.push({ nomor, skenario, harapan, mentah, lolos });
 }
 let semuaLolos = false;
+
+// Pemulihan idempoten -- dipanggil dari finally DAN dari penangan sinyal/galat.
+const pulihkan = pasangPemulih('uji-paksa-ganti-password-http', async () => {
+  // Kembalikan AKUN UJI ke admin123 + harus_ganti_password=true OTOMATIS --
+  // lewat Admin API (satu-satunya jalur yang bisa mengubah password TANPA
+  // tahu password saat ini), DIBUKTIKAN lewat baca ulang DB. Versi Toyib
+  // SEBELUMNYA cuma meninggalkan catatan "jalankan skrip lain kalau perlu
+  // dikembalikan" -- persis pola gagal-senyap yang ditemukan sisir skrip 7
+  // September 2026 (lihat docs/04-CATATAN-TEKNIS.md §7).
+  const { error: errPw } = await admin.auth.admin.updateUserById(idAkun, { password: 'admin123' });
+  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke admin123: ${errPw.message}`);
+  await db.query('update public.profile set harus_ganti_password = true where id = $1;', [idAkun]);
+  const { rows: cekAkun } = await db.query(`select harus_ganti_password from public.profile where id = $1`, [idAkun]);
+  console.log(cekAkun[0]?.harus_ganti_password === true
+    ? 'AKUN UJI dikembalikan: password admin123, harus_ganti_password = true (dibuktikan baca ulang DB).'
+    : `🛑 AKUN UJI BELUM PULIH -- harus_ganti_password=${cekAkun[0]?.harus_ganti_password}.`);
+  await db.end();
+});
 
 try {
   // 0) Pastikan AKUN UJI mulai dari admin123 + harus_ganti_password=true --
@@ -154,20 +178,7 @@ try {
   semuaLolos = hasil.length === 6 && hasil.every((h) => h.lolos);
   console.log(semuaLolos ? '\n✅ SEMUA LOLOS' : '\n🛑 ADA YANG GAGAL');
 } finally {
-  // Kembalikan AKUN UJI ke admin123 + harus_ganti_password=true OTOMATIS --
-  // lewat Admin API (satu-satunya jalur yang bisa mengubah password TANPA
-  // tahu password saat ini), DIBUKTIKAN lewat baca ulang DB. Versi Toyib
-  // SEBELUMNYA cuma meninggalkan catatan "jalankan skrip lain kalau perlu
-  // dikembalikan" -- persis pola gagal-senyap yang ditemukan sisir skrip 7
-  // September 2026 (lihat docs/04-CATATAN-TEKNIS.md §7).
-  const { error: errPw } = await admin.auth.admin.updateUserById(idAkun, { password: 'admin123' });
-  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke admin123: ${errPw.message}`);
-  await db.query('update public.profile set harus_ganti_password = true where id = $1;', [idAkun]);
-  const { rows: cekAkun } = await db.query(`select harus_ganti_password from public.profile where id = $1`, [idAkun]);
-  console.log(cekAkun[0]?.harus_ganti_password === true
-    ? 'AKUN UJI dikembalikan: password admin123, harus_ganti_password = true (dibuktikan baca ulang DB).'
-    : `🛑 AKUN UJI BELUM PULIH -- harus_ganti_password=${cekAkun[0]?.harus_ganti_password}.`);
-  await db.end();
+  await pulihkan();
 }
 
 process.exit(semuaLolos ? 0 : 1);
