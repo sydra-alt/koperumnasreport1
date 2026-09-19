@@ -66,14 +66,17 @@ function PapanKontrolIsi() {
   const tanggalBukanHariKerja = !workdays.includes(hariIsoDariTanggal(tanggal));
 
   return (
-    <div className="flex flex-col gap-6">
-      <PemilihTanggal
-        tanggal={tanggal}
-        onUbah={(t) => {
-          setTanggal(t);
-          setTampilkanDaftar(false);
-        }}
-      />
+    <div className="flex flex-col gap-5 md:gap-6">
+      <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
+        <h1 className="sapaan">Papan Kontrol</h1>
+        <PemilihTanggal
+          tanggal={tanggal}
+          onUbah={(t) => {
+            setTanggal(t);
+            setTampilkanDaftar(false);
+          }}
+        />
+      </header>
 
       {!policy || isLoading ? (
         <KerangkaPapan />
@@ -116,15 +119,18 @@ function PapanKontrolIsi() {
           ) : (
             totalSemua > 0 && (
               <>
-                {/* Ringkasan besar (DESIGN.md §7.1, §14) -- CEO scanning */}
-                <div className="flex flex-col gap-3">
-                  <div>
+                {/* Ringkasan (DESIGN.md §7.1, §14) -- CEO scanning. SATU panel datar:
+                    angka utama + progres, lalu baris status ringkas (bukan dua kartu
+                    besar yang mengulang informasi yang sama). */}
+                <div className="panel">
+                  <div className="panel-baris flex flex-col gap-2" style={{ padding: '16px' }}>
                     <p className="text-sm" style={{ color: 'var(--label)' }}>Laporan hari ini</p>
                     <div className="flex items-baseline gap-2">
                       <span className="angka-besar" style={{ color: 'var(--biru)' }}>{totalSudah}</span>
-                      <span className="text-sm" style={{ color: 'var(--label)' }}>dari {totalSemua} sudah masuk</span>
+                      <span style={{ fontFamily: 'var(--display)', fontSize: 20, fontWeight: 700, color: 'var(--label)' }}>/{totalSemua}</span>
+                      <span className="text-sm" style={{ color: 'var(--label)' }}>sudah masuk</span>
                     </div>
-                    <div className="progres-bar mt-2">
+                    <div className="progres-bar">
                       <div className="progres-bar-isi" style={{ width: `${persen}%` }} />
                     </div>
                   </div>
@@ -132,55 +138,58 @@ function PapanKontrolIsi() {
                   {/* Breakdown status -- merah & kuning boleh terlihat kuat (DESIGN.md §7.1).
                       TAPI kalau belumMulai (0 dari semua, ditampilkan lewat "Lihat daftar
                       yang ditunggu"), "belum lapor" TIDAK merah -- belum ada pembanding
-                      (DESIGN.md §27), sama seperti kartu individualnya. */}
-                  <div className="flex gap-3">
+                      (DESIGN.md §27). */}
+                  <div className="panel-baris flex flex-wrap items-baseline gap-x-8 gap-y-1">
                     {totalBelum > 0 && (
-                      <div className={`kartu-status ${belumMulai ? 'rail-netral' : 'rail-merah'} flex-1`}>
-                        <p className="angka-kecil" style={{ color: belumMulai ? 'var(--tinta)' : 'var(--merah)' }}>{totalBelum}</p>
-                        <p className="text-sm" style={{ color: belumMulai ? 'var(--label)' : 'var(--merah)' }}>Belum lapor</p>
-                      </div>
+                      <p className="flex items-baseline gap-2">
+                        <span className="angka-kecil" style={{ color: belumMulai ? 'var(--tinta)' : 'var(--merah)' }}>{totalBelum}</span>
+                        <span className="text-sm" style={{ color: belumMulai ? 'var(--label)' : 'var(--merah)' }}>belum lapor</span>
+                      </p>
                     )}
                     {totalSudah > 0 && (
-                      <div className="kartu-status rail-hijau flex-1">
-                        <p className="angka-kecil" style={{ color: 'var(--hijau)' }}>{totalSudah}</p>
-                        <p className="text-sm" style={{ color: 'var(--hijau)' }}>Sudah masuk</p>
-                      </div>
+                      <p className="flex items-baseline gap-2">
+                        <span className="angka-kecil" style={{ color: 'var(--hijau)' }}>{totalSudah}</span>
+                        <span className="text-sm" style={{ color: 'var(--hijau)' }}>sudah masuk</span>
+                      </p>
                     )}
                   </div>
                 </div>
 
-                {kelompok.map(([formKey, daftar]) => {
-                  const formNama = formRegistry[formKey]?.nama ?? formKey;
-                  const sudah = daftar.filter((b) => b.reportId).length;
-                  const belum = daftar.length - sudah;
-                  return (
-                    <div key={formKey} className="flex flex-col gap-3">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <p className="judul-bagian">{formNama}</p>
-                        <span
-                          className="text-sm"
-                          style={{ fontFamily: 'var(--mono)', color: belum === 0 ? 'var(--hijau)' : belumMulai ? 'var(--label)' : 'var(--merah)' }}
-                        >
-                          {sudah}/{daftar.length}
-                        </span>
-                      </div>
-                      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
-                        {/* Belum lapor di atas, sudah lapor di bawah -- sorting visual */}
-                        {[...daftar].sort((a, b) => (a.reportId ? 1 : 0) - (b.reportId ? 1 : 0)).map((b) => (
-                          <PapanKartu
-                            key={b.assignmentId}
-                            baris={b}
-                            formNama={formNama}
-                            bolehTagih={bolehTagih}
-                            menagih={sedangDitagih === b.assignmentId}
-                            onTagih={() => void tanganiTagih(b.assignmentId)}
-                            netral={belumMulai}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
+                {/* Kelompok: satu .panel per jenis laporan, baris tugas ringkas di dalamnya.
+                    Desktop: dua kolom (multi-column CSS), panel tidak dipecah antar kolom. */}
+                <div className="lg:columns-2 lg:gap-8">
+                  {kelompok.map(([formKey, daftar]) => {
+                    const formNama = formRegistry[formKey]?.nama ?? formKey;
+                    const sudah = daftar.filter((b) => b.reportId).length;
+                    const belum = daftar.length - sudah;
+                    return (
+                      <section key={formKey} className="mb-5 break-inside-avoid md:mb-6">
+                        <div className="mb-2 flex items-baseline justify-between gap-2">
+                          <h2 className="judul-seksi">{formNama}</h2>
+                          <span
+                            className="text-sm"
+                            style={{ fontFamily: 'var(--mono)', color: belum === 0 ? 'var(--hijau)' : 'var(--label)' }}
+                          >
+                            {sudah}/{daftar.length}
+                          </span>
+                        </div>
+                        <div className="panel">
+                          {/* Belum lapor di atas, sudah lapor di bawah -- sorting visual */}
+                          {[...daftar].sort((a, b) => (a.reportId ? 1 : 0) - (b.reportId ? 1 : 0)).map((b) => (
+                            <PapanKartu
+                              key={b.assignmentId}
+                              baris={b}
+                              bolehTagih={bolehTagih}
+                              menagih={sedangDitagih === b.assignmentId}
+                              onTagih={() => void tanganiTagih(b.assignmentId)}
+                              netral={belumMulai}
+                            />
+                          ))}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
               </>
             )
           )}
@@ -193,10 +202,7 @@ function PapanKontrolIsi() {
 export default function PapanPage() {
   return (
     <Terlindungi peran={['ceo', 'pusat']}>
-      <main className="flex flex-col gap-4 p-6">
-        <h1 style={{ fontSize: 'var(--ukuran-angka-besar)', lineHeight: 1.2 }}>
-          Papan Kontrol
-        </h1>
+      <main className="mx-auto w-full max-w-[1120px] px-4 py-5 md:px-8 md:py-8">
         <PapanKontrolIsi />
       </main>
     </Terlindungi>
