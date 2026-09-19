@@ -21,6 +21,18 @@ import { useLaporanAccountingHariIni, hitungRingkasanKeuanganCeo } from '../lib/
 import { formatRupiah } from '../lib/rupiah';
 
 function DashboardCeo() {
+  // 03-CALC-SPEC.md §4.3 -- v_keuangan_rekap (4 angka agregat) sengaja
+  // dibaca ceo, pusat, DAN accounting; rekap pembangunan/selisih resto
+  // TETAP ceo-only, spec tidak menyebutkan peran lain untuk bagian itu.
+  // Gerbang UI sebelumnya cuma 'ceo' untuk SELURUH komponen ini -- bug
+  // (lebih sempit dari spec, ditemukan audit Phase 2A 19 September 2026),
+  // bukan bagian dari redesign Phase 2B (ditulis manual di sini, bukan
+  // lewat merge/cherry-pick, supaya tidak menarik redesign yang belum
+  // disetujui).
+  const { roles } = useAuth();
+  const bolehKeuangan = roles.includes('ceo') || roles.includes('pusat') || roles.includes('accounting');
+  const bolehOperasional = roles.includes('ceo');
+
   const { data: pembangunan } = usePembangunanUntukTanggal();
   const { data: keuangan } = useKeuanganRekapUntukTanggal();
   const { data: selisihResto } = useSelisihRestoUntukTanggal();
@@ -29,57 +41,62 @@ function DashboardCeo() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <p className="judul-bagian mb-2">
-          Keuangan Hari Ini
-        </p>
-        {!keuangan ? (
-          <p style={{ color: 'var(--kosong)' }}>Belum ada laporan Accounting hari ini.</p>
-        ) : (
+      {bolehKeuangan && (
+        <div>
+          <p className="judul-bagian mb-2">
+            Keuangan Hari Ini
+          </p>
+          {!keuangan ? (
+            <p style={{ color: 'var(--kosong)' }}>Belum ada laporan Accounting hari ini.</p>
+          ) : (
+            <AngkaGrid
+              butir={[
+                { label: 'Uang masuk', nilai: formatRupiah(keuangan.totalMasuk) },
+                { label: 'Uang keluar', nilai: formatRupiah(keuangan.totalKeluar) },
+                { label: 'Net cashflow', nilai: formatRupiah(keuangan.net), warna: keuangan.net < 0 ? 'var(--merah)' : undefined },
+                ...(ringkasanKeuangan
+                  ? [
+                      { label: 'Dana tersedia', nilai: formatRupiah(ringkasanKeuangan.danaTersedia) },
+                      { label: 'Piutang', nilai: formatRupiah(ringkasanKeuangan.piutangTotal) },
+                      { label: 'Kewajiban 7 hari', nilai: formatRupiah(ringkasanKeuangan.kewajiban7Hari) },
+                      { label: 'Kewajiban 30 hari', nilai: formatRupiah(ringkasanKeuangan.kewajiban30Hari) },
+                      {
+                        label: 'Surplus/kekurangan (vs kewajiban 30 hari)',
+                        nilai: formatRupiah(ringkasanKeuangan.surplusKekurangan),
+                        warna: ringkasanKeuangan.surplusKekurangan < 0 ? 'var(--merah)' : undefined,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          )}
+        </div>
+      )}
+
+      {bolehOperasional && (
+        <div>
+          <p className="judul-bagian mb-2">
+            Rekap Unit Pembangunan Hari Ini
+          </p>
           <AngkaGrid
             butir={[
-              { label: 'Uang masuk', nilai: formatRupiah(keuangan.totalMasuk) },
-              { label: 'Uang keluar', nilai: formatRupiah(keuangan.totalKeluar) },
-              { label: 'Net cashflow', nilai: formatRupiah(keuangan.net), warna: keuangan.net < 0 ? 'var(--merah)' : undefined },
-              ...(ringkasanKeuangan
-                ? [
-                    { label: 'Dana tersedia', nilai: formatRupiah(ringkasanKeuangan.danaTersedia) },
-                    { label: 'Piutang', nilai: formatRupiah(ringkasanKeuangan.piutangTotal) },
-                    { label: 'Kewajiban 7 hari', nilai: formatRupiah(ringkasanKeuangan.kewajiban7Hari) },
-                    { label: 'Kewajiban 30 hari', nilai: formatRupiah(ringkasanKeuangan.kewajiban30Hari) },
-                    {
-                      label: 'Surplus/kekurangan (vs kewajiban 30 hari)',
-                      nilai: formatRupiah(ringkasanKeuangan.surplusKekurangan),
-                      warna: ringkasanKeuangan.surplusKekurangan < 0 ? 'var(--merah)' : undefined,
-                    },
-                  ]
-                : []),
+              { label: 'Sedang dibangun', nilai: String(pembangunan?.sedangDibangun ?? 0) },
+              { label: 'Finishing', nilai: String(pembangunan?.finishing ?? 0) },
+              { label: 'Selesai hari ini', nilai: String(pembangunan?.selesaiHariIni ?? 0) },
+              { label: 'Belum mulai', nilai: String(pembangunan?.belumMulai ?? 0) },
             ]}
           />
-        )}
-      </div>
+        </div>
+      )}
 
-      <div>
-        <p className="judul-bagian mb-2">
-          Rekap Unit Pembangunan Hari Ini
-        </p>
-        <AngkaGrid
-          butir={[
-            { label: 'Sedang dibangun', nilai: String(pembangunan?.sedangDibangun ?? 0) },
-            { label: 'Finishing', nilai: String(pembangunan?.finishing ?? 0) },
-            { label: 'Selesai hari ini', nilai: String(pembangunan?.selesaiHariIni ?? 0) },
-            { label: 'Belum mulai', nilai: String(pembangunan?.belumMulai ?? 0) },
-          ]}
-        />
-      </div>
-
-      <div>
-        <p className="judul-bagian mb-2">
-          Silang-Cek Omzet Resto Hari Ini
-        </p>
-        {!selisihResto || selisihResto.length === 0 ? (
-          <p style={{ color: 'var(--kosong)' }}>Belum ada pasangan laporan Manager Resto + Kontrol F&amp;B hari ini.</p>
-        ) : (
+      {bolehOperasional && (
+        <div>
+          <p className="judul-bagian mb-2">
+            Silang-Cek Omzet Resto Hari Ini
+          </p>
+          {!selisihResto || selisihResto.length === 0 ? (
+            <p style={{ color: 'var(--kosong)' }}>Belum ada pasangan laporan Manager Resto + Kontrol F&amp;B hari ini.</p>
+          ) : (
           <div className="flex flex-col gap-2">
             {selisihResto.map((r) => (
               <div
@@ -97,8 +114,9 @@ function DashboardCeo() {
               </div>
             ))}
           </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -384,7 +402,7 @@ export default function Home() {
 
           <StatusAbsenHariIni />
 
-          {roles.includes('ceo') && <DashboardCeo />}
+          {(roles.includes('ceo') || roles.includes('pusat') || roles.includes('accounting')) && <DashboardCeo />}
         </>
       )}
     </main>
