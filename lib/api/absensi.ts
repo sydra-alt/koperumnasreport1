@@ -86,8 +86,17 @@ interface KirimAbsenInput {
   akurasi: number;
   jarak: number;
   status: 'valid' | 'di_luar_radius';
-  terlambatMenit: number | null;
   fotoBlob: Blob;
+}
+
+/**
+ * Yang dikembalikan server SETELAH insert. `terlambat_menit` (juga `waktu`
+ * dan `tanggal`) DITIMPA trigger `absensi_hitung_server` (migrasi 0059) dari
+ * jam server -- klien tidak mengirimnya, dan yang ditampilkan ke pengguna
+ * harus nilai ini, bukan hitungan lokal.
+ */
+export interface HasilKirimAbsen {
+  terlambatMenit: number | null;
 }
 
 async function unggahFotoAbsen(userId: string, blob: Blob, accessToken: string): Promise<string> {
@@ -116,7 +125,7 @@ async function unggahFotoAbsen(userId: string, blob: Blob, accessToken: string):
 export function useKirimAbsen(userId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: KirimAbsenInput) => {
+    mutationFn: async (input: KirimAbsenInput): Promise<HasilKirimAbsen> => {
       if (!userId) throw new Error('Belum masuk.');
       const supabase = createClient();
       const {
@@ -126,20 +135,27 @@ export function useKirimAbsen(userId: string | undefined) {
 
       const fotoPath = await unggahFotoAbsen(userId, input.fotoBlob, session.access_token);
 
-      const { error } = await supabase.from('absensi').insert({
-        user_id: userId,
-        tanggal: tanggalWIB(),
-        tipe: input.tipe,
-        lokasi_absen_id: input.lokasiAbsenId,
-        latitude: input.lat,
-        longitude: input.lon,
-        akurasi_meter: input.akurasi,
-        jarak_meter: input.jarak,
-        status: input.status,
-        foto_path: fotoPath,
-        terlambat_menit: input.terlambatMenit,
-      });
+      // `tanggal` tetap dikirim (kolom NOT NULL, dipakai sebagai nilai awal) tapi
+      // trigger menimpanya dengan tanggal WIB server; `terlambat_menit` sengaja
+      // TIDAK dikirim sama sekali.
+      const { data, error } = await supabase
+        .from('absensi')
+        .insert({
+          user_id: userId,
+          tanggal: tanggalWIB(),
+          tipe: input.tipe,
+          lokasi_absen_id: input.lokasiAbsenId,
+          latitude: input.lat,
+          longitude: input.lon,
+          akurasi_meter: input.akurasi,
+          jarak_meter: input.jarak,
+          status: input.status,
+          foto_path: fotoPath,
+        })
+        .select('terlambat_menit')
+        .single();
       if (error) throw error;
+      return { terlambatMenit: data.terlambat_menit };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['absen-hari-ini', userId] });

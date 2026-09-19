@@ -160,8 +160,10 @@ function DetailKunjungan({
       )}
       {terlambatInfo && terlambatInfo.jamEfektif && terlambatInfo.toleransiMenit !== null && (
         <p className="text-sm" style={{ fontFamily: 'var(--mono)', color: (terlambatInfo.menit ?? 0) > 0 ? 'var(--merah)' : 'var(--label)' }}>
-          Masuk {jamWIB(new Date(waktu))} · jam masuk {terlambatInfo.jamEfektif} · toleransi {terlambatInfo.toleransiMenit} menit → terlambat{' '}
-          {terlambatInfo.menit ?? 0} menit
+          Masuk {jamWIB(new Date(waktu))} · jam masuk {terlambatInfo.jamEfektif} · toleransi {terlambatInfo.toleransiMenit} menit →{' '}
+          {terlambatInfo.menit === null
+            ? 'tidak dinilai (hari di luar hari kerja atau cuti disetujui)'
+            : `terlambat ${terlambatInfo.menit} menit`}
         </p>
       )}
       <p className="text-sm" style={{ fontFamily: 'var(--mono)', color: 'var(--label)' }}>

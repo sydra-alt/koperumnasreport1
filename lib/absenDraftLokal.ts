@@ -19,7 +19,6 @@ export interface AbsenPending {
   akurasi: number;
   jarak: number;
   status: 'valid' | 'di_luar_radius';
-  terlambatMenit: number | null;
   fotoBase64: string;
   fotoMime: string;
 }

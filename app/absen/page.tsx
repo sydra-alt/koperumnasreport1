@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import { usePolicy } from '../../lib/api/policy';
 import { useTitikAbsenSaya, useAbsenHariIni, useKirimAbsen, useSetujuiPrivasiPresensi } from '../../lib/api/absensi';
-import { urutkanTitikTerdekat, hitungTerlambatMenit, statusDariJarak, type TitikDenganJarak } from '../../lib/absen';
+import { urutkanTitikTerdekat, statusDariJarak, type TitikDenganJarak } from '../../lib/absen';
 import { jamWIB, tanggalWIB } from '../../lib/tanggal';
 import { CameraCapture } from '../../components/CameraCapture';
 import { KerangkaAbsen } from '../../components/Kerangka';
@@ -35,6 +35,12 @@ type Layar =
   | 'berhasil';
 
 
+
+/** Akhiran label hasil absen dari nilai SERVER: >0 terlambat, 0 tepat waktu, null (pulang / hari non-kerja / cuti) tidak ada keterangan. */
+function labelTerlambat(tipe: 'masuk' | 'pulang', terlambatMenit: number | null): string {
+  if (tipe !== 'masuk' || terlambatMenit === null) return '';
+  return terlambatMenit > 0 ? ` · terlambat ${terlambatMenit} menit` : ' · tepat waktu';
+}
 
 export default function AbsenPage() {
   const { session, profile } = useAuth();
@@ -94,8 +100,6 @@ export default function AbsenPage() {
     );
   }
 
-  const jamMasukDefault = String(policy.jam_masuk ?? '08:00');
-  const toleransiMenit = Number(policy.toleransi_terlambat_menit ?? 15);
   const akurasiMaks = Number(policy.absen_akurasi_maksimal_meter ?? 100);
   const kebijakanLuarRadius = String(policy.absen_di_luar_radius ?? 'izinkan_dengan_tanda');
 
@@ -148,11 +152,11 @@ export default function AbsenPage() {
     setLayar('mengirim');
 
     const status = statusDariJarak(titikDipilih.jarakMeter, titikDipilih.radiusMeter);
-    const terlambatMenit =
-      tipeAktif === 'masuk' ? hitungTerlambatMenit(titikDipilih.jamMasuk ?? jamMasukDefault, jamWIB(), toleransiMenit) : null;
 
     try {
-      await kirimAbsen.mutateAsync({
+      // Keterlambatan dihitung SERVER (trigger, migrasi 0059) -- yang
+      // ditampilkan di bawah adalah nilai yang dikembalikan server.
+      const { terlambatMenit } = await kirimAbsen.mutateAsync({
         tipe: tipeAktif,
         lokasiAbsenId: titikDipilih.id,
         lat: posisi.lat,
@@ -160,12 +164,11 @@ export default function AbsenPage() {
         akurasi: posisi.akurasi,
         jarak: titikDipilih.jarakMeter,
         status,
-        terlambatMenit,
         fotoBlob: blob,
       });
       hapusAbsenPending();
       setHasilBerhasil({
-        label: `${jamWIB()} · ${titikDipilih.nama}${terlambatMenit ? ` · terlambat ${terlambatMenit} menit` : tipeAktif === 'masuk' ? ' · tepat waktu' : ''}`,
+        label: `${jamWIB()} · ${titikDipilih.nama}${labelTerlambat(tipeAktif, terlambatMenit)}`,
         keteranganLuarRadius: status === 'di_luar_radius',
       });
       setLayar('berhasil');
@@ -184,7 +187,6 @@ export default function AbsenPage() {
         akurasi: posisi.akurasi,
         jarak: titikDipilih.jarakMeter,
         status,
-        terlambatMenit,
         fotoBase64,
         fotoMime: 'image/jpeg',
       };
@@ -200,7 +202,7 @@ export default function AbsenPage() {
     setLayar('mengirim');
     try {
       const blob = base64KeBlob(draftPending.fotoBase64);
-      await kirimAbsen.mutateAsync({
+      const { terlambatMenit } = await kirimAbsen.mutateAsync({
         tipe: draftPending.tipe,
         lokasiAbsenId: draftPending.lokasiAbsenId,
         lat: draftPending.lat,
@@ -208,13 +210,12 @@ export default function AbsenPage() {
         akurasi: draftPending.akurasi,
         jarak: draftPending.jarak,
         status: draftPending.status,
-        terlambatMenit: draftPending.terlambatMenit,
         fotoBlob: blob,
       });
       hapusAbsenPending();
       setDraftPending(null);
       setHasilBerhasil({
-        label: `${draftPending.lokasiNama}${draftPending.terlambatMenit ? ` · terlambat ${draftPending.terlambatMenit} menit` : ''}`,
+        label: `${draftPending.lokasiNama}${labelTerlambat(draftPending.tipe, terlambatMenit)}`,
         keteranganLuarRadius: draftPending.status === 'di_luar_radius',
       });
       setLayar('berhasil');

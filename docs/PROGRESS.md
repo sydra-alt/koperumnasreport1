@@ -1294,3 +1294,25 @@ CEO: bangun PENCATATAN poin PTE harian saja, JANGAN bangun bonus/potongan (6 per
 **PEMICU -- perbaiki SEBELUM ini terjadi, bukan sesudah:** begitu ada baris baru `assignment(form_key='pembangunan', user_id=...)` dibuat untuk orang yang BUKAN ceo/pusat (mis. "Kepala Pembangunan" diaktifkan lagi), orang itu akan membuka dashboard-nya dan melihat SEMUA angka nol -- bukan error, jadi kemungkinan besar dilaporkan sebagai "data belum ada" alih-alih dikenali sebagai bug akses.
 
 **Perbaikan yang diperlukan (belum dikerjakan, menunggu approval):** tambahkan `and public.boleh_lihat_rekap('pembangunan')` ke `WHERE` di `pembangunan_untuk_tanggal()`, persis pola saudaranya -- satu `CREATE OR REPLACE FUNCTION`, tidak mengubah signature/return type.
+
+## KEPUTUSAN CEO: palet warna TIDAK diseragamkan antar repo, redesign laporan pakai token yang ada (19 September 2026)
+
+**Keputusan.** Repo `pos-fnb` (cocoa/krem hangat, OKLCH, Geist -- `src/app/globals.css`) dan repo laporan ini (navy/krem, hex, Plus Jakarta Sans -- `app/tokens.css`) **mempertahankan palet masing-masing apa adanya**. Tidak disamakan, tidak diganti ke abu-abu/navy lain. Keduanya sudah terpisah total (tidak ada import/paket bersama), jadi mengubah satu tidak menyentuh yang lain.
+
+**Alasan (supaya tidak dibahas ulang).** `pos-fnb` sudah selesai dan di-freeze; repo laporan dipakai 26 orang setiap hari. Menyamakan berarti menyentuh dua aplikasi yang sudah jalan demi konsistensi yang tidak ada yang mengeluhkan.
+
+**Akibat untuk redesign repo laporan.** Tetap memakai token di `app/tokens.css` (dan aturan CLAUDE.md #10). Perbaikannya di **hierarki, spacing, dan komponen**, BUKAN ganti warna. Kalau ada berkas dengan warna hex tertulis langsung (3 berkas `.ts/.tsx` saat diukur), rapikan ke token, jangan ganti nilainya.
+
+## Keterlambatan presensi dihitung SERVER (migrasi 0059, 19 September 2026)
+
+**Masalah.** `terlambat_menit` dihitung di browser dan disimpan apa adanya -- tidak ada validasi server; siapa pun bisa mengirim 0 tiap hari. Begitu `pte_mulai_berlaku` diisi, angka ini jadi potongan gaji. Hari Minggu juga tetap dihitung (785 menit).
+
+**Dibangun.** Trigger `BEFORE INSERT` pada `absensi` (`absensi_hitung_server`) menimpa `waktu` (= `now()` server), `tanggal` (= tanggal WIB server), dan `terlambat_menit` (= `hitung_terlambat_menit()`), serta menolak titik yang tidak ditugaskan ke orang itu. Insert tanpa JWT (owner/skrip/service_role) tidak ditimpa. Aturan hitung: hari di luar `policy.workdays` -> `null`; cuti/sakit/izin `disetujui` -> `null`; selain itu menit setelah (jam acuan + toleransi), minimal 0. **`null` = tidak dinilai, bukan 0 (tepat waktu).** `hitung_terlambat_menit()` EXECUTE-nya dicabut dari klien (membaca `cuti` orang lain).
+
+**Jam acuan ada di SATU fungsi: `jam_masuk_acuan(user, titik, tanggal)`.** Saat ini urutannya masih `penugasan_absen.jam_masuk` -> `policy.jam_masuk` (sama dengan perilaku lama klien). `jadwal_operasional` (0055) BELUM dipakai -- menunggu keputusan CEO; mengganti urutan cukup mengubah isi fungsi itu. `presensi_untuk_tanggal()` (kolom `masuk_jam_efektif`) kini memanggil fungsi yang sama.
+
+**Klien.** `lib/api/absensi.ts` tidak lagi mengirim `terlambat_menit`; insert mengembalikan nilai server dan halaman Absen menampilkan nilai itu. Tinjau Absensi menampilkan "tidak dinilai" untuk `null`.
+
+**Diverifikasi.** `scripts/uji-terlambat-server.mjs` (23 skenario, semua di-ROLLBACK): 404 kasus asli, batas toleransi 08:15/08:16, Minggu -> null, batas hari lewat konversi WIB (bukan UTC), override per orang, cuti disetujui/diajukan/ditolak + batas inklusif, klien memalsukan tanggal/waktu/terlambat=0, titik tak ditugaskan ditolak, 'pulang' selalu null, EXECUTE dicabut, jalur owner tidak ditimpa. `uji-absen.mjs` dan `uji-presensi-rls.mjs` tetap lolos. `tsc`/`build` bersih.
+
+**Belum / menunggu keputusan CEO:** (1) urutan acuan jam masuk + shift sore; (2) 6 baris lama yang terlanjur salah -- TIDAK diubah; (3) kasus kirim-ulang offline (lihat laporan). Hari kerja outlet 7-hari (Indosteak, Indokopi akhir pekan 24 jam) vs `policy.workdays` Senin-Sabtu: sementara Minggu tidak dinilai untuk semua orang.
