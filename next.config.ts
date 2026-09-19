@@ -3,6 +3,7 @@ import path from "node:path";
 import { withSerwist } from "@serwist/turbopack";
 
 const nextConfig: NextConfig = {
+  devIndicators: false,
   turbopack: {
     root: path.resolve(__dirname),
   },
