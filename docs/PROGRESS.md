@@ -1385,3 +1385,32 @@ Absen yang gagal terkirim disimpan di HP (`lib/absenDraftLokal.ts`) lalu dikirim
 ## Koordinat rumah CEO dihapus dari berkas (19 September 2026)
 
 Instruksi CEO: koordinat "Lokasi Uji" (rumah CEO; sudah dinetralkan di produksi oleh 0054) dihapus dari salinan di repo. **Dikerjakan:** `docs/DATA-KARYAWAN.md` dan `supabase/migrations/0032_lokasi_absen_uji.sql` kini berisi `0, 0` (baris migrasi TIDAK dihapus; riwayat migrasi utuh; berkas ini hanya teks, tidak mengubah database). Dari `scripts/uji-radius-gps-palsu.mjs` sudah dihapus sebelumnya. `git grep` sesudahnya: nol sisa di berkas terlacak. **Sengaja TIDAK dikerjakan:** menulis ulang riwayat git -- repo punya dua branch dan sudah ter-push; salinan lama tetap ada di commit lama. Kalau koordinat itu dianggap sensitif terhadap siapa pun yang punya akses baca ke repo, itu risiko yang diterima dan diketahui.
+
+## DITUNDA: sinkron omzet POS ke laporan (sisi laporan) -- 19 September 2026
+
+**Status.** Sisi pos-fnb SUDAH JADI dan ter-push (endpoint `GET /api/integrasi/omzet-harian`, 30 tes; masuk ke `origin/master` lewat commit `4fae6f5`, commit CEO sendiri yang menyapu berkasnya bersama pekerjaan stock-transfer -- pesan commit-nya tidak menyebut integrasi). **Belum di-deploy**, secret `INTEGRASI_LAPORAN_TOKEN`/`INTEGRASI_BUSINESS_ID` belum diisi. **Sisi laporan (tabel, route sinkron, tile, penjadwal) TIDAK dibangun.** Paket Vercel TIDAK dicek dan penjadwal TIDAK dibangun, atas instruksi CEO.
+
+**Alasan ditunda.** (1) Host Supabase produksi POS di `.env.production.local` (`zaermptphmllakukidqk`) tidak ada di DNS (NXDOMAIN) -- tidak diketahui database produksi POS mana yang dipakai Worker, jadi ID outlet untuk tabel pemetaan belum ada artinya. (2) Keempat outlet Koperumnas 0 order di POS -- POS belum dipakai.
+
+**PEMICU melanjutkan:** keempat outlet mulai transaksi lewat POS DAN proyek Supabase produksi POS sudah jelas.
+
+**Rancangan yang sudah DISETUJUI (jangan diulang):** tarikan (bukan dorongan), penjadwal dari sisi laporan; tabel `outlet_pos_map` (pemetaan eksplisit, nama outlet hanya untuk verifikasi manusia), `omzet_pos_harian` (bigint), `sinkron_pos_log`; kunci policy umur maksimal data (usul 30 jam); view `security_invoker` untuk CEO. Jawaban CEO atas lima pertanyaan: total per outlet per hari; H+1 boleh; harus di dalam aplikasi laporan; POS BERDAMPINGAN dengan `omzet_sistem` Ita (bukan menggantikan); volume 0 order. Wajib di layar: stempel waktu, **angka basi DISEMBUNYIKAN** (bukan ditandai), nol transaksi = "Belum ada transaksi POS" (bukan "Rp 0"), definisi hari = `business_date` POS dengan batas hari dibaca dari data, dua angka berlabel ("Uang diterima" dan "Penjualan bersih sebelum pajak"), terlihat CEO dan accounting.
+
+**Dua baris tile (keputusan CEO):** hari bisnis TERAKHIR YANG TUTUP (final) dan hari bisnis BERJALAN (sementara, ditandai jelas). **Temuan yang WAJIB diputuskan saat dilanjutkan:** baris "berjalan" tidak berguna dengan satu sinkron sehari -- sinkron final harus setelah 04:00 (usul 05:10), padahal outlet buka 09:00, jadi hari berjalan selalu kosong sampai sinkron berikutnya; perlu beberapa sinkron sehari (usul 05:10, 14:00, 21:30). Itu berarti penjadwal harus bisa jalan berkali-kali sehari: paket Vercel Hobby (dari ingatan, BELUM diverifikasi) hanya sekali sehari -> mungkin GitHub Actions.
+
+## UTANG: tautan POS hanya untuk CEO; tujuan-setelah-login pos-fnb (19 September 2026)
+
+- **Tautan POS dipersempit ke CEO saja** (`lib/posLink.ts`). Akun Shabita (accounting) di pos-fnb tidak bisa dipastikan ada -- host produksi tidak ada di DNS jadi tidak bisa dicek; pos-fnb punya peran `accountant` dengan izin `report.sales` menyala, jadi kalau akunnya dibuat dengan peran itu, tombol bisa dibuka lagi. **Accounting menyusul setelah akunnya dibuat dan dipastikan bisa masuk** (keputusan membuat akun ada pada CEO). Cukup ubah `bolehLihatTautanPos`.
+- **Tujuan-setelah-login pos-fnb hilang:** `redirect("/login")` polos, jadi setelah masuk pengguna mendarat di beranda POS, bukan `/reports/sales`. Dicatat sebagai utang, TIDAK dibangun; Putri cukup membuka menu Laporan Penjualan sekali setelah masuk.
+
+## Redesign Beranda (19 September 2026)
+
+Arah dari temuan pengukuran di 390x844 (`app/page.tsx`; `lib/urgensiTugas.ts` baru; `hitungTugasHariIni` TIDAK disentuh):
+- **Warna status:** merah HANYA untuk yang sudah lewat batas; amber (`--kuning`) untuk yang mendekati batas; netral untuk yang masih lama. Semua dari token yang ada, tidak ada warna baru. **Ambang "mendekati" = 60 menit** (`AMBANG_MENDEKATI_BAWAAN_MENIT`; bisa ditimpa `policy.tugas_mendekati_batas_menit` -- kunci itu BELUM ada di database, bawaan berlaku sampai ada yang mengisinya). Draft yang sudah lewat batas kini merah (`hitungTugasHariIni` sendiri tidak pernah menandai draft terlambat -- batasnya dihitung ulang di `urgensiTugas`).
+- **Satu tugas didahulukan:** batas paling dekat/paling terlambat jadi kartu utama ("Kerjakan dulu", tombol navy penuh); sisanya kartu ringkas dengan tombol lebar tetap 112px yang lebih ringan. Judul laporan di baris utama, outlet di baris kedua yang lebih kecil.
+- **Penghitung "0 dari 3" dikecilkan** jadi teks kecil + progress bar 4px.
+- **BUG kartu PTE hilang saat semua tugas selesai -- diperbaiki** (dulu hanya dirender di cabang "masih ada tugas").
+- **Absen naik** jadi satu baris tautan (`/absen`) tepat di bawah sapaan.
+- **Aturan tampil kartu PTE (KEPUTUSAN TURUNAN, perlu konfirmasi CEO):** `profile.wajib_pte !== false` DAN bekerja di outlet yang unitnya punya aturan PTE (`unit_bisnis.label_undangan` tidak null = Indosteak/Indokopi, migrasi 0057). Aturan yang diminta ("ditugaskan ke form `personal_marketing`") TIDAK BISA dipakai apa adanya: **tabel `assignment` tidak punya satu pun baris `form_key='personal_marketing'`** -- tugas itu muncul dari peran `karyawan`, bukan dari assignment. Memakai assignment akan menyembunyikan kartu PTE dari SEMUA orang. Akibat aturan turunan: HRD/orang tanpa outlet tidak lagi melihat kartu; karyawan resto di Indosteak/Indokopi TETAP melihatnya (memang cakupan PTE menurut 0057). Ganti aturan cukup di satu kondisi (`tampilPte` di `DaftarTugas`).
+- Lebar konten Beranda dibatasi 760px di desktop (dulu memenuhi layar); tombol utama maksimal 360px.
+- Uji: `scripts/uji-urgensi-tugas.mjs` (mengimpor kode asli, 25 skenario). Diverifikasi di browser sungguhan 390x844 dan 1280x800 dengan akun uji dan intersepsi respons (deadline, laporan terkirim/draft, absen); ukuran, tumpang-tindih, dan tombol <44px diperiksa.

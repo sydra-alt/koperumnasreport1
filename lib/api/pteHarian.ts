@@ -349,3 +349,29 @@ export function useLabelUndanganOutlet(outletId: string | null | undefined) {
     },
   });
 }
+
+/**
+ * true kalau SALAH SATU outlet ini terhubung ke unit bisnis yang PUNYA aturan
+ * PTE (unit_bisnis.label_undangan tidak null -- migrasi 0057: cuma Indosteak &
+ * Indokopi). Dipakai Beranda untuk memutuskan apakah kartu PTE ditampilkan:
+ * orang yang tidak bekerja di unit ber-PTE (mis. HRD, kantor pusat) tidak
+ * perlu melihatnya. `false` untuk daftar outlet kosong.
+ */
+export function useAdaAturanPteDiOutlet(outletIds: string[]) {
+  const kunci = [...outletIds].sort();
+  return useQuery({
+    queryKey: ['pte-ada-aturan-di-outlet', kunci],
+    enabled: kunci.length > 0,
+    queryFn: async (): Promise<boolean> => {
+      const supabase = createClient();
+      const { data, error } = await supabase.from('outlet').select('id, unit_bisnis(label_undangan)').in('id', kunci);
+      if (error) throw error;
+      return (data ?? []).some((o) => {
+        const unit = o.unit_bisnis as unknown as { label_undangan: string | null } | { label_undangan: string | null }[] | null;
+        if (!unit) return false;
+        const label = Array.isArray(unit) ? unit[0]?.label_undangan : unit.label_undangan;
+        return label !== null && label !== undefined;
+      });
+    },
+  });
+}

@@ -20,7 +20,15 @@ const URL_DASAR_POS = (process.env.NEXT_PUBLIC_POS_DASHBOARD_URL ?? 'https://pos
  */
 export const URL_LAPORAN_PENJUALAN_POS = `${URL_DASAR_POS}/reports/sales`;
 
-/** Hanya CEO dan accounting -- BUKAN pusat, walau pusat melihat dashboard yang sama. */
+/**
+ * Hanya CEO -- SEMENTARA (19 September 2026). Awalnya CEO + accounting, tapi
+ * akun Shabita (accounting) di pos-fnb tidak bisa dipastikan ada (host
+ * Supabase produksi POS tidak ada di DNS, jadi tidak bisa dicek), dan tombol
+ * yang mentok di layar login lebih buruk daripada tidak ada tombol. UTANG:
+ * lebarkan lagi ke accounting setelah akunnya (peran `accountant`, izin
+ * report.sales) dibuat dan dipastikan bisa masuk -- lihat docs/PROGRESS.md.
+ * BUKAN pusat, walau pusat melihat dashboard yang sama.
+ */
 export function bolehLihatTautanPos(roles: readonly string[]): boolean {
-  return roles.includes('ceo') || roles.includes('accounting');
+  return roles.includes('ceo');
 }

@@ -9,9 +9,24 @@ import { useDaftarShift } from '../lib/api/shift';
 import { useLaporanHariIniSaya } from '../lib/api/beranda';
 import { useProgresBulananSaya } from '../lib/api/marketing';
 import { useTitikAbsenSaya, useAbsenHariIni } from '../lib/api/absensi';
-import { hitungTugasHariIni, sapaanWaktu } from '../lib/tugasHariIni';
+import { hitungTugasHariIni, labelSisaWaktu, sapaanWaktu } from '../lib/tugasHariIni';
+import {
+  AMBANG_MENDEKATI_BAWAAN_MENIT,
+  tambahUrgensi,
+  urutkanBerdasarkanBatas,
+  type TugasDenganUrgensi,
+  type Urgensi,
+} from '../lib/urgensiTugas';
+import { batasJamKirim } from '../lib/api/report';
+import type { PolicyMap } from '../lib/api/policy';
 import { hariISOWIB, jamWIB, tanggalWIB } from '../lib/tanggal';
-import { poinMaksimalHarian, ringkasanPoinBulanan, usePteHarianBulanIniUntuk } from '../lib/api/pteHarian';
+import {
+  poinMaksimalHarian,
+  ringkasanPoinBulanan,
+  useAdaAturanPteDiOutlet,
+  usePteHarianBulanIniUntuk,
+  type PteHarianBulanRow,
+} from '../lib/api/pteHarian';
 import { AngkaGrid } from '../components/AngkaGrid';
 import { KeadaanGagal } from '../components/KeadaanGagal';
 import { KerangkaBeranda, KerangkaDaftarKartu } from '../components/Kerangka';
@@ -148,154 +163,90 @@ function DashboardCeo() {
   );
 }
 
-const WARNA_RAIL: Record<'belum' | 'draft' | 'selesai', string> = {
-  belum: 'rail-merah',
-  draft: 'rail-kuning',
-  selesai: 'rail-hijau',
+/**
+ * Warna tugas (redesign Beranda, 19 September 2026, aturan CEO): MERAH hanya
+ * untuk yang SUDAH lewat batas, AMBER untuk yang mendekati batas, selain itu
+ * netral. Semua dari token yang ada (rail-* di globals.css) -- tidak ada
+ * warna baru. Ambang "mendekati" dan urutan lihat lib/urgensiTugas.ts.
+ */
+const RAIL_URGENSI: Record<Urgensi, string> = {
+  lewat: 'rail-merah',
+  mendekati: 'rail-kuning',
+  santai: 'rail-netral',
 };
-const WARNA_STATUS_TEKS: Record<'belum' | 'draft' | 'selesai', string> = {
-  belum: 'var(--merah)',
-  draft: 'var(--kuning)',
-  selesai: 'var(--hijau)',
+const WARNA_TEKS_URGENSI: Record<Urgensi, string> = {
+  lewat: 'var(--merah)',
+  mendekati: 'var(--kuning)',
+  santai: 'var(--label)',
 };
 
-function DaftarTugas() {
-  const { assignments, roles, authGagal, refetchAuth, session } = useAuth();
-  const { data: policy, isError: policyGagal, refetch: refetchPolicy } = usePolicy();
-  const { data: lokasi } = useDaftarLokasi();
-  const { data: outlet } = useDaftarOutlet();
-  const { data: shift } = useDaftarShift();
-  const { data: laporanHariIni, isLoading, isError: laporanGagal, refetch: refetchLaporan } = useLaporanHariIniSaya();
-  const { data: progres } = useProgresBulananSaya();
-  const { data: poinBulanIni } = usePteHarianBulanIniUntuk(session?.user.id ?? null);
+/** "batas 18.00" / "terlambat 2 jam"; draft diberi awalan karena `hitungTugasHariIni` tidak memuat batas untuk draft. */
+function labelStatusTugas(t: TugasDenganUrgensi, jam: string): string {
+  const dasar = t.batas ? labelSisaWaktu(t.batas, jam).label : t.label;
+  return t.status === 'draft' ? `Draft tersimpan · ${dasar}` : dasar;
+}
 
-  // Keadaan GAGAL (query error) -- BEDA dari keadaan KOSONG (memang belum
-  // ada tugas) di bawah. Tanpa ini, kegagalan jaringan/server terlihat
-  // identik dengan "semua laporan sudah lengkap", yang justru paling
-  // berbahaya untuk disalahartikan (instruksi eksplisit user, 30 Agustus 2026).
-  // `authGagal` (lib/auth/AuthProvider.tsx) ditambahkan lewat audit Phase 2A
-  // (19 September 2026) -- `assignments`/`roles` dulu bisa diam-diam jatuh
-  // ke [] kalau query profil/peran/penugasan gagal, bikin "gagal muat"
-  // terlihat identik dengan "memang tidak ditugaskan apa-apa".
-  if (policyGagal || laporanGagal || authGagal) {
-    return (
-      <KeadaanGagal
-        pesan="Gagal memuat tugas hari ini."
-        onCoba={() => {
-          void refetchPolicy();
-          void refetchLaporan();
-          refetchAuth();
-        }}
-      />
-    );
-  }
-
-  if (!policy || isLoading) {
-    return <KerangkaDaftarKartu />;
-  }
-
-  const namaLokasi = (id: string) => lokasi?.find((l) => l.id === id)?.nama ?? id;
-  const namaOutlet = (id: string) => outlet?.find((o) => o.id === id)?.nama ?? id;
-  const namaShift = (id: string) => shift?.find((s) => s.id === id)?.nama ?? id;
-  const batasLaporShift = (id: string) => shift?.find((s) => s.id === id)?.batasLapor ?? null;
-  const workdays = (policy.workdays as number[] | undefined) ?? [1, 2, 3, 4, 5, 6];
-  const hariLibur = !workdays.includes(hariISOWIB());
-
-  if (hariLibur) {
-    return (
-      <div className="kartu-status rail-netral flex flex-col gap-2">
-        <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Hari ini hari libur</p>
-        <p className="text-sm" style={{ color: 'var(--label)' }}>Tidak ada laporan yang wajib dikirim.</p>
-        <Link href="/riwayat" className="tombol-sekunder" style={{ alignSelf: 'flex-start' }}>
-          Lihat laporan yang sudah dikirim
-        </Link>
+/** Tugas PERTAMA (batas terdekat/paling terlambat): kartu besar, satu-satunya tombol berat di layar. */
+function KartuTugasUtama({ t, jam }: { t: TugasDenganUrgensi; jam: string }) {
+  return (
+    <div className={`kartu-status ${RAIL_URGENSI[t.urgensi]} flex flex-col gap-3`} style={{ padding: '16px 18px' }}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <span className="text-sm" style={{ color: 'var(--label)', fontWeight: 600 }}>Kerjakan dulu</span>
+        <span className="status-teks" style={{ color: WARNA_TEKS_URGENSI[t.urgensi] }}>{labelStatusTugas(t, jam)}</span>
       </div>
-    );
-  }
+      <div>
+        <p style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 'var(--ukuran-judul)', lineHeight: 1.25 }}>{t.namaForm}</p>
+        {t.scopeLabel && (
+          <p className="text-sm mt-0.5" style={{ color: 'var(--label)' }}>{t.scopeLabel}</p>
+        )}
+      </div>
+      <Link href={`/lapor/${t.formKey}`} className="tombol-utama" style={{ width: '100%', maxWidth: 360, minHeight: 48 }}>
+        {t.tombol}
+      </Link>
+    </div>
+  );
+}
 
-  const tugas = hitungTugasHariIni(assignments, roles, laporanHariIni ?? [], policy, jamWIB(), namaLokasi, namaOutlet, namaShift, batasLaporShift);
-  const tugasBelum = tugas.filter((t) => t.status !== 'selesai');
-  const tugasSelesai = tugas.length - tugasBelum.length;
+/** Tugas berikutnya: kartu ringkas, tombol lebar TETAP dan lebih ringan supaya judul tidak berebut ruang. */
+function KartuTugasSekunder({ t, jam }: { t: TugasDenganUrgensi; jam: string }) {
+  return (
+    <div className={`kartu-status ${RAIL_URGENSI[t.urgensi]} flex items-center gap-3`} style={{ padding: '12px 14px 12px 16px' }}>
+      <div className="min-w-0 flex-1">
+        <p style={{ fontFamily: 'var(--display)', fontWeight: 600, fontSize: 'var(--ukuran-isi)', lineHeight: 1.3 }}>{t.namaForm}</p>
+        {t.scopeLabel && (
+          <p style={{ fontSize: 13, color: 'var(--label)', lineHeight: 1.3 }}>{t.scopeLabel}</p>
+        )}
+        <p className="status-teks mt-0.5" style={{ color: WARNA_TEKS_URGENSI[t.urgensi] }}>{labelStatusTugas(t, jam)}</p>
+      </div>
+      <Link
+        href={`/lapor/${t.formKey}`}
+        className="tombol-sekunder"
+        style={{ flex: '0 0 112px', width: 112, minHeight: 44, padding: '8px', fontSize: 14, whiteSpace: 'nowrap' }}
+      >
+        {t.tombol}
+      </Link>
+    </div>
+  );
+}
+
+type ProgresSaya = ReturnType<typeof useProgresBulananSaya>['data'];
+
+/**
+ * PTE poin -- dirender DI LUAR cabang "masih ada tugas" (bug 19 September
+ * 2026: dulu kartu ini lenyap begitu semua laporan terkirim, tepat saat
+ * orang ingin melihat hasilnya). Tanpa gerbang pte_berlaku: informasi poin
+ * harian tetap berguna dilihat SEBELUM bonus/potongan resmi berlaku.
+ */
+function BagianPte({ policy, poinBulanIni, progres }: { policy: PolicyMap; poinBulanIni: PteHarianBulanRow[] | undefined; progres: ProgresSaya }) {
   const closingTarget = Number(policy.closing_target);
   const poinMaksimal = poinMaksimalHarian(policy);
-  const hariIni = tanggalWIB();
-  const poinHariIni = poinBulanIni?.find((r) => r.tanggal === hariIni) ?? null;
+  const poinHariIni = poinBulanIni?.find((r) => r.tanggal === tanggalWIB()) ?? null;
   const { totalPoin: poinTotalBulanIni, hariPenuh } = ringkasanPoinBulanan(poinBulanIni ?? [], poinMaksimal);
   const hariWajibBulanIni = progres?.hari_wajib ?? 0;
   const targetPoinBulanIni = hariWajibBulanIni * poinMaksimal;
 
-  if (tugasBelum.length === 0) {
-    return (
-      <div className="kartu-status rail-hijau flex flex-col gap-2">
-        <p className="angka-kecil" style={{ color: 'var(--hijau)' }}>
-          Semua laporan hari ini sudah dikirim
-        </p>
-        <Link href="/riwayat" className="tombol-sekunder" style={{ alignSelf: 'flex-start' }}>
-          Lihat laporan yang sudah dikirim
-        </Link>
-      </div>
-    );
-  }
-
-  const persen = tugas.length > 0 ? Math.round((tugasSelesai / tugas.length) * 100) : 0;
-
   return (
     <div className="flex flex-col gap-4">
-      {/* Ringkasan: angka besar + progress bar (DESIGN.md §5.1, §6.1) */}
-      <div>
-        <p className="judul-bagian">Yang perlu dikerjakan hari ini</p>
-        <div className="flex items-baseline gap-2 mt-1">
-          <span className="angka-besar" style={{ color: 'var(--biru)' }}>
-            {tugasSelesai}
-          </span>
-          <span className="text-sm" style={{ color: 'var(--label)' }}>
-            dari {tugas.length} laporan sudah dikirim
-          </span>
-        </div>
-        <div className="progres-bar mt-2">
-          <div className="progres-bar-isi" style={{ width: `${persen}%` }} />
-        </div>
-        <p className="text-sm mt-1" style={{ color: 'var(--label)' }}>
-          {tugasBelum.length} masih ditunggu
-        </p>
-      </div>
-
-      {/* Daftar tugas dengan rail status (DESIGN.md §6.1, §4.2) */}
-      <div className="flex flex-col gap-3">
-        {tugasBelum.map((t) => {
-          const railClass = t.lewatDeadline ? 'rail-merah' : WARNA_RAIL[t.status];
-          return (
-            <div
-              key={`${t.formKey}-${t.scopeLabel ?? ''}`}
-              className={`kartu-status ${railClass} flex flex-col gap-2`}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <p style={{ fontFamily: 'var(--display)', fontWeight: 600, fontSize: 'var(--ukuran-isi)' }}>
-                    {t.namaForm}
-                    {t.scopeLabel ? ` (${t.scopeLabel})` : ''}
-                  </p>
-                  <p className="status-teks mt-0.5" style={{ color: t.lewatDeadline ? 'var(--merah)' : WARNA_STATUS_TEKS[t.status] }}>
-                    {t.label}
-                  </p>
-                </div>
-                <Link
-                  href={`/lapor/${t.formKey}`}
-                  className="tombol-utama"
-                  style={{ fontSize: 14, padding: '8px 16px', minHeight: 44, flexShrink: 0 }}
-                >
-                  {t.tombol}
-                </Link>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* PTE poin hari ini (MENGGANTIKAN "Undangan bulan ini" lama, 20
-          September 2026) -- tanpa gerbang pte_berlaku, sama seperti panel
-          serupa di LaporForm.tsx: informasi poin harian tetap berguna
-          dilihat SEBELUM bonus/potongan resmi berlaku. */}
       <div className="kartu-status rail-biru flex flex-col gap-1">
         <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--biru)' }}>PTE poin hari ini</p>
         <div className="flex items-baseline gap-2">
@@ -346,18 +297,146 @@ function DaftarTugas() {
   );
 }
 
+function DaftarTugas() {
+  const { assignments, roles, authGagal, refetchAuth, session, profile } = useAuth();
+  const { data: policy, isError: policyGagal, refetch: refetchPolicy } = usePolicy();
+  const { data: lokasi } = useDaftarLokasi();
+  const { data: outlet } = useDaftarOutlet();
+  const { data: shift } = useDaftarShift();
+  const { data: laporanHariIni, isLoading, isError: laporanGagal, refetch: refetchLaporan } = useLaporanHariIniSaya();
+  const { data: progres } = useProgresBulananSaya();
+  const { data: poinBulanIni } = usePteHarianBulanIniUntuk(session?.user.id ?? null);
+  const idOutletSaya = Array.from(new Set(assignments.map((a) => a.outlet_id).filter((id): id is string => Boolean(id))));
+  const { data: adaAturanPteDiOutlet } = useAdaAturanPteDiOutlet(idOutletSaya);
+
+  // Keadaan GAGAL (query error) -- BEDA dari keadaan KOSONG (memang belum
+  // ada tugas) di bawah. Tanpa ini, kegagalan jaringan/server terlihat
+  // identik dengan "semua laporan sudah lengkap", yang justru paling
+  // berbahaya untuk disalahartikan (instruksi eksplisit user, 30 Agustus 2026).
+  // `authGagal` (lib/auth/AuthProvider.tsx) ditambahkan lewat audit Phase 2A
+  // (19 September 2026) -- `assignments`/`roles` dulu bisa diam-diam jatuh
+  // ke [] kalau query profil/peran/penugasan gagal, bikin "gagal muat"
+  // terlihat identik dengan "memang tidak ditugaskan apa-apa".
+  if (policyGagal || laporanGagal || authGagal) {
+    return (
+      <KeadaanGagal
+        pesan="Gagal memuat tugas hari ini."
+        onCoba={() => {
+          void refetchPolicy();
+          void refetchLaporan();
+          refetchAuth();
+        }}
+      />
+    );
+  }
+
+  if (!policy || isLoading) {
+    return <KerangkaDaftarKartu />;
+  }
+
+  const namaLokasi = (id: string) => lokasi?.find((l) => l.id === id)?.nama ?? id;
+  const namaOutlet = (id: string) => outlet?.find((o) => o.id === id)?.nama ?? id;
+  const namaShift = (id: string) => shift?.find((s) => s.id === id)?.nama ?? id;
+  const batasLaporShift = (id: string) => shift?.find((s) => s.id === id)?.batasLapor ?? null;
+  const workdays = (policy.workdays as number[] | undefined) ?? [1, 2, 3, 4, 5, 6];
+  const hariLibur = !workdays.includes(hariISOWIB());
+
+  if (hariLibur) {
+    return (
+      <div className="kartu-status rail-netral flex flex-col gap-2">
+        <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Hari ini hari libur</p>
+        <p className="text-sm" style={{ color: 'var(--label)' }}>Tidak ada laporan yang wajib dikirim.</p>
+        <Link href="/riwayat" className="tombol-sekunder" style={{ alignSelf: 'flex-start' }}>
+          Lihat laporan yang sudah dikirim
+        </Link>
+      </div>
+    );
+  }
+
+  const jam = jamWIB();
+  // hitungTugasHariIni TIDAK diubah -- hasilnya dipakai apa adanya, lalu
+  // ditambah batas/urgensi hanya untuk urutan dan warna (lib/urgensiTugas.ts).
+  const tugasMentah = hitungTugasHariIni(assignments, roles, laporanHariIni ?? [], policy, jam, namaLokasi, namaOutlet, namaShift, batasLaporShift);
+  const tugas = tambahUrgensi(tugasMentah, {
+    assignments,
+    jamSekarang: jam,
+    ambangMenit: Number(policy.tugas_mendekati_batas_menit ?? AMBANG_MENDEKATI_BAWAAN_MENIT),
+    batasUntuk: (formKey, shiftId) => batasJamKirim(policy, formKey, shiftId ? batasLaporShift(shiftId) : null),
+    labelScope: (a) =>
+      [a.lokasi_id ? namaLokasi(a.lokasi_id) : a.outlet_id ? namaOutlet(a.outlet_id) : null, a.shift_id ? namaShift(a.shift_id) : null]
+        .filter(Boolean)
+        .join(' · ') || null,
+  });
+  const tugasBelum = urutkanBerdasarkanBatas(tugas.filter((t) => t.status !== 'selesai'));
+  const tugasSelesai = tugas.length - tugasBelum.length;
+
+  // Kartu PTE: HANYA untuk yang kena PTE -- (1) tidak dikecualikan Admin
+  // (profile.wajib_pte) DAN (2) bekerja di outlet yang unitnya punya aturan PTE
+  // (unit_bisnis.label_undangan, migrasi 0057: cuma Indosteak & Indokopi).
+  // Definisi ini SENGAJA dari data yang ada: tidak ada baris assignment
+  // form_key='personal_marketing' sama sekali -- tugas itu muncul dari peran
+  // `karyawan`, bukan dari assignment (lihat hitungTugasHariIni).
+  const tampilPte = profile?.wajib_pte !== false && adaAturanPteDiOutlet === true;
+  const bagianPte = tampilPte ? <BagianPte policy={policy} poinBulanIni={poinBulanIni} progres={progres} /> : null;
+
+  if (tugasBelum.length === 0) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="kartu-status rail-hijau flex flex-col gap-2">
+          <p className="angka-kecil" style={{ color: 'var(--hijau)' }}>
+            Semua laporan hari ini sudah dikirim
+          </p>
+          <Link href="/riwayat" className="tombol-sekunder" style={{ alignSelf: 'flex-start' }}>
+            Lihat laporan yang sudah dikirim
+          </Link>
+        </div>
+        {bagianPte}
+      </div>
+    );
+  }
+
+  const persen = tugas.length > 0 ? Math.round((tugasSelesai / tugas.length) * 100) : 0;
+  const [tugasUtama, ...tugasLain] = tugasBelum;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Ringkasan sengaja KECIL (bukan angka besar): yang harus menonjol
+          adalah tugas pertama, bukan skornya. */}
+      <div>
+        <p className="judul-bagian">Yang perlu dikerjakan hari ini</p>
+        <div className="progres-bar mt-2" style={{ height: 4 }}>
+          <div className="progres-bar-isi" style={{ width: `${persen}%` }} />
+        </div>
+        <p className="text-sm mt-1.5" style={{ color: 'var(--label)' }}>
+          {tugasSelesai} dari {tugas.length} laporan terkirim · {tugasBelum.length} masih ditunggu
+        </p>
+      </div>
+
+      <KartuTugasUtama t={tugasUtama} jam={jam} />
+      {tugasLain.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {tugasLain.map((t) => (
+            <KartuTugasSekunder key={`${t.formKey}-${t.scopeLabel ?? ''}`} t={t} jam={jam} />
+          ))}
+        </div>
+      )}
+
+      {bagianPte}
+    </div>
+  );
+}
+
 /**
- * Status absen -- SENGAJA SATU BAGIAN TERPISAH dari "Yang perlu dikerjakan
- * hari ini" di atas (koreksi eksplisit user, 30 Agustus 2026: "Absen bukan
- * bagian form" -- DESIGN.md §10.2 contoh aslinya sempat mencampur keduanya
- * jadi satu daftar bertitik, itu YANG DIKOREKSI). Absen bukan laporan
- * berbasis `assignment`/`form_key` -- ini presensi, mekanisme beda total
- * (lihat app/absen/page.tsx). Ditampilkan di sini (§10.2.3 alasan: "jangan
- * memaksa pengguna masuk ke halaman Absen hanya untuk melihat status") --
- * BUKAN ditampilkan sama sekali kalau orangnya tidak punya titik absen
- * (pola sama dengan AbsenFab, components/KopHalaman.tsx).
+ * Status absen -- SATU BARIS ringkas di atas daftar tugas (19 September
+ * 2026: dulu kartu besar di posisi ketiga, di bawah lipatan HP padahal
+ * dipakai dua kali sehari). SENGAJA tetap terpisah dari "Yang perlu
+ * dikerjakan hari ini" (koreksi eksplisit user, 30 Agustus 2026: "Absen
+ * bukan bagian form" -- presensi, mekanisme beda total, lihat
+ * app/absen/page.tsx). Seluruh baris adalah tautan ke /absen. TIDAK
+ * ditampilkan kalau orangnya tidak punya titik absen (pola sama dengan
+ * AbsenFab, components/KopHalaman.tsx).
  */
-function StatusAbsenHariIni() {
+function AbsenRingkas() {
   const { session } = useAuth();
   const { data: titikSaya } = useTitikAbsenSaya(session?.user.id);
   const { data: absenHariIni, isError, refetch } = useAbsenHariIni(session?.user.id);
@@ -372,43 +451,32 @@ function StatusAbsenHariIni() {
   const pulang = absenHariIni?.find((a) => a.tipe === 'pulang');
   const semuaSudah = Boolean(masuk) && Boolean(pulang);
 
-  function baris(label: string, data: typeof masuk) {
-    if (!data) {
-      return (
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{label}</p>
-            <p className="status-teks" style={{ color: 'var(--kosong)' }}>Belum dilakukan</p>
-          </div>
-        </div>
-      );
-    }
+  function bagian(label: string, data: typeof masuk) {
+    if (!data) return <span style={{ color: 'var(--label)' }}>{label} belum</span>;
     const jam = new Date(data.waktu).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
     const luarRadius = data.status === 'di_luar_radius';
     return (
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{label}</p>
-          <p className="text-sm">
-            <span style={{ fontFamily: 'var(--mono)' }}>{jam}</span>
-            {' · '}
-            <span className="status-teks" style={{ color: luarRadius ? 'var(--kuning)' : 'var(--hijau)' }}>
-              {luarRadius ? `Di luar radius ${data.lokasiNama ?? ''}` : `Dalam radius ${data.lokasiNama ?? ''}`}
-            </span>
-          </p>
-        </div>
-      </div>
+      <span style={{ color: luarRadius ? 'var(--kuning)' : 'var(--hijau)', fontWeight: 600 }}>
+        {label} <span style={{ fontFamily: 'var(--mono)' }}>{jam}</span>
+        {luarRadius ? ' · di luar radius' : ''}
+      </span>
     );
   }
 
   return (
-    <div className={`kartu-status ${semuaSudah ? 'rail-hijau' : 'rail-netral'} flex flex-col gap-3`}>
-      <p className="judul-bagian" style={{ fontSize: 'var(--ukuran-judul)' }}>Absen hari ini</p>
-      <div className="flex flex-col gap-3">
-        {baris('Masuk', masuk)}
-        {baris('Pulang', pulang)}
+    <Link
+      href="/absen"
+      className={`kartu-status ${semuaSudah ? 'rail-hijau' : 'rail-netral'} flex items-center justify-between gap-3`}
+      style={{ minHeight: 48, color: 'var(--tinta)', textDecoration: 'none' }}
+    >
+      <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
+        <span style={{ fontFamily: 'var(--display)', fontWeight: 700 }}>Absen</span>
+        {bagian('Masuk', masuk)}
+        <span style={{ color: 'var(--label)' }} aria-hidden>·</span>
+        {bagian('Pulang', pulang)}
       </div>
-    </div>
+      <span aria-hidden style={{ color: 'var(--label)', fontSize: 20 }}>›</span>
+    </Link>
   );
 }
 
@@ -416,7 +484,7 @@ export default function Home() {
   const { profile, roles, loading } = useAuth();
 
   return (
-    <main className="flex min-h-svh flex-col gap-6 p-6">
+    <main className="mx-auto flex min-h-svh w-full max-w-[760px] flex-col gap-6 p-6">
       {loading ? (
         <KerangkaBeranda />
       ) : (
@@ -425,9 +493,9 @@ export default function Home() {
             {sapaanWaktu(jamWIB())}, {profile?.nama ?? '—'}.
           </h1>
 
-          <DaftarTugas />
+          <AbsenRingkas />
 
-          <StatusAbsenHariIni />
+          <DaftarTugas />
 
           {(roles.includes('ceo') || roles.includes('pusat') || roles.includes('accounting')) && <DashboardCeo />}
         </>

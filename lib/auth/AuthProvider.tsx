@@ -14,6 +14,8 @@ interface Profile {
   divisi: string | null;
   aktif: boolean;
   persetujuan_privasi_absen_at: string | null;
+  /** false = dikecualikan dari PTE oleh Admin (profile.wajib_pte, default true). */
+  wajib_pte: boolean;
 }
 
 interface Assignment {
