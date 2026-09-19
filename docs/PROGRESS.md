@@ -1449,3 +1449,67 @@ Arah dari temuan pengukuran di 390x844 (`app/page.tsx`; `lib/urgensiTugas.ts` ba
 **Catatan alat:** `npm run db -- <berkas migrasi>` GAGAL untuk 0062 dengan pesan "current transaction is aborted" tanpa galat asal yang jelas (tidak ada yang terterapkan -- diperiksa), padahal berkas yang sama diterapkan lancar lewat koneksi `pg` langsung. Dugaan (belum dibuktikan): migrasi berisi kata `delete`/`truncate` (dalam badan fungsi dan `revoke`) memicu jalur dry-run `db.mjs` yang menjalankan pernyataan satu per satu, termasuk `begin;`/`commit;` milik berkas. Migrasi berikutnya yang berisi kata itu: terapkan lewat `pg` langsung atau perbaiki `db.mjs` dulu.
 
 **Masih menunggu:** query `outlets`/`businesses` dari Supabase produksi POS (dari CEO) -> ID outlet untuk `outlet_pos_map` dan `INTEGRASI_BUSINESS_ID`; secret di Cloudflare/Vercel; deploy pos-fnb; penjadwal (paket Vercel belum dicek).
+
+## STATUS INTEGRASI POS -> LAPORAN: BERHENTI, database produksi POS belum teridentifikasi (19 September 2026)
+
+**Keadaan sekarang, lengkap:**
+- **Endpoint pos-fnb: SELESAI dan teruji.** `GET /api/integrasi/omzet-harian` (30 tes: 16 unit + 14 integrasi terhadap DB dev; paritas dengan `getSalesSummary`/`getSalesByPaymentMethod`). Masuk ke `origin/master` lewat commit CEO `4fae6f5` (menyapu berkasnya bersama pekerjaan stock-transfer). **Belum di-deploy**, secret belum diisi.
+- **Sisi laporan: SELESAI.** Migrasi 0062 TERPASANG (commit `e96f50e` database + kill-switch, `5b90bd5` aplikasi): 3 tabel, 3 fungsi, RLS aktif, kunci policy `pos_sinkron_maks_umur_jam`=30. **Semua tabel KOSONG** (0 baris di `outlet_pos_map`, `omzet_pos_harian`, `sinkron_pos_log`). Route `/api/sinkron/pos` ada, tapi `CRON_SECRET`/`POS_INTEGRASI_*` belum diisi (503) dan penjadwal belum dipasang.
+- **Layar Silang-Cek menampilkan "Data POS belum pernah ditarik" -- BENAR untuk keadaan ini, bukan galat.** Tiap outlet: "outlet belum dipetakan ke POS". Diverifikasi terhadap database sungguhan sebagai CEO dan accounting: semua panggilan RPC 200, tidak ada "Gagal memuat".
+- **MACET pada: database produksi POS belum teridentifikasi.** Host di `.env.production.local` (`zaermptphmllakukidqk`) NXDOMAIN (tidak ada di DNS), sementara Worker `pos-fnb.badarbaradja112.workers.dev` hidup dan menjawab 200 di `/login`. Penyebab NXDOMAIN TIDAK diketahui (proyek dihapus/diganti/dijeda -- tidak diverifikasi).
+- **Query outlet yang dikirim CEO BERASAL DARI DATABASE DEV, bukan produksi.** Buktinya: `business_id` `019ff657-f458-7bed-9e85-e3a314dec8b4` = "[DEV] Demo Cafe"; keempat ID outlet, dan awalan ID outlet nonaktif, identik dengan database dev pos-fnb (proyek `txmkbklzhleavjhzrckm`); jumlah baris 27 = total outlet di dev (10 bisnis, termasuk bisnis uji `TEST_...`). Commit `1a49d11` (11 Sep 2026) menjelaskan kenapa nama mirip produksi: `scripts/setup-dev-outlets.ts` mendaftarkan outlet dev dengan nama PERSIS produksi (tanpa transaksi/karyawan/harga produksi) -- **jadi ID di dev hampir pasti BERBEDA dari produksi**.
+
+**PEMETAAN YANG DIUSULKAN (ID DEV -> ID laporan). JANGAN DISIMPAN sebelum database produksi POS jelas.** Dipakai langsung HANYA kalau ternyata dev memang yang dipakai produksi. Pasangan lewat ID (bukan nama; "Indosteak Cempaka Putih" di POS vs "Indosteak Cempaka" di laporan). Sudah dicoba di transaksi yang di-ROLLBACK: lolos constraint (unik, XOR, FK).
+
+| ID outlet POS (DEV) | Nama di POS | -> ID outlet laporan | Nama di laporan |
+|---|---|---|---|
+| `eb599c88-d2db-4723-94cf-5c2e2c667587` | Indosteak Cempaka Putih | `9a3a96fe-49b7-4014-92f1-6468c0ae859d` | Indosteak Cempaka |
+| `39c30eea-f354-4892-8d16-199b5c7b1614` | Indosteak Pekansari | `e22b2ff4-3670-4a06-be30-2c8ddec5f8c2` | Indosteak Pekansari |
+| `4150168b-11ae-445c-819c-ee949f3726e4` | Indokopi Jatinegara | `7ef30d56-9013-496d-96a6-f245545bd425` | Indokopi Jatinegara |
+| `f7a7b52a-b032-4b3f-a413-c527be40a3c3` | Indokopi Lite Kemayoran | `55f307d8-a5d2-41a6-991f-b86ca73b969b` | Indokopi Lite Kemayoran |
+
+```sql
+-- JANGAN DIJALANKAN sebelum database produksi POS jelas (ID di bawah dari DB DEV).
+insert into public.outlet_pos_map (pos_outlet_id, outlet_id) values
+  ('eb599c88-d2db-4723-94cf-5c2e2c667587', '9a3a96fe-49b7-4014-92f1-6468c0ae859d'),
+  ('39c30eea-f354-4892-8d16-199b5c7b1614', 'e22b2ff4-3670-4a06-be30-2c8ddec5f8c2'),
+  ('4150168b-11ae-445c-819c-ee949f3726e4', '7ef30d56-9013-496d-96a6-f245545bd425'),
+  ('f7a7b52a-b032-4b3f-a413-c527be40a3c3', '55f307d8-a5d2-41a6-991f-b86ca73b969b');
+-- Opsional, agar "1 outlet POS belum dipetakan" tidak muncul terus (Bestie Thrift aktif dan selalu ikut terkirim):
+insert into public.outlet_pos_map (pos_outlet_id, diabaikan, catatan) values
+  ('01a08e38-0737-7e92-8fb1-1bf597e0c6a7', true, 'Bestie Thrift -- thrifting, bukan resto');
+```
+
+Aturan pengabaian: endpoint terikat ke SATU `business_id`, jadi outlet bisnis lain (18 outlet di 9 bisnis, termasuk semua `TEST_...`, "Outlet A/B/C") TIDAK pernah dikirim dan tidak perlu diabaikan. Di bisnis yang sama hanya Bestie Thrift (aktif) yang perlu `diabaikan`; empat outlet nonaktif (Gudang dan tiga duplikat "Outlet Indosteak/Indokopi ...") hanya ikut terkirim kalau punya order dalam rentang tarik -- saat ini tidak, jadi opsional. ID lengkap nonaktif harus diambil dari database yang benar (yang di dev: Outlet Indosteak Pekansari `019ff657-f6d5-779c-81a4-2f8724ca1acf`; tiga lainnya baru awalan `01a0195c-3687-`, `01a0195b-eb0c-`, `01a0195b-6606-`).
+
+**TEMUAN: 21 order di "Outlet Indosteak Pekansari" NONAKTIF** (`019ff657-f6d5-779c-81a4-2f8724ca1acf`, di DB dev): semuanya `paid`, hari bisnis 13-16 Agustus 2026, penjualan bersih Rp 1.356.250, total Rp 1.491.900. Empat outlet nonaktif lain: 0 order; outlet aktif Indosteak Pekansari: 0 order. Dampak: order itu tidak pernah masuk rekap (outlet tidak dipetakan) dan tidak bisa ditarik (rentang maksimal endpoint 14 hari; 13-16 Agustus sudah > 30 hari); tidak mengganggu sinkron ke depan. **Kemungkinan besar data seed dev** (tanggalnya masa seed dev; commit `1a49d11` sengaja tidak membawa transaksi produksi) -- BELUM diverifikasi di produksi; query pemeriksaannya: outlets nonaktif di-join ke orders, kelompokkan per outlet dan status.
+
+**JEJAK DI REPO POS-FNB tentang database yang dipakai deploy (dilaporkan apa adanya, tidak ditebak):**
+1. `wrangler.jsonc`: HANYA `vars` non-rahasia (`NEXT_PUBLIC_APP_NAME`, `NEXT_PUBLIC_APP_URL`, `DEFAULT_TIMEZONE`). Tidak menyebut project ref. Secret (kunci Supabase, `DATABASE_URL`, `CRON_SECRET`) hanya lewat `wrangler secret put` -> TIDAK ada di repo.
+2. `docs/01-TASK-BOARD.md` T19 [x] Deploy: "Cloudflare Workers via OpenNext + **project Supabase produksi terpisah (region Singapore)**"; `scripts/bootstrap-production.ts` membuat owner + business + outlet pertama; bucket `products` "diverifikasi jalan di produksi". T19b: "ditemukan saat bootstrap produksi". `docs/00-SETUP-MANUAL.md`: rencana dua proyek `pos-fnb-dev` dan `pos-fnb-prod`. -> repo menyatakan ADA proyek produksi terpisah di Singapura; TIDAK menyebut ref-nya.
+3. `.github/workflows/backup.yml`: backup harian memakai GitHub secret `SUPABASE_DB_URL` (isinya tidak terlihat), komentar "Supabase region Singapore". Dev pos-fnb ada di Seoul (`ap-northeast-2`), jadi backup itu menyasar proyek Singapura -- konsisten dengan produksi, tapi ref-nya juga tidak tertulis.
+4. `src/lib/db/guard-test-database.ts`: `ALLOWED_TEST_PROJECT_REFS = ["txmkbklzhleavjhzrckm"]` (dev). Commit `47f67ed` menegaskan `bootstrap-production.ts` dan `demo:*` adalah jalur SAH yang menyentuh produksi.
+5. **Berkas lokal tak terlacak `.open-next/cloudflare/next-env.mjs` (hasil build OpenNext, 19 Agustus 2026 20:35):** blok `production` berisi ref `zaermptphmllakukidqk` (= `.env.production.local`, NXDOMAIN); blok `development` berisi `txmkbklzhleavjhzrckm`. Jadi setidaknya pada build lokal 19 Agustus, konfigurasi produksi menunjuk `zaermptphmllakukidqk`.
+6. **Cara Worker membaca env (dari `.open-next/cloudflare/init.js`):** variabel/secret Cloudflare dipasang DULU, lalu nilai hasil build (`nextEnvVars[NEXTJS_ENV ?? "production"]`) HANYA mengisi yang belum ada (`??=`). Artinya: **Cloudflare Workers variables/secrets menang; nilai `production` yang ter-bake saat build (ref `zaerm...`) jadi cadangan** kalau ada variabel yang tidak diisi di Cloudflare. Yang perlu diperiksa di Cloudflare: `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL` (ref di hostnya), `SUPABASE_SERVICE_ROLE_KEY`, dan apakah `NEXTJS_ENV` diisi.
+7. **Riwayat git (semua branch):** ref produksi `zaermptphmllakukidqk` TIDAK PERNAH tertulis di berkas terlacak mana pun (pencarian `-S` hanya menemukan commit `47f67ed` untuk ref dev). Tidak ada commit/dokumen yang menyebut ref produksi selain `.env.production.local` dan build lokal di atas.
+8. **Temuan sampingan (belum ditangani):** `.open-next/cloudflare/next-env.mjs` (gitignored, lokal) berisi NILAI rahasia produksi hasil build -- termasuk `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, dan `BOOTSTRAP_OWNER_PASSWORD` -- dan berkas itu di-import Worker (`init.js`). Kalau Worker di-deploy dari build ini, nilai-nilai itu ikut terbundel di kode Worker (bukan hanya di secret Cloudflare), bertentangan dengan komentar di `wrangler.jsonc`. Belum diverifikasi apakah deploy yang sekarang hidup berasal dari build itu. Tinjau setelah database produksi jelas.
+
+**LANGKAH BERIKUTNYA, setelah CEO memeriksa Cloudflare Workers variables** (jangan dikerjakan sebelum itu): (1) tentukan database mana yang dipakai Worker; (2) jalankan query outlets/businesses/order-di-outlet-nonaktif di database yang BENAR; (3) isi `INTEGRASI_LAPORAN_TOKEN` + `INTEGRASI_BUSINESS_ID` (`wrangler secret put`) dan deploy pos-fnb; (4) isi `outlet_pos_map` dengan ID yang benar; (5) isi `CRON_SECRET`, `POS_INTEGRASI_URL`, `POS_INTEGRASI_TOKEN` di Vercel; (6) cek paket Vercel lalu pasang penjadwal (perlu beberapa kali sehari agar baris "Hari ini" berguna). Tidak ada yang disimpan, ditandai, atau diminta selama status ini.
+
+## 🔴 TEMUAN KEAMANAN TERBUKA: nilai rahasia produksi ter-bake di build Worker pos-fnb (19 September 2026)
+
+**STATUS: TERBUKA. Belum diperbaiki, sengaja -- CEO memeriksa dulu. CEO sedang memeriksa Cloudflare (Workers variables/secrets dan build yang di-deploy).** Jangan diperbaiki sebelum CEO selesai memeriksa.
+
+**Temuan.** Berkas `.open-next/cloudflare/next-env.mjs` di repo `pos-fnb` (hasil build OpenNext, 19 Agustus 2026 20:35) memuat **NILAI** rahasia produksi hasil build: `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, dan `BOOTSTRAP_OWNER_PASSWORD` (blok `production`). Berkas itu di-import oleh Worker (`.open-next/cloudflare/init.js`, `import * as nextEnvVars from "./next-env.mjs"`).
+
+**Kenapa ini serius.** `init.js` memasang variabel/secret Cloudflare lebih dulu, lalu mengisi sisanya dengan nilai ter-bake memakai `process.env[key] ??= nextEnvVars[mode][key]`. Artinya: **kalau sebuah secret di Cloudflare kosong (tidak diisi), Worker diam-diam jatuh ke nilai ter-bake itu.** Bila Worker di-deploy dari build ini, nilai-nilai tersebut juga ikut terbundel di kode Worker (bukan hanya di secret Cloudflare), bertentangan dengan komentar di `wrangler.jsonc` ("secret hanya lewat `wrangler secret put`"). Service-role key melewati seluruh RLS; `BOOTSTRAP_OWNER_PASSWORD` adalah password akun owner.
+
+**BELUM DIVERIFIKASI:** apakah deploy yang sekarang hidup (`pos-fnb.badarbaradja112.workers.dev`) berasal dari build tersebut, dan apakah ada secret Cloudflare yang kosong sehingga nilai ter-bake benar-benar terpakai. Juga belum diketahui apakah kunci di berkas itu masih valid (ref `zaermptphmllakukidqk` NXDOMAIN saat dicek -- proyeknya mungkin sudah tidak ada).
+
+**Cakupan paparan yang diketahui:**
+- Berkas itu **TIDAK terlacak git** (`.gitignore` baris 45 `.open-next/`) -- aman dari sisi repo/GitHub; tidak pernah masuk riwayat commit.
+- Berkas itu **ADA di mesin lokal** (folder kerja `pos-fnb`). Siapa pun/apa pun yang punya akses ke mesin ini bisa membacanya. Tidak ada nilai rahasia yang dicetak/dicatat di dokumen ini atau di percakapan; yang dicocokkan hanya NAMA variabel dan project ref.
+
+**Yang TIDAK dilakukan (sengaja):** tidak ada rotasi kunci, tidak ada penghapusan berkas, tidak ada perubahan `wrangler.jsonc`/build/deploy. Menunggu hasil pemeriksaan CEO.
+
+**Bahan untuk pemeriksaan** (urutan yang masuk akal, bukan instruksi): (1) Cloudflare Workers -> pos-fnb -> Settings -> Variables and Secrets: apakah `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET` semuanya terisi, dan apakah `NEXTJS_ENV` ada; (2) versi deployment aktif dan tanggalnya vs build 19 Agustus; (3) kalau nilai ter-bake ternyata terpakai atau kuncinya masih valid: anggap terpapar dan rotasi (service-role key, password database, `BOOTSTRAP_OWNER_PASSWORD`) setelah database produksi yang benar teridentifikasi; (4) pertimbangkan agar build produksi tidak membawa `.env.production.local` (mis. build dari lingkungan bersih / tanpa berkas itu) -- keputusan setelah diperiksa. Rincian teknis lain: bagian "STATUS INTEGRASI POS -> LAPORAN" di atas, butir jejak 5, 6, dan 8.
