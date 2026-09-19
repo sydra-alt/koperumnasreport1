@@ -26,25 +26,34 @@ export function AbsenFab({ userId }: { userId: string }) {
   return (
     <Link
       href="/absen"
-      className="flex flex-1 flex-col items-center justify-end gap-0.5"
+      className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1 text-center transition-transform active:scale-95"
       style={{ minHeight: 'var(--tinggi-nav-bawah)' }}
       aria-label={label}
     >
       <span
-        className="flex items-center justify-center"
+        className="flex items-center justify-center border-2 border-white transition-all"
         style={{
-          width: 56,
-          height: 56,
+          width: 42,
+          height: 42,
           borderRadius: '50%',
-          background: selesai ? 'var(--kosong)' : 'var(--biru)',
-          color: '#fff',
-          transform: 'translateY(-14px)',
-          boxShadow: '0 2px 6px rgba(16,32,46,0.25)',
+          background: selesai ? 'var(--garis)' : 'var(--biru)',
+          color: selesai ? 'var(--label)' : '#fff',
+          transform: 'translateY(-6px)',
+          boxShadow: '0 2px 8px rgba(14,42,78,0.18)',
         }}
       >
-        <NavIcon nama="absen" size={26} />
+        <NavIcon nama="absen" size={20} />
       </span>
-      <span style={{ fontFamily: 'var(--display)', fontWeight: 500, fontSize: 10, color: 'var(--tinta)', marginTop: -10 }}>
+      <span
+        className="tracking-tight transition-colors"
+        style={{
+          fontFamily: 'var(--display)',
+          fontWeight: 600,
+          fontSize: 9.5,
+          color: selesai ? 'var(--label)' : 'var(--biru)',
+          marginTop: -4,
+        }}
+      >
         {label}
       </span>
     </Link>
