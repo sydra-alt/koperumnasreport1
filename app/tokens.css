@@ -1,112 +1,82 @@
 :root {
-  /* Latar & garis (30 Agustus 2026 -- "ringan, bukan resmi", 04-CATATAN-TEKNIS.md §6) */
-  --kertas:    #FBFBF9;
-  --kertas-2:  #F3F1EA;
-  --garis:     #E4E0D3; /* TETAP dipakai -- input, kotak unggah, tabel, pemisah daftar (DESIGN-MODERN.md §M2 koreksi 31 Agustus 2026: garis TIDAK dilarang, cuma bukan lagi pembatas kartu utama) */
+  /* Latar & garis — kanvas hangat, permukaan bersih, garis hangat halus */
+  --kertas:    #FAF8F5; /* kanvas hangat lembut */
+  --kertas-2:  #FFFFFF; /* permukaan panel/header/nav bersih */
+  --garis:     #EAE5DB; /* garis hangat halus */
+  --garis-tegas: #DCD5C8; /* garis hangat sekunder */
 
-  /* Permukaan (DESIGN-MODERN.md §M2, 31 Agustus 2026) -- latar halaman jadi
-     abu muda, kartu UTAMA jadi putih polos supaya "terangkat" lewat beda
-     warna permukaan, BUKAN lewat garis dekoratif di sekelilingnya. Rail kiri
-     4px (--lebar-rail di bawah) TETAP bahasa status utama -- tidak berubah. */
-  --halaman:     #F4F6F8; /* latar halaman/body -- ganti dari --kertas untuk kartu status */
-  --permukaan:   #FFFFFF; /* kartu utama -- polos putih, TANPA garis pembatas */
-  --permukaan-2: #F8FAFB; /* kartu di dalam kartu (kalau perlu bersarang) */
+  /* Permukaan */
+  --halaman:     #FAF8F5; /* latar halaman/body */
+  --permukaan:   #FFFFFF; /* kartu utama — putih bersih */
+  --permukaan-2: #F5F2EB; /* kartu di dalam kartu / permukaan sekunder */
 
   /* Teks */
-  --tinta:     #1F2A33; /* teks isi -- dihangatkan dari #10202E, kontras terlalu keras di atas kertas baru untuk dibaca lama */
-  --label:     #78756A; /* abu hangat -- label field, teks penjelasan */
+  --tinta:     #142132; /* teks isi — slate gelap hangat dan kontras nyaman */
+  --label:     #64748B; /* abu netral halus — label field, teks pendukung */
 
-  /* Aksen -- biru diperbarui 30 Agustus 2026 memakai warna ASLI logo
-     (disampel langsung dari public/logo-koperumnas.jpg, docs/DESIGN.md
-     §2.1 -- bukan lagi perkiraan). hijau/kuning/merah TETAP TIDAK DIUBAH --
-     itu bahasa status baku perusahaan, bukan bagian identitas brand.
-     Emas/kuning logo SENGAJA TIDAK masuk sini -- instruksi eksplisit user:
-     gold cuma dipakai di logo, tidak pernah jadi warna UI. */
-  --biru:      #0047AF; /* biru tua asli logo -- judul tetap warna ini, hierarki lewat warna bukan cuma ukuran */
-  --biru-2:    #1C74CD; /* antara biru tua & biru muda logo */
-  --biru-3:    #3FAAF2; /* biru muda asli logo */
+  /* Aksen Brand — Deep Navy berwibawa & profesional */
+  --biru:      #0E2A4E; /* deep navy utama — tenang, kokoh, berwibawa */
+  --biru-2:    #1D3D66; /* navy pertengahan */
+  --biru-3:    #355C8B; /* steel navy aksen */
+  --biru-lembut: #EEF4FA; /* aksen latar lembut untuk pil aktif & tag */
+  --biru-garis:  #D0DFEE; /* garis batas navy lembut */
 
-  --hijau:     #2C7A50;
-  --hijau-lembut: #E7F2EA; /* latar baris "Bukti terlampir" */
-  --kuning:    #B8801B;
-  --merah:     #A62B2B;
-  --kosong:    #8A968F;
+  /* Status Baku (hijau / kuning / merah) — tonal halus & bersahabat */
+  --hijau:        #1B6E45; /* hijau emerald terkalibrasi */
+  --hijau-lembut: #EDF7F1; /* latar baris/pil aman */
+  --hijau-garis:  #C6E7D3; /* border kartu aman */
 
-  /* ================================
-     STATUS — SOFT BACKGROUND (DESIGN.md §2.1, §4.2)
-     Warna latar lembut untuk kartu/baris status. Dipakai BERSAMA rail kiri,
-     bukan sebagai pengganti. Jangan jadikan solid fill.
-     ================================ */
-  --merah-lembut:  #FFF0F2;  /* urgent / belum lapor */
-  --merah-garis:   #EDC1C8;  /* border kartu urgent */
-  --kuning-lembut: #FFF7E7;  /* perlu dikawal / perlu perhatian */
-  --kuning-garis:  #EBCF93;  /* border kartu perlu dikawal */
-  --biru-lembut:   #E8F4FB;  /* informasi / tindakan */
-  --biru-garis:    #BDD8EE;  /* border kartu informasi */
-  --hijau-garis:   #B9E1CC;  /* border kartu aman */
+  --kuning:        #B46E00; /* amber hangat terkalibrasi */
+  --kuning-lembut: #FEF7EB; /* latar perlu dikawal */
+  --kuning-garis:  #F8E0B0; /* border perlu dikawal */
 
-  /* Huruf -- SATU keluarga untuk seluruh antarmuka (dulu dua: Barlow
-     Condensed + IBM Plex Sans). --display/--body dipertahankan sebagai
-     ALIAS ke keluarga yang sama -- supaya kode yang sudah menulis
-     `var(--display)`/`var(--body)` di mana pun tidak perlu diubah satu
-     per satu, cukup token ini yang berubah. */
+  --merah:        #B8283B; /* crimson lembut terkalibrasi */
+  --merah-lembut: #FDF1F3; /* latar urgent / belum lapor */
+  --merah-garis:  #F7CBD2; /* border urgent */
+
+  --kosong:       #94A3B8; /* abu netral status kosong/belum ada */
+
+  /* Huruf — Plus Jakarta Sans sebagai keluarga utama */
   --font:    var(--font-sans), "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
   --display: var(--font);
   --body:    var(--font);
-  --mono:    var(--font-mono), monospace; /* HANYA rupiah, jam, koordinat -- tidak untuk label/judul/tombol */
+  --mono:    var(--font-mono), monospace; /* HANYA rupiah, jam, koordinat */
 
-  /* Skala -- DESIGN.md §3, diperbesar lompatannya DESIGN-MODERN.md §M3 (31
-     Agustus 2026): label naik 13->14px, tingkat baru --ukuran-angka-hero
-     (32px) DIPISAH dari --ukuran-angka-besar (28px, tetap dipakai h1 judul
-     halaman di banyak file -- TIDAK diubah nilainya supaya tidak perlu
-     menyentuh tiap halaman, cukup .angka-besar yang pindah ke tingkat hero
-     yang baru). FONT TETAP Plus Jakarta Sans (var(--font) di bawah) --
-     §M3 cuma mengubah ukuran/ketebalan/line-height/letter-spacing, BUKAN
-     keluarga huruf. */
-  --ukuran-judul: 20px; /* judul bagian (DESIGN.md: 20px, 700, 1.3) -- diperbarui dari 17px */
-  --ukuran-label: 14px; /* label field -- DESIGN-MODERN.md §M3: naik dari 13px, terlalu kecil utk pengguna 50-an di HP murah */
-  --ukuran-isi:   16px; /* isian/nilai field */
-  --ukuran-progres: 20px; /* angka progres bagian ("0 dari 2 konsumen"), FormRenderer -- DESIGN.md §3.1 */
-  --ukuran-angka-besar: 28px; /* judul halaman (h1) DAN dulu juga angka CEO -- sekarang KHUSUS h1, angka CEO pindah ke --ukuran-angka-hero */
-  --ukuran-angka-hero: 32px; /* DESIGN-MODERN.md §M3 --teks-hero: angka utama CEO ".angka-besar" ("12 dari 16"), SATU tingkat lebih besar dari judul halaman -- lompatan nyata, bukan sama besar */
-  --ukuran-angka-kecil: 20px; /* ringkasan sekunder (DESIGN.md §3: 18–20px, 700, 1.2) */
+  /* Skala Tipografi */
+  --ukuran-judul: 20px;
+  --ukuran-label: 14px;
+  --ukuran-isi:   16px;
+  --ukuran-progres: 20px;
+  --ukuran-angka-besar: 28px;
+  --ukuran-angka-hero: 32px;
+  --ukuran-angka-kecil: 20px;
 
   /* Bentuk */
-  --radius-kecil: 8px;  /* input, tombol */
-  --radius-besar: 12px; /* kartu */
-  --radius-pil:   999px; /* tombol lampirkan */
+  --radius-kecil: 10px;  /* input, tombol */
+  --radius-besar: 16px;  /* kartu utama modern */
+  --radius-pil:   999px; /* tombol/badge berbentuk pil */
 
-  /* Rail & progress (DESIGN.md §4.2, §4.1) */
+  /* Rail & progress */
   --lebar-rail:     4px;  /* aksen vertikal kiri pada kartu status */
-  --tinggi-progres: 8px;  /* progress bar (DESIGN.md §4.1: tinggi 8px, radius penuh) */
+  --tinggi-progres: 8px;  /* progress bar */
 
-  /* Bayangan halus (DESIGN.md §2.1) */
-  --bayangan-kartu: 0 1px 2px rgba(16, 32, 52, 0.03),
-                    0 6px 18px rgba(16, 32, 52, 0.04);
+  /* Bayangan Halus Bertingkat */
+  --bayangan-kartu: 0 1px 3px rgba(14, 42, 78, 0.04),
+                    0 6px 20px rgba(14, 42, 78, 0.04);
+  --bayangan-halus: 0 2px 8px rgba(14, 42, 78, 0.04);
+  --bayangan-melayang: 0 12px 32px rgba(14, 42, 78, 0.08);
 
   /* Jarak & tinggi sentuh */
-  --jarak-field:  16px; /* antar field dalam satu bagian */
-  --jarak-bagian: 28px; /* antar bagian/blok */
-  --tinggi-input: 44px; /* tinggi minimal semua isian */
+  --jarak-field:  16px;
+  --jarak-bagian: 28px;
+  --tinggi-input: 44px;
 
-  /* Tinggi nav bawah TANPA area aman -- dipakai bareng env(safe-area-inset-bottom)
-     di mana pun perlu tahu berapa ruang yang harus disisakan di atas nav
-     (padding halaman, tombol Kirim yang menempel). Satu variabel, dua pemakai --
-     kalau tingginya berubah, cukup ganti di sini. */
-  --tinggi-nav-bawah: 56px;
-
-  /* Ruang ekstra untuk tombol bundar Absen (30 Agustus 2026) yang menonjol
-     ~14px DI ATAS nav bawah + label kecil di bawahnya -- tanpa ini, baris
-     terakhir halaman/tombol Kirim yang menempel bisa tertutup tombol itu.
-     Dipakai bareng `--tinggi-nav-bawah`, BUKAN pengganti -- lihat
-     `components/AbsenFab.tsx` dan pemakaiannya di app/globals.css. */
+  /* Tinggi nav bawah */
+  --tinggi-nav-bawah: 60px;
   --tambahan-fab-absen: 28px;
 
-  /* Gerakan (DESIGN-MODERN.md §M4, 31 Agustus 2026) -- BATAS KETAT, cuma 5
-     hal boleh bergerak: tombol ditekan, bagian form membuka, lembar bawah
-     naik, kartu baru muncul di daftar, bilah kemajuan. TIDAK PERNAH: apa pun
-     saat halaman pertama dimuat, ikon, dekorasi, angka menghitung naik. */
-  --gerak-cepat:  120ms cubic-bezier(.2,.8,.3,1);   /* tekan tombol */
-  --gerak-normal: 200ms cubic-bezier(.2,.8,.3,1);   /* buka-tutup bagian form, kartu baru muncul */
-  --gerak-lembar: 280ms cubic-bezier(.32,.72,0,1);  /* lembar bawah naik (M6, token disiapkan di sini) */
+  /* Gerakan */
+  --gerak-cepat:  120ms cubic-bezier(.2,.8,.3,1);
+  --gerak-normal: 200ms cubic-bezier(.2,.8,.3,1);
+  --gerak-lembar: 280ms cubic-bezier(.32,.72,0,1);
 }
