@@ -20,7 +20,8 @@ import {
   useStkUntukTanggal,
   usePicLokasiUntukTanggal,
 } from '../../lib/api/terpusat-form-perumahan';
-import { useKeuanganRekapUntukTanggal, useSelisihRestoUntukTanggal } from '../../lib/api/dashboard';
+import { useKeuanganRekapUntukTanggal } from '../../lib/api/dashboard';
+import { SilangCekOmzetTanggal } from '../../components/SilangCekOmzet';
 import { useLaporanAccountingHariIni, hitungRingkasanKeuanganCeo } from '../../lib/api/accounting';
 import { useRekapPembangunanPerLokasi, usePembangunanUntukTanggal } from '../../lib/api/pembangunan';
 import { usePapanUntukTanggal } from '../../lib/api/papan';
@@ -98,7 +99,6 @@ function Isi() {
   const { data: keuangan } = useKeuanganRekapUntukTanggal(tanggal);
   const { data: laporanAccounting } = useLaporanAccountingHariIni(isCeo, tanggal);
   const ringkasanKeuanganCeo = laporanAccounting ? hitungRingkasanKeuanganCeo(laporanAccounting) : null;
-  const { data: selisihResto } = useSelisihRestoUntukTanggal(tanggal);
   const { data: papan } = usePapanUntukTanggal(tanggal);
   const { data: antrean } = useAntreanKeputusan();
   const { data: cutiHariIni } = useCutiUntukTanggal(tanggal);
@@ -350,16 +350,7 @@ function Isi() {
         <p style={{ color: 'var(--kosong)' }}>
           {roles.includes('ceo') ? 'Anda melihat versi lengkap (CEO).' : 'Detail keuangan, saldo, dan hutang/piutang dilaporkan Accounting langsung ke CEO -- hanya 4 angka ini yang tampil di sini.'}
         </p>
-        {(selisihResto ?? []).length > 0 && (
-          <div>
-            <p style={{ fontFamily: 'var(--display)', fontWeight: 500, color: 'var(--biru)' }}>Silang-cek omzet resto</p>
-            {selisihResto!.map((r) => (
-              <p key={r.outlet}>
-                {r.outlet}: selisih {formatRupiah(r.selisih ?? 0)}
-              </p>
-            ))}
-          </div>
-        )}
+        <SilangCekOmzetTanggal tanggal={tanggal} tampilPos={roles.includes('ceo') || roles.includes('accounting')} />
       </Seksi>
 
       <Seksi nomor="12" judul="Kendaraan & Driver" sumber={kendaraan ? sumberDari('kendaraan', kendaraan.submittedAt) : undefined}>

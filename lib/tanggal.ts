@@ -34,6 +34,18 @@ export function hariIsoDariTanggal(tanggalYmd: string): number {
   return dow === 0 ? 7 : dow;
 }
 
+/**
+ * 'YYYY-MM-DD' digeser N hari (negatif = mundur) -- matematika kalender murni
+ * dari tiga angka Y/M/D (`Date.UTC` cuma dipakai untuk aritmetika hari,
+ * BUKAN konversi zona waktu), jadi aman untuk tanggal mana pun.
+ */
+export function geserTanggalYmd(tanggalYmd: string, hari: number): string {
+  const [t, b, h] = tanggalYmd.split('-').map(Number);
+  const d = new Date(Date.UTC(t, b - 1, h + hari));
+  const dua = (n: number) => String(n).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${dua(d.getUTCMonth() + 1)}-${dua(d.getUTCDate())}`;
+}
+
 const NAMA_HARI: Record<number, string> = {
   1: 'Senin', 2: 'Selasa', 3: 'Rabu', 4: 'Kamis', 5: 'Jumat', 6: 'Sabtu', 7: 'Minggu',
 };

@@ -31,7 +31,8 @@ import { AngkaGrid } from '../components/AngkaGrid';
 import { KeadaanGagal } from '../components/KeadaanGagal';
 import { KerangkaBeranda, KerangkaDaftarKartu } from '../components/Kerangka';
 import { usePembangunanUntukTanggal } from '../lib/api/pembangunan';
-import { useKeuanganRekapUntukTanggal, useSelisihRestoUntukTanggal } from '../lib/api/dashboard';
+import { useKeuanganRekapUntukTanggal } from '../lib/api/dashboard';
+import { SilangCekOmzetBeranda } from '../components/SilangCekOmzet';
 import { useLaporanAccountingHariIni, hitungRingkasanKeuanganCeo } from '../lib/api/accounting';
 import { formatRupiah } from '../lib/rupiah';
 import { bolehLihatTautanPos, URL_LAPORAN_PENJUALAN_POS } from '../lib/posLink';
@@ -52,7 +53,6 @@ function DashboardCeo() {
 
   const { data: pembangunan } = usePembangunanUntukTanggal();
   const { data: keuangan } = useKeuanganRekapUntukTanggal();
-  const { data: selisihResto } = useSelisihRestoUntukTanggal();
   const { data: laporanAccounting } = useLaporanAccountingHariIni();
   const ringkasanKeuangan = laporanAccounting ? hitungRingkasanKeuanganCeo(laporanAccounting) : null;
 
@@ -90,31 +90,6 @@ function DashboardCeo() {
         </div>
       )}
 
-      {bolehTautanPos && (
-        <div>
-          <p className="judul-bagian mb-2">
-            Penjualan Kasir (POS)
-          </p>
-          <div className="kartu-status rail-netral flex flex-col gap-3">
-            <p className="text-sm">
-              Penjualan per outlet ada di sistem kasir yang <b>terpisah</b> dari laporan ini.
-            </p>
-            <p className="text-sm" style={{ color: 'var(--label)' }}>
-              Terbuka di tab baru dan meminta masuk sendiri dengan akun POS — sesi Anda di sini tidak menyambung ke sana.
-            </p>
-            <a
-              className="tombol-sekunder"
-              href={URL_LAPORAN_PENJUALAN_POS}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Buka Laporan Penjualan di sistem POS terpisah (tab baru, login sendiri)"
-            >
-              Buka Penjualan di POS ↗
-            </a>
-          </div>
-        </div>
-      )}
-
       {bolehOperasional && (
         <div>
           <p className="judul-bagian mb-2">
@@ -131,32 +106,32 @@ function DashboardCeo() {
         </div>
       )}
 
-      {bolehOperasional && (
+      {/* Silang-Cek Omzet Resto: TIGA sumber (Manager, Kontrol F&B, POS) -- lihat components/SilangCekOmzet.tsx. */}
+      {/* CEO dan accounting (keputusan CEO 19 September 2026: Shabita perlu melihat perbandingan ini; RLS POS + laporan ketikan sudah mengizinkan accounting). */}
+      {bolehKeuangan && (roles.includes('ceo') || roles.includes('accounting')) && <SilangCekOmzetBeranda tampilPos />}
+
+      {bolehTautanPos && (
         <div>
           <p className="judul-bagian mb-2">
-            Silang-Cek Omzet Resto Hari Ini
+            Telusuri di POS
           </p>
-          {!selisihResto || selisihResto.length === 0 ? (
-            <p style={{ color: 'var(--kosong)' }}>Belum ada pasangan laporan Manager Resto + Kontrol F&amp;B hari ini.</p>
-          ) : (
-          <div className="flex flex-col gap-2">
-            {selisihResto.map((r) => (
-              <div
-                key={r.outlet}
-                className={`kartu-status ${r.selisih ? 'rail-kuning' : 'rail-hijau'}`}
-              >
-                <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{r.outlet}</p>
-                <p className="text-sm" style={{ fontFamily: 'var(--mono)' }}>
-                  Manager: {formatRupiah(r.versiManager ?? 0)} · Kontrol F&amp;B:{' '}
-                  {formatRupiah(r.versiKontrolFnb ?? 0)}
-                </p>
-                <p className="text-sm status-teks" style={{ color: r.selisih ? 'var(--merah)' : 'var(--hijau)' }}>
-                  {r.selisih ? `Selisih ${formatRupiah(r.selisih ?? 0)}` : 'Tidak ada selisih'}
-                </p>
-              </div>
-            ))}
+          <div className="kartu-status rail-netral flex flex-col gap-3">
+            <p className="text-sm">
+              Untuk menelusuri lebih dalam (per produk, per transaksi), buka Laporan Penjualan di sistem kasir yang <b>terpisah</b> dari laporan ini.
+            </p>
+            <p className="text-sm" style={{ color: 'var(--label)' }}>
+              Terbuka di tab baru dan meminta masuk sendiri dengan akun POS — sesi Anda di sini tidak menyambung ke sana.
+            </p>
+            <a
+              className="tombol-sekunder"
+              href={URL_LAPORAN_PENJUALAN_POS}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Buka Laporan Penjualan di sistem POS terpisah (tab baru, login sendiri)"
+            >
+              Buka Penjualan di POS ↗
+            </a>
           </div>
-          )}
         </div>
       )}
     </div>

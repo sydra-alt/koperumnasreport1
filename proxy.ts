@@ -4,7 +4,22 @@ import { NextResponse, type NextRequest } from 'next/server';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+/**
+ * SATU-SATUNYA jalur API tanpa sesi pengguna: sinkron omzet POS (19 September
+ * 2026). Dipanggil penjadwal (Vercel Cron), bukan browser, jadi tidak pernah
+ * punya cookie -- tanpa pengecualian ini proxy mengalihkannya ke /masuk dan
+ * penjadwal tidak pernah sampai. Pengecualiannya PERSIS satu jalur (bukan
+ * awalan `/api`); route-nya sendiri menolak permintaan tanpa
+ * `Authorization: Bearer <CRON_SECRET>` (401) dan tertutup total (503) kalau
+ * CRON_SECRET belum diisi -- lihat app/api/sinkron/pos/route.ts. JANGAN
+ * melebarkan pengecualian ini ke jalur lain tanpa mekanisme auth setara.
+ */
+const JALUR_TANPA_SESI = '/api/sinkron/pos';
+
 export async function proxy(request: NextRequest) {
+  if (request.nextUrl.pathname === JALUR_TANPA_SESI) {
+    return NextResponse.next({ request });
+  }
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
