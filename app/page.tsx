@@ -19,6 +19,7 @@ import { usePembangunanUntukTanggal } from '../lib/api/pembangunan';
 import { useKeuanganRekapUntukTanggal, useSelisihRestoUntukTanggal } from '../lib/api/dashboard';
 import { useLaporanAccountingHariIni, hitungRingkasanKeuanganCeo } from '../lib/api/accounting';
 import { formatRupiah } from '../lib/rupiah';
+import { bolehLihatTautanPos, URL_LAPORAN_PENJUALAN_POS } from '../lib/posLink';
 
 function DashboardCeo() {
   // 03-CALC-SPEC.md §4.3 -- v_keuangan_rekap (4 angka agregat) sengaja
@@ -32,6 +33,7 @@ function DashboardCeo() {
   const { roles } = useAuth();
   const bolehKeuangan = roles.includes('ceo') || roles.includes('pusat') || roles.includes('accounting');
   const bolehOperasional = roles.includes('ceo');
+  const bolehTautanPos = bolehLihatTautanPos(roles);
 
   const { data: pembangunan } = usePembangunanUntukTanggal();
   const { data: keuangan } = useKeuanganRekapUntukTanggal();
@@ -70,6 +72,31 @@ function DashboardCeo() {
               ]}
             />
           )}
+        </div>
+      )}
+
+      {bolehTautanPos && (
+        <div>
+          <p className="judul-bagian mb-2">
+            Penjualan Kasir (POS)
+          </p>
+          <div className="kartu-status rail-netral flex flex-col gap-3">
+            <p className="text-sm">
+              Penjualan per outlet ada di sistem kasir yang <b>terpisah</b> dari laporan ini.
+            </p>
+            <p className="text-sm" style={{ color: 'var(--label)' }}>
+              Terbuka di tab baru dan meminta masuk sendiri dengan akun POS — sesi Anda di sini tidak menyambung ke sana.
+            </p>
+            <a
+              className="tombol-sekunder"
+              href={URL_LAPORAN_PENJUALAN_POS}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Buka Laporan Penjualan di sistem POS terpisah (tab baru, login sendiri)"
+            >
+              Buka Penjualan di POS ↗
+            </a>
+          </div>
         </div>
       )}
 

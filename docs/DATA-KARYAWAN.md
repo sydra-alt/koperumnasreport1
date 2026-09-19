@@ -225,11 +225,11 @@ on conflict do nothing;
 
 ## §6 · Titik absen UJI (30 Agustus 2026)
 
-Bukan lokasi perusahaan sungguhan -- koordinat CEO sendiri, supaya beliau bisa mencoba absen dari HP-nya. Sudah dijalankan lewat migrasi `0032_lokasi_absen_uji.sql`:
+Bukan lokasi perusahaan sungguhan -- dulu koordinat CEO sendiri, supaya beliau bisa mencoba absen dari HP-nya. Sudah dijalankan lewat migrasi `0032_lokasi_absen_uji.sql`. **Koordinat aslinya sudah dihapus dari dokumen ini dan dari berkas migrasi (diganti `0, 0`, 19 September 2026); di produksi sudah dinetralkan oleh migrasi `0054`.** Blok di bawah adalah bentuk SQL-nya saja:
 
 ```sql
 insert into public.lokasi_absen (nama, lokasi_id, latitude, longitude, radius_meter, aktif)
-values ('Lokasi Uji -- BUKAN kantor perusahaan, cuma untuk coba dari HP', null, -6.982980702734919, 107.63522500320248, 200, true);
+values ('Lokasi Uji -- BUKAN kantor perusahaan, cuma untuk coba dari HP', null, 0, 0, 200, true);
 
 insert into public.penugasan_absen (user_id, lokasi_absen_id)
 select u.id, la.id from auth.users u, public.lokasi_absen la
