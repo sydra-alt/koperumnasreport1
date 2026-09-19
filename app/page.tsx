@@ -114,7 +114,7 @@ const WARNA_STATUS_TEKS: Record<'belum' | 'draft' | 'selesai', string> = {
 };
 
 function DaftarTugas() {
-  const { assignments, roles } = useAuth();
+  const { assignments, roles, authGagal, refetchAuth } = useAuth();
   const { data: policy, isError: policyGagal, refetch: refetchPolicy } = usePolicy();
   const { data: lokasi } = useDaftarLokasi();
   const { data: outlet } = useDaftarOutlet();
@@ -126,13 +126,18 @@ function DaftarTugas() {
   // ada tugas) di bawah. Tanpa ini, kegagalan jaringan/server terlihat
   // identik dengan "semua laporan sudah lengkap", yang justru paling
   // berbahaya untuk disalahartikan (instruksi eksplisit user, 30 Agustus 2026).
-  if (policyGagal || laporanGagal) {
+  // `authGagal` (lib/auth/AuthProvider.tsx) ditambahkan lewat audit Phase 2A
+  // (19 September 2026) -- `assignments`/`roles` dulu bisa diam-diam jatuh
+  // ke [] kalau query profil/peran/penugasan gagal, bikin "gagal muat"
+  // terlihat identik dengan "memang tidak ditugaskan apa-apa".
+  if (policyGagal || laporanGagal || authGagal) {
     return (
       <KeadaanGagal
         pesan="Gagal memuat tugas hari ini."
         onCoba={() => {
           void refetchPolicy();
           void refetchLaporan();
+          refetchAuth();
         }}
       />
     );

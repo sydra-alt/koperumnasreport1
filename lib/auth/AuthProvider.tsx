@@ -30,22 +30,46 @@ interface AuthContextValue {
   roles: string[];
   assignments: Assignment[];
   loading: boolean;
+  /** true kalau pemuatan profil/peran/penugasan TERAKHIR gagal (query error,
+   * bukan sekadar hasil kosong) -- lihat komentar `muatProfilPeran` di bawah.
+   * Konsumen (mis. DaftarTugas di app/page.tsx) WAJIB cek ini SEBELUM membaca
+   * `assignments`/`roles` sebagai "memang tidak ada tugas". */
+  authGagal: boolean;
+  /** Coba muat ulang profil/peran/penugasan untuk sesi yang sedang aktif.
+   * No-op kalau tidak ada sesi. */
+  refetchAuth: () => void;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+/**
+ * Ditemukan lewat audit Phase 2A (19 September 2026): versi lama fungsi ini
+ * TIDAK PERNAH memeriksa `error` dari ketiga query -- kegagalan apa pun
+ * (jaringan tidak stabil di outlet, RLS berubah, dst.) jatuh diam-diam ke
+ * `[]`/`null` lewat `?? []`/`?? null`, PERSIS terlihat sama seperti "memang
+ * tidak ada penugasan". Beranda lalu menampilkan "tidak ada tugas hari ini"
+ * padahal sebenarnya GAGAL memuat -- kelas kegagalan yang sama dengan
+ * silent-failure di pos-fnb, di jalur yang menentukan apakah orang tahu
+ * pekerjaannya sendiri. Sekarang: error dari SALAH SATU query MELEMPAR
+ * (bukan ditelan), dicatat ke console, dan konsumen wajib membedakan lewat
+ * `authGagal` di context -- lihat DaftarTugas (app/page.tsx).
+ */
 async function muatProfilPeran(supabase: ReturnType<typeof createClient>, userId: string) {
-  const [{ data: profileData }, { data: roleData }, { data: assignmentData }] = await Promise.all([
+  const [profileRes, roleRes, assignmentRes] = await Promise.all([
     supabase.from('profile').select('*').eq('id', userId).single(),
     supabase.from('role').select('role').eq('user_id', userId),
     supabase.from('assignment').select('*').eq('user_id', userId),
   ]);
+  const errorPertama = profileRes.error ?? roleRes.error ?? assignmentRes.error;
+  if (errorPertama) {
+    throw errorPertama;
+  }
   return {
-    profile: (profileData as Profile | null) ?? null,
-    roles: ((roleData as { role: string }[] | null) ?? []).map((r) => r.role),
-    assignments: (assignmentData as Assignment[] | null) ?? [],
+    profile: (profileRes.data as Profile | null) ?? null,
+    roles: ((roleRes.data as { role: string }[] | null) ?? []).map((r) => r.role),
+    assignments: (assignmentRes.data as Assignment[] | null) ?? [],
   };
 }
 
@@ -56,9 +80,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<string[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authGagal, setAuthGagal] = useState(false);
   const queryClient = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
+
+  // Dipakai baik di pemuatan awal maupun retry manual (`refetchAuth`) --
+  // SATU tempat, supaya keduanya tidak bisa menyimpang. Kalau gagal,
+  // `profile`/`roles`/`assignments` SENGAJA TIDAK direset ke kosong --
+  // mereset ke [] di sini persis mengulang bug yang sedang diperbaiki
+  // (kegagalan jadi terlihat sama dengan "memang kosong"). Konsumen wajib
+  // cek `authGagal` dulu.
+  async function muatUntukPengguna(userId: string) {
+    try {
+      const hasil = await muatProfilPeran(supabase, userId);
+      setProfile(hasil.profile);
+      setRoles(hasil.roles);
+      setAssignments(hasil.assignments);
+      setAuthGagal(false);
+    } catch (err) {
+      console.error('AuthProvider: gagal memuat profil/peran/penugasan:', err instanceof Error ? err.message : err);
+      setAuthGagal(true);
+    }
+  }
 
   useEffect(() => {
     let aktif = true;
@@ -67,11 +111,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!aktif) return;
       setSession(data.session);
       if (data.session) {
-        const hasil = await muatProfilPeran(supabase, data.session.user.id);
+        await muatUntukPengguna(data.session.user.id);
         if (!aktif) return;
-        setProfile(hasil.profile);
-        setRoles(hasil.roles);
-        setAssignments(hasil.assignments);
       }
       setLoading(false);
     });
@@ -88,17 +129,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, sesiBaru) => {
       setSession(sesiBaru);
       if (sesiBaru) {
-        const hasil = await muatProfilPeran(supabase, sesiBaru.user.id);
-        setProfile(hasil.profile);
-        setRoles(hasil.roles);
-        setAssignments(hasil.assignments);
+        await muatUntukPengguna(sesiBaru.user.id);
       } else {
         setProfile(null);
         setRoles([]);
         setAssignments([]);
+        setAuthGagal(false);
         queryClient.clear();
-        setLoading(false);
       }
+      setLoading(false);
     });
 
     return () => {
@@ -107,6 +146,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `queryClient`/`router` stabil (dari provider), dependensi berlebih di sini cuma memicu resubscribe listener tanpa manfaat.
   }, [supabase]);
+
+  function refetchAuth() {
+    if (session) {
+      setLoading(true);
+      void muatUntukPengguna(session.user.id).finally(() => setLoading(false));
+    }
+  }
 
   // Alihkan ke /masuk begitu sesi hilang -- KECUALI sudah di /masuk atau
   // /ganti-password (dua halaman itu memang untuk orang TANPA sesi valid,
@@ -131,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, profile, roles, assignments, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ session, profile, roles, assignments, loading, authGagal, refetchAuth, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
