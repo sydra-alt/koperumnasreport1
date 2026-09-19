@@ -350,6 +350,14 @@ where form_key = 'accounting'
 
 ### 4.4 Silang-cek omzet resto
 
+> **Diperbarui 19 September 2026 (migrasi `0062_omzet_pos_silang_cek.sql`) -- TIGA sumber.** Layar (Beranda CEO dan Terpusat) kini memakai `omzet_tiga_sumber_untuk_tanggal(p_tanggal)`: **Manager Resto (ketikan) | Kontrol F&B/Ita (ketikan) | POS (mesin)** untuk outlet dan tanggal yang sama, plus selisih. `selisih_resto_untuk_tanggal()` di bawah TIDAK dihapus tetapi tidak lagi dipakai layar. Aturan (semua di database):
+> - **Selisih = ketikan - pembanding** (positif = ketikan lebih tinggi), hanya kalau KEDUA angka ada. Selisih terhadap POS hanya untuk hari bisnis yang SUDAH TUTUP; hari berjalan angkanya sementara dan tanpa selisih.
+> - **Angka POS = salinan agregat** dari pos-fnb (`omzet_pos_harian`), ditarik `/api/sinkron/pos` (tarikan, bukan dorongan), TIDAK bisa diketik siapa pun (klien tanpa hak tulis; satu-satunya pintu = `terapkan_sinkron_pos()`, hanya service_role). Angka utama = **uang_diterima** (setara cash+QRIS+bank pengisian Ita); **penjualan_bersih** (sebelum pajak & service, dikurangi refund) angka kedua.
+> - **Definisi hari:** kolom POS = **hari bisnis POS** (batas hari per outlet, saat ini 04:00) disamakan dengan `report.tanggal`. Batas hari dan hari bisnis berjalan disalin dari POS tiap sinkron dan ditulis di layar.
+> - **Status kolom POS:** `final`, `berjalan` (sementara), `tanpa_transaksi` ("Belum ada transaksi POS", BUKAN Rp 0), `belum_dipetakan`, `belum_pernah_sinkron`, `belum_ada_data_pos`, `belum_dimulai`, `basi`.
+> - **Basi:** sinkron BERHASIL terakhir lebih tua dari `policy.pos_sinkron_maks_umur_jam` (bawaan 30) atau belum pernah -> angka POS disembunyikan (NULL), bukan ditandai; dihitung dengan `now()` server. Layar menampilkan stempel "Data POS per ..." dan peringatan (basi / percobaan terakhir gagal / outlet POS belum dipetakan).
+> - **Visibilitas:** baca tabel POS = CEO + accounting (RLS). Blok Silang-Cek di Beranda dan Terpusat: CEO + accounting (diubah 19 September 2026 atas keputusan CEO; sebelumnya CEO saja). Angka Manager/Kontrol F&B dibaca lewat RLS `report` -- accounting terbukti bisa membacanya.
+
 **Diperbarui 30 Agustus 2026 (migrasi `0031_indosteak_dua_outlet.sql`), lalu diperbarui LAGI hari yang sama (migrasi `0036_pecah_ita.sql`):**
 
 - **0031** -- Indosteak jadi DUA outlet (Cempaka & Pekansari), bukan satu. Pola kunci lama `'omzet_' || lower(nama outlet)` berhenti berfungsi (nama berspasi, dua outlet berbagi awalan) -- diganti `outlet.slug` (`'omzet_' || outlet.slug`).

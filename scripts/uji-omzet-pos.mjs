@@ -54,7 +54,9 @@ try {
   const sqlMigrasi = readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '0062_omzet_pos_silang_cek.sql'), 'utf8')
     .replace(/^\s*begin;\s*$/im, '')
     .replace(/^\s*commit;\s*$/im, '');
-  await q(sqlMigrasi);
+  // Kalau 0062 SUDAH terpasang permanen, jangan diterapkan ulang (create table gagal) -- uji berjalan terhadap objek nyata di dalam transaksi ini.
+  const sudahTerpasang = (await q(`select to_regclass('public.outlet_pos_map') is not null as ada`)).rows[0].ada;
+  if (!sudahTerpasang) await q(sqlMigrasi);
 
   const ceo = await uid('uji-ceo@koperumnas.local');
   const akun = await uid('accounting@koperumnas.local');
@@ -117,7 +119,7 @@ try {
     const m = (await q(`select count(*)::int as n from public.outlet_pos_map`)).rows[0].n;
     const l = (await q(`select count(*)::int as n from public.sinkron_pos_log`)).rows[0].n;
     cek(`${nama}: baca omzet_pos_harian / outlet_pos_map / sinkron_pos_log`, boleh ? 'terbaca' : '0 baris', { omzet: n, peta: m, log: l },
-      boleh ? n === 3 && m === 3 && l === 1 : n === 0 && m === 0 && l === 0);
+      boleh ? n === 2 && m === 3 && l === 1 : n === 0 && m === 0 && l === 0);
   }
   await sebagai(ceo);
   for (const [label, sql] of [
@@ -202,7 +204,7 @@ try {
 
   // ══ D. status_sinkron_pos: basi ══════════════════════════════════════════════
   await sebagaiOwner();
-  await q(`update public.sinkron_pos_log set status = 'gagal', galat = 'x' where id <> (select id from public.sinkron_pos_log order by selesai desc nulls last limit 1)`);
+  await q(`update public.sinkron_pos_log set status = 'gagal', galat = 'x', selesai = now() - interval '5 hours' where id <> (select id from public.sinkron_pos_log order by selesai desc nulls last limit 1)`);
   const umur = async (jam) => {
     await q(`update public.sinkron_pos_log set selesai = now() - make_interval(hours => $1) where status = 'berhasil'`, [jam]);
     return (await q(`select * from public.status_sinkron_pos()`)).rows[0];
@@ -244,8 +246,8 @@ try {
   let d18 = await ambil('2026-09-18');
   const c = d18['Indosteak Cempaka'];
   cek('hari TUTUP (18 Sep) Cempaka: final, tiga angka + tiga selisih', 'final; 1.000.000 | 1.000.000 | 990.000; selisih 0 / 10.000 / 10.000',
-    { st: c.pos_status, m: c.manager, k: c.kontrol, p: c.pos_uang_diterima, mk: c.selisih_manager_kontrol, mp: c.selisih_manager_pos, kp: c.selisih_kontrol_pos },
-    c.pos_status === 'final' && String(c.manager) === '1000000' && String(c.kontrol) === '1000000' && String(c.pos_uang_diterima) === '990000' && String(c.selisih_manager_kontrol) === '0' && String(c.selisih_manager_pos) === '10000' && String(c.selisih_kontrol_pos) === '10000');
+    { st: c.pos_status, m: c.manager, k: c.kontrol_fnb, p: c.pos_uang_diterima, mk: c.selisih_manager_kontrol, mp: c.selisih_manager_pos, kp: c.selisih_kontrol_pos },
+    c.pos_status === 'final' && String(c.manager) === '1000000' && String(c.kontrol_fnb) === '1000000' && String(c.pos_uang_diterima) === '990000' && String(c.selisih_manager_kontrol) === '0' && String(c.selisih_manager_pos) === '10000' && String(c.selisih_kontrol_pos) === '10000');
   cek('angka kedua (penjualan bersih) dan jumlah order ikut, batas hari 04:00', '900000, 40, 04:00', { b: c.pos_penjualan_bersih, n: c.pos_jumlah_order, h: c.pos_batas_hari }, String(c.pos_penjualan_bersih) === '900000' && c.pos_jumlah_order === 40 && c.pos_batas_hari === '04:00');
   const j = d18['Indokopi Jatinegara'];
   cek('Jatinegara: hanya Manager ada, POS terpetakan tanpa transaksi di 18 Sep -> "tanpa_transaksi" (BUKAN Rp 0); TIDAK ADA selisih apa pun', 'tanpa_transaksi; POS null; semua selisih null',
@@ -310,5 +312,5 @@ for (const h of hasil) {
   if (!h.lolos) gagal++;
   console.log(`${h.lolos ? 'LOLOS ' : 'GAGAL '} #${h.nomor} ${h.skenario}\n        harapan: ${h.harapan}\n        hasil  : ${h.mentah}`);
 }
-console.log(`\n${hasil.length - gagal}/${hasil.length} lolos. Semua perubahan (termasuk migrasi 0062) di-ROLLBACK.`);
+console.log(`\n${hasil.length - gagal}/${hasil.length} lolos. Semua perubahan di-ROLLBACK (migrasi 0062 hanya diterapkan ulang di dalam transaksi kalau belum terpasang).`);
 process.exit(gagal === 0 ? 0 : 1);

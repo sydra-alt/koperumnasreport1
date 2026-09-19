@@ -340,8 +340,8 @@ language sql stable as $$
     case when g.status in ('final', 'berjalan') then g.uang_diterima end,
     case when g.status in ('final', 'berjalan') then g.penjualan_bersih end,
     case when g.status in ('final', 'berjalan') then g.jumlah_order end,
-    case when g.status in ('final', 'berjalan', 'tanpa_transaksi', 'belum_dimulai') then g.batas_hari end,
-    case when g.status in ('final', 'berjalan', 'tanpa_transaksi', 'belum_dimulai') then g.batas_hari_terkonfirmasi end,
+    g.batas_hari,                     -- konfigurasi outlet, bukan angka omzet: tetap tampil walau data basi
+    g.batas_hari_terkonfirmasi,
     g.manager - g.kontrol,
     case when g.status = 'final' then g.manager - g.uang_diterima end,
     case when g.status = 'final' then g.kontrol - g.uang_diterima end
