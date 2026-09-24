@@ -29,6 +29,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Worktree asing (bukan bagian repo ini) -- tanpa ini, `npm run lint` ikut
+    // melint kode di sana dan gagal dengan error yang tidak berkaitan sama
+    // sekali dengan proyek ini.
+    ".kilo/**",
   ]),
 ]);
 

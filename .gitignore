@@ -59,3 +59,6 @@ supabase/.temp
 *.sw?
 
 certificates
+
+# Worktree asing (mis. dari ekstensi editor lain) -- bukan bagian repo ini, jangan dilacak.
+.kilo/
