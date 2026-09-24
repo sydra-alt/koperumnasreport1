@@ -455,92 +455,103 @@ export function LaporForm({ formKey }: { formKey: string }) {
         </div>
       )}
 
-      {/* Progres closing SEKARANG di dalam kartu bagian "Target Closing Pribadi"
-          sendiri (ringkasanBlokPersonalMarketing di atas, diteruskan ke
-          FormRenderer) -- tidak diulang di sini lagi. Undangan bulanan lama
-          (progres.undangan/invite_target) DIHAPUS (20 September 2026) --
-          Undangan sekarang komponen HARIAN skema poin (panel di bawah),
-          bukan target kumulatif bulanan terpisah lagi. */}
-      {formKey === 'personal_marketing' && progres && closingTarget !== null && (
-        <div className="kartu-status rail-netral flex flex-col gap-2">
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>Status Personal Marketing</p>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            <span className="status-teks" style={{ color: LABEL_CAPAIAN_TARGET[statusClosing(progres.closing, closingTarget)].warna }}>
-              Closing: {LABEL_CAPAIAN_TARGET[statusClosing(progres.closing, closingTarget)].teks}
-            </span>
-            <span className="status-teks" style={{ color: 'var(--biru)' }}>
-              PTE hari ini: {poinPte ? `${poinPte.poinTotal} poin` : '—'}
-            </span>
-          </div>
-        </div>
-      )}
+      {/* Blok Personal Marketing -- SATU .panel (sebelumnya beberapa kartu-status terpisah:
+          "Status Personal Marketing", "PTE hari ini", 4 kartu komponen, "PTE poin bulan ini").
+          Isi/nilai/kondisi tampil PERSIS SAMA, cuma dipindah jadi panel-baris di dalam satu
+          panel -- lihat komentar asli di tiap bagian untuk konteks kenapa nilainya begini.
+          Panel ini sendiri tampil kalau salah satu dari dua kondisi lama tadinya tampil
+          (progres closing ATAU PTE harian) -- union-nya SAMA dengan "ada sesuatu yang
+          tadinya kelihatan", jadi tidak ada keadaan kosong baru yang sebelumnya tidak ada. */}
+      {formKey === 'personal_marketing' &&
+        ((progres && closingTarget !== null) || (poinPte && poinMaksimal !== null && policy)) && (
+          <div className="panel">
+            <div className="panel-baris">
+              <p className="judul-seksi">Personal Marketing</p>
+            </div>
 
-      {/* Panel PTE Harian (18 September 2026, MENGGANTIKAN daftar 6 kewajiban
-          lama) -- rincian per komponen, poin SEMUA dari policy.pte_poin_*
-          (lib/api/pteHarian.ts), TIDAK ADA klaim bonus/potongan di sini --
-          instruksi eksplisit CEO: itu belum dibangun untuk skema poin ini.
-          Akumulasi bulanan (20 September 2026) ditambahkan di kartu KEDUA --
-          "hari mencapai poin penuh" lebih berarti daripada total sendirian,
-          kekurangan satu hari tidak bisa ditutup poin besok. */}
-      {formKey === 'personal_marketing' && poinPte && poinMaksimal !== null && policy && (
-        <div className="flex flex-col gap-3">
-          <div className="kartu-status rail-biru flex flex-col gap-2">
-            <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>PTE hari ini</p>
-            <div className="flex items-baseline gap-2">
-              <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{poinPte.poinTotal}</span>
-              <span className="text-sm" style={{ color: 'var(--label)' }}>dari maksimal {poinMaksimal} poin</span>
-            </div>
-            <div className="progres-bar">
-              <div className="progres-bar-isi" style={{ width: `${Math.round((poinPte.poinTotal / poinMaksimal) * 100)}%` }} />
-            </div>
-            <p className="text-sm" style={{ color: 'var(--label)' }}>Bonus/potongan gaji belum aktif untuk skema poin ini.</p>
-          </div>
+            {/* Progres closing SEKARANG di dalam kartu bagian "Target Closing Pribadi"
+                sendiri (ringkasanBlokPersonalMarketing di atas, diteruskan ke
+                FormRenderer) -- tidak diulang di sini lagi. Undangan bulanan lama
+                (progres.undangan/invite_target) DIHAPUS (20 September 2026) --
+                Undangan sekarang komponen HARIAN skema poin (baris di bawah),
+                bukan target kumulatif bulanan terpisah lagi. */}
+            {progres && closingTarget !== null && (
+              <div className="panel-baris flex flex-wrap gap-x-4 gap-y-1">
+                <span className="status-teks" style={{ color: LABEL_CAPAIAN_TARGET[statusClosing(progres.closing, closingTarget)].warna }}>
+                  Closing: {LABEL_CAPAIAN_TARGET[statusClosing(progres.closing, closingTarget)].teks}
+                </span>
+                <span className="status-teks" style={{ color: 'var(--biru)' }}>
+                  PTE hari ini: {poinPte ? `${poinPte.poinTotal} poin` : '—'}
+                </span>
+              </div>
+            )}
 
-          <div className="flex flex-col gap-2">
-            <div className="kartu-status rail-netral flex items-center justify-between gap-2">
-              <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Digital (TikTok/IG/Threads)</span>
-              <span className="status-teks">
-                {poinPte.poinDigital} / {Number(policy.pte_poin_digital_per_platform) * 3} poin
-              </span>
-            </div>
-            <div className="kartu-status rail-netral flex items-center justify-between gap-2">
-              <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Undangan</span>
-              <span className="status-teks">
-                {poinPte.poinUndangan} / {Number(policy.pte_poin_undangan_per_orang) * Number(policy.pte_poin_undangan_target)} poin
-              </span>
-            </div>
-            <div className="kartu-status rail-netral flex items-center justify-between gap-2">
-              <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Google Review</span>
-              <span className="status-teks">
-                {poinPte.poinReview} / {Number(policy.pte_poin_review_lengkap)} poin
-              </span>
-            </div>
-            <div className="kartu-status rail-netral flex items-center justify-between gap-2">
-              <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Kesaksian / Testimoni</span>
-              <span className="status-teks">
-                {poinPte.poinKesaksian} / {Number(policy.pte_poin_kesaksian_lengkap)} poin
-              </span>
-            </div>
-          </div>
+            {/* Rincian PTE Harian (18 September 2026, MENGGANTIKAN daftar 6 kewajiban
+                lama) -- rincian per komponen, poin SEMUA dari policy.pte_poin_*
+                (lib/api/pteHarian.ts), TIDAK ADA klaim bonus/potongan di sini --
+                instruksi eksplisit CEO: itu belum dibangun untuk skema poin ini.
+                Akumulasi bulanan (20 September 2026) ditambahkan di baris TERAKHIR --
+                "hari mencapai poin penuh" lebih berarti daripada total sendirian,
+                kekurangan satu hari tidak bisa ditutup poin besok. */}
+            {poinPte && poinMaksimal !== null && policy && (
+              <>
+                <div className="panel-baris flex flex-col gap-2">
+                  <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>PTE hari ini</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{poinPte.poinTotal}</span>
+                    <span className="text-sm" style={{ color: 'var(--label)' }}>dari maksimal {poinMaksimal} poin</span>
+                  </div>
+                  <div className="progres-bar">
+                    <div className="progres-bar-isi" style={{ width: `${Math.round((poinPte.poinTotal / poinMaksimal) * 100)}%` }} />
+                  </div>
+                  <p className="text-sm" style={{ color: 'var(--label)' }}>Bonus/potongan gaji belum aktif untuk skema poin ini.</p>
+                </div>
 
-          <div className="kartu-status rail-netral flex flex-col gap-1">
-            <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>PTE poin bulan ini</p>
-            <div className="flex items-baseline gap-2">
-              <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{ringkasanBulanIni?.totalPoin ?? 0}</span>
-              <span className="text-sm" style={{ color: 'var(--label)' }}>
-                {progres?.pte_berlaku
-                  ? `dari ${(targetPoinBulanIni ?? 0).toLocaleString('id-ID')} poin target (${hariWajibBulanIni} hari kerja)`
-                  : 'poin (target bulanan belum berlaku -- PTE belum dimulai)'}
-              </span>
-            </div>
-            {progres?.pte_berlaku && (
-              <p className="text-sm" style={{ color: 'var(--label)' }}>
-                {ringkasanBulanIni?.hariPenuh ?? 0} dari {hariWajibBulanIni} hari mencapai poin penuh
-              </p>
+                <div className="panel-baris flex items-center justify-between gap-2">
+                  <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Digital (TikTok/IG/Threads)</span>
+                  <span className="status-teks">
+                    {poinPte.poinDigital} / {Number(policy.pte_poin_digital_per_platform) * 3} poin
+                  </span>
+                </div>
+                <div className="panel-baris flex items-center justify-between gap-2">
+                  <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Undangan</span>
+                  <span className="status-teks">
+                    {poinPte.poinUndangan} / {Number(policy.pte_poin_undangan_per_orang) * Number(policy.pte_poin_undangan_target)} poin
+                  </span>
+                </div>
+                <div className="panel-baris flex items-center justify-between gap-2">
+                  <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Google Review</span>
+                  <span className="status-teks">
+                    {poinPte.poinReview} / {Number(policy.pte_poin_review_lengkap)} poin
+                  </span>
+                </div>
+                <div className="panel-baris flex items-center justify-between gap-2">
+                  <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Kesaksian / Testimoni</span>
+                  <span className="status-teks">
+                    {poinPte.poinKesaksian} / {Number(policy.pte_poin_kesaksian_lengkap)} poin
+                  </span>
+                </div>
+
+                <div className="panel-baris flex flex-col gap-1">
+                  <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>PTE poin bulan ini</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{ringkasanBulanIni?.totalPoin ?? 0}</span>
+                    <span className="text-sm" style={{ color: 'var(--label)' }}>
+                      {progres?.pte_berlaku
+                        ? `dari ${(targetPoinBulanIni ?? 0).toLocaleString('id-ID')} poin target (${hariWajibBulanIni} hari kerja)`
+                        : 'poin (target bulanan belum berlaku -- PTE belum dimulai)'}
+                    </span>
+                  </div>
+                  {progres?.pte_berlaku && (
+                    <p className="text-sm" style={{ color: 'var(--label)' }}>
+                      {ringkasanBulanIni?.hariPenuh ?? 0} dari {hariWajibBulanIni} hari mencapai poin penuh
+                    </p>
+                  )}
+                </div>
+              </>
             )}
           </div>
-        </div>
-      )}
+        )}
 
       {formKey === 'pembangunan' && rekapPembangunan && <RekapPembangunanOtomatis data={rekapPembangunan} />}
 
