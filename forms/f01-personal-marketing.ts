@@ -166,7 +166,7 @@ export function buatF01PersonalMarketing(labelUndangan: string = LABEL_UNDANGAN_
     {
       id: 'closing',
       judul: 'Target Closing Pribadi',
-      catatan: 'Target minimal policy.closing_target closing/bulan. Progres dan konsekuensinya ditampilkan di atas bagian ini, dihitung sistem (lib/api/marketing.ts, lib/api/pte.ts) -- bukan diketik ulang di sini.',
+      catatan: 'Target closing bulanan mengikuti kebijakan yang berlaku. Progres dan konsekuensinya sudah ditampilkan di atas -- tidak perlu diketik ulang di sini.',
       fields: [
         {
           key: 'closing_list',
