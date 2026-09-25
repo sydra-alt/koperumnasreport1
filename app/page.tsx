@@ -160,12 +160,12 @@ function DashboardCeo() {
  * menggantikan tautan polos "buka tab baru, login sendiri" yang dulu ada di
  * DashboardCeo -- lihat lib/posLink.ts). SENGAJA di LUAR DashboardCeo/gerbang
  * peran ceo|pusat|accounting -- gelombang pertama (Ita) role-nya `karyawan`
- * biasa, jadi gerbangnya HARUS per-email (bolehLihatTautanPos), bukan
- * mewarisi gerbang peran dashboard CEO.
+ * biasa, jadi gerbangnya per-ORANG (`profile.punya_akses_pos`, migrasi 0063),
+ * bukan mewarisi gerbang peran dashboard CEO.
  */
 function TombolPos() {
-  const { session } = useAuth();
-  if (!bolehLihatTautanPos(session?.user.email)) {
+  const { profile } = useAuth();
+  if (!bolehLihatTautanPos(profile?.punya_akses_pos)) {
     return null;
   }
 

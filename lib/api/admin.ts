@@ -375,6 +375,10 @@ export interface ProfilDenganRole {
   aktif: boolean;
   wajib_pte: boolean;
   alasan_bebas_pte: string | null;
+  // Migrasi 0063 (25 September 2026) -- MURNI tampil/tidaknya tombol
+  // handoff pos-fnb di app/page.tsx, BUKAN otorisasi. Lihat komentar
+  // kolomnya di migrasi dan lib/posLink.ts.
+  punya_akses_pos: boolean;
   roles: string[];
 }
 
@@ -384,7 +388,7 @@ export function useDaftarProfilDenganRole() {
     queryFn: async (): Promise<ProfilDenganRole[]> => {
       const supabase = createClient();
       const [{ data: profil, error: errProfil }, { data: role, error: errRole }] = await Promise.all([
-        supabase.from('profile').select('id, nama, jabatan, divisi, aktif, wajib_pte, alasan_bebas_pte').order('nama'),
+        supabase.from('profile').select('id, nama, jabatan, divisi, aktif, wajib_pte, alasan_bebas_pte, punya_akses_pos').order('nama'),
         supabase.from('role').select('user_id, role'),
       ]);
       if (errProfil) throw errProfil;
@@ -416,6 +420,26 @@ export function useUbahWajibPte() {
       queryClient.invalidateQueries({ queryKey: ['admin-profil-role'] });
       queryClient.invalidateQueries({ queryKey: ['marketing-bulanan-semua'] });
       queryClient.invalidateQueries({ queryKey: ['progres-bulanan-saya'] });
+    },
+  });
+}
+
+// ─── Akses tombol POS per orang (25 September 2026, migrasi 0063) ─────
+// Update biasa, pola SAMA PERSIS useUbahWajibPte di atas -- RLS
+// profile_update + trigger jaga_profil_sensitif() sudah menolak siapa pun
+// selain CEO/Admin mengubah kolom ini. MURNI tampil/tidaknya tombol
+// handoff pos-fnb (app/page.tsx) -- BUKAN otorisasi, lihat komentar
+// kolomnya di migrasi 0063 dan lib/posLink.ts.
+export function useUbahAksesPos() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, punyaAksesPos }: { userId: string; punyaAksesPos: boolean }) => {
+      const supabase = createClient();
+      const { error } = await supabase.from('profile').update({ punya_akses_pos: punyaAksesPos }).eq('id', userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-profil-role'] });
     },
   });
 }

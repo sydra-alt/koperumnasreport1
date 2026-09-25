@@ -16,24 +16,22 @@
  */
 
 /**
- * Kandidat 6 September 2026 §1 (investigasi handoff): gelombang pertama
- * cuma Ita (dan Putri untuk uji, dia sudah punya akun di kedua sistem).
- * Shabita menyusul SETELAH dia dipetakan di report_identity_links pos-fnb
- * -- tambahkan emailnya di sini BARENGAN dengan pemetaan itu dibuat,
- * jangan salah satu duluan (tombol tampil tapi mentok "belum disiapkan"
- * itu pengalaman buruk, sama seperti alasan CEO 19 September 2026 dulu).
+ * SUPERSEDED LAGI (25 September 2026, sama hari) -- daftar email ditulis
+ * mati di kode di sini SEMPAT ada, lalu dicabut: itu melanggar aturan
+ * proyek "nol business rule hardcode" (tiap orang baru berarti ubah kode +
+ * deploy). Diganti kolom `profile.punya_akses_pos` (migrasi 0063), diatur
+ * lewat Admin -> tab Penugasan (sama pola `wajib_pte`) -- TIDAK PERLU
+ * deploy untuk menambah/mencabut orang.
  *
- * SENGAJA daftar eksplisit per-ORANG (bukan per-role) -- populasinya kecil
- * (lihat docs/BLUEPRINT.md investigasi 25 September 2026) dan sebagian
- * besar (Fikri/Toni) BUKAN manajer sungguhan walau kelihatannya berurusan
- * dengan outlet, jadi role saja tidak cukup presisi.
+ * PENTING: kolom ini MURNI menentukan tampil/tidaknya tombol, BUKAN
+ * gerbang keamanan. Siapa BENAR-BENAR bisa masuk ke pos-fnb ditentukan
+ * SEPENUHNYA di sisi pos-fnb sendiri (`report_identity_links`, dikelola
+ * owner pos-fnb lewat /team di sana, repo terpisah). Menyalakan kolom ini
+ * untuk seseorang TANPA pemetaan yang cocok di pos-fnb cuma membuat
+ * tombolnya tampil lalu berakhir "akun toko belum disiapkan" -- tidak
+ * berbahaya, cuma sia-sia. Isi awal (Putri, Ita) lewat migrasi 0063 supaya
+ * perilakunya sama seperti daftar hardcode yang barusan dicabut.
  */
-const EMAIL_HANDOFF_DIIZINKAN: readonly string[] = [
-  'putri@koperumnas.local',
-  'ita@koperumnas.local',
-];
-
-export function bolehLihatTautanPos(email: string | null | undefined): boolean {
-  if (!email) return false;
-  return EMAIL_HANDOFF_DIIZINKAN.includes(email.toLowerCase());
+export function bolehLihatTautanPos(punyaAksesPos: boolean | null | undefined): boolean {
+  return punyaAksesPos === true;
 }

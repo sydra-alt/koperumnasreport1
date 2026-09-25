@@ -16,6 +16,10 @@ interface Profile {
   persetujuan_privasi_absen_at: string | null;
   /** false = dikecualikan dari PTE oleh Admin (profile.wajib_pte, default true). */
   wajib_pte: boolean;
+  /** Migrasi 0063 (25 September 2026) -- MURNI tampil/tidaknya tombol
+   * handoff pos-fnb (lib/posLink.ts), BUKAN otorisasi. Diatur Admin lewat
+   * tab Penugasan, sama pola wajib_pte. */
+  punya_akses_pos: boolean;
 }
 
 interface Assignment {

@@ -36,6 +36,7 @@ import {
   useTambahShift,
   useUbahShift,
   useUbahWajibPte,
+  useUbahAksesPos,
   daftarRoleUntuk,
 } from '../../lib/api/admin';
 
@@ -274,6 +275,7 @@ function TabPenugasan() {
   const tambahPenugasanAbsen = useTambahPenugasanAbsen();
   const hapusPenugasanAbsen = useHapusPenugasanAbsen();
   const ubahWajibPte = useUbahWajibPte();
+  const ubahAksesPos = useUbahAksesPos();
 
   const [userId, setUserId] = useState('');
   const [formKey, setFormKey] = useState('');
@@ -354,6 +356,33 @@ function TabPenugasan() {
               </button>
             )}
             {ubahWajibPte.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubahWajibPte.error, 'mengubah status PTE')}</p>}
+          </div>
+
+          {/* ─── Akses tombol POS (25 September 2026, migrasi 0063) ───
+              MURNI menampilkan/menyembunyikan tombol handoff pos-fnb di
+              Beranda -- BUKAN gerbang keamanan. Siapa BENAR-BENAR bisa
+              masuk ke pos-fnb ditentukan sepenuhnya di sisi pos-fnb sendiri
+              (report_identity_links, dikelola terpisah lewat /team di
+              sana). Menyalakan ini tanpa pemetaan yang cocok di sana cuma
+              membuat tombol berakhir "akun toko belum disiapkan". */}
+          <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
+            <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Tombol Dashboard Toko (POS)</p>
+            <p className="text-sm" style={{ color: 'var(--label)' }}>
+              Cuma menentukan tampil-tidaknya tombol &ldquo;Buka Dashboard Toko&rdquo; di Beranda orang ini. Akses sungguhan ke pos-fnb diatur terpisah di sana.
+            </p>
+            <p className="text-sm" style={{ color: orang.punya_akses_pos ? 'var(--hijau)' : 'var(--kosong)' }}>
+              {orang.punya_akses_pos ? '✅ Tombol tampil' : '⚪ Tombol disembunyikan'}
+            </p>
+            <button
+              type="button"
+              disabled={ubahAksesPos.isPending}
+              onClick={() => ubahAksesPos.mutate({ userId: orang.id, punyaAksesPos: !orang.punya_akses_pos })}
+              className="w-fit border px-3 py-1 text-sm"
+              style={orang.punya_akses_pos ? { borderColor: 'var(--kuning)', color: 'var(--kuning)', minHeight: 44 } : { borderColor: 'var(--hijau)', color: 'var(--hijau)', minHeight: 44 }}
+            >
+              {orang.punya_akses_pos ? 'Sembunyikan tombol' : 'Tampilkan tombol'}
+            </button>
+            {ubahAksesPos.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubahAksesPos.error, 'mengubah akses tombol POS')}</p>}
           </div>
 
           {/* ─── Form yang diisi ─── */}
