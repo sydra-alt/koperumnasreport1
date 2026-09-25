@@ -1,34 +1,39 @@
 /**
  * Tautan dari dashboard laporan ke dashboard pos-fnb (sistem kasir).
  *
- * KEPUTUSAN (19 September 2026, docs/PROGRESS.md): penjualan kasir TIDAK
- * diintegrasikan ke database laporan -- cuma tautan keluar. pos-fnb adalah
- * sistem TERPISAH (proyek Supabase, hosting, dan akun login sendiri); sesi di
- * repo ini tidak menyambung ke sana. Jangan menyiratkan sebaliknya di UI.
+ * SUPERSEDED (25 September 2026) -- keputusan 19 September 2026 di bawah
+ * ini ("sesi tidak menyambung, buka tab baru, login sendiri") DIGANTI oleh
+ * handoff satu pintu masuk: tombol sekarang lewat `/api/pos-handoff`
+ * (lib/posHandoff.ts + route-nya), bukan tautan langsung ke pos-fnb.
+ * Sesi TETAP tidak disalin/dua sistem TETAP terpisah total -- yang berubah
+ * cuma orang tidak perlu login KEDUA KALINYA kalau sudah dipetakan di
+ * pos-fnb (lihat report_identity_links, tabel di pos-fnb). Kalau belum
+ * dipetakan, pos-fnb sendiri yang menampilkan "akun toko belum disiapkan".
  *
- * Bukan rahasia -- URL publik, jadi aman di klien. Bisa ditimpa lewat
- * NEXT_PUBLIC_POS_DASHBOARD_URL (mis. kalau pindah ke domain sendiri) tanpa
- * mengubah kode.
+ * Bukan rahasia -- URL server-only (POS_INTEGRASI_URL, dibaca di
+ * app/api/pos-handoff/route.ts, BUKAN di sini) karena token ditandatangani
+ * server, tapi URL dasarnya sendiri bukan rahasia.
  */
-const URL_DASAR_POS = (process.env.NEXT_PUBLIC_POS_DASHBOARD_URL ?? 'https://pos-fnb.badarbaradja112.workers.dev').replace(/\/+$/, '');
 
 /**
- * Halaman drill-down yang paling berguna di pos-fnb: Laporan Penjualan --
- * filter outlet + tanggal, ringkasan, dan riwayat transaksi. (Beranda pos-fnb
- * cuma ringkasan hari ini.) pos-fnb belum menyimpan tujuan setelah login, jadi
- * kalau belum masuk di sana, pengguna mendarat di beranda POS setelah login.
+ * Kandidat 6 September 2026 §1 (investigasi handoff): gelombang pertama
+ * cuma Ita (dan Putri untuk uji, dia sudah punya akun di kedua sistem).
+ * Shabita menyusul SETELAH dia dipetakan di report_identity_links pos-fnb
+ * -- tambahkan emailnya di sini BARENGAN dengan pemetaan itu dibuat,
+ * jangan salah satu duluan (tombol tampil tapi mentok "belum disiapkan"
+ * itu pengalaman buruk, sama seperti alasan CEO 19 September 2026 dulu).
+ *
+ * SENGAJA daftar eksplisit per-ORANG (bukan per-role) -- populasinya kecil
+ * (lihat docs/BLUEPRINT.md investigasi 25 September 2026) dan sebagian
+ * besar (Fikri/Toni) BUKAN manajer sungguhan walau kelihatannya berurusan
+ * dengan outlet, jadi role saja tidak cukup presisi.
  */
-export const URL_LAPORAN_PENJUALAN_POS = `${URL_DASAR_POS}/reports/sales`;
+const EMAIL_HANDOFF_DIIZINKAN: readonly string[] = [
+  'putri@koperumnas.local',
+  'ita@koperumnas.local',
+];
 
-/**
- * Hanya CEO -- SEMENTARA (19 September 2026). Awalnya CEO + accounting, tapi
- * akun Shabita (accounting) di pos-fnb tidak bisa dipastikan ada (host
- * Supabase produksi POS tidak ada di DNS, jadi tidak bisa dicek), dan tombol
- * yang mentok di layar login lebih buruk daripada tidak ada tombol. UTANG:
- * lebarkan lagi ke accounting setelah akunnya (peran `accountant`, izin
- * report.sales) dibuat dan dipastikan bisa masuk -- lihat docs/PROGRESS.md.
- * BUKAN pusat, walau pusat melihat dashboard yang sama.
- */
-export function bolehLihatTautanPos(roles: readonly string[]): boolean {
-  return roles.includes('ceo');
+export function bolehLihatTautanPos(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return EMAIL_HANDOFF_DIIZINKAN.includes(email.toLowerCase());
 }

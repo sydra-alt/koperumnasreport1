@@ -35,7 +35,7 @@ import { useKeuanganRekapUntukTanggal } from '../lib/api/dashboard';
 import { SilangCekOmzetBeranda } from '../components/SilangCekOmzet';
 import { useLaporanAccountingHariIni, hitungRingkasanKeuanganCeo } from '../lib/api/accounting';
 import { formatRupiah } from '../lib/rupiah';
-import { bolehLihatTautanPos, URL_LAPORAN_PENJUALAN_POS } from '../lib/posLink';
+import { bolehLihatTautanPos } from '../lib/posLink';
 
 /**
  * Lembar angka datar untuk rekap Beranda: label kecil + angka mono, dipisah
@@ -86,7 +86,6 @@ function DashboardCeo() {
   const { roles } = useAuth();
   const bolehKeuangan = roles.includes('ceo') || roles.includes('pusat') || roles.includes('accounting');
   const bolehOperasional = roles.includes('ceo');
-  const bolehTautanPos = bolehLihatTautanPos(roles);
 
   const { data: pembangunan } = usePembangunanUntukTanggal();
   const { data: keuangan } = useKeuanganRekapUntukTanggal();
@@ -152,35 +151,48 @@ function DashboardCeo() {
           <SilangCekOmzetBeranda tampilPos />
         </section>
       )}
-
-      {bolehTautanPos && (
-        <section className="lg:col-span-2">
-          <p className="judul-seksi mb-2">
-            Telusuri di POS
-          </p>
-          <div className="panel panel-baris flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
-            <div className="flex flex-col gap-1">
-              <p className="text-sm">
-                Untuk menelusuri lebih dalam (per produk, per transaksi), buka Laporan Penjualan di sistem kasir yang <b>terpisah</b> dari laporan ini.
-              </p>
-              <p className="text-sm" style={{ color: 'var(--label)' }}>
-                Terbuka di tab baru dan meminta masuk sendiri dengan akun POS — sesi Anda di sini tidak menyambung ke sana.
-              </p>
-            </div>
-            <a
-              className="tombol-sekunder"
-              style={{ flexShrink: 0 }}
-              href={URL_LAPORAN_PENJUALAN_POS}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Buka Laporan Penjualan di sistem POS terpisah (tab baru, login sendiri)"
-            >
-              Buka Penjualan di POS ↗
-            </a>
-          </div>
-        </section>
-      )}
     </div>
+  );
+}
+
+/**
+ * Tombol handoff satu pintu masuk ke dashboard pos-fnb (25 September 2026,
+ * menggantikan tautan polos "buka tab baru, login sendiri" yang dulu ada di
+ * DashboardCeo -- lihat lib/posLink.ts). SENGAJA di LUAR DashboardCeo/gerbang
+ * peran ceo|pusat|accounting -- gelombang pertama (Ita) role-nya `karyawan`
+ * biasa, jadi gerbangnya HARUS per-email (bolehLihatTautanPos), bukan
+ * mewarisi gerbang peran dashboard CEO.
+ */
+function TombolPos() {
+  const { session } = useAuth();
+  if (!bolehLihatTautanPos(session?.user.email)) {
+    return null;
+  }
+
+  return (
+    <section>
+      <p className="judul-seksi mb-2">Buka Dashboard Toko</p>
+      <div className="panel panel-baris flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
+        <div className="flex flex-col gap-1">
+          <p className="text-sm">
+            Buka dashboard sistem kasir (produk, stok, opname, penjualan) yang <b>terpisah</b> dari laporan ini.
+          </p>
+          <p className="text-sm" style={{ color: 'var(--label)' }}>
+            Terbuka di tab baru -- Anda TIDAK perlu masuk lagi kalau akun toko Anda sudah disiapkan admin.
+          </p>
+        </div>
+        <a
+          className="tombol-sekunder"
+          style={{ flexShrink: 0 }}
+          href="/api/pos-handoff"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Buka dashboard sistem kasir di tab baru"
+        >
+          Buka Dashboard Toko ↗
+        </a>
+      </div>
+    </section>
   );
 }
 
@@ -525,6 +537,8 @@ export default function Home() {
           </header>
 
           <DaftarTugas />
+
+          <TombolPos />
 
           {(roles.includes('ceo') || roles.includes('pusat') || roles.includes('accounting')) && <DashboardCeo />}
         </>
