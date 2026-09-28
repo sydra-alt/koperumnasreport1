@@ -27,7 +27,7 @@ const Body = z.object({
 const RIWAYAT_MAKS = 20;
 
 export const PESAN_TIDAK_AKTIF = 'Asisten AI belum diaktifkan untuk bisnis ini. Hubungi CEO/admin kalau ingin menyalakannya.';
-export const PESAN_TIDAK_BOLEH = 'Asisten AI belum diaktifkan untuk akunmu. Hubungi CEO/admin kalau kamu butuh akses.';
+export const PESAN_TIDAK_BOLEH = 'Asisten AI belum diaktifkan untuk akun Anda. Hubungi CEO/admin kalau Anda butuh akses.';
 export const pesanJatahHabis = (batas: number) => `Batas ${batas} pesan per hari sudah tercapai. Coba lagi besok.`;
 
 export type StatusAi = { aktif: boolean; boleh: boolean; batas: number; terpakai: number };

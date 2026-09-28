@@ -17,7 +17,7 @@ import { TabelJawaban } from '../../components/asisten/TabelJawaban';
 /**
  * Asisten AI, fase 1 (28 September 2026) -- tanya jawab & analisis. Status
  * dari `ai_status()`: "belum diaktifkan" (policy hilang/batas 0), "tidak
- * tersedia untuk akunmu" (profile.punya_akses_ai belum dinyalakan Admin), dan "jatah hari
+ * tersedia untuk akun Anda" (profile.punya_akses_ai belum dinyalakan Admin), dan "jatah hari
  * ini habis" SENGAJA tiga pesan berbeda -- jangan digabung. Gerbang
  * sungguhan tetap di database dan di /api/ai/chat.
  */
@@ -39,7 +39,7 @@ export default function AsistenPage() {
     return <Pemberitahuan judul="Asisten AI belum diaktifkan" isi="Asisten AI belum diaktifkan untuk bisnis ini. Hubungi CEO/admin kalau ingin menyalakannya." />;
   }
   if (!status.data.boleh) {
-    return <Pemberitahuan judul="Belum diaktifkan untuk akunmu" isi="Asisten AI hanya untuk orang yang diberi akses. Hubungi CEO/admin kalau kamu butuh akses." />;
+    return <Pemberitahuan judul="Belum diaktifkan untuk akun Anda" isi="Asisten AI hanya untuk orang yang diberi akses. Hubungi CEO/admin kalau Anda butuh akses." />;
   }
   return <Asisten />;
 }
@@ -164,7 +164,7 @@ function Asisten() {
         <header className="flex flex-col gap-1">
           <h1 style={{ fontSize: 'var(--ukuran-judul)', fontWeight: 600 }}>Asisten AI</h1>
           <p className="text-sm" style={{ color: 'var(--label)' }}>
-            Jawaban hanya dari data yang bisa kamu lihat: laporan, absensi, dan data POS outletmu.
+            Jawaban hanya dari data yang bisa Anda lihat: laporan, absensi, dan data POS outletmu.
           </p>
         </header>
 
@@ -261,7 +261,7 @@ function Gelembung({ pesan }: { pesan: PesanAi }) {
           border: dariUser ? 'none' : '1px solid var(--garis)',
         }}
       >
-        <span className="sr-only">{dariUser ? 'Kamu: ' : 'Asisten: '}</span>
+        <span className="sr-only">{dariUser ? 'Anda: ' : 'Asisten: '}</span>
         {pesan.isi}
       </div>
       {!dariUser && pesan.tabel

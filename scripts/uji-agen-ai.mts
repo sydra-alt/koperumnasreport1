@@ -348,6 +348,10 @@ const jpa = (klien: SupabaseClient, panggilan: Parameters<typeof jalankanPutaran
   const per = (r[0]!.untukModel as { periode?: { nama?: string } }).periode;
   cek('periode relatif membawa nama bahasa biasa ("minggu ini"), bukan kode', per?.nama === 'minggu ini', per);
   cek('instruksi sistem melarang menulis kode periode', /JANGAN PERNAH menulis kode seperti minggu_ini/.test(instruksiSistem(HARI_INI)));
+  const aturanSapaan = instruksiSistem(HARI_INI).split('\n').filter((b) => b.startsWith('-') || b.startsWith('  -'));
+  cek('sapaan "Anda": aturan eksplisit, dan tidak ada "kamu"/"-mu" di aturan yang ditiru model',
+    /Sapa penanya dengan "Anda"/.test(instruksiSistem(HARI_INI)) && aturanSapaan.filter((b) => !/JANGAN PERNAH memakai/.test(b)).every((b) => !/\bkamu\b|\w+mu\b(?!\w)/i.test(b.replace(/\bmu(?=lai)/g, ''))),
+    aturanSapaan.filter((b) => /\bkamu\b/i.test(b)));
 }
 
 let gagal = 0;
