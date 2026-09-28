@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/sinkron/pos",
+      "schedule": "0 22 * * *"
+    }
+  ]
+}
