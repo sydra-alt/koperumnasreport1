@@ -14,6 +14,7 @@
 import { execFile } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import dotenv from 'dotenv';
@@ -134,6 +135,48 @@ try {
     `exit=${r7.kode}; n=${n7}; stdout mengandung "2 baris"=${r7.stdout.includes('2 baris')}`,
     r7.kode === 0 && n7 === 2 && r7.stdout.includes('2 baris'),
   );
+
+  // #8-#10 -- berkas SQL yang membawa kendali transaksinya sendiri (29
+  // September 2026: pratinjau migrasi 0066 ikut meng-commit karena `commit;`
+  // di dalam berkasnya). Berkas sementara di folder temp OS, dihapus di bawah.
+  const berkas = (nama, isi) => {
+    const f = path.join(os.tmpdir(), `uji-db-mjs-${process.pid}-${nama}.sql`);
+    writeFileSync(f, isi);
+    return f;
+  };
+  const f8 = berkas('8', `begin;\ndelete from public._uji_db_mjs_scratch where nama = 'tiga';\ncommit;\n`);
+  const r8 = await jalankanDbMjs(f8);
+  const r8b = await jalankanDbMjs(f8, ['--jalankan=HAPUS']);
+  const n8 = await jumlahBaris();
+  catat(
+    8,
+    'berkas merusak + BEGIN/COMMIT sendiri (pratinjau DAN --jalankan=HAPUS)',
+    'DITOLAK dua-duanya (exit 1) SEBELUM statement apa pun jalan, 2 baris tetap ada',
+    `exit=${r8.kode}/${r8b.kode}; n=${n8}; stderr="${r8.stderr.trim().slice(0, 90)}"`,
+    r8.kode === 1 && r8b.kode === 1 && n8 === 2 && r8.stderr.includes('kendali transaksi'),
+  );
+  const f9 = berkas('9', `-- migrasi uji\nBEGIN;\nupdate public._uji_db_mjs_scratch set nama = 'x' where nama = 'tiga';\nEND;\n`);
+  const r9 = await jalankanDbMjs(f9);
+  const { rows: r9baris } = await client.query(`select count(*)::int n from public._uji_db_mjs_scratch where nama = 'x'`);
+  catat(
+    9,
+    'komentar di depan BEGIN, ditutup END (sinonim COMMIT)',
+    'tetap terdeteksi & DITOLAK, tidak ada baris berubah',
+    `exit=${r9.kode}; baris berubah=${r9baris[0].n}`,
+    r9.kode === 1 && r9baris[0].n === 0,
+  );
+  const f10 = berkas('10', `begin;\nselect count(*) from public._uji_db_mjs_scratch;\ncommit;\n`);
+  const r10 = await jalankanDbMjs(f10);
+  catat(10, 'berkas TANPA statement merusak boleh membawa BEGIN/COMMIT', 'jalan seperti biasa (exit 0)', `exit=${r10.kode}`, r10.kode === 0);
+  const f11 = berkas('11', `-- komentar di depan statement merusak
+update public._uji_db_mjs_scratch set nama = 'y' where nama = 'tiga';
+`);
+  const r11 = await jalankanDbMjs(f11);
+  const { rows: r11baris } = await client.query(`select count(*)::int n from public._uji_db_mjs_scratch where nama = 'y'`);
+  catat(11, 'UPDATE didahului komentar', 'terdeteksi merusak: muncul di PRATINJAU, tidak ada baris berubah',
+    `exit=${r11.kode}; [UPDATE] di pratinjau=${r11.stdout.includes('[UPDATE]')}; berubah=${r11baris[0].n}`,
+    r11.kode === 0 && r11.stdout.includes('[UPDATE]') && r11baris[0].n === 0);
+  for (const f of [f8, f9, f10, f11]) unlinkSync(f);
 } catch (err) {
   console.error('ERROR TAK TERDUGA:', err.message);
   catat('(error)', 'eksekusi skrip', '-', err.message, false);
@@ -159,6 +202,6 @@ try {
 }
 
 console.table(hasil.map((h) => ({ '#': h.nomor, skenario: h.skenario, harapan: h.harapan, 'hasil mentah': h.mentah, 'lolos?': h.lolos ? 'LOLOS' : 'GAGAL' })));
-const semuaLolos = hasil.length === 7 && hasil.every((h) => h.lolos);
+const semuaLolos = hasil.length === 11 && hasil.every((h) => h.lolos);
 console.log(semuaLolos ? '\n✅ SEMUA LOLOS' : '\n🛑 ADA YANG GAGAL');
 process.exit(semuaLolos ? 0 : 1);

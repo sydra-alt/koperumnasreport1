@@ -75,6 +75,11 @@ try {
       .replace(/^\s*commit;\s*$/im, ''));
   }
   await terapkan66();
+  const sudah67 = (await q(`select 1 from information_schema.columns where table_name = 'profile' and column_name = 'punya_akses_ai'`)).rowCount > 0;
+  if (!sudah67) {
+    // 0067 sengaja TANPA begin/commit sendiri (db.mjs yang membungkus).
+    await q(readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '0067_akses_ai_per_orang.sql'), 'utf8'));
+  }
 
   // HANYA akun uji (scripts/buat-akun-uji.mjs) -- tidak ada akun orang
   // sungguhan. Peran accounting/pusat diberikan ke uji5 (tanpa peran) DI
@@ -91,23 +96,39 @@ try {
     for (const r of peran) await q('insert into public.role (user_id, role) values ($1, $2)', [u, r]);
   };
 
-  // ─── Gerbang peran dari policy ───────────────────────────────────────
+  // ─── Gerbang PER ORANG (0067): profile.punya_akses_ai, bukan peran ───
   const boleh = async (u) => { await sebagai(u); return (await q('select public.boleh_pakai_ai() as b')).rows[0].b; };
-  cek('CEO boleh memakai asisten (peran di policy ai_peran_boleh)', (await boleh(ceo)) === true);
-  cek('manager_resto boleh memakai asisten', (await boleh(manager)) === true);
-  cek('karyawan TIDAK boleh', (await boleh(karyawan)) === false);
-  cek('admin TIDAK boleh', (await boleh(admin)) === false);
-  await peranUji(tanpaPeran, ['accounting']);
-  cek('accounting TIDAK boleh (bukan "manajer ke atas")', (await boleh(tanpaPeran)) === false);
-  await peranUji(tanpaPeran, ['pusat']);
-  cek('pusat TIDAK boleh', (await boleh(tanpaPeran)) === false);
+  const aksesAi = async (u, nilai) => { await sebagaiOwner(); await q('update public.profile set punya_akses_ai = $2 where id = $1', [u, nilai]); };
+  cek('0067: CEO bertanda (uji-ceo) boleh', (await boleh(ceo)) === true);
+  cek('0067: manager_resto TANPA tanda DITOLAK (peran tidak lagi membuka akses)', (await boleh(manager)) === false);
+  cek('0067: karyawan tanpa tanda ditolak', (await boleh(karyawan)) === false);
+  cek('0067: admin tanpa tanda ditolak', (await boleh(admin)) === false);
+  await peranUji(tanpaPeran, ['ceo']);
+  cek('0067: bahkan peran ceo TANPA tanda ditolak -- yang menentukan orangnya, bukan perannya', (await boleh(tanpaPeran)) === false);
+  await peranUji(tanpaPeran, ['karyawan']);
+  await aksesAi(tanpaPeran, true);
+  cek('0067: karyawan BERTANDA (kasus Ita: Kontrol FnB, peran karyawan) boleh', (await boleh(tanpaPeran)) === true);
+  await sebagaiOwner();
+  await q('update public.profile set aktif = false where id = $1', [tanpaPeran]);
+  cek('0067: bertanda tapi profil NONAKTIF ditolak', (await boleh(tanpaPeran)) === false);
+  await sebagaiOwner();
+  await q('update public.profile set aktif = true where id = $1', [tanpaPeran]);
+  await aksesAi(tanpaPeran, false);
   await peranUji(tanpaPeran, []);
+  const kunciPeran = (await q(`select count(*)::int n from public.policy where key = 'ai_peran_boleh'`)).rows[0].n;
+  cek('0067: kunci policy ai_peran_boleh sudah tidak ada', kunciPeran === 0, kunciPeran);
 
-  await sebagaiOwner();
-  await q(`update public.policy set value = '["ceo","kadiv","manager_resto","karyawan"]' where key = 'ai_peran_boleh'`);
-  cek('daftar peran diubah di policy -> karyawan langsung boleh, tanpa ubah kode', (await boleh(karyawan)) === true);
-  await sebagaiOwner();
-  await q(`update public.policy set value = '["ceo","kadiv","manager_resto"]' where key = 'ai_peran_boleh'`);
+  await sebagai(manager);
+  const ubahSendiri = await coba('update public.profile set punya_akses_ai = true where id = $1', [manager]);
+  cek('0067: non-admin tidak bisa memberi dirinya akses AI', !ubahSendiri.ok && /Asisten AI/.test(ubahSendiri.err ?? ''), ubahSendiri.err ?? ubahSendiri.rowCount);
+  await sebagai(admin);
+  const adminUbah = await coba('update public.profile set punya_akses_ai = true where id = $1', [karyawan]);
+  cek('0067: admin boleh mengubah akses AI', adminUbah.ok && adminUbah.rowCount === 1, adminUbah.err ?? adminUbah.rowCount);
+  await aksesAi(karyawan, false);
+
+  // Uji privasi/jatah di bawah butuh DUA pengguna yang boleh: manager diberi
+  // tanda di dalam transaksi ini saja (di-ROLLBACK).
+  await aksesAi(manager, true);
 
   await sebagai(karyawan);
   const insKaryawan = await coba(`insert into public.ai_percakapan (judul) values ('coba') returning id`);
@@ -188,13 +209,12 @@ try {
 
   await sebagaiOwner();
   await q(`insert into public.policy (key, value) values ('ai_batas_pesan_harian', '30')`);
-  await q(`delete from public.policy where key = 'ai_peran_boleh'`);
-  const tanpaPeranKunci = await statusTidakAktif(manager);
-  cek('kunci ai_peran_boleh hilang -> aktif = false (bukan cuma "tidak boleh")', tanpaPeranKunci.aktif === false && tanpaPeranKunci.boleh === false, tanpaPeranKunci);
-  await sebagaiOwner();
-  await q(`insert into public.policy (key, value) values ('ai_peran_boleh', '["ceo","kadiv","manager_resto"]')`);
   const pulih = await statusTidakAktif(manager);
-  cek('kunci dikembalikan -> aktif lagi', pulih.aktif === true && pulih.boleh === true, pulih);
+  cek('kunci batas dikembalikan -> aktif lagi (boleh tetap ditentukan tanda orangnya)', pulih.aktif === true && pulih.boleh === true, pulih);
+  await aksesAi(manager, false);
+  const tanpaTanda = await statusTidakAktif(manager);
+  cek('0067: tanda dicabut -> aktif tetap true (bisnis menyala), boleh = false (orang ini tidak)', tanpaTanda.aktif === true && tanpaTanda.boleh === false, tanpaTanda);
+  await aksesAi(manager, true);
 
   // ─── Fungsi alat lokal ───────────────────────────────────────────────
   await sebagai(ceo);

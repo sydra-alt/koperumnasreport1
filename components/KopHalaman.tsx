@@ -6,8 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../lib/auth/AuthProvider';
 import { formRegistry } from '../forms';
-import { tabTerlihat, tabBawah, peranAiDariPolicy, type TabNav } from '../lib/navUtama';
-import { usePolicy } from '../lib/api/policy';
+import { tabTerlihat, tabBawah, type TabNav } from '../lib/navUtama';
 import { tanggalIndonesiaWIB } from '../lib/tanggal';
 import { useTitikAbsenSaya } from '../lib/api/absensi';
 import { NavIcon, ikonUntukTab } from './NavIcon';
@@ -22,7 +21,6 @@ import { AbsenFab } from './AbsenFab';
  */
 export function KopHalaman() {
   const { roles, session, signOut, assignments, profile, loading } = useAuth();
-  const { data: policy } = usePolicy();
   const pathname = usePathname();
   // Tombol bundar Absen (30 Agustus 2026) cuma tampil untuk yang PUNYA
   // penugasan presensi -- "jangan tampilkan tombol yang tidak berlaku
@@ -65,7 +63,7 @@ export function KopHalaman() {
   if (pathname === '/masuk' || pathname === '/ganti-password') return null;
   if (loading || !session) return null;
 
-  const semua = tabTerlihat(roles, assignments, formRegistry, profile?.divisi ?? null, peranAiDariPolicy(policy));
+  const semua = tabTerlihat(roles, assignments, formRegistry, profile?.divisi ?? null, profile?.punya_akses_ai ?? false);
   const bawah = tabBawah(semua, punyaTitikAbsen);
   // FAB disisipkan di TENGAH -- 2 tab kiri (Beranda + 1 prioritas), 2 tab
   // kanan (1 prioritas + Akun) kalau tombolnya tampil; kalau tidak, `bawah`

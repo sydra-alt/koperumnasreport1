@@ -1,18 +1,24 @@
 #!/usr/bin/env -S npx tsx
-// Uji GERBANG PERAN asisten AI (28 September 2026) -- yang paling mahal kalau
-// salah: peran yang tidak diizinkan TIDAK BOLEH sampai memanggil Gemini.
+// Uji GERBANG AKSES asisten AI -- yang paling mahal kalau salah: orang tanpa
+// akses TIDAK BOLEH sampai memanggil Gemini.
 //
-// ⚠️ LIVE: menulis sungguhan ke database (dev = produksi), HANYA akun uji5
-// (AKUN UJI - Tanpa Peran, scripts/buat-akun-uji.mjs): password sementara +
-// baris role-nya + percakapan AI miliknya. Semua dipulihkan lewat
-// pasangPemulih (juga saat Ctrl-C): role kembali ke semula, password kembali
-// ke admin123, percakapan AI uji5 dihapus. Tidak menyentuh akun orang
-// sungguhan, tidak mengubah policy.
+// Sejak migrasi 0067 (29 September 2026) akses PER ORANG
+// (profile.punya_akses_ai), bukan per peran. Yang dibuktikan:
+// - Kontrol FnB BERTANDA (kasus Ita: peran karyawan, tugas Kontrol FnB) masuk
+//   dan sampai ke model tepat sekali
+// - manager_resto TANPA tanda ditolak 403 SEBELUM model dibuat
+// - accounting, pusat, admin, karyawan, bahkan peran ceo -- TANPA tanda --
+//   semuanya ditolak sebelum model dibuat
+//
+// ⚠️ LIVE: menulis sungguhan ke database (dev = produksi), HANYA akun uji
+// uji1 (Manager Resto), uji3 (Kontrol FnB), uji5 (Tanpa Peran) dari
+// scripts/buat-akun-uji.mjs: password sementara, baris role uji5, tanda
+// punya_akses_ai, dan percakapan AI mereka. Semua dipulihkan lewat
+// pasangPemulih (juga saat Ctrl-C). Tidak menyentuh akun orang sungguhan,
+// tidak mengubah policy.
 //
 // Jalur yang diuji = tanganiChat() SUNGGUHAN (isi POST /api/ai/chat) dengan
-// sesi Supabase sungguhan hasil login uji5; yang palsu cuma modelnya
-// (penghitung) supaya "Gemini dipanggil atau tidak" bisa dibuktikan tanpa
-// biaya.
+// sesi Supabase sungguhan; yang palsu cuma modelnya (penghitung).
 //
 // Jalankan: npx tsx scripts/uji-gerbang-ai.mts
 
@@ -51,70 +57,100 @@ function modelMata() {
 }
 
 await db.connect();
-const { rows: target } = await db.query(`select id from auth.users where email = 'uji5@koperumnas.local'`);
-if (target.length === 0) throw new Error('uji5@koperumnas.local tidak ditemukan -- jalankan scripts/buat-akun-uji.mjs dulu.');
-const uji5 = target[0].id as string;
-const peranAwal = (await db.query('select role from public.role where user_id = $1', [uji5])).rows.map((r: { role: string }) => r.role);
+type Akun = { email: string; id: string; peran: string[]; aksesAi: boolean };
+const akun: Record<string, Akun> = {};
+for (const email of ['uji1@koperumnas.local', 'uji3@koperumnas.local', 'uji5@koperumnas.local']) {
+  const { rows } = await db.query(
+    `select u.id, p.punya_akses_ai from auth.users u join public.profile p on p.id = u.id where u.email = $1`,
+    [email],
+  );
+  if (rows.length === 0) throw new Error(`${email} tidak ditemukan -- jalankan scripts/buat-akun-uji.mjs dulu.`);
+  const peran = (await db.query('select role from public.role where user_id = $1 order by role', [rows[0].id])).rows.map((r: { role: string }) => r.role);
+  akun[email] = { email, id: rows[0].id, peran, aksesAi: rows[0].punya_akses_ai };
+}
+const uji1 = akun['uji1@koperumnas.local']!;
+const uji3 = akun['uji3@koperumnas.local']!;
+const uji5 = akun['uji5@koperumnas.local']!;
 const passwordSementara = crypto.randomBytes(12).toString('base64url').slice(0, 16);
 
 const pulihkan = pasangPemulih('uji-gerbang-ai', async () => {
-  await db.query('delete from public.ai_percakapan where user_id = $1', [uji5]);
-  await db.query('delete from public.role where user_id = $1', [uji5]);
-  for (const r of peranAwal) await db.query('insert into public.role (user_id, role) values ($1, $2)', [uji5, r]);
-  const { error } = await admin.auth.admin.updateUserById(uji5, { password: 'admin123' });
-  if (error) throw new Error(`gagal mengembalikan password uji5: ${error.message}`);
-  const sisa = (await db.query('select count(*)::int n from public.ai_percakapan where user_id = $1', [uji5])).rows[0].n;
-  const peran = (await db.query('select role from public.role where user_id = $1 order by role', [uji5])).rows.map((r: { role: string }) => r.role);
-  if (sisa !== 0 || JSON.stringify(peran) !== JSON.stringify([...peranAwal].sort())) {
-    throw new Error(`pemulihan tidak sempurna: percakapan=${sisa}, peran=${JSON.stringify(peran)}`);
+  for (const a of Object.values(akun)) {
+    await db.query('delete from public.ai_percakapan where user_id = $1', [a.id]);
+    await db.query('delete from public.role where user_id = $1', [a.id]);
+    for (const r of a.peran) await db.query('insert into public.role (user_id, role) values ($1, $2)', [a.id, r]);
+    await db.query('update public.profile set punya_akses_ai = $2 where id = $1', [a.id, a.aksesAi]);
+    const { error } = await admin.auth.admin.updateUserById(a.id, { password: 'admin123' });
+    if (error) throw new Error(`gagal mengembalikan password ${a.email}: ${error.message}`);
+    const peranKini = (await db.query('select role from public.role where user_id = $1 order by role', [a.id])).rows.map((r: { role: string }) => r.role);
+    const aksesKini = (await db.query('select punya_akses_ai from public.profile where id = $1', [a.id])).rows[0].punya_akses_ai;
+    if (JSON.stringify(peranKini) !== JSON.stringify(a.peran) || aksesKini !== a.aksesAi) {
+      throw new Error(`pemulihan ${a.email} tidak sempurna: peran=${JSON.stringify(peranKini)}, akses_ai=${aksesKini}`);
+    }
   }
-  console.log(`[pulih] uji5: peran ${JSON.stringify(peran)}, percakapan AI 0, password admin123.`);
+  console.log('[pulih] uji1/uji3/uji5: peran, akses AI, password admin123, percakapan AI dihapus.');
   await db.end();
 });
 
-async function sesiSebagai(peran: string[]): Promise<SupabaseClient> {
-  await db.query('delete from public.role where user_id = $1', [uji5]);
-  for (const r of peran) await db.query('insert into public.role (user_id, role) values ($1, $2)', [uji5, r]);
+async function sesi(a: Akun, opsi: { peran?: string[]; aksesAi: boolean }): Promise<SupabaseClient> {
+  if (opsi.peran) {
+    await db.query('delete from public.role where user_id = $1', [a.id]);
+    for (const r of opsi.peran) await db.query('insert into public.role (user_id, role) values ($1, $2)', [a.id, r]);
+  }
+  await db.query('update public.profile set punya_akses_ai = $2 where id = $1', [a.id, opsi.aksesAi]);
   const klien = createClient(URL_SB, ANON, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { error } = await klien.auth.signInWithPassword({ email: 'uji5@koperumnas.local', password: passwordSementara });
-  if (error) throw new Error(`login uji5 gagal: ${error.message}`);
+  const { error } = await klien.auth.signInWithPassword({ email: a.email, password: passwordSementara });
+  if (error) throw new Error(`login ${a.email} gagal: ${error.message}`);
   return klien;
 }
 
+async function tanya(supabase: SupabaseClient) {
+  const m = modelMata();
+  const r = await tanganiChat({ supabase, bodyMentah: { pesan: 'Berapa omzet kemarin?' }, terkonfigurasi: true, buatModel: m.buatModel, tanggalHariIni: '2026-09-29' });
+  return { r, m };
+}
+const jumlahPercakapan = async (a: Akun) => (await db.query('select count(*)::int n from public.ai_percakapan where user_id = $1', [a.id])).rows[0].n;
+
 try {
-  const { error: galatPw } = await admin.auth.admin.updateUserById(uji5, { password: passwordSementara });
-  if (galatPw) throw new Error(`reset password uji5 gagal: ${galatPw.message}`);
-
-  // ─── Peran di luar ai_peran_boleh: ditolak SEBELUM model dibuat ───────
-  for (const peran of ['accounting', 'pusat', 'admin', 'karyawan']) {
-    const supabase = await sesiSebagai([peran]);
-    const m = modelMata();
-    const r = await tanganiChat({ supabase, bodyMentah: { pesan: 'Berapa omzet kemarin?' }, terkonfigurasi: true, buatModel: m.buatModel, tanggalHariIni: '2026-09-28' });
-    const percakapan = (await db.query('select count(*)::int n from public.ai_percakapan where user_id = $1', [uji5])).rows[0].n;
-    cek(`${peran}: 403 "${PESAN_TIDAK_BOLEH}", Gemini TIDAK dibuat/dipanggil, nol percakapan tersimpan`,
-      r.status === 403 && r.body.error === PESAN_TIDAK_BOLEH && m.hitung.dibuat === 0 && m.hitung.dipanggil === 0 && percakapan === 0,
-      { status: r.status, body: r.body, model: m.hitung, percakapan });
-    await supabase.auth.signOut();
+  for (const a of Object.values(akun)) {
+    const { error } = await admin.auth.admin.updateUserById(a.id, { password: passwordSementara });
+    if (error) throw new Error(`reset password ${a.email} gagal: ${error.message}`);
   }
 
-  // ─── Tanpa peran sama sekali ─────────────────────────────────────────
+  // ─── Kasus Ita: Kontrol FnB BERTANDA -> masuk, model dipanggil sekali ──
   {
-    const supabase = await sesiSebagai([]);
-    const m = modelMata();
-    const r = await tanganiChat({ supabase, bodyMentah: { pesan: 'halo' }, terkonfigurasi: true, buatModel: m.buatModel, tanggalHariIni: '2026-09-28' });
-    cek('tanpa peran: 403, Gemini TIDAK dipanggil', r.status === 403 && m.hitung.dibuat === 0, { status: r.status, model: m.hitung });
-    await supabase.auth.signOut();
+    const s = await sesi(uji3, { aksesAi: true });
+    const { r, m } = await tanya(s);
+    cek(`Kontrol FnB BERTANDA (uji3, peran ${JSON.stringify(uji3.peran)}): 200, model dibuat & dipanggil tepat sekali`,
+      r.status === 200 && m.hitung.dibuat === 1 && m.hitung.dipanggil === 1, { status: r.status, body: r.body, model: m.hitung });
+    await s.auth.signOut();
   }
 
-  // ─── Kontrol positif: peran yang diizinkan SAMPAI ke model ───────────
-  // (membuktikan penolakan di atas bukan karena jalurnya rusak untuk semua orang)
+  // ─── manager_resto TANPA tanda -> ditolak sebelum Gemini ─────────────
   {
-    const supabase = await sesiSebagai(['manager_resto']);
-    const m = modelMata();
-    const r = await tanganiChat({ supabase, bodyMentah: { pesan: 'halo' }, terkonfigurasi: true, buatModel: m.buatModel, tanggalHariIni: '2026-09-28' });
-    cek('KONTROL: manager_resto -> 200, model dibuat & dipanggil tepat sekali', r.status === 200 && m.hitung.dibuat === 1 && m.hitung.dipanggil === 1,
+    const s = await sesi(uji1, { aksesAi: false });
+    const { r, m } = await tanya(s);
+    cek(`manager_resto TANPA tanda (uji1): 403 "${PESAN_TIDAK_BOLEH}", model TIDAK dibuat, nol percakapan`,
+      r.status === 403 && r.body.error === PESAN_TIDAK_BOLEH && m.hitung.dibuat === 0 && (await jumlahPercakapan(uji1)) === 0,
       { status: r.status, body: r.body, model: m.hitung });
-    await supabase.auth.signOut();
+    await s.auth.signOut();
+  }
+
+  // ─── Peran lain TANPA tanda (termasuk ceo) -> ditolak sebelum Gemini ──
+  for (const peran of ['accounting', 'pusat', 'admin', 'karyawan', 'ceo']) {
+    const s = await sesi(uji5, { peran: [peran], aksesAi: false });
+    const { r, m } = await tanya(s);
+    cek(`${peran} TANPA tanda: 403, model TIDAK dibuat, nol percakapan`,
+      r.status === 403 && m.hitung.dibuat === 0 && m.hitung.dipanggil === 0 && (await jumlahPercakapan(uji5)) === 0,
+      { status: r.status, model: m.hitung });
+    await s.auth.signOut();
+  }
+
+  // ─── Tanda dicabut di tengah jalan -> langsung ditolak lagi ───────────
+  {
+    const s = await sesi(uji3, { aksesAi: false });
+    const { r, m } = await tanya(s);
+    cek('tanda uji3 dicabut -> 403 berikutnya, model tidak dibuat', r.status === 403 && m.hitung.dibuat === 0, { status: r.status });
+    await s.auth.signOut();
   }
 
   // ─── "Belum diaktifkan" vs "jatah habis" (pemetaan pesan, klien palsu) ─
@@ -125,11 +161,11 @@ try {
         rpc: () => ({ single: async () => ({ data: status, error: null }) }),
       }) as unknown as SupabaseClient;
     const m1 = modelMata();
-    const r1 = await tanganiChat({ supabase: palsu({ aktif: false, boleh: false, batas: 0, terpakai: 0 }), bodyMentah: { pesan: 'x' }, terkonfigurasi: true, buatModel: m1.buatModel, tanggalHariIni: '2026-09-28' });
+    const r1 = await tanganiChat({ supabase: palsu({ aktif: false, boleh: false, batas: 0, terpakai: 0 }), bodyMentah: { pesan: 'x' }, terkonfigurasi: true, buatModel: m1.buatModel, tanggalHariIni: '2026-09-29' });
     cek('tidak aktif -> 503 "belum diaktifkan untuk bisnis ini" (bukan "batas tercapai"), model tidak dibuat',
       r1.status === 503 && r1.body.error === PESAN_TIDAK_AKTIF && !/Batas/.test(String(r1.body.error)) && m1.hitung.dibuat === 0, r1);
     const m2 = modelMata();
-    const r2 = await tanganiChat({ supabase: palsu({ aktif: true, boleh: true, batas: 30, terpakai: 30 }), bodyMentah: { pesan: 'x' }, terkonfigurasi: true, buatModel: m2.buatModel, tanggalHariIni: '2026-09-28' });
+    const r2 = await tanganiChat({ supabase: palsu({ aktif: true, boleh: true, batas: 30, terpakai: 30 }), bodyMentah: { pesan: 'x' }, terkonfigurasi: true, buatModel: m2.buatModel, tanggalHariIni: '2026-09-29' });
     cek('jatah habis -> 429 "Batas 30 pesan per hari", model tidak dibuat', r2.status === 429 && /Batas 30 pesan/.test(String(r2.body.error)) && m2.hitung.dibuat === 0, r2);
   }
 } catch (e) {

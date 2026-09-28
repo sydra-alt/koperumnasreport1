@@ -3,8 +3,7 @@
 import Link from 'next/link';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import { formRegistry } from '../../forms';
-import { tabTerlihat, tabLuapan, peranAiDariPolicy } from '../../lib/navUtama';
-import { usePolicy } from '../../lib/api/policy';
+import { tabTerlihat, tabLuapan } from '../../lib/navUtama';
 import { KerangkaPresensiRingkas } from '../../components/Kerangka';
 import { useTitikAbsenSaya, usePresensiSayaUntukBulan } from '../../lib/api/absensi';
 import { jamWIB, tanggalIndonesiaDariYmd, tanggalWIB } from '../../lib/tanggal';
@@ -18,13 +17,12 @@ import { jamWIB, tanggalIndonesiaDariYmd, tanggalWIB } from '../../lib/tanggal';
  */
 export default function AkunPage() {
   const { profile, roles, assignments, signOut, session } = useAuth();
-  const { data: policy } = usePolicy();
   // divisi WAJIB diteruskan -- tanpa ini, kadiv+HRD yang tab "Tinjau
   // Absensi"-nya kebetulan kalah prioritas & masuk luapan (di bawah) akan
   // kehilangannya di sini juga (bolehTinjauAbsen salah mengira false),
   // sama seperti bug yang sudah pernah terjadi di KopHalaman sebelum ini
   // ditemukan (ditemukan saat menata ulang halaman ini, bukan dicari-cari).
-  const semua = tabTerlihat(roles, assignments, formRegistry, profile?.divisi ?? null, peranAiDariPolicy(policy));
+  const semua = tabTerlihat(roles, assignments, formRegistry, profile?.divisi ?? null, profile?.punya_akses_ai ?? false);
   // punyaTitikAbsen WAJIB juga diteruskan (sama alasan dengan divisi di
   // atas) -- tabLuapan() perlu tahu apakah 2 atau 3 slot tengah dipakai di
   // nav bawah supaya daftar "kalah prioritas" di sini cocok persis.

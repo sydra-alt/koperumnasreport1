@@ -116,8 +116,29 @@ function pisahkanStatement(sql) {
   return hasil;
 }
 
+/**
+ * Statement kendali transaksi (BEGIN/START TRANSACTION/COMMIT/END/ROLLBACK/
+ * ABORT/SAVEPOINT/RELEASE). Komentar di depan statement diabaikan dulu --
+ * pisahkanStatement() menyertakan komentar pembuka ke statement berikutnya.
+ *
+ * Kenapa perlu (29 September 2026): pratinjau menjalankan berkas statement
+ * demi statement di dalam BEGIN...ROLLBACK milik skrip ini. Berkas yang
+ * membawa `commit;` sendiri IKUT MENG-COMMIT di tengah "pratinjau" --
+ * terjadi sungguhan pada migrasi 0066 (tercetak "Ini baru pratinjau",
+ * padahal sudah tersimpan permanen). Pratinjau yang bisa meng-commit lebih
+ * buruk daripada tanpa pratinjau, jadi berkas seperti itu DITOLAK.
+ */
+function kendaliTransaksi(stmt) {
+  const tanpaKomentar = stmt.replace(/^(\s*(--[^\n]*\n|\/\*[\s\S]*?\*\/))*\s*/, '');
+  return /^(begin|start\s+transaction|commit|end|rollback|abort|savepoint|release)\b/i.test(tanpaKomentar);
+}
+
 /** Klasifikasi satu statement -- lihat komentar di atas untuk aturan lengkapnya. */
-function klasifikasiStatement(stmt) {
+function klasifikasiStatement(stmtMentah) {
+  // Komentar di depan statement diabaikan -- tanpa ini, "-- catatan" lalu
+  // "update ..." di baris berikutnya lolos sebagai "aman" dan tidak muncul di
+  // pratinjau (ditemukan 29 September 2026 saat pratinjau migrasi 0067).
+  const stmt = stmtMentah.replace(/^(\s*(--[^\n]*\n|\/\*[\s\S]*?\*\/))*\s*/, '');
   const cocokDelete = /^\s*delete\s+from\b/i.test(stmt);
   const cocokUpdate = /^\s*update\b/i.test(stmt);
   if (cocokDelete || cocokUpdate) {
@@ -181,6 +202,21 @@ async function main(client) {
 
   const statements = pisahkanStatement(sql);
   const klasifikasi = statements.map((s) => ({ stmt: s, ...klasifikasiStatement(s) }));
+  // ATURAN #0 -- berkas yang butuh pratinjau (ada statement merusak) TIDAK
+  // BOLEH membawa kendali transaksinya sendiri: skrip inilah yang membuka &
+  // menutup transaksi (ROLLBACK untuk pratinjau, COMMIT untuk --jalankan).
+  // Ditolak SEBELUM satu statement pun dijalankan.
+  const adaMerusak = klasifikasi.some((k) => k.merusak);
+  const kendali = statements.filter(kendaliTransaksi);
+  if (adaMerusak && kendali.length > 0) {
+    console.error(
+      `DITOLAK -- ${sumber} berisi statement merusak DAN kendali transaksinya sendiri ` +
+        `(${kendali.map((k) => k.replace(/^(\s*--[^\n]*\n)*/, '').trim().split(/\s+/)[0].toUpperCase()).join(', ')}). ` +
+        'Pratinjau tidak bisa menjamin tidak ada yang tersimpan. Hapus BEGIN/COMMIT/ROLLBACK dari berkas ' +
+        '(skrip ini sendiri yang membungkusnya dalam satu transaksi), lalu jalankan lagi. Tidak ada yang dijalankan.',
+    );
+    return 1;
+  }
 
   // ATURAN #1 -- tidak ada pengecualian, tidak ada flag yang bisa membuka jalan ini.
   const tanpaWhere = klasifikasi.filter((k) => (k.tipe === 'delete' || k.tipe === 'update') && !k.adaWhere);

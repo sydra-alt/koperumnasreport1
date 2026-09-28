@@ -20,6 +20,9 @@ interface Profile {
    * handoff pos-fnb (lib/posLink.ts), BUKAN otorisasi. Diatur Admin lewat
    * tab Penugasan, sama pola wajib_pte. */
   punya_akses_pos: boolean;
+  /** Migrasi 0067 -- boleh memakai Asisten AI (per orang, diatur Admin).
+   * Di sini cuma untuk menampilkan tab; gerbang sungguhan boleh_pakai_ai(). */
+  punya_akses_ai: boolean;
 }
 
 interface Assignment {

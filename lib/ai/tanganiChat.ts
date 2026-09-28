@@ -12,7 +12,7 @@ import { instruksiSistem, jalankanAgen } from './agen';
  * model berbayar):
  * 1. sesi login
  * 2. asisten aktif untuk bisnis ini (kunci policy ada & batas > 0)
- * 3. peran penanya ada di policy `ai_peran_boleh` (`boleh_pakai_ai()`)
+ * 3. orang ini sendiri diberi akses (`profile.punya_akses_ai`, lewat `boleh_pakai_ai()`)
  * 4. kunci API terpasang
  * 5. isi permintaan valid, jatah hari ini masih ada
  * Semua akses data lewat `supabase` MILIK PENANYA -- RLS sama dengan layar
@@ -27,7 +27,7 @@ const Body = z.object({
 const RIWAYAT_MAKS = 20;
 
 export const PESAN_TIDAK_AKTIF = 'Asisten AI belum diaktifkan untuk bisnis ini. Hubungi CEO/admin kalau ingin menyalakannya.';
-export const PESAN_TIDAK_BOLEH = 'Asisten AI tidak tersedia untuk peranmu.';
+export const PESAN_TIDAK_BOLEH = 'Asisten AI belum diaktifkan untuk akunmu. Hubungi CEO/admin kalau kamu butuh akses.';
 export const pesanJatahHabis = (batas: number) => `Batas ${batas} pesan per hari sudah tercapai. Coba lagi besok.`;
 
 export type StatusAi = { aktif: boolean; boleh: boolean; batas: number; terpakai: number };

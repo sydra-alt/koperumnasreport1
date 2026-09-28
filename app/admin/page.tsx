@@ -37,6 +37,7 @@ import {
   useUbahShift,
   useUbahWajibPte,
   useUbahAksesPos,
+  useUbahAksesAi,
   daftarRoleUntuk,
 } from '../../lib/api/admin';
 
@@ -276,6 +277,7 @@ function TabPenugasan() {
   const hapusPenugasanAbsen = useHapusPenugasanAbsen();
   const ubahWajibPte = useUbahWajibPte();
   const ubahAksesPos = useUbahAksesPos();
+  const ubahAksesAi = useUbahAksesAi();
 
   const [userId, setUserId] = useState('');
   const [formKey, setFormKey] = useState('');
@@ -383,6 +385,30 @@ function TabPenugasan() {
               {orang.punya_akses_pos ? 'Sembunyikan tombol' : 'Tampilkan tombol'}
             </button>
             {ubahAksesPos.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubahAksesPos.error, 'mengubah akses tombol POS')}</p>}
+          </div>
+
+          {/* ─── Akses Asisten AI (29 September 2026, migrasi 0067) ───
+              Per ORANG, bukan per peran. Berbeda dari tombol POS di atas,
+              ini gerbang sungguhan: boleh_pakai_ai() di database membaca
+              kolom ini. Tiap pertanyaan ke asisten berbayar. */}
+          <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
+            <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Asisten AI</p>
+            <p className="text-sm" style={{ color: 'var(--label)' }}>
+              Menentukan apakah orang ini boleh memakai Asisten AI. Tiap pertanyaan berbayar dan dibatasi jatah harian.
+            </p>
+            <p className="text-sm" style={{ color: orang.punya_akses_ai ? 'var(--hijau)' : 'var(--kosong)' }}>
+              {orang.punya_akses_ai ? '✅ Boleh memakai Asisten AI' : '⚪ Tidak punya akses Asisten AI'}
+            </p>
+            <button
+              type="button"
+              disabled={ubahAksesAi.isPending}
+              onClick={() => ubahAksesAi.mutate({ userId: orang.id, punyaAksesAi: !orang.punya_akses_ai })}
+              className="w-fit border px-3 py-1 text-sm"
+              style={orang.punya_akses_ai ? { borderColor: 'var(--kuning)', color: 'var(--kuning)', minHeight: 44 } : { borderColor: 'var(--hijau)', color: 'var(--hijau)', minHeight: 44 }}
+            >
+              {orang.punya_akses_ai ? 'Cabut akses AI' : 'Beri akses AI'}
+            </button>
+            {ubahAksesAi.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubahAksesAi.error, 'mengubah akses Asisten AI')}</p>}
           </div>
 
           {/* ─── Form yang diisi ─── */}

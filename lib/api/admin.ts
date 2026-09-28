@@ -379,6 +379,8 @@ export interface ProfilDenganRole {
   // handoff pos-fnb di app/page.tsx, BUKAN otorisasi. Lihat komentar
   // kolomnya di migrasi dan lib/posLink.ts.
   punya_akses_pos: boolean;
+  // Migrasi 0067 -- akses Asisten AI per orang.
+  punya_akses_ai: boolean;
   roles: string[];
 }
 
@@ -388,7 +390,7 @@ export function useDaftarProfilDenganRole() {
     queryFn: async (): Promise<ProfilDenganRole[]> => {
       const supabase = createClient();
       const [{ data: profil, error: errProfil }, { data: role, error: errRole }] = await Promise.all([
-        supabase.from('profile').select('id, nama, jabatan, divisi, aktif, wajib_pte, alasan_bebas_pte, punya_akses_pos').order('nama'),
+        supabase.from('profile').select('id, nama, jabatan, divisi, aktif, wajib_pte, alasan_bebas_pte, punya_akses_pos, punya_akses_ai').order('nama'),
         supabase.from('role').select('user_id, role'),
       ]);
       if (errProfil) throw errProfil;
@@ -436,6 +438,24 @@ export function useUbahAksesPos() {
     mutationFn: async ({ userId, punyaAksesPos }: { userId: string; punyaAksesPos: boolean }) => {
       const supabase = createClient();
       const { error } = await supabase.from('profile').update({ punya_akses_pos: punyaAksesPos }).eq('id', userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-profil-role'] });
+    },
+  });
+}
+
+// ─── Akses Asisten AI per orang (29 September 2026, migrasi 0067) ──────
+// Pola sama useUbahAksesPos. Beda: kolom ini SUNGGUHAN gerbang akses
+// (boleh_pakai_ai() membacanya), bukan cuma tampilan. Trigger
+// jaga_profil_sensitif() menolak siapa pun selain CEO/Admin mengubahnya.
+export function useUbahAksesAi() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, punyaAksesAi }: { userId: string; punyaAksesAi: boolean }) => {
+      const supabase = createClient();
+      const { error } = await supabase.from('profile').update({ punya_akses_ai: punyaAksesAi }).eq('id', userId);
       if (error) throw error;
     },
     onSuccess: () => {

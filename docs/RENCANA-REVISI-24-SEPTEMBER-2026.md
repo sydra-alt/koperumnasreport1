@@ -321,8 +321,9 @@ gagal, jawaban tidak diberikan.
 **Biaya & akses.** Batas pesan per orang per hari = policy
 `ai_batas_pesan_harian` (awal 30), ditegakkan trigger di database; kunci
 hilang = 0 = asisten mati, tidak ada angka cadangan di kode. Siapa boleh
-memakai = policy `ai_peran_boleh` (awal `ceo`, `kadiv`, `manager_resto`;
-`accounting`/`pusat`/`admin`/`karyawan` tidak). Omzet POS di database ini
+memakai = PER ORANG, `profile.punya_akses_ai` (migrasi 0067, 29 September
+2026, menggantikan policy per peran `ai_peran_boleh`): Putri, Ita, dan AKUN
+UJI - CEO. Hanya CEO/Admin yang boleh mengubah (tab Penugasan di Admin). Omzet POS di database ini
 cuma terbaca CEO/accounting (RLS lama) -- manajer resto yang bertanya
 omzet mendapat "tidak ada data".
 

@@ -17,7 +17,7 @@ import { TabelJawaban } from '../../components/asisten/TabelJawaban';
 /**
  * Asisten AI, fase 1 (28 September 2026) -- tanya jawab & analisis. Status
  * dari `ai_status()`: "belum diaktifkan" (policy hilang/batas 0), "tidak
- * tersedia untuk peranmu" (peran di luar `ai_peran_boleh`), dan "jatah hari
+ * tersedia untuk akunmu" (profile.punya_akses_ai belum dinyalakan Admin), dan "jatah hari
  * ini habis" SENGAJA tiga pesan berbeda -- jangan digabung. Gerbang
  * sungguhan tetap di database dan di /api/ai/chat.
  */
@@ -39,7 +39,7 @@ export default function AsistenPage() {
     return <Pemberitahuan judul="Asisten AI belum diaktifkan" isi="Asisten AI belum diaktifkan untuk bisnis ini. Hubungi CEO/admin kalau ingin menyalakannya." />;
   }
   if (!status.data.boleh) {
-    return <Pemberitahuan judul="Tidak tersedia untuk peranmu" isi="Asisten AI hanya untuk peran yang diizinkan. Hubungi CEO/admin kalau kamu butuh akses." />;
+    return <Pemberitahuan judul="Belum diaktifkan untuk akunmu" isi="Asisten AI hanya untuk orang yang diberi akses. Hubungi CEO/admin kalau kamu butuh akses." />;
   }
   return <Asisten />;
 }
