@@ -60,12 +60,21 @@ try {
       .replace(/^\s*commit;\s*$/im, '');
     await q(sqlMigrasi);
   }
+  const sudah66 = (await q(`select 1 from information_schema.columns where table_name = 'ai_pesan' and column_name = 'balasan_untuk'`)).rowCount > 0;
+  const terapkan66 = async () => {
+    if (!sudah66) {
+      await q(readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '0066_ai_jatah_hanya_terjawab.sql'), 'utf8')
+        .replace(/^\s*begin;\s*$/im, '')
+        .replace(/^\s*commit;\s*$/im, ''));
+    }
+  };
   const sudah65 = (await q(`select 1 from information_schema.columns where table_name = 'profile' and column_name = 'akun_uji'`)).rowCount > 0;
   if (!sudah65) {
     await q(readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '0065_akun_uji.sql'), 'utf8')
       .replace(/^\s*begin;\s*$/im, '')
       .replace(/^\s*commit;\s*$/im, ''));
   }
+  await terapkan66();
 
   // HANYA akun uji (scripts/buat-akun-uji.mjs) -- tidak ada akun orang
   // sungguhan. Peran accounting/pusat diberikan ke uji5 (tanpa peran) DI
@@ -236,6 +245,31 @@ try {
   const cMgr = await cakupan(manager);
   cek('ai_cakupan: CEO melihat semua laporan/presensi/omzet', cCeo.laporan_semua && cCeo.presensi_semua && cCeo.omzet_pos, cCeo);
   cek('ai_cakupan: manager_resto terbatas di ketiganya', !cMgr.laporan_semua && !cMgr.presensi_semua && !cMgr.omzet_pos, cMgr);
+
+  // ─── 0066: jatah hanya terpakai oleh pertanyaan yang DIJAWAB ─────────
+  await sebagaiOwner();
+  await q(`update public.policy set value = '30' where key = 'ai_batas_pesan_harian'`);
+  await sebagai(manager);
+  const pJatah = (await q(`insert into public.ai_percakapan (judul) values ('uji jatah') returning id`)).rows[0].id;
+  const terpakai = async () => (await q('select terpakai from public.ai_status()')).rows[0].terpakai;
+  const awal = await terpakai();
+  // Pertanyaan GAGAL: dibuat 5 menit lalu (jam hari ini WIB tetap), tanpa jawaban.
+  await q(`insert into public.ai_pesan (percakapan_id, peran, isi, created_at)
+           values ($1, 'user', 'gagal', greatest(now() - interval '5 minutes', date_trunc('day', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'))`, [pJatah]);
+  cek('0066: pertanyaan tanpa jawaban (> 2 menit) TIDAK memakai jatah', (await terpakai()) === awal, { awal, kini: await terpakai() });
+  const uDalamProses = (await q(`insert into public.ai_pesan (percakapan_id, peran, isi) values ($1, 'user', 'sedang diproses') returning id`, [pJatah])).rows[0].id;
+  cek('0066: pertanyaan yang sedang diproses (< 2 menit) DIHITUNG (menutup celah kirim beruntun)', (await terpakai()) === awal + 1);
+  await q(`insert into public.ai_pesan (percakapan_id, peran, isi, balasan_untuk) values ($1, 'model', 'jawaban', $2)`, [pJatah, uDalamProses]);
+  cek('0066: pertanyaan yang dijawab DIHITUNG', (await terpakai()) === awal + 1);
+
+  await sebagai(ceo);
+  const pCeoJatah = (await q(`insert into public.ai_percakapan (judul) values ('milik ceo') returning id`)).rows[0].id;
+  const uCeo = (await q(`insert into public.ai_pesan (percakapan_id, peran, isi) values ($1, 'user', 'pertanyaan ceo') returning id`, [pCeoJatah])).rows[0].id;
+  await sebagai(manager);
+  const curang = await coba(`insert into public.ai_pesan (percakapan_id, peran, isi, balasan_untuk) values ($1, 'model', 'palsu', $2)`, [pJatah, uCeo]);
+  cek('0066: tidak bisa menandai pertanyaan orang lain "terjawab"', !curang.ok, curang.err ?? curang.rowCount);
+  const salahPeran = await coba(`insert into public.ai_pesan (percakapan_id, peran, isi, balasan_untuk) values ($1, 'user', 'x', $2)`, [pJatah, uDalamProses]);
+  cek('0066: hanya pesan model yang boleh menunjuk balasan_untuk', !salahPeran.ok, salahPeran.err ?? '');
 
   // ─── Akun uji tidak muncul di jawaban (0065) ─────────────────────────
   await sebagai(ceo);

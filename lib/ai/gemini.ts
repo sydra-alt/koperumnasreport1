@@ -34,8 +34,30 @@ export type PermintaanGemini = {
 export type PanggilModel = (permintaan: PermintaanGemini) => Promise<IsiGemini>;
 
 export class GalatPenyediaAi extends Error {
-  constructor(public readonly status: number) {
-    super(`Gemini menjawab status ${status}`);
+  constructor(
+    public readonly status: number,
+    /** `error.status` + `error.message` dari badan respons Google (tidak pernah memuat kunci). */
+    public readonly alasan: string = '',
+  ) {
+    super(`Gemini menjawab status ${status}${alasan ? ` (${alasan})` : ''}`);
+  }
+}
+
+/**
+ * 503 = model Google sedang kelebihan beban (sementara). Dicoba ulang
+ * paling banyak 2 kali dengan jeda naik (instruksi CEO, 29 September 2026:
+ * 06:14 WIB gagal 503). Status lain TIDAK dicoba ulang -- 429 (kuota) atau
+ * 4xx lain tidak akan sembuh dengan mengulang.
+ */
+export const COBA_ULANG_503 = 2;
+const JEDA_COBA_ULANG_MS = [1000, 2500];
+
+async function alasanGalat(res: Response): Promise<string> {
+  try {
+    const j = (await res.json()) as { error?: { status?: string; message?: string } };
+    return [j.error?.status, j.error?.message].filter(Boolean).join(': ').slice(0, 300);
+  } catch {
+    return '';
   }
 }
 
@@ -43,7 +65,7 @@ export function aiTerkonfigurasi(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
 }
 
-export function buatPanggilGemini(): PanggilModel {
+export function buatPanggilGemini(tunggu: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms))): PanggilModel {
   const kunci = process.env.GEMINI_API_KEY;
   const model = process.env.GEMINI_MODEL || MODEL_BAWAAN;
   if (!kunci) {
@@ -52,7 +74,7 @@ export function buatPanggilGemini(): PanggilModel {
 
   return async ({ instruksiSistem, isi, fungsi }) => {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-    const res = await fetch(url, {
+    const kirim = () => fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-goog-api-key': kunci },
       body: JSON.stringify({
@@ -65,8 +87,14 @@ export function buatPanggilGemini(): PanggilModel {
       signal: AbortSignal.timeout(30_000),
       cache: 'no-store',
     });
+    let res = await kirim();
+    for (let ulang = 0; res.status === 503 && ulang < COBA_ULANG_503; ulang++) {
+      console.warn(`gemini 503, coba ulang ${ulang + 1}/${COBA_ULANG_503}: ${await alasanGalat(res)}`);
+      await tunggu(JEDA_COBA_ULANG_MS[ulang] ?? 2500);
+      res = await kirim();
+    }
     if (!res.ok) {
-      throw new GalatPenyediaAi(res.status);
+      throw new GalatPenyediaAi(res.status, await alasanGalat(res));
     }
     const data = (await res.json()) as { candidates?: { content?: { parts?: BagianGemini[] } }[] };
     return { role: 'model', parts: data.candidates?.[0]?.content?.parts ?? [] };

@@ -8,7 +8,7 @@
 import { jalankanAgen, instruksiSistem, satuKalimat, JAWABAN_MELEBIHI_PUTARAN, MAKS_PUTARAN_ALAT } from '../lib/ai/agen';
 import { rentangPeriode } from '../lib/ai/periode';
 import { jalankanPutaranAlat, BARIS_UNTUK_MODEL, DEKLARASI_ALAT } from '../lib/ai/alat';
-import type { IsiGemini, PermintaanGemini } from '../lib/ai/gemini';
+import { buatPanggilGemini, GalatPenyediaAi, type IsiGemini, type PermintaanGemini } from '../lib/ai/gemini';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 const hasil: { nama: string; lolos: boolean; detail?: unknown }[] = [];
@@ -314,6 +314,40 @@ const jpa = (klien: SupabaseClient, panggilan: Parameters<typeof jalankanPutaran
     ringkas?.orang_belum_lapor === 2 && ringkas?.orang_total === 3 && ringkas?.penugasan_total === 4, ringkas);
   cek('instruksi sistem: satu kalimat kalau ada tabel + periode relatif lewat argumen',
     /HANYA SATU KALIMAT/.test(instruksiSistem(HARI_INI)) && /isi argumen `periode`/.test(instruksiSistem(HARI_INI)));
+}
+
+// 10. Gemini 503 dicoba ulang (maks 2x); status lain tidak.
+{
+  process.env.GEMINI_API_KEY = 'kunci-uji-palsu';
+  const jalankan = async (urutanStatus: number[]) => {
+    let panggil = 0;
+    globalThis.fetch = (async () => {
+      const st = urutanStatus[Math.min(panggil++, urutanStatus.length - 1)]!;
+      return st === 200
+        ? new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }), { status: 200 })
+        : new Response(JSON.stringify({ error: { status: st === 503 ? 'UNAVAILABLE' : 'RESOURCE_EXHAUSTED', message: 'The model is overloaded.' } }), { status: st });
+    }) as typeof fetch;
+    const model = buatPanggilGemini(async () => {}); // tanpa jeda sungguhan di uji
+    try {
+      const r = await model({ instruksiSistem: 'x', isi: [], fungsi: [] });
+      return { ok: true, panggil, teks: (r.parts[0] as { text: string }).text, galat: null as GalatPenyediaAi | null };
+    } catch (e) {
+      return { ok: false, panggil, teks: '', galat: e as GalatPenyediaAi };
+    }
+  };
+  const a = await jalankan([503, 503, 200]);
+  cek('503, 503, lalu 200 -> berhasil pada percobaan ke-3', a.ok && a.panggil === 3 && a.teks === 'ok', a);
+  const b = await jalankan([503, 503, 503, 200]);
+  cek('503 tiga kali -> berhenti (maks 2 ulang), galat membawa status + alasan Google',
+    !b.ok && b.panggil === 3 && b.galat?.status === 503 && /UNAVAILABLE/.test(b.galat?.alasan ?? ''), { panggil: b.panggil, alasan: b.galat?.alasan });
+  const c = await jalankan([429, 200]);
+  cek('429 (kuota) TIDAK dicoba ulang', !c.ok && c.panggil === 1 && c.galat?.status === 429, { panggil: c.panggil });
+
+  const s = supabasePalsu([{ pic_nama: 'A', hari_belum: 1 }]);
+  const r = await jpa(s.klien, [{ name: 'status_laporan', args: { periode: 'minggu_ini' } }]);
+  const per = (r[0]!.untukModel as { periode?: { nama?: string } }).periode;
+  cek('periode relatif membawa nama bahasa biasa ("minggu ini"), bukan kode', per?.nama === 'minggu ini', per);
+  cek('instruksi sistem melarang menulis kode periode', /JANGAN PERNAH menulis kode seperti minggu_ini/.test(instruksiSistem(HARI_INI)));
 }
 
 let gagal = 0;

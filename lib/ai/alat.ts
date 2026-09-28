@@ -254,8 +254,18 @@ function str(args: Record<string, unknown>, key: string): string {
   return typeof v === 'string' ? v.trim() : '';
 }
 
-function rentangValid(args: Record<string, unknown>, hariIni: string): { dari: string; sampai: string } | null {
-  if (periodeRelatifValid(args.periode)) return rentangPeriode(hariIni, args.periode);
+/** Nama periode untuk kalimat jawaban -- kode `minggu_ini` tidak boleh sampai ke pengguna. */
+const NAMA_PERIODE: Record<string, string> = {
+  hari_ini: 'hari ini',
+  kemarin: 'kemarin',
+  minggu_ini: 'minggu ini',
+  minggu_lalu: 'minggu lalu',
+  bulan_ini: 'bulan ini',
+  bulan_lalu: 'bulan lalu',
+};
+
+function rentangValid(args: Record<string, unknown>, hariIni: string): { dari: string; sampai: string; nama?: string } | null {
+  if (periodeRelatifValid(args.periode)) return { ...rentangPeriode(hariIni, args.periode), nama: NAMA_PERIODE[args.periode] };
   const dari = str(args, 'start_date');
   const sampai = str(args, 'end_date');
   return POLA_TANGGAL.test(dari) && POLA_TANGGAL.test(sampai) && dari <= sampai ? { dari, sampai } : null;
@@ -349,7 +359,7 @@ async function jalankanLokal(supabase: SupabaseClient, p: PanggilanAlat, cakupan
     }));
   }
 
-  const periode = { dari: r.dari, sampai: r.sampai };
+  const periode = { dari: r.dari, sampai: r.sampai, ...(r.nama ? { nama: r.nama } : {}) };
   const outlet = p.name === 'omzet_pos_harian' ? str(p.args, 'outlet') || 'semua outlet yang bisa dilihat penanya' : undefined;
   const batasHak = BATAS_HAK_LOKAL[p.name]?.(cakupan) ?? null;
   return {
@@ -398,7 +408,11 @@ function hasilPosKeAlat(p: PanggilanAlat, hasil: HasilPos, cakupanOutlet: 'all' 
     cakupanOutlet === 'limited' && hasil.outletFilter !== 'matched'
       ? 'Hanya outlet yang boleh dilihat penanya di POS; outlet lain tidak termasuk.'
       : null;
-  const periode = hasil.period && 'from' in hasil.period ? { dari: hasil.period.from, sampai: hasil.period.to } : hasil.period;
+  const nama = typeof p.args.periode === 'string' ? NAMA_PERIODE[p.args.periode] : undefined;
+  const periode =
+    hasil.period && 'from' in hasil.period
+      ? { dari: hasil.period.from, sampai: hasil.period.to, ...(nama ? { nama } : {}) }
+      : hasil.period;
 
   const tabelTabel: TabelAi[] = [];
   if (baris.length > 0) tabelTabel.push(tabel(p.name, baris, hasil.totalCount));

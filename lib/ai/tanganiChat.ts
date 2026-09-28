@@ -144,7 +144,7 @@ export async function tanganiChat(deps: {
       },
     });
   } catch (err) {
-    console.error('ai/chat:', err instanceof GalatPenyediaAi ? `gemini ${err.status}` : err instanceof Error ? err.message : 'gagal');
+    console.error('ai/chat:', err instanceof GalatPenyediaAi ? `gemini ${err.status} ${err.alasan}` : err instanceof Error ? err.message : 'gagal');
     return galat(502, 'Asisten AI sedang tidak bisa dihubungi. Coba lagi sebentar lagi.', { percakapanId });
   }
 
@@ -153,6 +153,9 @@ export async function tanganiChat(deps: {
     .insert({
       percakapan_id: percakapanId,
       peran: 'model',
+      // Menautkan jawaban ke pertanyaannya: HANYA pertanyaan yang terjawab
+      // yang memakai jatah harian (migrasi 0066).
+      balasan_untuk: pesanUser.id,
       isi: hasil.jawaban.slice(0, 8000),
       tabel: hasil.tabel.length > 0 ? hasil.tabel : null,
     })
