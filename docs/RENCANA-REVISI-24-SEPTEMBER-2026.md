@@ -363,5 +363,15 @@ manager_resto sampai ke model tepat sekali.
 - Model: `gemini-2.5-flash-lite` menjawab 404 untuk kunci ini; dipakai
   `gemini-3.1-flash-lite` lewat env `GEMINI_MODEL`.
 
+**Pemetaan identitas ke pos-fnb (`report_identity_links`, 29 September 2026).**
+Aturan: email sama PERSIS, tidak pernah dicocokkan kira-kira. Satu
+pengecualian, DISETUJUI CEO: `putri@koperumnas.local` (di sini) ->
+`putri@koperumnas.com` (pos-fnb, owner, semua outlet). Ita:
+`ita@koperumnas.local` -> `ita@koperumnas.com` (akun pos-fnb baru, password
+acak yang tidak pernah dicetak/disimpan -- masuk HANYA lewat "Buka Dashboard
+Toko"; manager, semua outlet, `audit_all_outlets = true`). Bisnis pos-fnb
+"[DEV] Demo Cafe" dinamai ulang "Koperumnas Group" (satu-satunya bisnis
+sungguhan; berisi outlet Indosteak/Indokopi/Bestie Thrift).
+
 **Belum dikerjakan (fase 1).** Pemantauan biaya per bulan di layar (datanya
 sudah ada di `ai_panggilan_alat`). Hapus/ganti nama percakapan.
