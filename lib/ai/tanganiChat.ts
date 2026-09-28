@@ -48,6 +48,7 @@ export async function tanganiChat(deps: {
   tanggalHariIni: string;
 }): Promise<HasilTangani> {
   const { supabase } = deps;
+  const mulai = Date.now();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -101,16 +102,32 @@ export async function tanganiChat(deps: {
     .reverse()
     .map((m) => ({ role: m.peran, parts: [{ text: m.isi }] }));
 
+  // Pengukuran waktu (29 September 2026): di mana waktu jawaban habis --
+  // Gemini, alat (query), atau sisanya (sesi, simpan pesan, log). Dicatat ke
+  // log server, tidak dikirim ke pengguna.
+  const waktu = { gemini: 0, geminiKali: 0, alat: 0, putaran: 0 };
+  const model = deps.buatModel();
   let hasil;
   try {
     hasil = await jalankanAgen({
-      panggilModel: deps.buatModel(),
+      panggilModel: async (permintaan) => {
+        const t = Date.now();
+        try {
+          return await model(permintaan);
+        } finally {
+          waktu.gemini += Date.now() - t;
+          waktu.geminiKali += 1;
+        }
+      },
       instruksi: instruksiSistem(deps.tanggalHariIni),
       fungsi: DEKLARASI_ALAT,
       riwayat,
       pertanyaan: body.pesan,
       jalankanPutaran: async (panggilan) => {
-        const putaran = await jalankanPutaranAlat(supabase, { id: user.id, email: user.email! }, panggilan);
+        const t = Date.now();
+        const putaran = await jalankanPutaranAlat(supabase, { id: user.id, email: user.email! }, panggilan, deps.tanggalHariIni);
+        waktu.alat += Date.now() - t;
+        waktu.putaran += 1;
         // Log WAJIB: kalau gagal dicatat, jawaban tidak diberikan.
         const { error } = await supabase.from('ai_panggilan_alat').insert(
           putaran.map((h) => ({
@@ -144,5 +161,9 @@ export async function tanganiChat(deps: {
   if (galatModel || !pesanModel) return galat(500, 'Gagal menyimpan jawaban.', { percakapanId });
 
   const { data: statusAkhir } = await supabase.rpc('ai_status').single<StatusAi>();
+  const total = Date.now() - mulai;
+  console.log(
+    `ai/chat waktu: total=${total}ms gemini=${waktu.gemini}ms (${waktu.geminiKali}x) alat=${waktu.alat}ms (${waktu.putaran} putaran) lainnya=${total - waktu.gemini - waktu.alat}ms`,
+  );
   return { status: 200, body: { percakapanId, pesanUser, pesanModel, statusAi: statusAkhir } };
 }

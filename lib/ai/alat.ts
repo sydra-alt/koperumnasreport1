@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { DeklarasiFungsi } from './gemini';
 import type { KolomTabelAi, NilaiSel, TabelAi } from './tabel';
 import { panggilAlatPos, type HasilPos } from './jembatanPos';
+import { PERIODE_RELATIF, periodeRelatifValid, rentangPeriode } from './periode';
 
 /**
  * Daftar TETAP alat asisten AI (28 September 2026). Gemini cuma memilih nama
@@ -60,8 +61,20 @@ export type PanggilanAlat = { name: string; args: Record<string, unknown> };
 type Baris = Record<string, NilaiSel>;
 
 // ─── Deklarasi untuk Gemini ────────────────────────────────────────────────
-const tgl = (keterangan: string) => ({ type: 'STRING', description: `${keterangan} Format YYYY-MM-DD.` });
+const tgl = (keterangan: string) => ({
+  type: 'STRING',
+  description: `${keterangan} Format YYYY-MM-DD. HANYA untuk tanggal yang disebut eksplisit; untuk periode relatif pakai \`periode\`.`,
+});
+// `periode` (hari ini, minggu ini, ...) dihitung SERVER dari hari ini -- model
+// tidak pernah menghitung tanggal relatif sendiri (koreksi CEO 29 September
+// 2026: "minggu ini" sempat jadi 22-29 Sep, jendela 8 hari lintas dua minggu).
 const rentang = {
+  periode: {
+    type: 'STRING',
+    enum: [...PERIODE_RELATIF],
+    description:
+      'Periode relatif, WAJIB dipakai untuk "hari ini", "kemarin", "minggu ini", "minggu lalu", "bulan ini", "bulan lalu". Minggu = Senin s/d Minggu; minggu_ini = Senin minggu ini s/d hari ini; bulan_ini = tanggal 1 s/d hari ini.',
+  },
   start_date: tgl('Tanggal awal (termasuk).'),
   end_date: tgl('Tanggal akhir (termasuk).'),
 };
@@ -75,19 +88,19 @@ export const DEKLARASI_ALAT: DeklarasiFungsi[] = [
     name: 'status_laporan',
     description:
       'Status pengiriman laporan harian per orang per form dalam rentang tanggal (maks 31 hari): hari wajib, terkirim, terlambat, belum, dan tanggal yang belum dikirim.',
-    parameters: { type: 'OBJECT', properties: rentang, required: ['start_date', 'end_date'] },
+    parameters: { type: 'OBJECT', properties: rentang },
   },
   {
     name: 'presensi',
     description:
       'Ringkasan absensi per orang dalam rentang tanggal (maks 31 hari): hari absen masuk, hari terlambat, total menit terlambat, hari tanpa absen masuk (termasuk hari libur).',
-    parameters: { type: 'OBJECT', properties: rentang, required: ['start_date', 'end_date'] },
+    parameters: { type: 'OBJECT', properties: rentang },
   },
   {
     name: 'omzet_pos_harian',
     description:
       'Omzet harian dari POS per outlet (jumlah order, penjualan bersih, uang diterima, refund) beserta total per outlet dan total keseluruhan. Maks 92 hari.',
-    parameters: { type: 'OBJECT', properties: { ...rentang, outlet: outletOpsional }, required: ['start_date', 'end_date'] },
+    parameters: { type: 'OBJECT', properties: { ...rentang, outlet: outletOpsional } },
   },
   {
     name: 'penjualan_per_item',
@@ -100,7 +113,6 @@ export const DEKLARASI_ALAT: DeklarasiFungsi[] = [
         outlet: outletOpsional,
         search: { type: 'STRING', description: 'Opsional. Cari nama item, kategori, atau nomor invoice.' },
       },
-      required: ['start_date', 'end_date'],
     },
   },
   {
@@ -121,7 +133,7 @@ export const DEKLARASI_ALAT: DeklarasiFungsi[] = [
     name: 'penjualan_vs_stok',
     description:
       'Perbandingan pemakaian bahan dari penjualan dengan pergerakan stok lain (waste, selisih opname, masuk, keluar lain) per bahan per outlet. Maks 92 hari. Diurutkan dari selisih opname terbesar.',
-    parameters: { type: 'OBJECT', properties: { ...rentang, outlet: outletOpsional }, required: ['start_date', 'end_date'] },
+    parameters: { type: 'OBJECT', properties: { ...rentang, outlet: outletOpsional } },
   },
 ];
 
@@ -242,7 +254,8 @@ function str(args: Record<string, unknown>, key: string): string {
   return typeof v === 'string' ? v.trim() : '';
 }
 
-function rentangValid(args: Record<string, unknown>): { dari: string; sampai: string } | null {
+function rentangValid(args: Record<string, unknown>, hariIni: string): { dari: string; sampai: string } | null {
+  if (periodeRelatifValid(args.periode)) return rentangPeriode(hariIni, args.periode);
   const dari = str(args, 'start_date');
   const sampai = str(args, 'end_date');
   return POLA_TANGGAL.test(dari) && POLA_TANGGAL.test(sampai) && dari <= sampai ? { dari, sampai } : null;
@@ -265,15 +278,46 @@ const BATAS_HAK_LOKAL: Record<string, (c: CakupanLokal) => string | null> = {
   omzet_pos_harian: () => null,
 };
 
+/**
+ * Angka utama untuk kalimat jawaban (koreksi CEO 29 September 2026: kalau
+ * tabel tampil, prosa cuma SATU kalimat -- angka utama, periode, cakupan).
+ * Dihitung di sini dari baris hasil alat, supaya model tidak menghitung
+ * sendiri. Kalau baris dipotong (baris < total), hitungan per baris tidak
+ * dibuat -- cuma jumlah total dari sumber.
+ */
+function ringkasan(alat: string, baris: Baris[], totalBaris: number): Record<string, number> {
+  const lengkap = baris.length === totalBaris;
+  const unik = (kunci: string, syarat: (b: Baris) => boolean = () => true) =>
+    new Set(baris.filter(syarat).map((b) => String(b[kunci]))).size;
+  switch (alat) {
+    case 'status_laporan':
+      return {
+        orang_total: unik('pic_nama'),
+        orang_belum_lapor: unik('pic_nama', (b) => Number(b.hari_belum) > 0),
+        penugasan_total: baris.length,
+      };
+    case 'presensi':
+      return { orang_total: baris.length, orang_pernah_terlambat: baris.filter((b) => Number(b.hari_terlambat) > 0).length };
+    case 'stok_bahan':
+      return lengkap
+        ? { bahan_total: totalBaris, bahan_di_bawah_minimum: baris.filter((b) => b.di_bawah_minimum === true).length }
+        : { bahan_total: totalBaris };
+    case 'status_opname':
+      return { outlet_total: baris.length, outlet_opname_harian_kurang: baris.filter((b) => b.status_harian === 'Kurang').length };
+    default:
+      return { baris_total: totalBaris };
+  }
+}
+
 // ─── Alat lokal ────────────────────────────────────────────────────────────
-async function jalankanLokal(supabase: SupabaseClient, p: PanggilanAlat, cakupan: CakupanLokal | null): Promise<HasilAlat> {
+async function jalankanLokal(supabase: SupabaseClient, p: PanggilanAlat, cakupan: CakupanLokal | null, hariIni: string): Promise<HasilAlat> {
   if (!cakupan) {
     return { untukModel: { status: 'galat', pesan: 'Alat gagal dijalankan.' }, tabel: [], catatan: catatan(p.name, p.args, 'lokal', 'galat', null) };
   }
   if (p.name === 'omzet_pos_harian' && !cakupan.omzet_pos) return tolak(p, 'lokal', 'tidak_berhak');
-  const r = rentangValid(p.args);
+  const r = rentangValid(p.args, hariIni);
   if (!r) {
-    return { untukModel: { status: 'argumen_salah', pesan: 'start_date dan end_date wajib YYYY-MM-DD, awal <= akhir.' }, tabel: [], catatan: catatan(p.name, p.args, 'lokal', 'argumen_salah', null) };
+    return { untukModel: { status: 'argumen_salah', pesan: 'Isi `periode`, atau start_date dan end_date YYYY-MM-DD (awal <= akhir).' }, tabel: [], catatan: catatan(p.name, p.args, 'lokal', 'argumen_salah', null) };
   }
 
   let rpc;
@@ -309,7 +353,12 @@ async function jalankanLokal(supabase: SupabaseClient, p: PanggilanAlat, cakupan
   const outlet = p.name === 'omzet_pos_harian' ? str(p.args, 'outlet') || 'semua outlet yang bisa dilihat penanya' : undefined;
   const batasHak = BATAS_HAK_LOKAL[p.name]?.(cakupan) ?? null;
   return {
-    untukModel: ringkasUntukModel(baris, baris.length, { periode, ...(outlet ? { outlet } : {}) }, batasHak),
+    untukModel: ringkasUntukModel(
+      baris,
+      baris.length,
+      { periode, ...(outlet ? { outlet } : {}), ...(baris.length > 0 && p.name !== 'omzet_pos_harian' ? { ringkasan: ringkasan(p.name, baris, baris.length) } : {}) },
+      batasHak,
+    ),
     tabel: baris.length > 0 ? [tabel(p.name, baris, baris.length)] : [],
     catatan: catatan(p.name, p.args, 'lokal', baris.length > 0 ? 'ok' : batasHak ? 'kosong_dalam_hak' : 'kosong', baris.length),
   };
@@ -355,7 +404,12 @@ function hasilPosKeAlat(p: PanggilanAlat, hasil: HasilPos, cakupanOutlet: 'all' 
   if (baris.length > 0) tabelTabel.push(tabel(p.name, baris, hasil.totalCount));
   if (mingguan.length > 0) tabelTabel.push(tabel('status_opname_mingguan', mingguan, mingguan.length));
 
-  const untukModel = ringkasUntukModel(baris, hasil.totalCount, { periode, outlet }, batasHak);
+  const untukModel = ringkasUntukModel(
+    baris,
+    hasil.totalCount,
+    { periode, outlet, ...(baris.length > 0 ? { ringkasan: ringkasan(p.name, baris, hasil.totalCount) } : {}) },
+    batasHak,
+  );
   if (mingguan.length > 0) untukModel.opname_mingguan = mingguan;
 
   return {
@@ -373,6 +427,7 @@ export async function jalankanPutaranAlat(
   supabase: SupabaseClient,
   user: { id: string; email: string },
   panggilan: PanggilanAlat[],
+  hariIni: string,
 ): Promise<HasilAlat[]> {
   const hasil: (HasilAlat | null)[] = panggilan.map(() => null);
 
@@ -398,7 +453,7 @@ export async function jalankanPutaranAlat(
         const { data, error } = await supabase.rpc('ai_cakupan').single<CakupanLokal>();
         cakupan = error ? null : data;
       }
-      hasil[i] = await jalankanLokal(supabase, p, cakupan);
+      hasil[i] = await jalankanLokal(supabase, p, cakupan, hariIni);
     } else {
       hasil[i] = {
         untukModel: { status: 'alat_tidak_ada', pesan: 'Alat ini tidak ada. Katakan pertanyaan ini tidak bisa dijawab dengan alat yang tersedia.' },

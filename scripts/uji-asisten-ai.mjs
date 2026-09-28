@@ -60,6 +60,12 @@ try {
       .replace(/^\s*commit;\s*$/im, '');
     await q(sqlMigrasi);
   }
+  const sudah65 = (await q(`select 1 from information_schema.columns where table_name = 'profile' and column_name = 'akun_uji'`)).rowCount > 0;
+  if (!sudah65) {
+    await q(readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '0065_akun_uji.sql'), 'utf8')
+      .replace(/^\s*begin;\s*$/im, '')
+      .replace(/^\s*commit;\s*$/im, ''));
+  }
 
   // HANYA akun uji (scripts/buat-akun-uji.mjs) -- tidak ada akun orang
   // sungguhan. Peran accounting/pusat diberikan ke uji5 (tanpa peran) DI
@@ -136,17 +142,22 @@ try {
   cek('log alat append-only: delete ditolak/0 baris', !hapusLog.ok || hapusLog.rowCount === 0, hapusLog.err ?? hapusLog.rowCount);
 
   // ─── Batas pesan harian dari policy ──────────────────────────────────
+  // Batas = pemakaian CEO hari ini + 1 (akun uji-ceo bisa sudah dipakai uji browser hari ini).
+  await sebagai(ceo);
+  const terpakaiKini = (await q('select terpakai from public.ai_status()')).rows[0].terpakai;
+  const batasUji = terpakaiKini + 1;
   await sebagaiOwner();
-  await q(`update public.policy set value = '2' where key = 'ai_batas_pesan_harian'`);
+  await q(`update public.policy set value = $1 where key = 'ai_batas_pesan_harian'`, [JSON.stringify(batasUji)]);
   await sebagai(ceo);
   const kedua = await coba(`insert into public.ai_pesan (percakapan_id, peran, isi) values ($1, 'user', 'pertanyaan 2')`, [pCeo]);
   const ketiga = await coba(`insert into public.ai_pesan (percakapan_id, peran, isi) values ($1, 'user', 'pertanyaan 3')`, [pCeo]);
-  cek('batas 2: pesan ke-2 lolos, ke-3 ditolak BATAS_PESAN_AI:2', kedua.ok && !ketiga.ok && /BATAS_PESAN_AI:2/.test(ketiga.err ?? ''), ketiga.err ?? '');
+  cek(`batas ${batasUji}: pesan berikutnya lolos, sesudahnya ditolak BATAS_PESAN_AI:${batasUji}`,
+    kedua.ok && !ketiga.ok && new RegExp(`BATAS_PESAN_AI:${batasUji}`).test(ketiga.err ?? ''), kedua.err ?? ketiga.err ?? '');
   const jawaban = await coba(`insert into public.ai_pesan (percakapan_id, peran, isi) values ($1, 'model', 'jawaban')`, [pCeo]);
   cek('jawaban model tidak dihitung ke batas', jawaban.ok, jawaban.err ?? '');
   const sisa = (await q('select * from public.ai_status()')).rows[0];
-  cek('ai_status() = aktif, boleh, (2, 2) -- jatah habis TAPI tetap "aktif"',
-    sisa.aktif === true && sisa.boleh === true && sisa.batas === 2 && sisa.terpakai === 2, sisa);
+  cek('ai_status() = aktif, boleh, terpakai == batas -- jatah habis TAPI tetap "aktif"',
+    sisa.aktif === true && sisa.boleh === true && sisa.batas === batasUji && sisa.terpakai === batasUji, sisa);
 
   // Batas 0 / kunci hilang = BELUM DIAKTIFKAN, bukan "jatah habis".
   const statusTidakAktif = async (u) => { await sebagai(u); return (await q('select * from public.ai_status()')).rows[0]; };
@@ -225,6 +236,28 @@ try {
   const cMgr = await cakupan(manager);
   cek('ai_cakupan: CEO melihat semua laporan/presensi/omzet', cCeo.laporan_semua && cCeo.presensi_semua && cCeo.omzet_pos, cCeo);
   cek('ai_cakupan: manager_resto terbatas di ketiganya', !cMgr.laporan_semua && !cMgr.presensi_semua && !cMgr.omzet_pos, cMgr);
+
+  // ─── Akun uji tidak muncul di jawaban (0065) ─────────────────────────
+  await sebagai(ceo);
+  const namaLaporan = (await q(`select distinct pic_nama from public.ai_status_laporan('2026-09-22', '2026-09-28')`)).rows.map((r) => r.pic_nama);
+  const namaPresensi = (await q(`select distinct nama from public.ai_presensi('2026-09-22', '2026-09-28')`)).rows.map((r) => r.nama);
+  cek('0065: ai_status_laporan TIDAK memuat satu pun AKUN UJI (tapi tetap memuat orang sungguhan)',
+    namaLaporan.length > 0 && !namaLaporan.some((n) => /^AKUN UJI/i.test(n)), namaLaporan);
+  cek('0065: ai_presensi TIDAK memuat satu pun AKUN UJI', !namaPresensi.some((n) => /^AKUN UJI/i.test(n)), namaPresensi);
+  await sebagaiOwner();
+  const ditandai = (await q(`select count(*)::int n from public.profile where akun_uji`)).rows[0].n;
+  const orangSungguhanTertandai = (await q(`select count(*)::int n from public.profile where akun_uji and nama not ilike 'AKUN UJI%'`)).rows[0].n;
+  cek('0065: tepat 7 akun uji ditandai, nol orang sungguhan', ditandai === 7 && orangSungguhanTertandai === 0, { ditandai, orangSungguhanTertandai });
+  const akunUjiAktif = (await q(`select count(*)::int n from public.profile where akun_uji and aktif`)).rows[0].n;
+  cek('0065: akun uji TIDAK dinonaktifkan', akunUjiAktif === 7, akunUjiAktif);
+
+  await sebagai(manager);
+  // uji1 SUDAH ditandai 0065 -- uji perubahan sungguhan: mencabut tandanya sendiri.
+  const tandaiDiri = await coba(`update public.profile set akun_uji = false where id = $1`, [manager]);
+  cek('0065: non-admin tidak bisa mengubah tanda akun uji miliknya', !tandaiDiri.ok && /akun uji/.test(tandaiDiri.err ?? ''), tandaiDiri.err ?? tandaiDiri.rowCount);
+  await sebagai(admin);
+  const adminTandai = await coba(`update public.profile set akun_uji = false where id = $1`, [karyawan]);
+  cek('0065: admin boleh mengubah tanda akun uji', adminTandai.ok && adminTandai.rowCount === 1, adminTandai.err ?? adminTandai.rowCount);
 
   await sebagaiAnon();
   const anon = await coba(`select public.boleh_pakai_ai()`);

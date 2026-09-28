@@ -346,5 +346,21 @@ accounting, pusat, admin, karyawan, dan tanpa peran ditolak 403 SEBELUM model
 dibuat (penghitung model = 0, nol percakapan tersimpan); kontrol positif
 manager_resto sampai ke model tepat sekali.
 
+**Koreksi jawaban sesudah uji sungguhan pertama (CEO, 29 September 2026).**
+- *Periode relatif = periode kalender.* "Minggu ini" sempat jadi 22-29 Sep
+  (jendela 8 hari lintas dua minggu). Sekarang model mengisi argumen
+  `periode` (hari_ini, kemarin, minggu_ini, minggu_lalu, bulan_ini,
+  bulan_lalu) dan tanggalnya dihitung server: di repo ini dari tanggalWIB
+  (`lib/ai/periode.ts`), di pos-fnb dari hari bisnis outlet dengan cutoff
+  (`src/lib/calc/relative-period.ts`). Minggu mulai Senin.
+- *Akun uji keluar dari jawaban.* `profile.akun_uji` (migrasi 0065), hanya
+  CEO/Admin yang boleh mengubah; tujuh akun uji ditandai per email, TIDAK
+  dinonaktifkan. `ai_status_laporan`/`ai_presensi` melewatinya.
+- *Jangan bilang dua kali.* Kalau tabel tampil, prosa satu kalimat: angka
+  utama (dari `ringkasan` hasil alat, bukan hitungan model), periode,
+  cakupan. Dipaksa juga di server (`satuKalimat`).
+- Model: `gemini-2.5-flash-lite` menjawab 404 untuk kunci ini; dipakai
+  `gemini-3.1-flash-lite` lewat env `GEMINI_MODEL`.
+
 **Belum dikerjakan (fase 1).** Pemantauan biaya per bulan di layar (datanya
 sudah ada di `ai_panggilan_alat`). Hapus/ganti nama percakapan.

@@ -35,6 +35,8 @@ export function instruksiSistem(tanggalHariIni: string): string {
     '',
     'Aturan, wajib diikuti:',
     '- Jawab singkat. Angka lebih dulu. Tanpa pembukaan, tanpa mengulang pertanyaan, tanpa basa-basi.',
+    '- KALAU HASIL ALAT PUNYA BARIS (tabel ditampilkan otomatis di bawah jawaban): jawaban HANYA SATU KALIMAT -- angka utama dari `ringkasan`, periode, dan cakupan (outlet/orang). Contoh: "18 dari 31 orang belum mengirim laporan untuk 28-29 Sep 2026." JANGAN menyebut nama atau baris satu per satu; tabel adalah rinciannya.',
+    '- Periode relatif ("hari ini", "kemarin", "minggu ini", "minggu lalu", "bulan ini", "bulan lalu"): isi argumen `periode`, JANGAN menghitung start_date/end_date sendiri. Sebut periode persis seperti yang dikembalikan alat.',
     '- Setiap angka di jawaban HARUS berasal dari hasil alat. Jangan pernah memperkirakan, menebak, atau mengisi dari ingatan.',
     '- Jangan menghitung total atau rata-rata sendiri. Kalau alat tidak memberi angka itu, katakan alatnya tidak menyediakannya.',
     '- Kalau status tidak_ada_data, katakan tidak ada data untuk periode/outlet itu. Jangan diperhalus jadi tebakan.',
@@ -46,9 +48,23 @@ export function instruksiSistem(tanggalHariIni: string): string {
     '- Kalau hasil alat membawa batas_hak, sebutkan batas itu di jawaban (mis. "hanya outlet yang boleh kamu lihat").',
     '- Selalu sebut periode dan outlet yang dicakup jawaban (sebut persis seperti di hasil alat).',
     '- Kalau pertanyaan butuh data yang tidak disediakan alat mana pun, katakan terus terang tidak bisa dijawab dengan alat yang tersedia.',
-    '- Tabel hasil alat sudah ditampilkan otomatis di bawah jawaban; jangan menyalin seluruh isinya. Poin/daftar hanya kalau membandingkan beberapa hal.',
+    '- Tanpa poin/daftar kecuali membandingkan beberapa hal DAN tidak ada tabel.',
     '- Bahasa Indonesia, kecuali penanya memakai bahasa lain.',
   ].join('\n');
+}
+
+/**
+ * Kalau tabel tampil, prosa cuma SATU kalimat (koreksi CEO 29 September 2026:
+ * daftar 18 nama lalu tabel 31 baris = mengatakan hal yang sama dua kali).
+ * Instruksi sistem sudah memintanya; ini jaring kedua kalau model tetap
+ * menulis daftar -- ambil baris pertama yang berisi, buang penanda poin/tebal.
+ */
+export function satuKalimat(teks: string): string {
+  const baris = teks
+    .split('\n')
+    .map((b) => b.replace(/^\s*([*\-\u2022]|\d+[.)])\s+/, '').replace(/\*\*/g, '').trim())
+    .filter((b) => b.length > 0);
+  return baris[0] ?? teks.trim();
 }
 
 function panggilanDari(isi: IsiGemini): PanggilanModel[] {
@@ -82,9 +98,8 @@ export async function jalankanAgen(params: {
 
     if (panggilan.length === 0) {
       const teks = teksDari(jawabanModel);
-      return teks
-        ? { jawaban: teks, tabel, status: 'selesai', putaranAlat: putaran }
-        : { jawaban: JAWABAN_KOSONG, tabel: [], status: 'kosong', putaranAlat: putaran };
+      if (!teks) return { jawaban: JAWABAN_KOSONG, tabel: [], status: 'kosong', putaranAlat: putaran };
+      return { jawaban: tabel.length > 0 ? satuKalimat(teks) : teks, tabel, status: 'selesai', putaranAlat: putaran };
     }
     if (putaran >= MAKS_PUTARAN_ALAT) {
       return { jawaban: JAWABAN_MELEBIHI_PUTARAN, tabel: [], status: 'melebihi_putaran', putaranAlat: putaran };
