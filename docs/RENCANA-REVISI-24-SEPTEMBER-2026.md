@@ -215,9 +215,10 @@ menyala, jadi tiap transaksi memotong stok tanpa saldo awal.
 `.env.production.local` NXDOMAIN; Worker hidup dan menjawab 200. Perlu
 cek Cloudflare Workers → Settings → Variables.
 
-**Penyedia AI belum dipilih.** Claude lewat API, Gemini, atau lainnya.
-Menentukan biaya berjalan dan cara pemasangan. Harus diputuskan sebelum
-nomor 9 dikerjakan.
+**Penyedia AI: DIPUTUSKAN 28 September 2026 -- Google Gemini**, model
+Flash termurah (`gemini-2.5-flash-lite`, US$0,10 / US$0,40 per 1 juta token
+masuk/keluar, belum ada jadwal penghentian), nama model di env
+`GEMINI_MODEL` supaya bisa diganti tanpa ubah kode. Lihat §12.
 
 ---
 
@@ -253,3 +254,97 @@ Audit UI form lapor menemukan **10 field video bertanda `wajib: true`
 tapi skemanya `boolean().optional()`**. Validasi kemungkinan lolos walau
 centang kosong. Ini bug nyata di form yang sedang dipakai, perlu
 diperiksa dan diperbaiki terpisah dari rencana ini.
+
+---
+
+## §12 · Asisten AI fase 1 -- chat & analisis (28 September 2026)
+
+**Lingkup.** HANYA tanya jawab dan analisis. Impor Excel ke draft opname
+(§2, §5) adalah fase 2 dan BELUM dibangun.
+
+**Letak.** Semua di reportkoperumnasgroup: layar `/asisten`, riwayat chat,
+log alat, dan pemanggilan Gemini (`app/api/ai/chat`, `lib/ai/`). pos-fnb
+cuma menjalankan daftar alat tetap lewat jembatan bertanda tangan
+(`POST /api/ai/tools`), tanpa model AI apa pun di sana.
+
+**Syarat §10 dipenuhi begini.** Gemini tidak menulis SQL dan tidak pernah
+memegang service-role key -- ia cuma memilih alat dan argumen.
+- Alat LOKAL (status laporan, presensi, omzet POS harian): fungsi `ai_*`
+  migrasi 0064, `security invoker`, dipanggil lewat sesi PENANYA. RLS sama
+  persis dengan layar biasa. Dua fungsi ikut mencerminkan aturan lihat
+  tabel dasarnya (`can_see_report`, policy `absensi_select`) supaya orang
+  yang datanya tersembunyi tidak terbaca "belum lapor"/"tidak absen" --
+  angka palsu, bukan sekadar kosong.
+- Alat POS (penjualan per item, stok bahan, status opname, penjualan vs
+  stok): token 60 detik sekali pakai, audience `pos-fnb-ai-query`, cuma
+  email+uid penanya. pos-fnb memetakan lewat `report_identity_links`, lalu
+  membentuk SESI SUNGGUHAN untuk user pos-fnb itu (jalur `generateLink`
+  yang sama dengan handoff) dan menjalankan query lewat `getUserDb` -- RLS
+  pos-fnb berlaku. Tidak ada pemetaan = data POS kosong, bukan query tanpa
+  cakupan. Kasir ditolak di keempat alat (izin layar aslinya tidak ia punya).
+
+**Keterbatasan yang diketahui (belum ditutup).** RLS `stock_levels` dan
+`stock_movements` di pos-fnb cuma per BISNIS, bukan per outlet. Untuk dua
+alat stok (stok bahan, penjualan vs stok), penyaring outlet murni app layer
+lewat helper `outletScopeCondition` yang sudah ada -- kalau helper itu
+salah, database tidak menahan. Penjualan (`orders`) tetap dijaga RLS per
+outlet. Menutupnya = policy RLS per outlet di dua tabel itu (pola
+`auth_outlet_ids()` yang sudah dipakai `orders`/`shifts`), pekerjaan
+terpisah.
+
+**Batas laju Supabase (diperiksa).** Menukar magic link jadi sesi lewat
+`/auth/v1/verify`, dibatasi 30 permintaan / 5 menit PER IP (bisa diubah di
+Authentication > Rate Limits). Satu pertanyaan bisa 4 putaran alat, jadi
+mint per putaran habis dalam ~7 pertanyaan untuk semua pengguna dari IP
+worker yang sama. Karena itu sesi hasil mint disimpan per user 120 detik
+di memori worker pos-fnb, lalu di-sign-out (scope `local`, supaya sesi
+browser user itu sendiri tidak ikut keluar). Isolate worker yang mati
+lebih dulu meninggalkan sesi tanpa pemegang; access token-nya kedaluwarsa
+sendiri dalam 1 jam.
+
+**Nonce.** Tiap putaran = satu token = satu nonce (maks 4 per pertanyaan).
+`handoff_nonces` dibersihkan otomatis (nonce > 10 menit dihapus tiap
+nonce baru dipakai, indeks `used_at`). Aman karena pos-fnb menolak token
+yang masa berlakunya > TTL + 30 detik.
+
+**Batas putaran.** Maks 4 putaran alat per pertanyaan. Kalau model masih
+butuh alat sesudahnya, jawabannya "tidak bisa menjawab dengan lengkap" --
+bukan jawaban parsial yang terlihat lengkap, dan tabel setengah jalan
+tidak ditampilkan.
+
+**Histori AI (§4).** Tiga tabel: `ai_percakapan` + `ai_pesan` (pribadi --
+CEO pun tidak membaca chat orang lain; pesan append-only) dan
+`ai_panggilan_alat` (siapa, alat apa, argumen apa, sumber, status, berapa
+baris kembali; append-only; pemilik + CEO bisa membaca). Kalau pencatatan
+gagal, jawaban tidak diberikan.
+
+**Biaya & akses.** Batas pesan per orang per hari = policy
+`ai_batas_pesan_harian` (awal 30), ditegakkan trigger di database; kunci
+hilang = 0 = asisten mati, tidak ada angka cadangan di kode. Siapa boleh
+memakai = policy `ai_peran_boleh` (awal `ceo`, `kadiv`, `manager_resto`;
+`accounting`/`pusat`/`admin`/`karyawan` tidak). Omzet POS di database ini
+cuma terbaca CEO/accounting (RLS lama) -- manajer resto yang bertanya
+omzet mendapat "tidak ada data".
+
+**Batas hak BUKAN data kosong (koreksi CEO, 28 September 2026).** Jawaban
+yang benar secara teknis tapi terbaca sebagai fakta bisnis padahal fakta
+tentang izin = bug. Diterapkan di semua alat:
+- Peran yang tidak boleh melihat data (omzet POS untuk selain CEO/accounting,
+  alat POS tanpa izin layar, membership POS tanpa outlet) -> `tidak_berhak`:
+  "angka itu tidak tersedia untuk peranmu", bukan "tidak ada data".
+  `ai_omzet_pos` juga MENOLAK eksplisit di database (bukan nol baris).
+- Penanya melihat sebagian (laporan/presensi orang lain, outlet POS lain) ->
+  hasil membawa `batas_hak`; nol baris jadi `kosong_dalam_hak`, bukan nol.
+- Outlet yang diminta di luar hak -> `outlet_di_luar_hak`.
+- `tidak_ada_data` HANYA kalau penanya melihat semuanya (`ai_cakupan()`,
+  cermin RLS tiap tabel).
+- Asisten tanpa kunci policy / batas 0 -> "belum diaktifkan untuk bisnis
+  ini", terpisah tegas dari "batas N pesan tercapai" (`ai_status()`).
+
+**Gerbang peran diuji dengan login sungguhan** (`scripts/uji-gerbang-ai.mts`):
+accounting, pusat, admin, karyawan, dan tanpa peran ditolak 403 SEBELUM model
+dibuat (penghitung model = 0, nol percakapan tersimpan); kontrol positif
+manager_resto sampai ke model tepat sekali.
+
+**Belum dikerjakan (fase 1).** Pemantauan biaya per bulan di layar (datanya
+sudah ada di `ai_panggilan_alat`). Hapus/ganti nama percakapan.

@@ -11,6 +11,12 @@ import type { ReactNode } from 'react';
 const gaya = { stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
 
 const IKON: Record<string, ReactNode> = {
+  asisten: (
+    <>
+      <path d="M5 5h14v10H9l-4 4V5Z" style={gaya} />
+      <path d="M9 9h6M9 12h4" style={gaya} />
+    </>
+  ),
   beranda: (
     <path d="M4 11.5 12 4l8 7.5M6 10v9h5v-5h2v5h5v-9" style={gaya} />
   ),

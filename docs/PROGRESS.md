@@ -1592,3 +1592,23 @@ Hanya POS_HANDOFF_SECRET yang terpasang (baru saja ditambahkan hari ini).
 - Menunjuk ke database dev (	xmkbklzhleavjhzrckm) akan membuat suite tes berjalan di atas produksi � persis yang dicegah guard-test-database.ts.
 - Catatan ini dicatat sebagai temuan, bukan diperbaiki.
 
+
+---
+
+## Asisten AI fase 1 -- chat & analisis (28 September 2026)
+
+Rancangan lengkap + keterbatasan: `docs/RENCANA-REVISI-24-SEPTEMBER-2026.md` §12. Aturan tetap: CLAUDE.md #13 poin 5 dan #14.
+
+**Repo ini.** Migrasi `0064_asisten_ai.sql` (policy `ai_batas_pesan_harian`=30 & `ai_peran_boleh`=[ceo,kadiv,manager_resto], `boleh_pakai_ai()`, tabel `ai_percakapan`/`ai_pesan`/`ai_panggilan_alat` + RLS, trigger batas harian, fungsi `ai_status_laporan`/`ai_presensi`/`ai_omzet_pos`); `lib/ai/` (klien Gemini REST, 7 alat tetap, loop agen maks 4 putaran, jembatan POS); `app/api/ai/chat`, `app/api/ai/ekspor`; halaman `/asisten`; tab nav "Asisten AI" (peran dari policy). `lib/posHandoff.ts` jadi `buatTokenPos(user, audience)`.
+
+**pos-fnb.** `POST /api/ai/tools` + `src/lib/ai-bridge/` (4 alat, sesi sungguhan user yang dipetakan, cache sesi 120 detik); `verifyHandoffToken` wajib audience eksplisit + tolak masa berlaku > TTL+30 detik; pembersihan `handoff_nonces` > 10 menit. Migrasi 0046 (buang tabel AI yang tidak terpakai dari 0045) dan 0047 (indeks `handoff_nonces.used_at`) SUDAH diterapkan ke txmkbkl.
+
+**Verifikasi.** `scripts/uji-asisten-ai.mjs` 26/26 (transaksional, ROLLBACK); `npx tsx scripts/uji-agen-ai.mts` 14/14; pos-fnb `src/lib/ai-bridge/__tests__/bridge.test.ts` 10/10 (sesi & data sungguhan: tanpa pemetaan = kosong, manajer [A] tidak pernah melihat outlet B termasuk saat meminta B eksplisit, kasir ditolak di 4 alat, token login ditolak, replay ditolak, sesi lama di-sign-out, nonce lama dibersihkan). Token yang ditandatangani repo ini lolos verifikasi pos-fnb sebagai query AI dan DITOLAK sebagai token login (dicek silang dengan kode asli kedua repo).
+
+**Koreksi sebelum commit (CEO):** batas hak bukan data kosong (status `tidak_berhak`/`kosong_dalam_hak`/`outlet_di_luar_hak`, fungsi `ai_cakupan()`, `ai_omzet_pos` menolak eksplisit); "belum diaktifkan" terpisah dari "jatah habis" (`ai_status()` menggantikan `ai_batas_pesan()`, trigger `AI_TIDAK_AKTIF`); uji gerbang peran dengan login sungguhan `scripts/uji-gerbang-ai.mts` 8/8. Hasil akhir uji: `uji-asisten-ai.mjs` 35/35, `uji-agen-ai.mts` 21/21, `uji-gerbang-ai.mts` 8/8.
+
+**Migrasi 0064 DITERAPKAN** ke database laporan (28 September 2026, disetujui CEO). `GEMINI_API_KEY` sudah diisi CEO di Vercel; `GEMINI_MODEL` opsional (bawaan `gemini-2.5-flash-lite`).
+
+Data POS lewat asisten hanya untuk orang yang punya baris `report_identity_links` + membership di pos-fnb (saat ini nol baris -- sama dengan handoff); tanpa itu jawabannya "tidak punya akses data POS".
+
+**Ditemukan sambil memverifikasi (TIDAK disebabkan pekerjaan ini, TIDAK diperbaiki):** 11 dari 44 skrip `scripts/uji-*` yang aman dijalankan gagal karena data/skema sudah bergeser dari saat skrip ditulis (akun uji yang sudah dinonaktifkan/dihapus, view `v_pembangunan_per_lokasi` yang sudah diganti fungsi di 0020, `aktif` Toyib = false): uji-batch-d, uji-boleh-lihat-rekap, uji-cuti-rls, uji-dashboard-ceo, uji-jaga-profil-sensitif, uji-papan-kontrol, uji-pte-per-orang, uji-shift-rename-bukti, uji-tanggal-mundur, uji-task24-matriks, uji-terpusat. Tidak satu pun mengimpor kode repo; semuanya murni query database yang tidak diubah pekerjaan ini.

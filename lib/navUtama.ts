@@ -58,6 +58,7 @@ export function tabTerlihat(
   assignments: AssignmentRingkas[],
   formRegistry: Record<string, FormSchema>,
   divisi: string | null = null,
+  peranAi: readonly string[] = [],
 ): TabNav[] {
   const tetap = TAB_TETAP.filter(
     (t) => t.peran === null || (Array.isArray(t.peran) ? t.peran : [t.peran]).some((p) => roles.includes(p)),
@@ -81,7 +82,17 @@ export function tabTerlihat(
   // policy cuti_select, migrasi 0025_cuti.sql).
   const bolehTinjauCuti = roles.includes('ceo') || (roles.includes('kadiv') && divisi === 'HRD');
   const tinjauCuti: TabNav[] = bolehTinjauCuti ? [{ key: 'cuti-tinjau', label: 'Tinjau Cuti', href: '/cuti/tinjau' }] : [];
-  return [...tetap, ...dinamis, ...tinjau, ...tinjauKebersihan, ...tinjauCuti];
+  // "Asisten AI" (28 September 2026) -- daftar peran dari policy
+  // `ai_peran_boleh` (lihat peranAiDariPolicy), bukan ditulis di sini.
+  // Tampilan saja; gerbang sungguhan boleh_pakai_ai() di database.
+  const asisten: TabNav[] = peranAi.some((p) => roles.includes(p)) ? [{ key: 'asisten', label: 'Asisten AI', href: '/asisten' }] : [];
+  return [...tetap, ...dinamis, ...tinjau, ...tinjauKebersihan, ...tinjauCuti, ...asisten];
+}
+
+/** Nilai policy `ai_peran_boleh` (jsonb array) -> daftar peran. Bentuk lain = kosong. */
+export function peranAiDariPolicy(policy: Record<string, unknown> | undefined): string[] {
+  const nilai = policy?.['ai_peran_boleh'];
+  return Array.isArray(nilai) ? nilai.filter((p): p is string => typeof p === 'string') : [];
 }
 
 /**

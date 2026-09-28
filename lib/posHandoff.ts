@@ -18,6 +18,14 @@ import { createHmac, randomUUID } from 'crypto';
  */
 
 const HANDOFF_AUDIENCE = 'pos-fnb-handoff';
+/**
+ * Audience KEDUA (28 September 2026): token jembatan asisten AI ke
+ * `POST /api/ai/tools` pos-fnb (lib/ai/jembatanPos.ts). Skema, secret, TTL,
+ * dan isi payload SAMA PERSIS -- cuma `aud` beda, dan pos-fnb memeriksa aud
+ * secara eksplisit, jadi token AI tidak bisa dipakai login /handoff dan
+ * sebaliknya.
+ */
+export const AI_QUERY_AUDIENCE = 'pos-fnb-ai-query';
 const HANDOFF_TOKEN_TTL_SECONDS = 60;
 
 function base64UrlEncode(buf: Buffer): string {
@@ -29,7 +37,10 @@ function base64UrlEncode(buf: Buffer): string {
  * handler) WAJIB menangkapnya dan menampilkan pesan gagal yang wajar,
  * bukan 500 mentah ke pengguna.
  */
-export function buatTokenHandoffPos(user: { id: string; email: string }): string {
+export function buatTokenPos(
+  user: { id: string; email: string },
+  audience: typeof HANDOFF_AUDIENCE | typeof AI_QUERY_AUDIENCE,
+): string {
   const secret = process.env.POS_HANDOFF_SECRET;
   if (!secret) {
     throw new Error('POS_HANDOFF_SECRET belum diset di server.');
@@ -37,7 +48,7 @@ export function buatTokenHandoffPos(user: { id: string; email: string }): string
 
   const now = Math.floor(Date.now() / 1000);
   const payload = {
-    aud: HANDOFF_AUDIENCE,
+    aud: audience,
     email: user.email,
     uid: user.id,
     nonce: randomUUID(),
@@ -48,4 +59,8 @@ export function buatTokenHandoffPos(user: { id: string; email: string }): string
   const payloadB64 = base64UrlEncode(Buffer.from(JSON.stringify(payload)));
   const sig = base64UrlEncode(createHmac('sha256', secret).update(payloadB64).digest());
   return `${payloadB64}.${sig}`;
+}
+
+export function buatTokenHandoffPos(user: { id: string; email: string }): string {
+  return buatTokenPos(user, HANDOFF_AUDIENCE);
 }
