@@ -1514,6 +1514,27 @@ Aturan pengabaian: endpoint terikat ke SATU `business_id`, jadi outlet bisnis la
 
 **Bahan untuk pemeriksaan** (urutan yang masuk akal, bukan instruksi): (1) Cloudflare Workers -> pos-fnb -> Settings -> Variables and Secrets: apakah `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET` semuanya terisi, dan apakah `NEXTJS_ENV` ada; (2) versi deployment aktif dan tanggalnya vs build 19 Agustus; (3) kalau nilai ter-bake ternyata terpakai atau kuncinya masih valid: anggap terpapar dan rotasi (service-role key, password database, `BOOTSTRAP_OWNER_PASSWORD`) setelah database produksi yang benar teridentifikasi; (4) pertimbangkan agar build produksi tidak membawa `.env.production.local` (mis. build dari lingkungan bersih / tanpa berkas itu) -- keputusan setelah diperiksa. Rincian teknis lain: bagian "STATUS INTEGRASI POS -> LAPORAN" di atas, butir jejak 5, 6, dan 8.
 
+**SUSULAN 28 September 2026 -- status temuan ini.** (1) Proyek `zaermptphmllakukidqk` NXDOMAIN (dicek ulang 28 Sept), jadi nilai yang ter-bake di build 19 Agustus menunjuk proyek yang sudah dihapus -- mati, bukan lagi paparan aktif. (2) Deploy 28 Sept (versi `b9abe0e8`) SENGAJA dibangun tanpa rahasia ter-bake: `.env.production.local` sekarang cuma berisi nilai `NEXT_PUBLIC_*` + non-rahasia, dan `.env.local` disingkirkan SELAMA build lalu dipulihkan -- diverifikasi `next-env.mjs` hasil build hanya memuat `NEXT_PUBLIC_SUPABASE_URL/ANON_KEY/APP_NAME/APP_URL` + `DEFAULT_TIMEZONE`, dan nilai `SUPABASE_SERVICE_ROLE_KEY`/`DATABASE_URL`/`POS_HANDOFF_SECRET`/`CRON_SECRET` TIDAK ditemukan di mana pun di `.open-next/`. **TAPI akar masalahnya BELUM tertutup permanen**: OpenNext menggabungkan `.env.local` ke blok `production` (terbukti di build 25 Sept), jadi siapa pun yang menjalankan `npm run deploy` biasa dengan `.env.local` di tempat AKAN membakar kunci txmkbkl yang hidup ke kode worker. Perlindungan 28 Sept manual, bukan struktural -- lihat entri di bawah.
+
+## KEPUTUSAN CEO: txmkbkl jadi database PRODUKSI pos-fnb, sekaligus tetap dipakai tes (28 September 2026)
+
+**Latar.** `zaermptphmllakukidqk` (yang dikira produksi pos-fnb) NXDOMAIN -- proyek yang cuma tertidur tetap resolve DNS, jadi hampir pasti sudah dihapus. Artinya pos-fnb **tidak pernah punya database produksi yang hidup**; semua master data (192 produk, 225 bahan, outlet, resep, pemetaan) ada di `txmkbklzhleavjhzrckm`, yang selama ini dipakai dev + tes. Supabase CLI tidak terpasang/tidak login di mesin ini, jadi `supabase projects list` tidak bisa memastikan -- keputusan diambil dari bukti DNS.
+
+**Keputusan.** `txmkbkl` jadi produksi. Rencana awal (proyek tes baru kosong + balik penjaga `guard-test-database.ts`) **DIBATALKAN CEO**: tes sejak awal membuat bisnis `TEST_*` sendiri lalu menghapusnya lewat id, tidak menyentuh `[DEV] Demo Cafe`, jadi mengarahkan worker ke database yang sama tidak menambah risiko dari sisi tes. `guard-test-database.ts` TIDAK diubah.
+
+**Yang dikerjakan.**
+- Secret worker `pos-fnb` dipasang lewat `wrangler secret put` (nilai dari `.env.local` pos-fnb, lewat stdin, tidak tercetak): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`.
+- `.env.production.local` pos-fnb ditulis ulang, menunjuk txmkbkl, **hanya** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_APP_NAME`, `NEXT_PUBLIC_APP_URL` (URL workers.dev, BUKAN localhost), `DEFAULT_TIMEZONE`. Isi lama (kredensial zaermpt yang mati + `BOOTSTRAP_OWNER_PASSWORD`) dipindah ke `.env.production.local.zaermpt-mati` (ter-gitignore lewat `.env*`), tidak dihapus. **Konsekuensi:** `npm run db:migrate:prod`, `scripts/bootstrap-production.ts`, `scripts/seed-indokopi-catalog.ts` sekarang gagal dengan pesan jelas "DATABASE_URL kosong di .env.production.local" -- SENGAJA, karena menaruh `DATABASE_URL` di file itu = ikut ter-bake ke worker. Karena produksi dan tes sekarang database yang sama, `npm run db:migrate` biasa (lewat `.env.local`) sudah mengenai produksi.
+- `npm run deploy` berhasil (Developer Mode Windows sudah nyala, tidak ada EPERM), versi `b9abe0e8-7196-4325-a9d5-4417b328910c`, dengan `.env.local` disingkirkan selama build (lihat susulan temuan keamanan di atas).
+
+**Diverifikasi di produksi (`pos-fnb.badarbaradja112.workers.dev`):** `/handoff` tanpa token, `?token=ngawur`, `?token=aaa.bbb`, dan token berbentuk benar tapi tanda tangan palsu -- keempatnya **307 ke `/handoff/gagal?alasan=tidak_valid`**, halaman gagal merespons **200** dengan "Tautan sudah tidak berlaku" (dan `alasan=belum_dipetakan` -> "Akun toko belum disiapkan"). Bukan 404, bukan 500. `/` -> 307 `/login`, `/login` 200, `/team` tanpa sesi -> 307 `/login`.
+
+**BELUM (di luar instruksi batch ini):**
+- `POS_HANDOFF_SECRET` BELUM dipasang sebagai secret worker (juga belum di Vercel repo ini). Selama itu, SEMUA token -- termasuk yang sah -- berakhir `tidak_valid` (route sengaja menganggap "secret belum dikonfigurasi" sama dengan token tidak sah). Uji di atas membuktikan penolakan bekerja, BELUM membuktikan handoff sungguhan berhasil.
+- Perlindungan anti-bake manual (singkirkan `.env.local` saat build). Perlu dijadikan struktural (mis. skrip deploy yang menolak jalan kalau `.env.local` ada, atau build dari direktori bersih) -- belum dibangun.
+
+**PEMICU TINJAU ULANG -- pisahkan database tes.** Begitu **transaksi sungguhan mulai mengalir di POS** (order/pembayaran/opname nyata di outlet mana pun, bukan data `[DEV] Demo Cafe` hasil uji), database tes WAJIB dipisah ke proyek Supabase sendiri, dan `ALLOWED_TEST_PROJECT_REFS` di `guard-test-database.ts` dibalik supaya txmkbkl DITOLAK. Alasannya: sejak saat itu data nyata (uang, stok, bagi hasil pemilik titipan) berbagi tempat dengan fixture tes -- satu bug cleanup (mis. utang FK tidak langsung di `docs/04-CATATAN-TEKNIS.md` §17/§19 pos-fnb) atau satu tes yang salah memfilter `business_id` bisa menyentuh data produksi, dan suite penuh (~15 menit, ratusan baris dibuat-dihapus) jalan di atas database yang sama dengan kasir yang sedang melayani.
+
 ## KEPUTUSAN CEO: tautan POS diganti HANDOFF satu pintu masuk (25 September 2026) -- MENGGANTIKAN keputusan 19 September di atas
 
 **Latar belakang.** Investigasi (bukan build) diminta lebih dulu: siapa sudah punya akun pos-fnb (jawaban: cuma Putri, lewat `putri@koperumnas.com` -- akun owner tanpa batas outlet; Ita/Fikri/Toni cuma baris `employees` PIN-based di sana, tidak ada baris `memberships`/akun dashboard sama sekali; Shabita belum ada sama sekali di pos-fnb), pemetaan identitas lintas dua proyek Supabase terpisah, mekanisme handoff, risiko ke RLS/pembatasan outlet, dan pemetaan tombol per peran. CEO menyetujui rancangan handoff dan meminta gelombang pertama **cuma Ita** (Erry/Dea/Cuko ditunda -- outletnya belum benar-benar pakai POS, nol order) plus Putri untuk uji (sudah punya akun di kedua sistem). Shabita menyusul.
@@ -1542,3 +1563,31 @@ Aturan pengabaian: endpoint terikat ke SATU `business_id`, jadi outlet bisnis la
 **Penting, ditulis eksplisit sebagai komentar di migrasi/kode:** kolom ini MURNI tampil/tidaknya tombol, BUKAN gerbang keamanan -- otorisasi sungguhan tetap 100% di `report_identity_links` milik pos-fnb (repo terpisah, dikelola owner pos-fnb sendiri lewat `/team` di sana).
 
 **Ditemukan SAMBIL memverifikasi (bukan disebabkan migrasi ini, TIDAK diperbaiki -- di luar cakupan):** `scripts/uji-jaga-profil-sensitif.mjs` skenario #2 ("toyib ubah `aktif` miliknya sendiri jadi false, harus ditolak") GAGAL saat dijalankan ulang hari ini -- ternyata `profile.aktif` milik Toyib SUDAH `false` di database (dev+produksi satu database, lihat catatan lama soal ini), jadi `new.aktif is distinct from old.aktif` = false, trigger benar TIDAK melempar (tidak ada perubahan sungguhan terjadi), bukan berarti guard-nya bocor. Dikonfirmasi guard `punya_akses_pos` yang BARU bekerja benar lewat skrip transaksi terpisah (ROLLBACK, tidak menyentuh data): karyawan biasa ditolak menyalakan kolom miliknya sendiri, CEO berhasil mengubah milik orang lain. Kenapa `aktif` Toyib sudah `false` di database TIDAK diselidiki lebih lanjut (di luar cakupan task ini) -- perlu diperiksa terpisah kalau memang seharusnya `true`.
+
+## Temuan Besar: Worker POS Produksi Tanpa Secret Supabase (25 September 2026)
+
+**Ditemukan saat deploy handoff (Task report ? POS):**
+
+Worker produksi pos-fnb (Cloudflare) **tidak memiliki secret Supabase sama sekali**:
+- NEXT_PUBLIC_SUPABASE_URL � tidak ada di wrangler secret list
+- NEXT_PUBLIC_SUPABASE_ANON_KEY � tidak ada
+- SUPABASE_SERVICE_ROLE_KEY � tidak ada
+- DATABASE_URL � tidak ada
+
+Hanya POS_HANDOFF_SECRET yang terpasang (baru saja ditambahkan hari ini).
+
+**Konteks pendukung (temuan sebelumnya yang kini menyatu):**
+1. lib/supabase/client.ts pakai ??= untuk NEXT_PUBLIC_SUPABASE_URL � jika env tidak diset, nilai default **hardcode ke zaermptphmllakukidqk.supabase.co** (NXDOMAIN, tidak ada DNS).
+2. Build lokal yang pernah di-deploy lama lalu akan **menyematkan nilai default itu** ke dalam bundle (ter-bake), karena ??= dievaluasi saat build.
+3. Worker produksi kemungkinan besar **tidak pernah punya database yang bisa dihubungi** sejak pertama kali di-deploy.
+
+**Konsekuensi nyata:**
+- **Nol order di Indosteak dan Indokopi selama ini mungkin bukan karena tidak dipakai, tapi karena tidak bisa dipakai.**
+- Setiap panggilan ke Supabase dari worker (auth, query, mutasi) akan gagal koneksi ke host NXDOMAIN ? error 5xx/timeout ? fitur POS tidak berfungsi.
+- Guard guard-test-database.ts mencegah tes jalan di atas database produksi, tapi **produksi sendiri tidak punya database yang valid** � logika terbalik.
+
+**Tindakan:**
+- **JANGAN** pasang secret Supabase ke worker sekarang. Memilih database mana yang jadi produksi itu keputusan user.
+- Menunjuk ke database dev (	xmkbklzhleavjhzrckm) akan membuat suite tes berjalan di atas produksi � persis yang dicegah guard-test-database.ts.
+- Catatan ini dicatat sebagai temuan, bukan diperbaiki.
+
