@@ -218,7 +218,13 @@ try {
     await page.getByText('Menunggu jawaban...').waitFor({ state: 'detached', timeout: 90000 });
     const galatPos = (await page.locator('[role="alert"]').allInnerTexts()).filter((t) => t.trim() !== '');
     const gelembungPos = await gelembungTeks();
-    const riwayatAkhir = await riwayat.allInnerTexts();
+    // Daftar riwayat di-refetch SESUDAH jawaban tampil (invalidate onSettled) --
+    // tunggu sampai 15 detik; kalau tetap tidak muncul, itu bug sungguhan.
+    let riwayatAkhir = await riwayat.allInnerTexts();
+    for (const batas = Date.now() + 15000; riwayatAkhir[0] !== PERTANYAAN_POS.slice(0, 80) && Date.now() < batas; ) {
+      await page.waitForTimeout(500);
+      riwayatAkhir = await riwayat.allInnerTexts();
+    }
     await page.screenshot({ path: SCREENSHOT.replace('.png', '-4-pos.png'), fullPage: true });
     console.log(`\nPertanyaan POS: ${PERTANYAAN_POS}`);
     console.log(`Waktu jawab: ${((Date.now() - mulaiPos) / 1000).toFixed(1)} detik`);
@@ -226,7 +232,16 @@ try {
     console.log(`Gelembung:\n${gelembungPos.map((g) => `  > ${g.replace(/\n/g, '\n    ')}`).join('\n')}`);
     catat('pertanyaan POS dijawab dalam percakapan terpisah', galatPos.length === 0 && gelembungPos.length === 2);
     const jawabanPos = (gelembungPos[1] ?? '').replace(/^Asisten:\s*/, '');
-    catat('POS tanpa pemetaan -> "tidak punya akses", BUKAN galat/nol', /akses/i.test(jawabanPos) && !/galat|kesalahan|nol\b|0 bahan/i.test(jawabanPos), JSON.stringify(jawabanPos));
+    if (process.env.UJI_AKSES_POS === '1') {
+      // Dengan akses: data sungguhan. Kejujuran stok -- "semua outlet" hanya
+      // boleh kalau tidak ada outlet tanpa data; kalau ada, harus disebut.
+      catat('POS dengan akses -> jawaban berisi data, bukan "tidak punya akses"/galat',
+        !/tidak punya akses|galat|kesalahan/i.test(jawabanPos) && jawabanPos.trim().length > 0, JSON.stringify(jawabanPos));
+      catat('"semua outlet" tidak dipakai tanpa menyebut outlet yang tidak punya data',
+        !/semua outlet/i.test(jawabanPos) || /belum ada data|tidak ada data|tanpa data|belum punya data/i.test(jawabanPos), JSON.stringify(jawabanPos));
+    } else {
+      catat('POS tanpa pemetaan -> "tidak punya akses", BUKAN galat/nol', /akses/i.test(jawabanPos) && !/galat|kesalahan|nol\b|0 bahan/i.test(jawabanPos), JSON.stringify(jawabanPos));
+    }
     catat('riwayat kini berisi dua percakapan, pertanyaan pertama tetap ada',
       riwayatAkhir[0] === PERTANYAAN_POS.slice(0, 80) && riwayatAkhir[1] === PERTANYAAN.slice(0, 80), JSON.stringify(riwayatAkhir.slice(0, 2)));
   }
