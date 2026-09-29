@@ -574,6 +574,38 @@ const jpa = (klien: SupabaseClient, panggilan: Parameters<typeof jalankanPutaran
     /HANYA DIKUTIP dari `ringkasan`/.test(instruksiSistem(HARI_INI)) && /jangan menempelkan total ke satu outlet/.test(instruksiSistem(HARI_INI)));
 }
 
+// 14. Anomali data (29 Sep): angka dari pos-fnb, "nol temuan" bukan "tidak ada data", belum ditentukan selalu disebut.
+{
+  process.env.POS_INTEGRASI_URL = 'https://pos.contoh.test';
+  process.env.POS_HANDOFF_SECRET = 'rahasia-uji-minimal-32-karakter-panjangnya!!';
+  const pos = (result: object) => {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ access: 'ok', outletScope: 'all', results: [{ name: 'x', result }] }), { status: 200 })) as typeof fetch;
+  };
+  const ringkasan = { perAturan: { satuan_nama: 1, stok_minus: 2, harga_masuk: 0, biaya_nol: 0, stok_berlebih: 0, satuan_jenis: 0, konversi_jenis: 0 }, jenisBelumDitentukan: 40, bahanDicek: 225 };
+  pos({
+    status: 'ok', outletFilter: 'all_visible', period: { date: '2026-09-29' }, totalCount: 3,
+    rows: [
+      { aturan: 'Stok minus', kode_aturan: 'stok_minus', bahan: 'Gula', outlet: 'Indokopi Jatinegara', angka: 'stok -50 gram' },
+      { aturan: 'Stok minus', kode_aturan: 'stok_minus', bahan: 'Kopi', outlet: 'Indokopi Jatinegara', angka: 'stok -5 gram' },
+      { aturan: 'Satuan di nama beda dengan satuan dasar', kode_aturan: 'satuan_nama', bahan: 'Minyak Goreng/Liter', outlet: null, angka: 'nama menyebut liter, satuan dasar gram' },
+    ],
+    extra: { anomalySummary: ringkasan },
+  });
+  const [an] = await jpa(supabasePalsu().klien, [{ name: 'anomali_data', args: {} }]);
+  cek('anomali: kalimat server dari hitungan pos-fnb per aturan + jumlah belum ditentukan',
+    an!.utama?.kalimat === '3 temuan anomali dari 225 bahan yang dilacak stoknya: 1 satuan di nama beda dengan satuan dasar, 2 stok minus. 40 bahan jenis ukurannya belum ditentukan, jadi belum dicek aturan jenis.',
+    an!.utama?.kalimat);
+  cek('anomali: catatan wajib menyebut bahan yang belum ditentukan', (an!.catatanWajib ?? []).some((c) => c.startsWith('40 bahan jenis ukurannya belum ditentukan')), an!.catatanWajib);
+
+  pos({ status: 'ok', outletFilter: 'all_visible', period: { date: '2026-09-29' }, totalCount: 0, rows: [], extra: { anomalySummary: { ...ringkasan, perAturan: {} } } });
+  const [nol] = await jpa(supabasePalsu().klien, [{ name: 'anomali_data', args: {} }]);
+  cek('anomali: nol temuan -> catatan "tidak ada temuan dari N bahan", BUKAN sekadar "tidak ada data"',
+    (nol!.catatanWajib ?? [])[0] === 'Tidak ada temuan anomali dari 225 bahan yang dilacak stoknya.' && (nol!.catatanWajib ?? []).length === 2, nol!.catatanWajib);
+  const dek = DEKLARASI_ALAT.find((d) => d.name === 'anomali_data');
+  cek('deklarasi anomali_data: aturan pasti, jangan menebak di luar aturan', Boolean(dek && /ATURAN PASTI/.test(dek.description) && /jangan menambah dugaan/.test(dek.description)));
+}
+
 let gagal = 0;
 for (const h of hasil) {
   if (!h.lolos) gagal += 1;

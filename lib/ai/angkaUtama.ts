@@ -61,6 +61,18 @@ export type KonteksAngka = {
   };
   /** Outlet tanpa catatan stok (stok_bahan). */
   outletTanpaStok?: string[];
+  /** Hitungan anomali dari pos-fnb (anomali_data). */
+  anomali?: { perAturan: Record<string, number>; jenisBelumDitentukan: number; bahanDicek: number };
+};
+
+const LABEL_ANOMALI: Record<string, string> = {
+  satuan_nama: 'satuan di nama beda dengan satuan dasar',
+  harga_masuk: 'biaya masuk 10x atau lebih dari rata-rata',
+  biaya_nol: 'ada stok tapi biaya nol',
+  stok_minus: 'stok minus',
+  stok_berlebih: 'stok 100x atau lebih dari pemakaian harian',
+  satuan_jenis: 'satuan dasar bukan jenis ukuran bahan',
+  konversi_jenis: 'konversi beli menyeberang jenis ukuran',
 };
 
 /** Baris sedikit = pertanyaan satu-dua bahan; nilai barisnya boleh dikutip apa adanya. */
@@ -243,6 +255,26 @@ export function hitungAngkaUtama(alat: string, baris: Baris[], totalBaris: numbe
         ringkasan.outlet_total = k.resep.perOutlet.length;
       }
       kalimat = `${angkaId(totalBaris)} bahan tanpa resep${k.resep ? ` dan ${angkaId(k.resep.productTotal)} produk tanpa resep` : ''}${di}.`;
+      break;
+    }
+    case 'anomali_data': {
+      // Semua hitungan dari pos-fnb (lib/anomaly/check.ts), bukan dari baris.
+      const a = k.anomali;
+      ringkasan = { temuan_total: totalBaris };
+      if (a) {
+        for (const [kode, jumlahAturan] of Object.entries(a.perAturan)) ringkasan[`aturan_${kode}`] = jumlahAturan;
+        ringkasan.bahan_jenis_belum_ditentukan = a.jenisBelumDitentukan;
+        ringkasan.bahan_dicek = a.bahanDicek;
+      }
+      const rinci = a
+        ? Object.entries(a.perAturan)
+            .filter(([, j]) => j > 0)
+            .map(([kode, j]) => `${j} ${LABEL_ANOMALI[kode] ?? kode}`)
+            .join(', ')
+        : '';
+      kalimat =
+        `${angkaId(totalBaris)} temuan anomali dari ${a ? angkaId(a.bahanDicek) : '?'} bahan yang dilacak stoknya${rinci ? `: ${rinci}` : ''}.` +
+        (a && a.jenisBelumDitentukan > 0 ? ` ${a.jenisBelumDitentukan} bahan jenis ukurannya belum ditentukan, jadi belum dicek aturan jenis.` : '');
       break;
     }
     case 'penjualan_vs_stok': {

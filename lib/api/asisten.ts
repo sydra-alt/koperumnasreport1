@@ -161,3 +161,26 @@ export function useImporResep() {
     },
   });
 }
+
+/** Tinjauan jenis ukuran bahan (29 September 2026) -- AI mengusulkan, manusia mengonfirmasi di POS. */
+export function useTinjauanUkuran() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/asisten/tinjau-ukuran', { method: 'POST' });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new GalatKirimAi(body.error ?? 'Terjadi kesalahan. Coba lagi.', Boolean(body.batasTercapai), body.percakapanId ?? null);
+      }
+      return {
+        percakapanId: body.percakapanId as string,
+        pesanUser: kePesan(body.pesanUser as BarisPesan),
+        pesanModel: kePesan(body.pesanModel as BarisPesan),
+      };
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['ai-percakapan'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-status'] });
+    },
+  });
+}

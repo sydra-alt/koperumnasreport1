@@ -24,6 +24,8 @@ export type HasilPos =
       extra?: {
         weekly?: Record<string, string | number | boolean | null>[];
         stockCoverage?: { outletsWithoutStock: string[]; withoutMinimum: number; stockRows: number };
+        // data_anomalies (29 September 2026): dihitung pos-fnb, AI hanya mengutip.
+        anomalySummary?: { perAturan: Record<string, number>; jenisBelumDitentukan: number; bahanDicek: number };
         recipeCoverage?: {
           perOutlet: { outletName: string; ingredientsWithoutRecipe: number; productsWithoutRecipe: number; stockRows: number }[];
           products: Record<string, string | number | boolean | null>[];
@@ -119,8 +121,27 @@ export function panggilImporResepPos(user: { id: string; email: string }, body: 
   return panggilImporPos<JawabanImporResepPos>('/api/ai/recipe-import', user, body, akses);
 }
 
+export type JawabanTinjauanUkuranPos =
+  | { akses: 'tanpa_akses_pos' }
+  | { akses: 'galat' }
+  | { akses: 'ok'; status: 'forbidden' | 'invalid' }
+  | { akses: 'ok'; status: 'ok'; ingredients: import('./tinjauanUkuran').BahanTinjauan[] }
+  | {
+      akses: 'ok';
+      status: 'ok';
+      reviewId: string;
+      usulan: import('./tinjauanUkuran').UsulanTersimpan[];
+      tidakDiusulkan: number;
+      bentrokSatuanDasar: number;
+    };
+
+/** Tinjauan jenis ukuran (29 September 2026): pos-fnb HANYA menyimpan usulan, tidak pernah mengisi jenis_ukuran. */
+export function panggilTinjauanUkuranPos(user: { id: string; email: string }, body: Record<string, unknown>, akses: AksesPos | null): Promise<JawabanTinjauanUkuranPos> {
+  return panggilImporPos<JawabanTinjauanUkuranPos>('/api/ai/measure-review', user, body, akses);
+}
+
 async function panggilImporPos<T>(
-  path: '/api/ai/opname-import' | '/api/ai/recipe-import',
+  path: '/api/ai/opname-import' | '/api/ai/recipe-import' | '/api/ai/measure-review',
   user: { id: string; email: string },
   body: Record<string, unknown>,
   akses: AksesPos | null,

@@ -147,6 +147,12 @@ export const DEKLARASI_ALAT: DeklarasiFungsi[] = [
     parameters: { type: 'OBJECT', properties: { outlet: outletOpsional } },
   },
   {
+    name: 'anomali_data',
+    description:
+      'Cek anomali data bahan & stok dengan ATURAN PASTI (bukan tebakan): satuan di nama bahan beda dengan satuan dasar; biaya barang masuk 10x atau lebih dari rata-rata biaya; ada stok tapi biaya nol; stok minus; stok 100x atau lebih dari pemakaian harian; satuan dasar bukan jenis ukuran bahan; konversi beli menyeberang jenis ukuran. Tiap baris menyebut aturan dan angkanya. Jelaskan temuan apa adanya, jangan menambah dugaan di luar aturan ini.',
+    parameters: { type: 'OBJECT', properties: {} },
+  },
+  {
     name: 'penjualan_vs_stok',
     description:
       'Perbandingan pemakaian bahan dari penjualan dengan pergerakan stok lain (waste, selisih opname, masuk, keluar lain) per bahan per outlet. Maks 92 hari. Diurutkan dari selisih opname terbesar.',
@@ -159,6 +165,7 @@ const NAMA_POS: Record<string, string> = {
   stok_bahan: 'stock_levels',
   status_opname: 'opname_status',
   cakupan_resep: 'recipe_coverage',
+  anomali_data: 'data_anomalies',
   penjualan_vs_stok: 'sales_vs_stock',
 };
 const NAMA_LOKAL = new Set(['status_laporan', 'presensi', 'omzet_pos_harian']);
@@ -220,6 +227,10 @@ const KOLOM: Record<string, { judul: string; kolom: KolomTabelAi[] }> = {
   cakupan_resep: {
     judul: 'Bahan tanpa resep',
     kolom: [k('outlet', 'Outlet'), k('bahan', 'Bahan'), k('satuan', 'Satuan'), k('stok', 'Stok', 'angka')],
+  },
+  anomali_data: {
+    judul: 'Anomali data',
+    kolom: [k('aturan', 'Aturan'), k('bahan', 'Bahan'), k('outlet', 'Outlet'), k('angka', 'Angka di baliknya')],
   },
   cakupan_resep_produk: {
     judul: 'Produk tanpa resep',
@@ -457,6 +468,17 @@ function hasilPosKeAlat(p: PanggilanAlat, hasil: HasilPos, cakupanOutlet: 'all' 
     }
   }
 
+  // Anomali (29 September 2026): "nol temuan" BUKAN "tidak ada data", dan bahan
+  // yang jenis ukurannya belum ditentukan SELALU disebut -- mereka tidak dicek
+  // aturan jenis, jadi tidak boleh lolos diam-diam.
+  const anomali = hasil.extra?.anomalySummary;
+  if (p.name === 'anomali_data' && anomali) {
+    if (hasil.totalCount === 0) catatanWajib.push(`Tidak ada temuan anomali dari ${anomali.bahanDicek} bahan yang dilacak stoknya.`);
+    if (anomali.jenisBelumDitentukan > 0) {
+      catatanWajib.push(`${anomali.jenisBelumDitentukan} bahan jenis ukurannya belum ditentukan, jadi belum dicek aturan jenis ukuran.`);
+    }
+  }
+
   if (p.name === 'cakupan_resep' && cakupanResep) {
     const perOutlet = cakupanResep.perOutlet
       .map((o) => `${o.outletName} ${o.ingredientsWithoutRecipe} bahan / ${o.productsWithoutRecipe} produk`)
@@ -482,6 +504,7 @@ function hasilPosKeAlat(p: PanggilanAlat, hasil: HasilPos, cakupanOutlet: 'all' 
           mingguan,
           ...(cakupanResep ? { resep: cakupanResep } : {}),
           ...(cakupanStok ? { outletTanpaStok: cakupanStok.outletsWithoutStock } : {}),
+          ...(hasil.extra?.anomalySummary ? { anomali: hasil.extra.anomalySummary } : {}),
         })
       : null;
   // Jumlah catatan stok PER OUTLET dari server -- model tidak pernah membaginya sendiri
