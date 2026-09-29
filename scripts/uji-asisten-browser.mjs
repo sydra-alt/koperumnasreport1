@@ -20,6 +20,7 @@ import pg from 'pg';
 import { createClient } from '@supabase/supabase-js';
 import { chromium } from 'playwright';
 import { pasangPemulih } from './_pengaman-uji.mjs';
+import { aksesPosUjiSementara } from './_akses-pos-uji.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env.local'), quiet: true });
@@ -52,7 +53,11 @@ if (rows.length === 0) throw new Error(`${EMAIL} tidak ditemukan`);
 const { id, harus_ganti_password: gantiAwal } = rows[0];
 const pw = `Uji-${crypto.randomBytes(9).toString('base64url')}`;
 
+// UJI_AKSES_POS=1 -> punya_akses_pos uji-ceo dinyalakan selama uji (pertanyaan POS
+// mendapat data sungguhan), dimatikan lagi + membership pos-fnb dicabut di pemulih.
+let pulihAkses = null;
 const pulihkan = pasangPemulih('uji-asisten-browser', async () => {
+  if (pulihAkses) await pulihAkses();
   const { error } = await admin.auth.admin.updateUserById(id, { password: 'admin123' });
   if (error) throw new Error(`gagal mengembalikan password ${EMAIL}: ${error.message}`);
   await db.query('update public.profile set harus_ganti_password = $2 where id = $1', [id, gantiAwal]);
@@ -67,6 +72,7 @@ try {
   const { error } = await admin.auth.admin.updateUserById(id, { password: pw });
   if (error) throw new Error(`reset password gagal: ${error.message}`);
   await db.query('update public.profile set harus_ganti_password = false where id = $1', [id]);
+  if (process.env.UJI_AKSES_POS === '1') pulihAkses = await aksesPosUjiSementara(db, EMAIL);
 
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   await page.goto(`${BASE_URL}/masuk`);

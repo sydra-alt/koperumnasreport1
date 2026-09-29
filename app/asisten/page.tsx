@@ -13,6 +13,7 @@ import {
 } from '../../lib/api/asisten';
 import { KerangkaTeks } from '../../components/Kerangka';
 import { TabelJawaban } from '../../components/asisten/TabelJawaban';
+import { ImporOpname } from '../../components/asisten/ImporOpname';
 
 /**
  * Asisten AI, fase 1 (28 September 2026) -- tanya jawab & analisis. Status
@@ -60,6 +61,7 @@ function Asisten() {
   const [menunggu, setMenunggu] = useState<string | null>(null);
   const [galat, setGalat] = useState<string | null>(null);
   const [riwayatTerbuka, setRiwayatTerbuka] = useState(false);
+  const [panelImpor, setPanelImpor] = useState(false);
 
   const daftar = useDaftarPercakapan(true);
   const pesan = usePesanPercakapan(percakapanId);
@@ -73,6 +75,7 @@ function Asisten() {
     setGalat(null);
     setDraf('');
     setRiwayatTerbuka(false);
+    setPanelImpor(false);
   }
 
   async function tanganiKirim(e: FormEvent) {
@@ -157,6 +160,18 @@ function Asisten() {
             Riwayat
           </button>
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            setPanelImpor((v) => !v);
+            setGalat(null);
+          }}
+          className="border px-4 text-sm"
+          style={{ borderColor: 'var(--biru-garis)', borderRadius: 'var(--radius-kecil)', minHeight: 44, color: 'var(--biru)' }}
+          aria-expanded={panelImpor}
+        >
+          Impor opname (Excel)
+        </button>
         <div className={riwayatTerbuka ? 'block' : 'hidden md:block'}>{daftarRiwayat}</div>
       </aside>
 
@@ -168,8 +183,24 @@ function Asisten() {
           </p>
         </header>
 
+        {panelImpor ? (
+          <ImporOpname
+            habis={habis}
+            onSelesai={(hasil) => {
+              queryClient.setQueryData<PesanAi[]>(['ai-pesan', hasil.percakapanId], [hasil.pesanUser as PesanAi, hasil.pesanModel as PesanAi]);
+              setPercakapanId(hasil.percakapanId);
+              setGalat(null);
+              setPanelImpor(false);
+            }}
+            onGalat={(pesan, id) => {
+              setGalat(pesan);
+              if (id) setPercakapanId(id);
+            }}
+          />
+        ) : null}
+
         <div className="flex flex-col gap-4">
-          {!percakapanId && !menunggu ? (
+          {!percakapanId && !menunggu && !panelImpor ? (
             <div className="flex flex-col gap-2">
               <p className="text-sm" style={{ color: 'var(--label)' }}>Contoh pertanyaan:</p>
               <div className="flex flex-wrap gap-2">
@@ -266,7 +297,19 @@ function Gelembung({ pesan }: { pesan: PesanAi }) {
       </div>
       {!dariUser && pesan.tabel
         ? pesan.tabel.map((t, i) => (
-            <div key={i} className="w-full">
+            <div key={i} className="flex w-full flex-col gap-2">
+              {/* Tautan tindak lanjut (impor opname) -- HANYA ke handoff POS internal. */}
+              {t.tautan && t.tautan.href.startsWith('/api/pos-handoff?next=') ? (
+                <a
+                  href={t.tautan.href}
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex w-fit items-center px-5 text-sm font-semibold"
+                  style={{ background: 'var(--biru)', color: 'var(--kertas-2)', borderRadius: 'var(--radius-pil)', minHeight: 44 }}
+                >
+                  {t.tautan.label}
+                </a>
+              ) : null}
               <TabelJawaban tabel={t} pesanId={pesan.id} urutan={i} />
             </div>
           ))

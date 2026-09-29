@@ -65,38 +65,94 @@ export function aiTerkonfigurasi(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
 }
 
-export function buatPanggilGemini(tunggu: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms))): PanggilModel {
+type Tunggu = (ms: number) => Promise<void>;
+const tungguBawaan: Tunggu = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function konfigurasi(): { kunci: string; model: string } {
   const kunci = process.env.GEMINI_API_KEY;
   const model = process.env.GEMINI_MODEL || MODEL_BAWAAN;
   if (!kunci) {
     throw new Error('GEMINI_API_KEY belum diset di server.');
   }
+  return { kunci, model };
+}
 
+/** Satu generateContent + coba ulang 503 (lihat COBA_ULANG_503). */
+async function kirimGemini(
+  kunci: string,
+  model: string,
+  body: Record<string, unknown>,
+  tunggu: Tunggu,
+  batasMs: number,
+): Promise<{ candidates?: { content?: { parts?: BagianGemini[] } }[] }> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const kirim = () => fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': kunci },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(batasMs),
+    cache: 'no-store',
+  });
+  let res = await kirim();
+  for (let ulang = 0; res.status === 503 && ulang < COBA_ULANG_503; ulang++) {
+    console.warn(`gemini 503, coba ulang ${ulang + 1}/${COBA_ULANG_503}: ${await alasanGalat(res)}`);
+    await tunggu(JEDA_COBA_ULANG_MS[ulang] ?? 2500);
+    res = await kirim();
+  }
+  if (!res.ok) {
+    throw new GalatPenyediaAi(res.status, await alasanGalat(res));
+  }
+  return (await res.json()) as { candidates?: { content?: { parts?: BagianGemini[] } }[] };
+}
+
+export function buatPanggilGemini(tunggu: Tunggu = tungguBawaan): PanggilModel {
+  const { kunci, model } = konfigurasi();
   return async ({ instruksiSistem, isi, fungsi }) => {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-    const kirim = () => fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-goog-api-key': kunci },
-      body: JSON.stringify({
+    const data = await kirimGemini(
+      kunci,
+      model,
+      {
         systemInstruction: { parts: [{ text: instruksiSistem }] },
         contents: isi,
         tools: [{ functionDeclarations: fungsi }],
         toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
         generationConfig: { temperature: 0, maxOutputTokens: 1024 },
-      }),
-      signal: AbortSignal.timeout(30_000),
-      cache: 'no-store',
-    });
-    let res = await kirim();
-    for (let ulang = 0; res.status === 503 && ulang < COBA_ULANG_503; ulang++) {
-      console.warn(`gemini 503, coba ulang ${ulang + 1}/${COBA_ULANG_503}: ${await alasanGalat(res)}`);
-      await tunggu(JEDA_COBA_ULANG_MS[ulang] ?? 2500);
-      res = await kirim();
-    }
-    if (!res.ok) {
-      throw new GalatPenyediaAi(res.status, await alasanGalat(res));
-    }
-    const data = (await res.json()) as { candidates?: { content?: { parts?: BagianGemini[] } }[] };
+      },
+      tunggu,
+      30_000,
+    );
     return { role: 'model', parts: data.candidates?.[0]?.content?.parts ?? [] };
+  };
+}
+
+/**
+ * Keluaran JSON terstruktur (impor opname Excel, 29 September 2026): model
+ * WAJIB menjawab sesuai `skema` (responseSchema). Mengembalikan teks JSON
+ * mentah -- pemanggil yang mem-parse dan memvalidasi, tidak pernah dipercaya
+ * begitu saja.
+ */
+export type PanggilModelJson = (permintaan: { instruksiSistem: string; teks: string; skema: Record<string, unknown> }) => Promise<string>;
+
+export function namaModelGemini(): string {
+  return process.env.GEMINI_MODEL || MODEL_BAWAAN;
+}
+
+export function buatPanggilGeminiJson(tunggu: Tunggu = tungguBawaan): PanggilModelJson {
+  const { kunci, model } = konfigurasi();
+  return async ({ instruksiSistem, teks, skema }) => {
+    const data = await kirimGemini(
+      kunci,
+      model,
+      {
+        systemInstruction: { parts: [{ text: instruksiSistem }] },
+        contents: [{ role: 'user', parts: [{ text: teks }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 32768, responseMimeType: 'application/json', responseSchema: skema },
+      },
+      tunggu,
+      50_000,
+    );
+    return (data.candidates?.[0]?.content?.parts ?? [])
+      .map((b) => ('text' in b && typeof b.text === 'string' ? b.text : ''))
+      .join('');
   };
 }

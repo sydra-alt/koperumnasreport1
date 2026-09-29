@@ -16,6 +16,8 @@ export type TabelAi = {
   baris: Record<string, NilaiSel>[];
   /** Jumlah baris sebenarnya di sumber -- bisa lebih besar dari baris.length kalau dipotong. */
   totalBaris: number;
+  /** Tautan tindak lanjut (impor opname: buka draf di pos-fnb). href SELALU path internal. */
+  tautan?: { label: string; href: string };
 };
 
 /** Baris yang digambar di layar per tabel; sisanya lewat Unduh Excel. */

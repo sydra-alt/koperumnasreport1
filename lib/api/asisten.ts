@@ -95,3 +95,44 @@ export function useKirimPesanAi() {
     },
   });
 }
+
+/** Outlet F&B yang boleh diimpor opname-nya (cakupan & izin dari pos-fnb). */
+export function useOutletImpor(enabled: boolean) {
+  return useQuery({
+    queryKey: ['ai-impor-outlet'],
+    enabled,
+    retry: false,
+    queryFn: async (): Promise<{ id: string; name: string }[]> => {
+      const res = await fetch('/api/asisten/impor-opname', { cache: 'no-store' });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error ?? 'Daftar outlet tidak bisa dibaca.');
+      return body.outlets as { id: string; name: string }[];
+    },
+  });
+}
+
+/** Impor opname Excel (29 September 2026, fase 2) -- satu impor = satu percakapan. */
+export function useImporOpname() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { outletId: string; file: File }) => {
+      const form = new FormData();
+      form.set('outletId', input.outletId);
+      form.set('file', input.file);
+      const res = await fetch('/api/asisten/impor-opname', { method: 'POST', body: form });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new GalatKirimAi(body.error ?? 'Terjadi kesalahan. Coba lagi.', Boolean(body.batasTercapai), body.percakapanId ?? null);
+      }
+      return {
+        percakapanId: body.percakapanId as string,
+        pesanUser: kePesan(body.pesanUser as BarisPesan),
+        pesanModel: kePesan(body.pesanModel as BarisPesan),
+      };
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['ai-percakapan'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-status'] });
+    },
+  });
+}

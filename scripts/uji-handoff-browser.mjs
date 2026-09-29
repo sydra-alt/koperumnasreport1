@@ -6,7 +6,9 @@
 // masuk saat dibuka lagi (tidak ada login kedua).
 //
 // ⚠️ LIVE: HANYA akun uji-ceo@koperumnas.local (akun uji): password sementara
-// + harus_ganti_password=false selama uji, dipulihkan lewat pasangPemulih.
+// + harus_ganti_password=false + punya_akses_pos=true selama uji, semuanya
+// dipulihkan lewat pasangPemulih (punya_akses_pos mati lagi dan membership
+// pos-fnb-nya dinonaktifkan -- lihat _akses-pos-uji.mjs).
 // Membership pos-fnb uji-ceo@koperumnas.com IKUT DISESUAIKAN oleh
 // provisioning -- itu memang yang diuji.
 //
@@ -20,6 +22,7 @@ import pg from 'pg';
 import { createClient } from '@supabase/supabase-js';
 import { chromium } from 'playwright';
 import { pasangPemulih } from './_pengaman-uji.mjs';
+import { aksesPosUjiSementara } from './_akses-pos-uji.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env.local'), quiet: true });
@@ -36,7 +39,9 @@ const { rows } = await db.query(`select u.id, p.harus_ganti_password from auth.u
 const { id, harus_ganti_password: gantiAwal } = rows[0];
 const pw = `Uji-${crypto.randomBytes(9).toString('base64url')}`;
 
+let pulihAkses = null;
 const pulihkan = pasangPemulih('uji-handoff-browser', async () => {
+  if (pulihAkses) await pulihAkses();
   const { error } = await admin.auth.admin.updateUserById(id, { password: 'admin123' });
   if (error) throw new Error(`gagal mengembalikan password ${EMAIL}: ${error.message}`);
   await db.query('update public.profile set harus_ganti_password = $2 where id = $1', [id, gantiAwal]);
@@ -51,6 +56,8 @@ try {
   const { error } = await admin.auth.admin.updateUserById(id, { password: pw });
   if (error) throw new Error(`reset password gagal: ${error.message}`);
   await db.query('update public.profile set harus_ganti_password = false where id = $1', [id]);
+  // punya_akses_pos uji-ceo MATI secara bawaan -- dinyalakan HANYA selama uji.
+  pulihAkses = await aksesPosUjiSementara(db, EMAIL);
 
   // Akses yang DIHITUNG laporan untuk orang ini (penyamaran di transaksi baca, di-ROLLBACK).
   await db.query('begin');

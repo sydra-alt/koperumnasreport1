@@ -19,7 +19,7 @@ export const JAWABAN_KOSONG = 'Maaf, saya tidak bisa menjawab pertanyaan itu den
 
 export type PanggilanModel = { name: string; args: Record<string, unknown> };
 
-export type HasilPutaran = { untukModel: Record<string, unknown>; tabel: TabelAi[] };
+export type HasilPutaran = { untukModel: Record<string, unknown>; tabel: TabelAi[]; catatanWajib?: string[] };
 
 export type HasilAgen = {
   jawaban: string;
@@ -47,6 +47,7 @@ export function instruksiSistem(tanggalHariIni: string): string {
     '  - outlet_di_luar_hak: katakan outlet itu tidak termasuk outlet yang boleh Anda lihat.',
     '  - tanpa_akses_pos: katakan Anda tidak punya akses data POS.',
     '- Kalau hasil alat membawa batas_hak, sebutkan batas itu di jawaban (mis. "hanya outlet yang boleh Anda lihat").',
+    '- JANGAN PERNAH menulis "semua outlet" kalau hasil alat menyebut outlet_tanpa_catatan_stok -- sebut hanya outlet yang benar-benar punya data.',
     '- Selalu sebut periode dan outlet yang dicakup jawaban (sebut persis seperti di hasil alat).',
     '- Kalau pertanyaan butuh data yang tidak disediakan alat mana pun, katakan terus terang tidak bisa dijawab dengan alat yang tersedia.',
     '- Tanpa poin/daftar kecuali membandingkan beberapa hal DAN tidak ada tabel.',
@@ -93,6 +94,7 @@ export async function jalankanAgen(params: {
 }): Promise<HasilAgen> {
   const isi: IsiGemini[] = [...params.riwayat, { role: 'user', parts: [{ text: params.pertanyaan }] }];
   const tabel: TabelAi[] = [];
+  const wajib: string[] = [];
 
   for (let putaran = 0; ; putaran++) {
     const jawabanModel = await params.panggilModel({ instruksiSistem: params.instruksi, isi, fungsi: params.fungsi });
@@ -101,11 +103,13 @@ export async function jalankanAgen(params: {
     if (panggilan.length === 0) {
       const teks = teksDari(jawabanModel);
       if (!teks) return { jawaban: JAWABAN_KOSONG, tabel: [], status: 'kosong', putaranAlat: putaran };
-      if (tabel.length === 0) return { jawaban: teks, tabel, status: 'selesai', putaranAlat: putaran };
-      // Tabel terpotong WAJIB disebut di jawaban -- ditambahkan server, bukan
-      // diserahkan ke model (koreksi CEO 29 September 2026).
+      const unik = [...new Set(wajib)];
+      if (tabel.length === 0) return { jawaban: [teks, ...unik].join(' '), tabel, status: 'selesai', putaranAlat: putaran };
+      // Tabel terpotong & catatan wajib alat (outlet tanpa data, dst.) WAJIB
+      // disebut di jawaban -- ditambahkan server, bukan diserahkan ke model
+      // (koreksi CEO 29 September 2026).
       const terpotong = tabel.map(catatanTerpotong).filter((c): c is string => c !== null);
-      const jawaban = [satuKalimat(teks), ...terpotong].join(' ');
+      const jawaban = [satuKalimat(teks), ...terpotong, ...unik].join(' ');
       return { jawaban, tabel, status: 'selesai', putaranAlat: putaran };
     }
     if (putaran >= MAKS_PUTARAN_ALAT) {
@@ -113,7 +117,10 @@ export async function jalankanAgen(params: {
     }
 
     const hasil = await params.jalankanPutaran(panggilan);
-    for (const h of hasil) tabel.push(...h.tabel);
+    for (const h of hasil) {
+      tabel.push(...h.tabel);
+      wajib.push(...(h.catatanWajib ?? []));
+    }
 
     // Bagian model dikirim balik apa adanya (termasuk thoughtSignature kalau ada).
     isi.push(jawabanModel);

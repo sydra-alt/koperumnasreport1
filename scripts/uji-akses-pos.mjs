@@ -83,6 +83,10 @@ try {
   cek('Cuko (manager_resto Pekansari): hanya Pekansari', aCuko.boleh === true && sama(aCuko.outlet_pos_ids, [POS.pekansari]) && aCuko.peran_pos === 'manager', aCuko);
 
   // ─── Akun uji (diubah di dalam transaksi) ────────────────────────────
+  // uji-ceo punya_akses_pos MATI secara bawaan (29 September 2026: akunnya
+  // manager semua outlet produksi) -- dinyalakan di dalam transaksi ini saja.
+  await sebagaiOwner();
+  await q('update public.profile set punya_akses_pos = true where id = $1', [ujiCeo]);
   const aCeo = await akses(ujiCeo);
   cek('CEO: manager (bukan owner), semua outlet', aCeo.boleh === true && aCeo.peran_pos === 'manager' && aCeo.semua_outlet === true && aCeo.audit_semua === false, aCeo);
 

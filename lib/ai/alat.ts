@@ -54,6 +54,13 @@ export const PESAN_STATUS = {
 export type HasilAlat = {
   untukModel: Record<string, unknown>;
   tabel: TabelAi[];
+  /**
+   * Kalimat yang WAJIB ditambahkan server ke jawaban apa adanya (bukan
+   * diserahkan ke model) -- mis. outlet tanpa catatan stok, bahan tanpa stok
+   * minimum. Koreksi CEO 29 September 2026: jangan pernah "semua outlet"
+   * kalau sebagian outlet tidak punya data.
+   */
+  catatanWajib?: string[];
   catatan: { alat: string; argumen: Record<string, unknown>; sumber: 'lokal' | 'pos'; status: StatusAlat; jumlahBaris: number | null };
 };
 
@@ -131,6 +138,12 @@ export const DEKLARASI_ALAT: DeklarasiFungsi[] = [
     parameters: { type: 'OBJECT', properties: { date: { type: 'STRING', description: 'Opsional, YYYY-MM-DD. Kosong = hari ini.' } } },
   },
   {
+    name: 'cakupan_resep',
+    description:
+      'Bahan yang TIDAK dipakai resep mana pun (jadi TIDAK PERNAH terpotong oleh penjualan) dan produk yang tidak punya resep (penjualannya tidak memotong bahan apa pun), per outlet, dengan jumlahnya. Pakai untuk pertanyaan seperti "bahan yang belum masuk ke produk/resep sehingga tidak berkurang". Ini BUKAN soal bahan yang tidak terjual bulan ini -- untuk itu pakai penjualan_vs_stok.',
+    parameters: { type: 'OBJECT', properties: { outlet: outletOpsional } },
+  },
+  {
     name: 'penjualan_vs_stok',
     description:
       'Perbandingan pemakaian bahan dari penjualan dengan pergerakan stok lain (waste, selisih opname, masuk, keluar lain) per bahan per outlet. Maks 92 hari. Diurutkan dari selisih opname terbesar.',
@@ -142,6 +155,7 @@ const NAMA_POS: Record<string, string> = {
   penjualan_per_item: 'sales_item_detail',
   stok_bahan: 'stock_levels',
   status_opname: 'opname_status',
+  cakupan_resep: 'recipe_coverage',
   penjualan_vs_stok: 'sales_vs_stock',
 };
 const NAMA_LOKAL = new Set(['status_laporan', 'presensi', 'omzet_pos_harian']);
@@ -197,6 +211,14 @@ const KOLOM: Record<string, { judul: string; kolom: KolomTabelAi[] }> = {
   status_opname_mingguan: {
     judul: 'Opname mingguan',
     kolom: [k('outlet', 'Outlet'), k('minggu_mulai', 'Minggu mulai'), k('minggu_selesai', 'Minggu selesai'), k('status_mingguan', 'Status'), k('batas', 'Batas')],
+  },
+  cakupan_resep: {
+    judul: 'Bahan tanpa resep',
+    kolom: [k('outlet', 'Outlet'), k('bahan', 'Bahan'), k('satuan', 'Satuan'), k('stok', 'Stok', 'angka')],
+  },
+  cakupan_resep_produk: {
+    judul: 'Produk tanpa resep',
+    kolom: [k('outlet', 'Outlet'), k('produk', 'Produk'), k('kategori', 'Kategori')],
   },
   penjualan_vs_stok: {
     judul: 'Penjualan vs pergerakan stok',
@@ -425,11 +447,47 @@ function hasilPosKeAlat(p: PanggilanAlat, hasil: HasilPos, cakupanOutlet: 'all' 
   const tabelTabel: TabelAi[] = [];
   if (baris.length > 0) tabelTabel.push(tabel(p.name, baris, hasil.totalCount));
   if (mingguan.length > 0) tabelTabel.push(tabel('status_opname_mingguan', mingguan, mingguan.length));
+  const cakupanResep = hasil.extra?.recipeCoverage;
+  if (p.name === 'cakupan_resep' && cakupanResep && cakupanResep.products.length > 0) {
+    tabelTabel.push(tabel('cakupan_resep_produk', cakupanResep.products, cakupanResep.productTotal));
+  }
+
+  const cakupanStok = hasil.extra?.stockCoverage;
+  const catatanWajib: string[] = [];
+  const tambahanStok: Record<string, unknown> = {};
+  if (p.name === 'stok_bahan' && cakupanStok) {
+    if (cakupanStok.outletsWithoutStock.length > 0) {
+      catatanWajib.push(`Outlet tanpa catatan stok sama sekali: ${cakupanStok.outletsWithoutStock.join(', ')}.`);
+      tambahanStok.outlet_tanpa_catatan_stok = cakupanStok.outletsWithoutStock;
+    }
+    if (cakupanStok.withoutMinimum > 0) {
+      catatanWajib.push(
+        `${cakupanStok.withoutMinimum} dari ${cakupanStok.stockRows} catatan stok belum punya stok minimum, jadi "di bawah minimum" belum bisa dinilai untuk bahan itu.`,
+      );
+      tambahanStok.catatan_stok_tanpa_minimum = cakupanStok.withoutMinimum;
+    }
+  }
+
+  if (p.name === 'cakupan_resep' && cakupanResep) {
+    const perOutlet = cakupanResep.perOutlet
+      .map((o) => `${o.outletName} ${o.ingredientsWithoutRecipe} bahan / ${o.productsWithoutRecipe} produk`)
+      .join('; ');
+    if (perOutlet) catatanWajib.push(`Tanpa resep per outlet (bahan tidak pernah terpotong / produk tidak memotong bahan): ${perOutlet}.`);
+    const kosong = cakupanResep.perOutlet.filter((o) => o.stockRows === 0).map((o) => o.outletName);
+    if (kosong.length > 0) {
+      catatanWajib.push(`Outlet tanpa catatan stok (bahan tanpa resep di sana belum bisa dihitung): ${kosong.join(', ')}.`);
+    }
+    catatanWajib.push(
+      `Di master bahan: ${cakupanResep.masterIngredientsWithoutRecipe} dari ${cakupanResep.masterIngredients} bahan tidak dipakai resep mana pun.`,
+    );
+    tambahanStok.per_outlet = cakupanResep.perOutlet;
+    tambahanStok.produk_tanpa_resep_total = cakupanResep.productTotal;
+  }
 
   const untukModel = ringkasUntukModel(
     baris,
     hasil.totalCount,
-    { periode, outlet, ...(baris.length > 0 ? { ringkasan: ringkasan(p.name, baris, hasil.totalCount) } : {}) },
+    { periode, outlet, ...tambahanStok, ...(baris.length > 0 ? { ringkasan: ringkasan(p.name, baris, hasil.totalCount) } : {}) },
     batasHak,
   );
   if (mingguan.length > 0) untukModel.opname_mingguan = mingguan;
@@ -437,6 +495,7 @@ function hasilPosKeAlat(p: PanggilanAlat, hasil: HasilPos, cakupanOutlet: 'all' 
   return {
     untukModel,
     tabel: tabelTabel,
+    ...(catatanWajib.length > 0 ? { catatanWajib } : {}),
     catatan: catatan(p.name, p.args, 'pos', hasil.totalCount > 0 ? 'ok' : batasHak ? 'kosong_dalam_hak' : 'kosong', hasil.totalCount),
   };
 }

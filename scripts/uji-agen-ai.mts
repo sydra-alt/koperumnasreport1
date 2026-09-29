@@ -419,6 +419,54 @@ const jpa = (klien: SupabaseClient, panggilan: Parameters<typeof jalankanPutaran
   cek('alat lokal: TIDAK_BERHAK tidak dicoba ulang (batas hak, bukan galat)', s2.rpcDipanggil.length === 1);
 }
 
+// 12. Kejujuran stok & cakupan resep (koreksi CEO 29 Sep): catatan wajib server.
+{
+  process.env.POS_INTEGRASI_URL = 'https://pos.contoh.test';
+  process.env.POS_HANDOFF_SECRET = 'rahasia-uji-minimal-32-karakter-panjangnya!!';
+  const pos = (result: object) => {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ access: 'ok', outletScope: 'all', results: [{ name: 'x', result }] }), { status: 200 })) as typeof fetch;
+  };
+  pos({
+    status: 'ok', outletFilter: 'all_visible', period: null, totalCount: 65,
+    rows: [{ outlet: 'Indokopi Jatinegara', bahan: 'susu', satuan: 'ml', stok: '10', minimum: '0', di_bawah_minimum: false }],
+    extra: { stockCoverage: { outletsWithoutStock: ['Indokopi Lite Kemayoran', 'Indosteak Cempaka Putih', 'Indosteak Pekansari'], withoutMinimum: 65, stockRows: 65 } },
+  });
+  const [stok] = await jpa(supabasePalsu().klien, [{ name: 'stok_bahan', args: {} }]);
+  cek('stok: catatan wajib menyebut 3 outlet tanpa catatan stok + 65 dari 65 tanpa minimum',
+    (stok!.catatanWajib ?? []).some((c) => c.includes('Indokopi Lite Kemayoran, Indosteak Cempaka Putih, Indosteak Pekansari')) &&
+      (stok!.catatanWajib ?? []).some((c) => c.startsWith('65 dari 65 catatan stok belum punya stok minimum')), stok!.catatanWajib);
+  const m = modelBerurutan([panggilAlat('stok_bahan'), teks('Tidak ada bahan di bawah minimum untuk semua outlet.')]);
+  const r = await jalankanAgen({
+    panggilModel: m.panggil, instruksi: 'x', fungsi: DEKLARASI_ALAT, riwayat: [], pertanyaan: 'stok di bawah minimum?',
+    jalankanPutaran: async () => [stok!],
+  });
+  cek('jawaban akhir SELALU memuat outlet tanpa data & tanpa minimum (ditambahkan server, apa pun kata model)',
+    r.jawaban.includes('Outlet tanpa catatan stok sama sekali: Indokopi Lite Kemayoran') && r.jawaban.includes('belum punya stok minimum'), r.jawaban);
+  cek('instruksi melarang "semua outlet" kalau ada outlet tanpa catatan stok', /JANGAN PERNAH menulis "semua outlet"/.test(instruksiSistem(HARI_INI)));
+
+  pos({
+    status: 'ok', outletFilter: 'all_visible', period: null, totalCount: 2,
+    rows: [{ outlet: 'Indokopi Jatinegara', bahan: 'Gula Aren', satuan: 'g', stok: '500' }, { outlet: 'Indokopi Jatinegara', bahan: 'Es Batu', satuan: 'g', stok: '0' }],
+    extra: { recipeCoverage: {
+      perOutlet: [
+        { outletName: 'Indokopi Jatinegara', ingredientsWithoutRecipe: 2, productsWithoutRecipe: 3, stockRows: 65 },
+        { outletName: 'Indosteak Pekansari', ingredientsWithoutRecipe: 0, productsWithoutRecipe: 7, stockRows: 0 },
+      ],
+      products: [{ outlet: 'Indosteak Pekansari', produk: 'Sirloin', kategori: 'Steak' }],
+      productTotal: 10, masterIngredientsWithoutRecipe: 40, masterIngredients: 225,
+    } },
+  });
+  const [resep] = await jpa(supabasePalsu().klien, [{ name: 'cakupan_resep', args: {} }]);
+  cek('cakupan resep: hitungan per outlet + outlet tanpa catatan stok + master bahan, dua tabel (bahan & produk)',
+    (resep!.catatanWajib ?? []).some((c) => c.includes('Indokopi Jatinegara 2 bahan / 3 produk; Indosteak Pekansari 0 bahan / 7 produk')) &&
+      (resep!.catatanWajib ?? []).some((c) => c.includes('belum bisa dihitung): Indosteak Pekansari')) &&
+      (resep!.catatanWajib ?? []).some((c) => c.includes('40 dari 225 bahan')) &&
+      resep!.tabel.map((t) => t.judul).join() === 'Bahan tanpa resep,Produk tanpa resep', { catatan: resep!.catatanWajib, tabel: resep!.tabel.map((t) => t.judul) });
+  const dek = DEKLARASI_ALAT.find((d) => d.name === 'cakupan_resep');
+  cek('deklarasi cakupan_resep membedakan "tidak masuk resep" dari "tidak terjual bulan ini"', Boolean(dek && /BUKAN soal bahan yang tidak terjual/.test(dek.description)));
+}
+
 let gagal = 0;
 for (const h of hasil) {
   if (!h.lolos) gagal += 1;
