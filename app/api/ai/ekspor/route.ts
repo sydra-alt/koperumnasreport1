@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { createClient as createServerClient } from '../../../../lib/supabase/server';
 import { bukaWorkbook, buatSheet, responsXlsx } from '../../../../lib/ekspor/workbook';
-import type { TabelAi } from '../../../../lib/ai/tabel';
+import { keteranganSaringan, saringanDariQuery, saringTabel, type TabelAi } from '../../../../lib/ai/tabel';
 
 /**
  * GET /api/ai/ekspor?pesan=<id>&tabel=<urutan> — satu tabel dari jawaban
  * asisten AI sebagai Excel. Dibaca ulang lewat sesi penanya (RLS ai_pesan:
  * cuma pemiliknya), jadi id pesan orang lain = 404, bukan data orang lain.
+ *
+ * Saringan layar (cari, outlet, urut -- 29 September 2026) ikut lewat query
+ * dan diterapkan dengan fungsi yang SAMA (saringTabel): file berisi persis
+ * baris yang tersaring, dan saringannya ditulis di dalam file.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -37,7 +41,10 @@ export async function GET(request: Request) {
       numFmt: k.jenis === 'rupiah' ? '#,##0' : k.jenis === 'angka' ? '#,##0.####' : undefined,
     })),
   );
-  for (const baris of tabel.baris) {
+  const saringan = saringanDariQuery(tabel, url.searchParams);
+  const barisTersaring = saringTabel(tabel, saringan);
+  const keterangan = keteranganSaringan(tabel, saringan);
+  for (const baris of barisTersaring) {
     const sel: Record<string, string | number | null> = {};
     for (const k of tabel.kolom) {
       const v = baris[k.key] ?? null;
@@ -46,6 +53,10 @@ export async function GET(request: Request) {
       else sel[k.key] = v === null ? null : String(v);
     }
     sheet.addRow(sel);
+  }
+  if (keterangan) {
+    sheet.addRow({});
+    sheet.addRow({ [tabel.kolom[0]!.key]: `Disaring: ${keterangan}. ${barisTersaring.length} dari ${tabel.baris.length} baris.` });
   }
   if (tabel.totalBaris > tabel.baris.length) {
     sheet.addRow({});
