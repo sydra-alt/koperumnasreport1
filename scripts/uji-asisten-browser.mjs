@@ -63,6 +63,7 @@ const pulihkan = pasangPemulih('uji-asisten-browser', async () => {
 let kode = 1;
 const browser = await chromium.launch();
 try {
+ uji: {
   const { error } = await admin.auth.admin.updateUserById(id, { password: pw });
   if (error) throw new Error(`reset password gagal: ${error.message}`);
   await db.query('update public.profile set harus_ganti_password = false where id = $1', [id]);
@@ -134,6 +135,41 @@ try {
       PERIODE_HARAPAN.cocok.test(isiJawaban), JSON.stringify(isiJawaban));
   }
 
+  // ─── (opsional) Pertanyaan LANJUTAN di percakapan yang SAMA ──────────
+  // UJI_LANJUTAN="..." -> tanya lanjutan, cetak jawaban + log alat, lalu
+  // selesai (uji riwayat di bawah dilewati -- mode ini untuk mereproduksi
+  // percakapan dua langkah seperti yang dialami pengguna).
+  if (process.env.UJI_LANJUTAN) {
+    await kotak.fill(process.env.UJI_LANJUTAN);
+    const mulai2 = Date.now();
+    await page.getByRole('button', { name: 'Kirim', exact: true }).click();
+    await page.getByText('Menunggu jawaban...').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+    await page.getByText('Menunggu jawaban...').waitFor({ state: 'detached', timeout: 90000 });
+    const galat2 = (await page.locator('[role="alert"]').allInnerTexts()).filter((t) => t.trim() !== '');
+    const semua = await gelembungTeks();
+    const jawaban2 = (semua[3] ?? '').replace(/^Asisten:\s*/, '');
+    const tabel2 = await page.locator('section[aria-label]').evaluateAll((els) =>
+      els.map((el) => ({
+        judul: el.getAttribute('aria-label'),
+        outlet: [...new Set([...el.querySelectorAll('tbody tr')].map((tr) => tr.querySelector('td')?.textContent))],
+        baris: el.querySelectorAll('tbody tr').length,
+      })),
+    );
+    await page.screenshot({ path: SCREENSHOT.replace('.png', '-lanjutan.png'), fullPage: true });
+    const log2 = (await db.query(
+      `select alat, argumen, status, jumlah_baris from public.ai_panggilan_alat where user_id = $1 order by created_at desc limit 4`, [id],
+    )).rows;
+    console.log(`\nLanjutan: ${process.env.UJI_LANJUTAN}`);
+    console.log(`Waktu jawab: ${((Date.now() - mulai2) / 1000).toFixed(1)} detik`);
+    if (galat2.length) console.log(`GALAT DI LAYAR: ${galat2.join(' | ')}`);
+    console.log(`Jawaban: ${JSON.stringify(jawaban2)}`);
+    console.log(`Tabel di layar: ${JSON.stringify(tabel2)}`);
+    console.log(`Log alat (terbaru dulu): ${JSON.stringify(log2)}`);
+    catat('lanjutan dijawab tanpa galat', galat2.length === 0 && jawaban2.length > 0 && !/tidak bisa diambil/i.test(jawaban2), JSON.stringify(jawaban2));
+    kode = cek.every((c) => c.lolos) ? 0 : 1;
+    break uji;
+  }
+
   // ─── 2. Muat ulang halaman: percakapan tetap ada di riwayat ──────────
   await page.reload();
   await kotak.waitFor({ state: 'visible', timeout: 20000 });
@@ -191,6 +227,7 @@ try {
 
   console.log(`\nScreenshot: ${SCREENSHOT.replace('.png', '-{1,2,3,4}-*.png')}`);
   kode = cek.every((c) => c.lolos) ? 0 : 1;
+ }
 } catch (e) {
   console.error(`GAGAL: ${e instanceof Error ? e.message : e}`);
 } finally {
