@@ -467,6 +467,102 @@ const jpa = (klien: SupabaseClient, panggilan: Parameters<typeof jalankanPutaran
   cek('deklarasi cakupan_resep membedakan "tidak masuk resep" dari "tidak terjual bulan ini"', Boolean(dek && /BUKAN soal bahan yang tidak terjual/.test(dek.description)));
 }
 
+// 13. Angka utama DIHITUNG SERVER, model hanya mengutip (koreksi CEO 29 Sep).
+{
+  process.env.POS_INTEGRASI_URL = 'https://pos.contoh.test';
+  process.env.POS_HANDOFF_SECRET = 'rahasia-uji-minimal-32-karakter-panjangnya!!';
+  const pos = (result: object) => {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ access: 'ok', outletScope: 'all', results: [{ name: 'x', result }] }), { status: 200 })) as typeof fetch;
+  };
+  const jawab = async (hasilAlat: Awaited<ReturnType<typeof jpa>>[number], kalimatModel: string, alat = 'stok_bahan') => {
+    const m = modelBerurutan([panggilAlat(alat), teks(kalimatModel)]);
+    return jalankanAgen({ panggilModel: m.panggil, instruksi: 'x', fungsi: DEKLARASI_ALAT, riwayat: [], pertanyaan: '?', jalankanPutaran: async () => [hasilAlat] });
+  };
+
+  // Kasus produksi: 65 Jatinegara + 1 Cempaka Putih, model menulis "Jatinegara (66 bahan)".
+  const barisStok = [
+    ...Array.from({ length: 65 }, (_, i) => ({ outlet: 'Indokopi Jatinegara', bahan: `Bahan ${i}`, satuan: 'gram', stok: '10', minimum: '0', di_bawah_minimum: false })),
+    { outlet: 'Indosteak Cempaka Putih', bahan: 'Beras', satuan: 'gram', stok: '5', minimum: '0', di_bawah_minimum: false },
+  ];
+  pos({
+    status: 'ok', outletFilter: 'all_visible', period: null, totalCount: 66, rows: barisStok,
+    extra: { stockCoverage: { outletsWithoutStock: ['Indokopi Lite Kemayoran', 'Indosteak Pekansari'], withoutMinimum: 66, stockRows: 66 } },
+  });
+  const [stok] = await jpa(supabasePalsu().klien, [{ name: 'stok_bahan', args: {} }]);
+  const perOutlet = (stok!.untukModel as { ringkasan_per_outlet?: Record<string, { catatan_stok: number }> }).ringkasan_per_outlet;
+  cek('stok: ringkasan_per_outlet dari server (Jatinegara 65, Cempaka Putih 1)',
+    perOutlet?.['Indokopi Jatinegara']?.catatan_stok === 65 && perOutlet?.['Indosteak Cempaka Putih']?.catatan_stok === 1, perOutlet);
+  cek('stok: catatan wajib memuat hitungan per outlet dari server',
+    (stok!.catatanWajib ?? [])[0] === 'Catatan stok per outlet: Indokopi Jatinegara 65, Indosteak Cempaka Putih 1.', stok!.catatanWajib);
+
+  const salah = await jawab(stok!, 'Berikut adalah data stok bahan untuk Indokopi Jatinegara (66 bahan); data untuk Indokopi Lite Kemayoran dan Indosteak Pekansari tidak tersedia.');
+  cek('model menempelkan total 66 ke Jatinegara -> kalimat DIGANTI kalimat server',
+    salah.jawaban.startsWith('66 catatan stok bahan; 0 di bawah minimum.') && !salah.jawaban.includes('Jatinegara (66') &&
+      salah.jawaban.includes('Catatan stok per outlet: Indokopi Jatinegara 65, Indosteak Cempaka Putih 1.') && /bukan miliknya/.test(salah.kalimatDiganti ?? ''),
+    { jawaban: salah.jawaban, alasan: salah.kalimatDiganti });
+  const benar = await jawab(stok!, '66 catatan stok bahan: Indokopi Jatinegara 65 dan Indosteak Cempaka Putih 1, tidak ada yang di bawah minimum.');
+  cek('model mengutip angka server dengan benar -> kalimat model DIPERTAHANKAN',
+    benar.jawaban.startsWith('66 catatan stok bahan: Indokopi Jatinegara 65') && !benar.kalimatDiganti, { jawaban: benar.jawaban, alasan: benar.kalimatDiganti });
+  const jumlahSendiri = await jawab(stok!, 'Total stok semua bahan 655 gram.');
+  cek('model menjumlahkan baris sendiri (655) -> diganti', !jumlahSendiri.jawaban.includes('655') && /655 tidak dihitung/.test(jumlahSendiri.kalimatDiganti ?? ''), jumlahSendiri.kalimatDiganti);
+  const perHariIni = await jawab(stok!, 'Per 29 Sep 2026 ada 66 catatan stok bahan.');
+  cek('tanggal hari ini boleh disebut walau alat stok tanpa periode', !perHariIni.kalimatDiganti, perHariIni.kalimatDiganti);
+  const persen = await jawab(stok!, 'Sekitar 98% catatan stok ada di Indokopi Jatinegara.');
+  cek('persen yang tidak ada di ringkasan -> diganti', Boolean(persen.kalimatDiganti), persen.kalimatDiganti);
+
+  // Status laporan: angka ringkasan + tanggal periode boleh.
+  const s = supabasePalsu([
+    { pic_nama: 'A', form_key: 'x', hari_belum: 2 },
+    { pic_nama: 'A', form_key: 'y', hari_belum: 0 },
+    { pic_nama: 'B', form_key: 'x', hari_belum: 0 },
+    { pic_nama: 'C', form_key: 'x', hari_belum: 1 },
+  ]);
+  const [lap] = await jpa(s.klien, [{ name: 'status_laporan', args: { periode: 'minggu_ini' } }]);
+  const okLap = await jawab(lap!, '2 dari 3 orang belum mengirim laporan untuk minggu ini (28-29 Sep 2026).', 'status_laporan');
+  cek('status laporan: angka ringkasan + tanggal periode -> dipertahankan', !okLap.kalimatDiganti, okLap.kalimatDiganti);
+  cek('status laporan: kalimat server = orang belum / total + penugasan',
+    lap!.utama?.kalimat === '2 dari 3 orang belum mengirim laporan minggu ini (28-29 Sep 2026); 2 dari 4 penugasan belum lengkap.', lap!.utama?.kalimat);
+
+  // Omzet: total dari baris TOTAL Postgres, format rupiah Indonesia dikenali; "juta" dibulatkan -> diganti.
+  const so = supabasePalsu([
+    { tingkat: 'hari', outlet: 'Indokopi Jatinegara', tanggal: '2026-09-28', jumlah_order: 10, penjualan_bersih: 1200000, uang_diterima: 1200000, refund: 0 },
+    { tingkat: 'outlet', outlet: 'Indokopi Jatinegara', tanggal: null, jumlah_order: 10, penjualan_bersih: 1200000, uang_diterima: 1200000, refund: 0 },
+    { tingkat: 'outlet', outlet: 'Indosteak Pekansari', tanggal: null, jumlah_order: 4, penjualan_bersih: 845500, uang_diterima: 845500, refund: 0 },
+    { tingkat: 'total', outlet: null, tanggal: null, jumlah_order: 14, penjualan_bersih: 2045500, uang_diterima: 2045500, refund: 0 },
+  ]);
+  const [omzet] = await jpa(so.klien, [{ name: 'omzet_pos_harian', args: { periode: 'kemarin' } }]);
+  cek('omzet: kalimat server dari baris total Postgres + per outlet',
+    omzet!.utama?.kalimat === 'Penjualan bersih di semua outlet yang bisa dilihat penanya kemarin (28 Sep 2026): Rp2.045.500 dari 14 order; Indokopi Jatinegara Rp1.200.000, Indosteak Pekansari Rp845.500.', omzet!.utama?.kalimat);
+  const okOmzet = await jawab(omzet!, 'Penjualan bersih kemarin (28 Sep 2026) Rp2.045.500 dari 14 order: Indokopi Jatinegara Rp1.200.000, Indosteak Pekansari Rp845.500.', 'omzet_pos_harian');
+  cek('omzet: model mengutip rupiah server -> dipertahankan', !okOmzet.kalimatDiganti, okOmzet.kalimatDiganti);
+  const juta = await jawab(omzet!, 'Penjualan bersih kemarin sekitar Rp2,05 juta.', 'omzet_pos_harian');
+  cek('omzet: dibulatkan sendiri ("Rp2,05 juta") -> diganti kalimat server', juta.jawaban.startsWith('Penjualan bersih di semua outlet'), juta.jawaban);
+  const tukar = await jawab(omzet!, 'Kemarin Indosteak Pekansari Rp1.200.000 dan Indokopi Jatinegara Rp845.500.', 'omzet_pos_harian');
+  cek('omzet: angka dua outlet ditukar -> diganti', /bukan miliknya/.test(tukar.kalimatDiganti ?? ''), tukar.kalimatDiganti);
+
+  // Presensi: jumlah menit dihitung server.
+  const sp = supabasePalsu([
+    { nama: 'A', hari_terlambat: 2, total_menit_terlambat: 35, hari_absen_masuk: 5, hari_tanpa_absen_masuk: 0 },
+    { nama: 'B', hari_terlambat: 0, total_menit_terlambat: 0, hari_absen_masuk: 5, hari_tanpa_absen_masuk: 1 },
+    { nama: 'C', hari_terlambat: 1, total_menit_terlambat: 12, hari_absen_masuk: 4, hari_tanpa_absen_masuk: 0 },
+  ]);
+  const [pres] = await jpa(sp.klien, [{ name: 'presensi', args: { periode: 'minggu_ini' } }]);
+  const rp = (pres!.untukModel as { ringkasan?: Record<string, number> }).ringkasan;
+  cek('presensi: hari & menit terlambat dijumlahkan SERVER (3 hari, 47 menit)', rp?.hari_terlambat_total === 3 && rp?.menit_terlambat_total === 47, rp);
+
+  // Baris terpotong: jumlah dari baris TIDAK dibuat.
+  pos({ status: 'ok', outletFilter: 'all_visible', period: { from: '2026-09-01', to: '2026-09-29' }, totalCount: 900,
+    rows: [{ tanggal: '2026-09-02', invoice: 'A1', item: 'Kopi', qty: '2', penjualan: '30000' }] });
+  const [item] = await jpa(supabasePalsu().klien, [{ name: 'penjualan_per_item', args: { periode: 'bulan_ini' } }]);
+  const ri = (item!.untukModel as { ringkasan?: Record<string, number> }).ringkasan;
+  cek('penjualan per item terpotong (1 dari 900): tanpa jumlah qty/penjualan, kalimat server menyebutnya',
+    ri?.baris_total === 900 && ri?.penjualan_total === undefined && /tidak dihitung karena tidak semua baris terambil/.test(item!.utama?.kalimat ?? ''), { ri, k: item!.utama?.kalimat });
+
+  cek('instruksi: angka hanya dikutip dari ringkasan, tidak pernah dijumlahkan sendiri',
+    /HANYA DIKUTIP dari `ringkasan`/.test(instruksiSistem(HARI_INI)) && /jangan menempelkan total ke satu outlet/.test(instruksiSistem(HARI_INI)));
+}
+
 let gagal = 0;
 for (const h of hasil) {
   if (!h.lolos) gagal += 1;

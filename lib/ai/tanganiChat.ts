@@ -147,6 +147,8 @@ export async function tanganiChat(deps: {
     console.error('ai/chat:', err instanceof GalatPenyediaAi ? `gemini ${err.status} ${err.alasan}` : err instanceof Error ? err.message : 'gagal');
     return galat(502, 'Asisten AI sedang tidak bisa dihubungi. Coba lagi sebentar lagi.', { percakapanId });
   }
+  // Kalimat model memuat angka yang tidak dihitung server -> diganti (lib/ai/angkaUtama.ts).
+  if (hasil.kalimatDiganti) console.warn(`ai/chat: kalimat model diganti kalimat server (${hasil.kalimatDiganti})`);
 
   const { data: pesanModel, error: galatModel } = await supabase
     .from('ai_pesan')

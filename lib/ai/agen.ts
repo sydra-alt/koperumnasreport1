@@ -1,5 +1,6 @@
 import type { BagianGemini, DeklarasiFungsi, IsiGemini, PanggilModel } from './gemini';
 import { catatanTerpotong, type TabelAi } from './tabel';
+import { periksaKalimat, type AngkaUtama } from './angkaUtama';
 
 /**
  * Loop agen asisten AI (28 September 2026). Murni -- model dan pelaksana alat
@@ -19,13 +20,15 @@ export const JAWABAN_KOSONG = 'Maaf, saya tidak bisa menjawab pertanyaan itu den
 
 export type PanggilanModel = { name: string; args: Record<string, unknown> };
 
-export type HasilPutaran = { untukModel: Record<string, unknown>; tabel: TabelAi[]; catatanWajib?: string[] };
+export type HasilPutaran = { untukModel: Record<string, unknown>; tabel: TabelAi[]; catatanWajib?: string[]; utama?: AngkaUtama };
 
 export type HasilAgen = {
   jawaban: string;
   tabel: TabelAi[];
   status: 'selesai' | 'melebihi_putaran' | 'kosong';
   putaranAlat: number;
+  /** Terisi kalau kalimat model gagal diperiksa dan diganti kalimat server. */
+  kalimatDiganti?: string;
 };
 
 export function instruksiSistem(tanggalHariIni: string): string {
@@ -36,6 +39,7 @@ export function instruksiSistem(tanggalHariIni: string): string {
     'Aturan, wajib diikuti:',
     '- Jawab singkat. Angka lebih dulu. Tanpa pembukaan, tanpa mengulang pertanyaan, tanpa basa-basi.',
     '- KALAU HASIL ALAT PUNYA BARIS (tabel ditampilkan otomatis di bawah jawaban): jawaban HANYA SATU KALIMAT -- angka utama dari `ringkasan`, periode, dan cakupan (outlet/orang). Contoh: "18 dari 31 orang belum mengirim laporan untuk 28-29 Sep 2026." JANGAN menyebut nama atau baris satu per satu; tabel adalah rinciannya.',
+    '- ANGKA HITUNGAN DAN JUMLAH HANYA DIKUTIP dari `ringkasan` dan `ringkasan_per_outlet`, apa adanya. JANGAN PERNAH menjumlahkan, menghitung, atau membagi baris sendiri. Angka per outlet HANYA dari `ringkasan_per_outlet` untuk outlet itu; jangan menempelkan total ke satu outlet. Tanpa persen atau rata-rata kecuali ada di ringkasan. Kalimat yang memuat angka lain diganti sistem.',
     '- Periode relatif ("hari ini", "kemarin", "minggu ini", "minggu lalu", "bulan ini", "bulan lalu"): isi argumen `periode`, JANGAN menghitung start_date/end_date sendiri.',
     '- Sebut periode dengan bahasa biasa: `periode.nama` kalau ada, lalu tanggalnya, mis. "minggu ini (28-29 Sep 2026)". JANGAN PERNAH menulis kode seperti minggu_ini, hari_ini, atau bulan_lalu.',
     '- Setiap angka di jawaban HARUS berasal dari hasil alat. Jangan pernah memperkirakan, menebak, atau mengisi dari ingatan.',
@@ -95,6 +99,7 @@ export async function jalankanAgen(params: {
   const isi: IsiGemini[] = [...params.riwayat, { role: 'user', parts: [{ text: params.pertanyaan }] }];
   const tabel: TabelAi[] = [];
   const wajib: string[] = [];
+  const utama: AngkaUtama[] = [];
 
   for (let putaran = 0; ; putaran++) {
     const jawabanModel = await params.panggilModel({ instruksiSistem: params.instruksi, isi, fungsi: params.fungsi });
@@ -109,8 +114,19 @@ export async function jalankanAgen(params: {
       // disebut di jawaban -- ditambahkan server, bukan diserahkan ke model
       // (koreksi CEO 29 September 2026).
       const terpotong = tabel.map(catatanTerpotong).filter((c): c is string => c !== null);
-      const jawaban = [satuKalimat(teks), ...terpotong, ...unik].join(' ');
-      return { jawaban, tabel, status: 'selesai', putaranAlat: putaran };
+      // Angka utama hitungan server: kalimat model yang memuat angka lain, atau
+      // menempelkan angka ke outlet yang bukan pemiliknya, diganti kalimat server.
+      let kalimat = satuKalimat(teks);
+      let kalimatDiganti: string | undefined;
+      if (utama.length > 0) {
+        const cek = periksaKalimat(kalimat, utama);
+        if (!cek.ok) {
+          kalimatDiganti = cek.alasan;
+          kalimat = [...new Set(utama.map((u) => u.kalimat))].join(' ');
+        }
+      }
+      const jawaban = [kalimat, ...terpotong, ...unik].join(' ');
+      return { jawaban, tabel, status: 'selesai', putaranAlat: putaran, ...(kalimatDiganti ? { kalimatDiganti } : {}) };
     }
     if (putaran >= MAKS_PUTARAN_ALAT) {
       return { jawaban: JAWABAN_MELEBIHI_PUTARAN, tabel: [], status: 'melebihi_putaran', putaranAlat: putaran };
@@ -120,6 +136,7 @@ export async function jalankanAgen(params: {
     for (const h of hasil) {
       tabel.push(...h.tabel);
       wajib.push(...(h.catatanWajib ?? []));
+      if (h.utama) utama.push(h.utama);
     }
 
     // Bagian model dikirim balik apa adanya (termasuk thoughtSignature kalau ada).

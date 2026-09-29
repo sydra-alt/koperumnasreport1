@@ -4,6 +4,7 @@ import type { KolomTabelAi, NilaiSel, TabelAi } from './tabel';
 import { panggilAlatPos, type HasilPos } from './jembatanPos';
 import type { AksesPos } from '../posHandoff';
 import { PERIODE_RELATIF, periodeRelatifValid, rentangPeriode } from './periode';
+import { hitungAngkaUtama, type AngkaUtama, type KonteksAngka } from './angkaUtama';
 
 /**
  * Daftar TETAP alat asisten AI (28 September 2026). Gemini cuma memilih nama
@@ -61,6 +62,8 @@ export type HasilAlat = {
    * kalau sebagian outlet tidak punya data.
    */
   catatanWajib?: string[];
+  /** Angka & kalimat utama hitungan server (lib/ai/angkaUtama.ts) -- ada kalau alat mengembalikan baris. */
+  utama?: AngkaUtama;
   catatan: { alat: string; argumen: Record<string, unknown>; sumber: 'lokal' | 'pos'; status: StatusAlat; jumlahBaris: number | null };
 };
 
@@ -312,34 +315,18 @@ const BATAS_HAK_LOKAL: Record<string, (c: CakupanLokal) => string | null> = {
 };
 
 /**
- * Angka utama untuk kalimat jawaban (koreksi CEO 29 September 2026: kalau
- * tabel tampil, prosa cuma SATU kalimat -- angka utama, periode, cakupan).
- * Dihitung di sini dari baris hasil alat, supaya model tidak menghitung
- * sendiri. Kalau baris dipotong (baris < total), hitungan per baris tidak
- * dibuat -- cuma jumlah total dari sumber.
+ * Angka utama (hitungan/jumlah) DIHITUNG SERVER -- model hanya mengutip,
+ * tidak pernah menjumlahkan baris sendiri (koreksi CEO 29 September 2026).
+ * `ringkasan` + `ringkasan_per_outlet` dikirim ke model; `utama` dipakai
+ * lib/ai/agen.ts untuk memeriksa kalimat model.
  */
-function ringkasan(alat: string, baris: Baris[], totalBaris: number): Record<string, number> {
-  const lengkap = baris.length === totalBaris;
-  const unik = (kunci: string, syarat: (b: Baris) => boolean = () => true) =>
-    new Set(baris.filter(syarat).map((b) => String(b[kunci]))).size;
-  switch (alat) {
-    case 'status_laporan':
-      return {
-        orang_total: unik('pic_nama'),
-        orang_belum_lapor: unik('pic_nama', (b) => Number(b.hari_belum) > 0),
-        penugasan_total: baris.length,
-      };
-    case 'presensi':
-      return { orang_total: baris.length, orang_pernah_terlambat: baris.filter((b) => Number(b.hari_terlambat) > 0).length };
-    case 'stok_bahan':
-      return lengkap
-        ? { bahan_total: totalBaris, bahan_di_bawah_minimum: baris.filter((b) => b.di_bawah_minimum === true).length }
-        : { bahan_total: totalBaris };
-    case 'status_opname':
-      return { outlet_total: baris.length, outlet_opname_harian_kurang: baris.filter((b) => b.status_harian === 'Kurang').length };
-    default:
-      return { baris_total: totalBaris };
-  }
+function angkaUtama(alat: string, baris: Baris[], totalBaris: number, k: KonteksAngka) {
+  const h = hitungAngkaUtama(alat, baris, totalBaris, k);
+  return {
+    untukModel: { ringkasan: h.ringkasan, ...(h.ringkasanPerOutlet ? { ringkasan_per_outlet: h.ringkasanPerOutlet } : {}) },
+    utama: h.utama,
+    perOutlet: h.ringkasanPerOutlet,
+  };
 }
 
 // ─── Alat lokal ────────────────────────────────────────────────────────────
@@ -392,20 +379,17 @@ async function jalankanLokal(supabase: SupabaseClient, p: PanggilanAlat, cakupan
   const periode = { dari: r.dari, sampai: r.sampai, ...(r.nama ? { nama: r.nama } : {}) };
   const outlet = p.name === 'omzet_pos_harian' ? str(p.args, 'outlet') || 'semua outlet yang bisa dilihat penanya' : undefined;
   const batasHak = BATAS_HAK_LOKAL[p.name]?.(cakupan) ?? null;
+  const au = baris.length > 0 ? angkaUtama(p.name, baris, baris.length, { periode, outlet, hariIni }) : null;
   return {
-    untukModel: ringkasUntukModel(
-      baris,
-      baris.length,
-      { periode, ...(outlet ? { outlet } : {}), ...(baris.length > 0 && p.name !== 'omzet_pos_harian' ? { ringkasan: ringkasan(p.name, baris, baris.length) } : {}) },
-      batasHak,
-    ),
+    untukModel: ringkasUntukModel(baris, baris.length, { periode, ...(outlet ? { outlet } : {}), ...(au?.untukModel ?? {}) }, batasHak),
     tabel: baris.length > 0 ? [tabel(p.name, baris, baris.length)] : [],
+    ...(au ? { utama: au.utama } : {}),
     catatan: catatan(p.name, p.args, 'lokal', baris.length > 0 ? 'ok' : batasHak ? 'kosong_dalam_hak' : 'kosong', baris.length),
   };
 }
 
 // ─── Alat POS ──────────────────────────────────────────────────────────────
-function hasilPosKeAlat(p: PanggilanAlat, hasil: HasilPos, cakupanOutlet: 'all' | 'limited' | 'none'): HasilAlat {
+function hasilPosKeAlat(p: PanggilanAlat, hasil: HasilPos, cakupanOutlet: 'all' | 'limited' | 'none', hariIni: string): HasilAlat {
   // Izin layar POS tidak dimiliki / membership tanpa outlet = BATAS HAK, bukan data kosong.
   if (hasil.status === 'forbidden' || cakupanOutlet === 'none') return tolak(p, 'pos', 'tidak_berhak');
   if (hasil.status !== 'ok') {
@@ -484,18 +468,31 @@ function hasilPosKeAlat(p: PanggilanAlat, hasil: HasilPos, cakupanOutlet: 'all' 
     tambahanStok.produk_tanpa_resep_total = cakupanResep.productTotal;
   }
 
-  const untukModel = ringkasUntukModel(
-    baris,
-    hasil.totalCount,
-    { periode, outlet, ...tambahanStok, ...(baris.length > 0 ? { ringkasan: ringkasan(p.name, baris, hasil.totalCount) } : {}) },
-    batasHak,
-  );
+  const au =
+    baris.length > 0
+      ? angkaUtama(p.name, baris, hasil.totalCount, {
+          periode: periode && 'dari' in periode ? periode : null,
+          outlet,
+          hariIni,
+          mingguan,
+          ...(cakupanResep ? { resep: cakupanResep } : {}),
+          ...(cakupanStok ? { outletTanpaStok: cakupanStok.outletsWithoutStock } : {}),
+        })
+      : null;
+  // Jumlah catatan stok PER OUTLET dari server -- model tidak pernah membaginya sendiri
+  // (koreksi CEO 29 September 2026: 65 Jatinegara + 1 Cempaka Putih sempat ditulis "Jatinegara 66").
+  if (p.name === 'stok_bahan' && au?.perOutlet && Object.keys(au.perOutlet).length > 1) {
+    const rinci = Object.entries(au.perOutlet).map(([o, n]) => `${o} ${n.catatan_stok}`).join(', ');
+    catatanWajib.unshift(`Catatan stok per outlet: ${rinci}.`);
+  }
+  const untukModel = ringkasUntukModel(baris, hasil.totalCount, { periode, outlet, ...tambahanStok, ...(au?.untukModel ?? {}) }, batasHak);
   if (mingguan.length > 0) untukModel.opname_mingguan = mingguan;
 
   return {
     untukModel,
     tabel: tabelTabel,
     ...(catatanWajib.length > 0 ? { catatanWajib } : {}),
+    ...(au ? { utama: au.utama } : {}),
     catatan: catatan(p.name, p.args, 'pos', hasil.totalCount > 0 ? 'ok' : batasHak ? 'kosong_dalam_hak' : 'kosong', hasil.totalCount),
   };
 }
@@ -532,7 +529,7 @@ export async function jalankanPutaranAlat(
       else console.error('alat POS tetap gagal sesudah coba ulang');
     }
     pos.forEach(({ p, i }, urut) => {
-      if (jawaban.akses === 'ok') hasil[i] = hasilPosKeAlat(p, jawaban.hasil[urut]!, jawaban.cakupanOutlet);
+      if (jawaban.akses === 'ok') hasil[i] = hasilPosKeAlat(p, jawaban.hasil[urut]!, jawaban.cakupanOutlet, hariIni);
       else if (jawaban.akses === 'tanpa_akses_pos') hasil[i] = tolak(p, 'pos', 'tanpa_akses_pos');
       else {
         hasil[i] = { untukModel: { status: 'galat', pesan: 'Data POS tidak bisa diambil saat ini.' }, tabel: [], catatan: catatan(p.name, p.args, 'pos', 'galat', null) };
