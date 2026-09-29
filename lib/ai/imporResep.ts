@@ -171,7 +171,11 @@ export function tabelHasilImporResep(produk: ProdukResepHasil[], importId: strin
       })),
     )
     .sort((a, b) => a.urut - b.urut)
-    .map(({ urut: _urut, ...r }) => r);
+    .map((r) => {
+      const salinan: Record<string, unknown> = { ...r };
+      delete salinan.urut;
+      return salinan as Omit<typeof r, 'urut'>;
+    });
   return {
     judul: 'Hasil impor resep',
     kolom: [
