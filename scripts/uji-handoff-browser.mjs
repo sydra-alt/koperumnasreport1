@@ -69,7 +69,7 @@ try {
   await page.waitForURL((u) => !u.pathname.startsWith('/masuk'), { timeout: 20000 });
   await page.goto(`${BASE_URL}/`);
 
-  const tombol = page.getByRole('link', { name: /Buka Dashboard Toko/ });
+  const tombol = page.locator('a[href="/api/pos-handoff"]');
   await tombol.waitFor({ state: 'visible', timeout: 20000 });
   const [tab] = await Promise.all([context.waitForEvent('page'), tombol.click()]);
   await tab.waitForLoadState('load', { timeout: 30000 });
