@@ -237,6 +237,9 @@ const LABEL_STATUS: Record<string, string> = {
   missing: 'Kurang',
   complete: 'Lengkap',
   not_required: 'Tidak wajib',
+  // Setting outlet mewajibkan opname buka/tutup, tapi belum ada bahan
+  // "Hitung Tiap Shift" ber-stok di sana (pos-fnb, 29 September 2026).
+  no_ingredients: 'Wajib, belum ada bahan Hitung Tiap Shift',
   no_shift: 'Belum ada shift',
   done: 'Sudah',
   due: 'Belum (masih dalam batas)',

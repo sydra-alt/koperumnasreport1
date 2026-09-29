@@ -559,6 +559,17 @@ const jpa = (klien: SupabaseClient, panggilan: Parameters<typeof jalankanPutaran
   cek('penjualan per item terpotong (1 dari 900): tanpa jumlah qty/penjualan, kalimat server menyebutnya',
     ri?.baris_total === 900 && ri?.penjualan_total === undefined && /tidak dihitung karena tidak semua baris terambil/.test(item!.utama?.kalimat ?? ''), { ri, k: item!.utama?.kalimat });
 
+  // Opname harian: outlet wajib tanpa bahan berflag -> label jelas, dihitung server (29 Sep).
+  pos({ status: 'ok', outletFilter: 'all_visible', period: { date: '2026-09-29' }, totalCount: 2,
+    rows: [
+      { outlet: 'Indokopi Jatinegara', tanggal: '2026-09-29', status_harian: 'no_ingredients', jumlah_shift: 1, opname_buka_kurang: 0, opname_tutup_kurang: 0 },
+      { outlet: 'Bestie Thrift', tanggal: '2026-09-29', status_harian: 'not_required', jumlah_shift: 1, opname_buka_kurang: 0, opname_tutup_kurang: 0 },
+    ] });
+  const [op] = await jpa(supabasePalsu().klien, [{ name: 'status_opname', args: {} }]);
+  cek('status opname: "no_ingredients" -> label jelas + dihitung di kalimat server',
+    op!.tabel[0]!.baris[0]!.status_harian === 'Wajib, belum ada bahan Hitung Tiap Shift' && op!.tabel[0]!.baris[1]!.status_harian === 'Tidak wajib' &&
+      /1 outlet wajib tapi belum punya bahan Hitung Tiap Shift/.test(op!.utama?.kalimat ?? ''), { baris: op!.tabel[0]?.baris, k: op!.utama?.kalimat });
+
   cek('instruksi: angka hanya dikutip dari ringkasan, tidak pernah dijumlahkan sendiri',
     /HANYA DIKUTIP dari `ringkasan`/.test(instruksiSistem(HARI_INI)) && /jangan menempelkan total ke satu outlet/.test(instruksiSistem(HARI_INI)));
 }

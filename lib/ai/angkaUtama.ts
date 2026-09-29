@@ -218,11 +218,13 @@ export function hitungAngkaUtama(alat: string, baris: Baris[], totalBaris: numbe
       ringkasan = {
         outlet_total: baris.length,
         outlet_opname_harian_kurang: baris.filter((b) => b.status_harian === 'Kurang').length,
+        outlet_wajib_tanpa_bahan: baris.filter((b) => b.status_harian === 'Wajib, belum ada bahan Hitung Tiap Shift').length,
         outlet_opname_mingguan_lewat_batas: mingguan.filter((b) => b.status_mingguan === 'Lewat batas').length,
       };
       const tanggal = typeof baris[0]?.tanggal === 'string' ? teksPeriode({ dari: baris[0].tanggal, sampai: baris[0].tanggal }) : per;
       kalimat =
         `${ringkasan.outlet_opname_harian_kurang} dari ${ringkasan.outlet_total} outlet kurang opname harian pada ${tanggal}` +
+        (ringkasan.outlet_wajib_tanpa_bahan! > 0 ? `; ${ringkasan.outlet_wajib_tanpa_bahan} outlet wajib tapi belum punya bahan Hitung Tiap Shift` : '') +
         (mingguan.length > 0 ? `; opname mingguan lewat batas di ${ringkasan.outlet_opname_mingguan_lewat_batas} outlet.` : '.');
       break;
     }
