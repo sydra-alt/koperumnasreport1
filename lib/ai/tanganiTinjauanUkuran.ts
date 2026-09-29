@@ -89,7 +89,7 @@ export async function tanganiTinjauanUkuran(deps: {
       peran: 'model',
       balasan_untuk: pesanUser.id,
       isi: ringkasanTinjauan({ jumlah: j.usulan.length, tidakDiusulkan: j.tidakDiusulkan, bentrok: j.bentrokSatuanDasar }),
-      tabel: [tabelUsulanUkuran(j.usulan)],
+      tabel: [tabelUsulanUkuran(j.usulan, j.reviewId)],
     })
     .select('id, peran, isi, tabel, created_at')
     .single();

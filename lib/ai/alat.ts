@@ -477,6 +477,9 @@ function hasilPosKeAlat(p: PanggilanAlat, hasil: HasilPos, cakupanOutlet: 'all' 
     if (anomali.jenisBelumDitentukan > 0) {
       catatanWajib.push(`${anomali.jenisBelumDitentukan} bahan jenis ukurannya belum ditentukan, jadi belum dicek aturan jenis ukuran.`);
     }
+    if ((anomali.tanpaDataPemakaian ?? 0) > 0) {
+      catatanWajib.push(`${anomali.tanpaDataPemakaian} catatan stok belum ada data pemakaian (tanpa penjualan 30 hari), jadi belum dicek aturan stok berlebih.`);
+    }
   }
 
   if (p.name === 'cakupan_resep' && cakupanResep) {

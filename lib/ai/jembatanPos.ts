@@ -25,7 +25,7 @@ export type HasilPos =
         weekly?: Record<string, string | number | boolean | null>[];
         stockCoverage?: { outletsWithoutStock: string[]; withoutMinimum: number; stockRows: number };
         // data_anomalies (29 September 2026): dihitung pos-fnb, AI hanya mengutip.
-        anomalySummary?: { perAturan: Record<string, number>; jenisBelumDitentukan: number; bahanDicek: number };
+        anomalySummary?: { perAturan: Record<string, number>; jenisBelumDitentukan: number; bahanDicek: number; tanpaDataPemakaian: number };
         recipeCoverage?: {
           perOutlet: { outletName: string; ingredientsWithoutRecipe: number; productsWithoutRecipe: number; stockRows: number }[];
           products: Record<string, string | number | boolean | null>[];

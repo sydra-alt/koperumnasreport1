@@ -582,7 +582,7 @@ const jpa = (klien: SupabaseClient, panggilan: Parameters<typeof jalankanPutaran
     globalThis.fetch = (async () =>
       new Response(JSON.stringify({ access: 'ok', outletScope: 'all', results: [{ name: 'x', result }] }), { status: 200 })) as typeof fetch;
   };
-  const ringkasan = { perAturan: { satuan_nama: 1, stok_minus: 2, harga_masuk: 0, biaya_nol: 0, stok_berlebih: 0, satuan_jenis: 0, konversi_jenis: 0 }, jenisBelumDitentukan: 40, bahanDicek: 225 };
+  const ringkasan = { perAturan: { satuan_nama: 1, stok_minus: 2, harga_masuk: 0, biaya_nol: 0, stok_berlebih: 0, satuan_jenis: 0, konversi_jenis: 0 }, jenisBelumDitentukan: 40, bahanDicek: 225, tanpaDataPemakaian: 60 };
   pos({
     status: 'ok', outletFilter: 'all_visible', period: { date: '2026-09-29' }, totalCount: 3,
     rows: [
@@ -594,14 +594,15 @@ const jpa = (klien: SupabaseClient, panggilan: Parameters<typeof jalankanPutaran
   });
   const [an] = await jpa(supabasePalsu().klien, [{ name: 'anomali_data', args: {} }]);
   cek('anomali: kalimat server dari hitungan pos-fnb per aturan + jumlah belum ditentukan',
-    an!.utama?.kalimat === '3 temuan anomali dari 225 bahan yang dilacak stoknya: 1 satuan di nama beda dengan satuan dasar, 2 stok minus. 40 bahan jenis ukurannya belum ditentukan, jadi belum dicek aturan jenis.',
+    an!.utama?.kalimat === '3 temuan anomali dari 225 bahan yang dilacak stoknya: 1 satuan di nama beda dengan satuan dasar, 2 stok minus. 40 bahan jenis ukurannya belum ditentukan, jadi belum dicek aturan jenis. 60 catatan stok belum ada data pemakaian, jadi belum dicek aturan stok berlebih.',
     an!.utama?.kalimat);
   cek('anomali: catatan wajib menyebut bahan yang belum ditentukan', (an!.catatanWajib ?? []).some((c) => c.startsWith('40 bahan jenis ukurannya belum ditentukan')), an!.catatanWajib);
 
   pos({ status: 'ok', outletFilter: 'all_visible', period: { date: '2026-09-29' }, totalCount: 0, rows: [], extra: { anomalySummary: { ...ringkasan, perAturan: {} } } });
   const [nol] = await jpa(supabasePalsu().klien, [{ name: 'anomali_data', args: {} }]);
   cek('anomali: nol temuan -> catatan "tidak ada temuan dari N bahan", BUKAN sekadar "tidak ada data"',
-    (nol!.catatanWajib ?? [])[0] === 'Tidak ada temuan anomali dari 225 bahan yang dilacak stoknya.' && (nol!.catatanWajib ?? []).length === 2, nol!.catatanWajib);
+    (nol!.catatanWajib ?? [])[0] === 'Tidak ada temuan anomali dari 225 bahan yang dilacak stoknya.' && (nol!.catatanWajib ?? []).length === 3, nol!.catatanWajib);
+  cek('anomali: "belum ada data pemakaian" disebut, bukan dibagi nol', (an!.catatanWajib ?? []).some((c) => c.startsWith('60 catatan stok belum ada data pemakaian')), an!.catatanWajib);
   const dek = DEKLARASI_ALAT.find((d) => d.name === 'anomali_data');
   cek('deklarasi anomali_data: aturan pasti, jangan menebak di luar aturan', Boolean(dek && /ATURAN PASTI/.test(dek.description) && /jangan menambah dugaan/.test(dek.description)));
 }

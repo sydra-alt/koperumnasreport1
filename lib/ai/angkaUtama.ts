@@ -62,7 +62,7 @@ export type KonteksAngka = {
   /** Outlet tanpa catatan stok (stok_bahan). */
   outletTanpaStok?: string[];
   /** Hitungan anomali dari pos-fnb (anomali_data). */
-  anomali?: { perAturan: Record<string, number>; jenisBelumDitentukan: number; bahanDicek: number };
+  anomali?: { perAturan: Record<string, number>; jenisBelumDitentukan: number; bahanDicek: number; tanpaDataPemakaian?: number };
 };
 
 const LABEL_ANOMALI: Record<string, string> = {
@@ -265,6 +265,7 @@ export function hitungAngkaUtama(alat: string, baris: Baris[], totalBaris: numbe
         for (const [kode, jumlahAturan] of Object.entries(a.perAturan)) ringkasan[`aturan_${kode}`] = jumlahAturan;
         ringkasan.bahan_jenis_belum_ditentukan = a.jenisBelumDitentukan;
         ringkasan.bahan_dicek = a.bahanDicek;
+        ringkasan.catatan_stok_tanpa_data_pemakaian = a.tanpaDataPemakaian ?? 0;
       }
       const rinci = a
         ? Object.entries(a.perAturan)
@@ -274,7 +275,8 @@ export function hitungAngkaUtama(alat: string, baris: Baris[], totalBaris: numbe
         : '';
       kalimat =
         `${angkaId(totalBaris)} temuan anomali dari ${a ? angkaId(a.bahanDicek) : '?'} bahan yang dilacak stoknya${rinci ? `: ${rinci}` : ''}.` +
-        (a && a.jenisBelumDitentukan > 0 ? ` ${a.jenisBelumDitentukan} bahan jenis ukurannya belum ditentukan, jadi belum dicek aturan jenis.` : '');
+        (a && a.jenisBelumDitentukan > 0 ? ` ${a.jenisBelumDitentukan} bahan jenis ukurannya belum ditentukan, jadi belum dicek aturan jenis.` : '') +
+        (a && (a.tanpaDataPemakaian ?? 0) > 0 ? ` ${a.tanpaDataPemakaian} catatan stok belum ada data pemakaian, jadi belum dicek aturan stok berlebih.` : '');
       break;
     }
     case 'penjualan_vs_stok': {

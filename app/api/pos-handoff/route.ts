@@ -18,6 +18,7 @@ import { buatTokenHandoffPos, type AksesPos } from '../../../lib/posHandoff';
 const NEXT_POS_DIIZINKAN = [
   /^\/stock-opnames\?import=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
   /^\/recipes\?import=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  /^\/ingredients\/jenis-ukuran\?review=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
 ];
 
 export async function GET(request: Request) {

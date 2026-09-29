@@ -69,7 +69,11 @@ export type UsulanTersimpan = { ingredientId: string; name: string; baseUnit: st
 
 const LABEL = { volume: 'Volume', berat: 'Berat', hitungan: 'Hitungan' } as Record<string, string>;
 
-export function tabelUsulanUkuran(usulan: UsulanTersimpan[]): TabelAi {
+export function tautanTinjauanUkuran(reviewId: string): string {
+  return `/api/pos-handoff?next=${encodeURIComponent(`/ingredients/jenis-ukuran?review=${reviewId}`)}`;
+}
+
+export function tabelUsulanUkuran(usulan: UsulanTersimpan[], reviewId: string): TabelAi {
   return {
     judul: 'Usulan jenis ukuran',
     kolom: [
@@ -81,6 +85,7 @@ export function tabelUsulanUkuran(usulan: UsulanTersimpan[]): TabelAi {
     ],
     baris: usulan.map((u) => ({ bahan: u.name, satuan_dasar: u.baseUnit, satuan_beli: u.purchaseUnit, usulan: LABEL[u.usulan] ?? u.usulan, alasan: u.alasan })),
     totalBaris: usulan.length,
+    tautan: { label: 'Buka tinjauan di POS', href: tautanTinjauanUkuran(reviewId) },
   };
 }
 
@@ -89,6 +94,6 @@ export function ringkasanTinjauan(p: { jumlah: number; tidakDiusulkan: number; b
   const bagian = [`AI mengusulkan jenis ukuran untuk ${p.jumlah} bahan.`];
   if (p.tidakDiusulkan > 0) bagian.push(`${p.tidakDiusulkan} bahan tidak mendapat usulan yang sah dan tetap "belum ditentukan".`);
   if (p.bentrok > 0) bagian.push(`${p.bentrok} usulan tidak sesuai satuan dasar yang tercatat -- periksa baik-baik.`);
-  bagian.push('Belum ada yang tersimpan. Konfirmasi atau ubah tiap bahan di POS: Bahan > Tinjauan jenis ukuran.');
+  bagian.push('Belum ada yang tersimpan. Konfirmasi atau ubah tiap bahan di POS (tombol Buka tinjauan, atau Bahan > Tinjauan jenis ukuran).');
   return bagian.join(' ');
 }

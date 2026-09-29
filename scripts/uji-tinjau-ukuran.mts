@@ -5,7 +5,7 @@
 // Jalankan: npx tsx scripts/uji-tinjau-ukuran.mts
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { parseUsulan, ringkasanTinjauan, type BahanTinjauan } from '../lib/ai/tinjauanUkuran';
+import { parseUsulan, ringkasanTinjauan, tautanTinjauanUkuran, type BahanTinjauan } from '../lib/ai/tinjauanUkuran';
 import { tanganiTinjauanUkuran } from '../lib/ai/tanganiTinjauanUkuran';
 import type { JawabanTinjauanUkuranPos } from '../lib/ai/jembatanPos';
 
@@ -41,7 +41,7 @@ const BAHAN: BahanTinjauan[] = [
   cek(
     'ringkasan: angka dari pos-fnb + belum tersimpan',
     ringkasanTinjauan({ jumlah: 1, tidakDiusulkan: 1, bentrok: 1 }) ===
-      'AI mengusulkan jenis ukuran untuk 1 bahan. 1 bahan tidak mendapat usulan yang sah dan tetap "belum ditentukan". 1 usulan tidak sesuai satuan dasar yang tercatat -- periksa baik-baik. Belum ada yang tersimpan. Konfirmasi atau ubah tiap bahan di POS: Bahan > Tinjauan jenis ukuran.',
+      'AI mengusulkan jenis ukuran untuk 1 bahan. 1 bahan tidak mendapat usulan yang sah dan tetap "belum ditentukan". 1 usulan tidak sesuai satuan dasar yang tercatat -- periksa baik-baik. Belum ada yang tersimpan. Konfirmasi atau ubah tiap bahan di POS (tombol Buka tinjauan, atau Bahan > Tinjauan jenis ukuran).',
   );
 }
 
@@ -109,6 +109,8 @@ const OK = (body: Record<string, unknown>): JawabanTinjauanUkuranPos =>
   cek('log alat: tinjau_jenis_ukuran, sumber pos, ok', log.alat === 'tinjau_jenis_ukuran' && log.sumber === 'pos' && log.status === 'ok', log);
   const pesanModel = sb.tercatat.filter((t) => t.tabel === 'ai_pesan')[1]!.baris;
   cek('jawaban: "belum ada yang tersimpan" + tabel usulan', String(pesanModel.isi).includes('Belum ada yang tersimpan') && (pesanModel.tabel as { baris: unknown[] }[])[0]!.baris.length === 2, pesanModel.isi);
+  const tautan = (pesanModel.tabel as { tautan?: { href: string } }[])[0]!.tautan;
+  cek('tautan "Buka tinjauan" lewat handoff, next = /ingredients/jenis-ukuran?review=<id>', tautan?.href === tautanTinjauanUkuran('r1') && decodeURIComponent(tautan.href).endsWith('/ingredients/jenis-ukuran?review=r1'), tautan);
 }
 {
   const { r, model, sb } = await jalankan(() => ({ akses: 'ok', status: 'ok', ingredients: [] }));
