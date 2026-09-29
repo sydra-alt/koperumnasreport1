@@ -14,6 +14,7 @@ import {
 import { KerangkaTeks } from '../../components/Kerangka';
 import { TabelJawaban } from '../../components/asisten/TabelJawaban';
 import { ImporOpname } from '../../components/asisten/ImporOpname';
+import { ImporResep } from '../../components/asisten/ImporResep';
 
 /**
  * Asisten AI, fase 1 (28 September 2026) -- tanya jawab & analisis. Status
@@ -61,7 +62,7 @@ function Asisten() {
   const [menunggu, setMenunggu] = useState<string | null>(null);
   const [galat, setGalat] = useState<string | null>(null);
   const [riwayatTerbuka, setRiwayatTerbuka] = useState(false);
-  const [panelImpor, setPanelImpor] = useState(false);
+  const [panelImpor, setPanelImpor] = useState<'opname' | 'resep' | null>(null);
 
   const daftar = useDaftarPercakapan(true);
   const pesan = usePesanPercakapan(percakapanId);
@@ -75,7 +76,7 @@ function Asisten() {
     setGalat(null);
     setDraf('');
     setRiwayatTerbuka(false);
-    setPanelImpor(false);
+    setPanelImpor(null);
   }
 
   async function tanganiKirim(e: FormEvent) {
@@ -160,18 +161,26 @@ function Asisten() {
             Riwayat
           </button>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setPanelImpor((v) => !v);
-            setGalat(null);
-          }}
-          className="border px-4 text-sm"
-          style={{ borderColor: 'var(--biru-garis)', borderRadius: 'var(--radius-kecil)', minHeight: 44, color: 'var(--biru)' }}
-          aria-expanded={panelImpor}
-        >
-          Impor opname (Excel)
-        </button>
+        {(
+          [
+            ['opname', 'Impor opname (Excel)'],
+            ['resep', 'Impor resep (Excel)'],
+          ] as const
+        ).map(([jenis, label]) => (
+          <button
+            key={jenis}
+            type="button"
+            onClick={() => {
+              setPanelImpor((v) => (v === jenis ? null : jenis));
+              setGalat(null);
+            }}
+            className="border px-4 text-sm"
+            style={{ borderColor: 'var(--biru-garis)', borderRadius: 'var(--radius-kecil)', minHeight: 44, color: 'var(--biru)' }}
+            aria-expanded={panelImpor === jenis}
+          >
+            {label}
+          </button>
+        ))}
         <div className={riwayatTerbuka ? 'block' : 'hidden md:block'}>{daftarRiwayat}</div>
       </aside>
 
@@ -184,19 +193,22 @@ function Asisten() {
         </header>
 
         {panelImpor ? (
-          <ImporOpname
-            habis={habis}
-            onSelesai={(hasil) => {
-              queryClient.setQueryData<PesanAi[]>(['ai-pesan', hasil.percakapanId], [hasil.pesanUser as PesanAi, hasil.pesanModel as PesanAi]);
-              setPercakapanId(hasil.percakapanId);
-              setGalat(null);
-              setPanelImpor(false);
-            }}
-            onGalat={(pesan, id) => {
-              setGalat(pesan);
-              if (id) setPercakapanId(id);
-            }}
-          />
+          (() => {
+            const props = {
+              habis,
+              onSelesai: (hasil: { percakapanId: string; pesanUser: unknown; pesanModel: unknown }) => {
+                queryClient.setQueryData<PesanAi[]>(['ai-pesan', hasil.percakapanId], [hasil.pesanUser as PesanAi, hasil.pesanModel as PesanAi]);
+                setPercakapanId(hasil.percakapanId);
+                setGalat(null);
+                setPanelImpor(null);
+              },
+              onGalat: (pesan: string, id: string | null) => {
+                setGalat(pesan);
+                if (id) setPercakapanId(id);
+              },
+            };
+            return panelImpor === 'opname' ? <ImporOpname {...props} /> : <ImporResep {...props} />;
+          })()
         ) : null}
 
         <div className="flex flex-col gap-4">

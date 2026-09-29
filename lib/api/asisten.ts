@@ -136,3 +136,28 @@ export function useImporOpname() {
     },
   });
 }
+
+/** Impor resep dari Excel (29 September 2026) -- satu file untuk seluruh bisnis, tanpa pilihan outlet. */
+export function useImporResep() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { file: File }) => {
+      const form = new FormData();
+      form.set('file', input.file);
+      const res = await fetch('/api/asisten/impor-resep', { method: 'POST', body: form });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new GalatKirimAi(body.error ?? 'Terjadi kesalahan. Coba lagi.', Boolean(body.batasTercapai), body.percakapanId ?? null);
+      }
+      return {
+        percakapanId: body.percakapanId as string,
+        pesanUser: kePesan(body.pesanUser as BarisPesan),
+        pesanModel: kePesan(body.pesanModel as BarisPesan),
+      };
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['ai-percakapan'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-status'] });
+    },
+  });
+}

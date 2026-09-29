@@ -14,7 +14,11 @@ import { buatTokenHandoffPos, type AksesPos } from '../../../lib/posHandoff';
  * belum dipetakan di sana, pos-fnb sendiri yang menampilkan pesan gagal
  * yang wajar -- route ini tidak tahu dan tidak perlu tahu itu.
  */
-const NEXT_POS_DIIZINKAN = /^\/stock-opnames\?import=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// SATU pola persis per jenis impor -- tidak ada wildcard (CLAUDE.md #13.6).
+const NEXT_POS_DIIZINKAN = [
+  /^\/stock-opnames\?import=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  /^\/recipes\?import=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+];
 
 export async function GET(request: Request) {
   const supabase = await createServerClient();
@@ -49,6 +53,6 @@ export async function GET(request: Request) {
   // token (payload token tidak ditambah -- CLAUDE.md #13), daftar putih yang
   // sama persis dengan pos-fnb (safeHandoffNext). Lainnya dibuang.
   const next = new URL(request.url).searchParams.get('next');
-  const nextAman = next && NEXT_POS_DIIZINKAN.test(next) ? `&next=${encodeURIComponent(next)}` : '';
+  const nextAman = next && NEXT_POS_DIIZINKAN.some((p) => p.test(next)) ? `&next=${encodeURIComponent(next)}` : '';
   return NextResponse.redirect(`${posUrl.replace(/\/+$/, '')}/handoff?token=${token}${nextAman}`);
 }

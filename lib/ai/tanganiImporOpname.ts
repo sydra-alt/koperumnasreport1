@@ -40,7 +40,7 @@ type PanggilPos = (user: { id: string; email: string }, body: Record<string, unk
 
 type HasilGerbang = { ok: false; gagal: HasilTangani } | { ok: true; user: { id: string; email: string }; status: StatusAi };
 
-async function gerbang(supabase: SupabaseClient, terkonfigurasi: boolean): Promise<HasilGerbang> {
+export async function gerbang(supabase: SupabaseClient, terkonfigurasi: boolean): Promise<HasilGerbang> {
   const {
     data: { user },
   } = await supabase.auth.getUser();

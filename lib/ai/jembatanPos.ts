@@ -98,15 +98,37 @@ export type JawabanImporPos =
       rows: import('./imporOpname').BarisHasilImpor[];
     };
 
-export async function panggilImporOpnamePos(
+export type JawabanImporResepPos =
+  | { akses: 'tanpa_akses_pos' }
+  | { akses: 'galat' }
+  | { akses: 'ok'; status: 'forbidden' | 'invalid' }
+  | {
+      akses: 'ok';
+      status: 'ok';
+      importId: string;
+      ringkasan: import('./imporResep').RingkasanResep;
+      produk: import('./imporResep').ProdukResepHasil[];
+    };
+
+export function panggilImporOpnamePos(user: { id: string; email: string }, body: Record<string, unknown>, akses: AksesPos | null): Promise<JawabanImporPos> {
+  return panggilImporPos<JawabanImporPos>('/api/ai/opname-import', user, body, akses);
+}
+
+/** Impor resep (29 September 2026): endpoint pos-fnb HANYA menyimpan recipe_imports, tidak pernah resep. */
+export function panggilImporResepPos(user: { id: string; email: string }, body: Record<string, unknown>, akses: AksesPos | null): Promise<JawabanImporResepPos> {
+  return panggilImporPos<JawabanImporResepPos>('/api/ai/recipe-import', user, body, akses);
+}
+
+async function panggilImporPos<T>(
+  path: '/api/ai/opname-import' | '/api/ai/recipe-import',
   user: { id: string; email: string },
   body: Record<string, unknown>,
   akses: AksesPos | null,
-): Promise<JawabanImporPos> {
+): Promise<T | { akses: 'galat' } | { akses: 'tanpa_akses_pos' }> {
   const posUrl = process.env.POS_INTEGRASI_URL;
   if (!posUrl || !process.env.POS_HANDOFF_SECRET) return { akses: 'galat' };
   try {
-    const res = await fetch(`${posUrl.replace(/\/+$/, '')}/api/ai/opname-import`, {
+    const res = await fetch(`${posUrl.replace(/\/+$/, '')}${path}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ ...body, token: buatTokenPos(user, AI_QUERY_AUDIENCE, { akses }) }),
@@ -122,7 +144,7 @@ export async function panggilImporOpnamePos(
     if (j.access !== 'ok') return { akses: 'galat' };
     const isi = { ...j };
     delete isi.access;
-    return { akses: 'ok', ...isi } as JawabanImporPos;
+    return { akses: 'ok', ...isi } as T;
   } catch (err) {
     console.error('jembatanPos impor:', err instanceof Error ? err.name : 'gagal');
     return { akses: 'galat' };
