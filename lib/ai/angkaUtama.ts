@@ -187,8 +187,11 @@ export function hitungAngkaUtama(alat: string, baris: Baris[], totalBaris: numbe
           penjualan_total: jumlah(baris, 'penjualan'),
           diskon_total: jumlah(baris, 'diskon'),
           modal_total: jumlah(baris, 'modal'),
+          baris_hpp_belum_lengkap: baris.filter((b) => typeof b.modal_belum_lengkap === 'string' && b.modal_belum_lengkap !== '').length,
         };
-        kalimat = `${angkaId(totalBaris)} baris item terjual${di} ${per}: ${angkaId(ringkasan.qty_total!)} qty, penjualan ${rp(ringkasan.penjualan_total!)}.`;
+        kalimat =
+          `${angkaId(totalBaris)} baris item terjual${di} ${per}: ${angkaId(ringkasan.qty_total!)} qty, penjualan ${rp(ringkasan.penjualan_total!)}` +
+          (ringkasan.baris_hpp_belum_lengkap! > 0 ? `; ${ringkasan.baris_hpp_belum_lengkap} baris HPP-nya belum lengkap (harga bahan biaya saja belum diisi).` : '.');
       } else {
         ringkasan = { baris_total: totalBaris };
         kalimat = `${angkaId(totalBaris)} baris item terjual${di} ${per}; total qty dan penjualan tidak dihitung karena tidak semua baris terambil.`;

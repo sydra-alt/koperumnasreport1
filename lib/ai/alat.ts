@@ -194,7 +194,9 @@ const KOLOM: Record<string, { judul: string; kolom: KolomTabelAi[] }> = {
     judul: 'Penjualan per item',
     kolom: [
       k('tanggal', 'Tanggal'), k('invoice', 'Invoice'), k('tipe', 'Tipe'), k('item', 'Item'), k('kategori', 'Kategori'),
-      k('qty', 'Qty', 'angka'), k('diskon', 'Diskon', 'rupiah'), k('modal', 'Modal', 'rupiah'), k('penjualan', 'Penjualan', 'rupiah'),
+      k('qty', 'Qty', 'angka'), k('diskon', 'Diskon', 'rupiah'), k('modal', 'Modal', 'rupiah'),
+      // Bahan biaya saja tanpa harga terakhir (pos-fnb, 29 September 2026): modal cuma bagian yang diketahui.
+      k('modal_belum_lengkap', 'HPP belum lengkap'), k('penjualan', 'Penjualan', 'rupiah'),
     ],
   },
   stok_bahan: {
