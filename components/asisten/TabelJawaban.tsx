@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { tabelKeTsv, teksSel, type TabelAi } from '../../lib/ai/tabel';
+import { BARIS_TAMPIL, catatanTerpotong, tabelKeTsv, teksSel, type TabelAi } from '../../lib/ai/tabel';
 
 /**
  * Satu tabel hasil alat di bawah jawaban asisten, dengan Salin (TSV, bisa
@@ -64,7 +64,7 @@ export function TabelJawaban({ tabel, pesanId, urutan }: { tabel: TabelAi; pesan
             </tr>
           </thead>
           <tbody>
-            {tabel.baris.map((b, i) => (
+            {tabel.baris.slice(0, BARIS_TAMPIL).map((b, i) => (
               <tr key={i}>
                 {tabel.kolom.map((k) => (
                   <td
@@ -85,9 +85,9 @@ export function TabelJawaban({ tabel, pesanId, urutan }: { tabel: TabelAi; pesan
           </tbody>
         </table>
       </div>
-      {tabel.totalBaris > tabel.baris.length ? (
+      {catatanTerpotong(tabel) ? (
         <p className="text-xs" style={{ color: 'var(--label)' }}>
-          Menampilkan {tabel.baris.length} dari {tabel.totalBaris} baris.
+          {catatanTerpotong(tabel)}
         </p>
       ) : null}
       {info ? (

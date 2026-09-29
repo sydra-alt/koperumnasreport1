@@ -330,12 +330,19 @@ async function jalankanLokal(supabase: SupabaseClient, p: PanggilanAlat, cakupan
     return { untukModel: { status: 'argumen_salah', pesan: 'Isi `periode`, atau start_date dan end_date YYYY-MM-DD (awal <= akhir).' }, tabel: [], catatan: catatan(p.name, p.args, 'lokal', 'argumen_salah', null) };
   }
 
-  let rpc;
-  if (p.name === 'status_laporan') rpc = supabase.rpc('ai_status_laporan', { p_dari: r.dari, p_sampai: r.sampai });
-  else if (p.name === 'presensi') rpc = supabase.rpc('ai_presensi', { p_dari: r.dari, p_sampai: r.sampai });
-  else rpc = supabase.rpc('ai_omzet_pos', { p_dari: r.dari, p_sampai: r.sampai, p_outlet: str(p.args, 'outlet') || null });
+  const jalankanRpc = () =>
+    p.name === 'status_laporan'
+      ? supabase.rpc('ai_status_laporan', { p_dari: r.dari, p_sampai: r.sampai })
+      : p.name === 'presensi'
+        ? supabase.rpc('ai_presensi', { p_dari: r.dari, p_sampai: r.sampai })
+        : supabase.rpc('ai_omzet_pos', { p_dari: r.dari, p_sampai: r.sampai, p_outlet: str(p.args, 'outlet') || null });
 
-  const { data, error } = await rpc;
+  let { data, error } = await jalankanRpc();
+  // Galat selain batas hak / rentang salah: catat sebabnya, coba ulang sekali.
+  if (error && !/TIDAK_BERHAK|Rentang tanggal tidak valid/.test(error.message)) {
+    console.warn(`alat lokal ${p.name} gagal, coba ulang sekali: ${error.message}`);
+    ({ data, error } = await jalankanRpc());
+  }
   if (error && /TIDAK_BERHAK/.test(error.message)) return tolak(p, 'lokal', 'tidak_berhak');
   if (error) {
     const rentangSalah = /Rentang tanggal tidak valid/.test(error.message);
@@ -447,7 +454,20 @@ export async function jalankanPutaranAlat(
 
   const pos = panggilan.map((p, i) => ({ p, i })).filter(({ p }) => Object.hasOwn(NAMA_POS, p.name));
   if (pos.length > 0) {
-    const jawaban = await panggilAlatPos(user, pos.map(({ p }) => ({ name: NAMA_POS[p.name]!, args: p.args })));
+    const kirim = () => panggilAlatPos(user, pos.map(({ p }) => ({ name: NAMA_POS[p.name]!, args: p.args })));
+    let jawaban = await kirim();
+    // Koreksi CEO 29 September 2026: pertanyaan tentang outlet yang boleh
+    // dilihat TIDAK BOLEH berakhir "tidak bisa diambil" gara-gara galat
+    // sesaat. Catat sebabnya, coba ulang SEKALI (token baru).
+    const alatGalat = jawaban.akses === 'ok' ? pos.filter((_, urut) => jawaban.akses === 'ok' && jawaban.hasil[urut]?.status === 'error') : [];
+    if (jawaban.akses === 'galat' || alatGalat.length > 0) {
+      console.warn(
+        `alat POS gagal, coba ulang sekali: ${jawaban.akses === 'galat' ? 'jembatan galat' : `galat di ${alatGalat.map(({ p }) => p.name).join(', ')}`}`,
+      );
+      const ulang = await kirim();
+      if (ulang.akses !== 'galat') jawaban = ulang;
+      else console.error('alat POS tetap gagal sesudah coba ulang');
+    }
     pos.forEach(({ p, i }, urut) => {
       if (jawaban.akses === 'ok') hasil[i] = hasilPosKeAlat(p, jawaban.hasil[urut]!, jawaban.cakupanOutlet);
       else if (jawaban.akses === 'tanpa_akses_pos') hasil[i] = tolak(p, 'pos', 'tanpa_akses_pos');

@@ -18,6 +18,27 @@ export type TabelAi = {
   totalBaris: number;
 };
 
+/** Baris yang digambar di layar per tabel; sisanya lewat Unduh Excel. */
+export const BARIS_TAMPIL = 200;
+
+const angka = (n: number) => n.toLocaleString('id-ID');
+
+/**
+ * Kalimat wajib kalau tabel terpotong (koreksi CEO 29 September 2026: baris
+ * TIDAK PERNAH boleh hilang diam-diam). null = semua baris tampil.
+ * - total > yang tampil, semua tersimpan -> Excel berisi semuanya
+ * - total > yang tersimpan (sumber membatasi) -> Excel berisi N pertama, disebut
+ */
+export function catatanTerpotong(tabel: TabelAi): string | null {
+  const tampil = Math.min(BARIS_TAMPIL, tabel.baris.length);
+  if (tabel.totalBaris <= tampil) return null;
+  const ekspor =
+    tabel.baris.length >= tabel.totalBaris
+      ? 'semua baris ada di Unduh Excel'
+      : `Unduh Excel memuat ${angka(tabel.baris.length)} baris pertama`;
+  return `Menampilkan ${angka(tampil)} dari ${angka(tabel.totalBaris)} baris ${tabel.judul.toLowerCase()}; ${ekspor}.`;
+}
+
 export function teksSel(nilai: NilaiSel, jenis: JenisKolom): string {
   if (nilai === null || nilai === undefined) return '';
   if (typeof nilai === 'boolean') return nilai ? 'Ya' : 'Tidak';

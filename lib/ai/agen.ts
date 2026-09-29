@@ -1,5 +1,5 @@
 import type { BagianGemini, DeklarasiFungsi, IsiGemini, PanggilModel } from './gemini';
-import type { TabelAi } from './tabel';
+import { catatanTerpotong, type TabelAi } from './tabel';
 
 /**
  * Loop agen asisten AI (28 September 2026). Murni -- model dan pelaksana alat
@@ -101,7 +101,12 @@ export async function jalankanAgen(params: {
     if (panggilan.length === 0) {
       const teks = teksDari(jawabanModel);
       if (!teks) return { jawaban: JAWABAN_KOSONG, tabel: [], status: 'kosong', putaranAlat: putaran };
-      return { jawaban: tabel.length > 0 ? satuKalimat(teks) : teks, tabel, status: 'selesai', putaranAlat: putaran };
+      if (tabel.length === 0) return { jawaban: teks, tabel, status: 'selesai', putaranAlat: putaran };
+      // Tabel terpotong WAJIB disebut di jawaban -- ditambahkan server, bukan
+      // diserahkan ke model (koreksi CEO 29 September 2026).
+      const terpotong = tabel.map(catatanTerpotong).filter((c): c is string => c !== null);
+      const jawaban = [satuKalimat(teks), ...terpotong].join(' ');
+      return { jawaban, tabel, status: 'selesai', putaranAlat: putaran };
     }
     if (putaran >= MAKS_PUTARAN_ALAT) {
       return { jawaban: JAWABAN_MELEBIHI_PUTARAN, tabel: [], status: 'melebihi_putaran', putaranAlat: putaran };

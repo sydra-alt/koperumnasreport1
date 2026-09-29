@@ -9,6 +9,7 @@ import { jalankanAgen, instruksiSistem, satuKalimat, JAWABAN_MELEBIHI_PUTARAN, M
 import { rentangPeriode } from '../lib/ai/periode';
 import { jalankanPutaranAlat, BARIS_UNTUK_MODEL, DEKLARASI_ALAT } from '../lib/ai/alat';
 import { buatPanggilGemini, GalatPenyediaAi, type IsiGemini, type PermintaanGemini } from '../lib/ai/gemini';
+import { catatanTerpotong } from '../lib/ai/tabel';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 const hasil: { nama: string; lolos: boolean; detail?: unknown }[] = [];
@@ -352,6 +353,63 @@ const jpa = (klien: SupabaseClient, panggilan: Parameters<typeof jalankanPutaran
   cek('sapaan "Anda": aturan eksplisit, dan tidak ada "kamu"/"-mu" di aturan yang ditiru model',
     /Sapa penanya dengan "Anda"/.test(instruksiSistem(HARI_INI)) && aturanSapaan.filter((b) => !/JANGAN PERNAH memakai/.test(b)).every((b) => !/\bkamu\b|\w+mu\b(?!\w)/i.test(b.replace(/\bmu(?=lai)/g, ''))),
     aturanSapaan.filter((b) => /\bkamu\b/i.test(b)));
+}
+
+// 11. TIDAK PERNAH membuang baris diam-diam + coba ulang sekali (koreksi CEO 29 Sep).
+{
+  const baris = (n: number) => Array.from({ length: n }, (_, i) => ({ a: String(i) }));
+  const t250 = { judul: 'Stok bahan', kolom: [{ key: 'a', label: 'A', jenis: 'teks' as const }], baris: baris(250), totalBaris: 250 };
+  const t6000 = { ...t250, baris: baris(5000), totalBaris: 6000 };
+  const t150 = { ...t250, baris: baris(150), totalBaris: 150 };
+  cek('250 baris -> "Menampilkan 200 dari 250 baris ...; semua baris ada di Unduh Excel"',
+    catatanTerpotong(t250) === 'Menampilkan 200 dari 250 baris stok bahan; semua baris ada di Unduh Excel.', catatanTerpotong(t250));
+  cek('sumber 6000, tersimpan 5000 -> catatan menyebut Excel memuat 5.000 baris pertama',
+    /dari 6\.000 baris.*Unduh Excel memuat 5\.000 baris pertama/.test(catatanTerpotong(t6000) ?? ''), catatanTerpotong(t6000));
+  cek('150 baris -> tidak ada catatan (semua tampil)', catatanTerpotong(t150) === null);
+  const m = modelBerurutan([panggilAlat('stok_bahan'), teks('Ada 250 bahan di semua outlet.')]);
+  const r = await jalankanAgen({
+    panggilModel: m.panggil, instruksi: 'x', fungsi: DEKLARASI_ALAT, riwayat: [], pertanyaan: 'stok?',
+    jalankanPutaran: async (p) => p.map(() => ({ untukModel: { status: 'ok' }, tabel: [t250] })),
+  });
+  cek('jawaban dengan tabel terpotong WAJIB menyebut "Menampilkan 200 dari 250 baris" (ditambahkan server)',
+    r.jawaban === 'Ada 250 bahan di semua outlet. Menampilkan 200 dari 250 baris stok bahan; semua baris ada di Unduh Excel.', r.jawaban);
+
+  // POS: jembatan galat sekali -> dicoba ulang, jawaban kedua dipakai.
+  process.env.POS_INTEGRASI_URL = 'https://pos.contoh.test';
+  process.env.POS_HANDOFF_SECRET = 'rahasia-uji-minimal-32-karakter-panjangnya!!';
+  const ok = { access: 'ok', outletScope: 'all', results: [{ name: 'stock_levels', result: { status: 'ok', outletFilter: 'all_visible', period: null, rows: [{ outlet: 'A', bahan: 'susu' }], totalCount: 1 } }] };
+  const galatAlat = { access: 'ok', outletScope: 'all', results: [{ name: 'stock_levels', result: { status: 'error' } }] };
+  const jalankanDengan = async (urutan: (number | object)[]) => {
+    let n = 0;
+    globalThis.fetch = (async () => {
+      const x = urutan[Math.min(n++, urutan.length - 1)]!;
+      return typeof x === 'number' ? new Response('<html>500</html>', { status: x }) : new Response(JSON.stringify(x), { status: 200 });
+    }) as typeof fetch;
+    const hasil = await jpa(supabasePalsu().klien, [{ name: 'stok_bahan', args: {} }]);
+    return { n, status: hasil[0]!.untukModel.status };
+  };
+  const a = await jalankanDengan([500, ok]);
+  cek('POS HTTP 500 lalu ok -> dicoba ulang SEKALI, hasil ok (bukan "tidak bisa diambil")', a.n === 2 && a.status === 'ok', a);
+  const b = await jalankanDengan([galatAlat, ok]);
+  cek('POS alat galat lalu ok -> dicoba ulang, hasil ok', b.n === 2 && b.status === 'ok', b);
+  const c = await jalankanDengan([500, 500, ok]);
+  cek('POS gagal dua kali -> berhenti sesudah SATU coba ulang (2 permintaan), status galat', c.n === 2 && c.status === 'galat', c);
+
+  // Lokal: galat sesaat -> dicoba ulang sekali.
+  let panggilRpc = 0;
+  const kliensesaat = {
+    rpc: (nama: string) => {
+      const jawab = nama === 'ai_cakupan'
+        ? { data: { laporan_semua: true, presensi_semua: true, omzet_pos: true }, error: null }
+        : ++panggilRpc === 1 ? { data: null, error: { message: 'canceling statement due to statement timeout' } } : { data: [{ nama: 'A' }], error: null };
+      return Object.assign(Promise.resolve(jawab), { single: async () => jawab });
+    },
+  } as unknown as SupabaseClient;
+  const l = await jpa(kliensesaat, [{ name: 'presensi', args: { periode: 'minggu_ini' } }]);
+  cek('alat lokal: galat sesaat -> dicoba ulang sekali, hasil ok', panggilRpc === 2 && l[0]!.untukModel.status === 'ok', { panggilRpc, status: l[0]!.untukModel.status });
+  const s2 = supabasePalsu([], CAKUPAN_CEO, 'TIDAK_BERHAK');
+  await jpa(s2.klien, [{ name: 'omzet_pos_harian', args: { periode: 'kemarin' } }]);
+  cek('alat lokal: TIDAK_BERHAK tidak dicoba ulang (batas hak, bukan galat)', s2.rpcDipanggil.length === 1);
 }
 
 let gagal = 0;
