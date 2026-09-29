@@ -1,14 +1,14 @@
-import { AI_QUERY_AUDIENCE, buatTokenPos } from '../posHandoff';
+import { AI_QUERY_AUDIENCE, buatTokenPos, type AksesPos } from '../posHandoff';
 
 /**
  * Jembatan asisten AI ke pos-fnb (28 September 2026). Satu permintaan per
  * PUTARAN alat (semua panggilan alat POS di putaran itu digabung), satu
  * token baru tiap permintaan (sekali pakai, 60 detik).
  *
- * Token cuma membawa email + uid user yang SEDANG bertanya (CLAUDE.md #13) --
- * pos-fnb yang menentukan outlet mana yang boleh ia lihat, lewat
- * report_identity_links + membership di sana. Repo ini TIDAK PERNAH
- * mengirim role/outlet.
+ * Token membawa email + uid user yang SEDANG bertanya dan `akses` hasil
+ * akses_pos_saya() miliknya sendiri (CLAUDE.md #13, 29 September 2026).
+ * pos-fnb menerapkan akses itu dengan batasnya sendiri (maks manager, owner
+ * tidak disentuh) sebelum alat apa pun dijalankan.
  */
 
 export type PanggilanPos = { name: string; args: Record<string, unknown> };
@@ -33,6 +33,7 @@ export type JawabanPos =
 export async function panggilAlatPos(
   user: { id: string; email: string },
   panggilan: PanggilanPos[],
+  akses: AksesPos | null,
 ): Promise<JawabanPos> {
   const posUrl = process.env.POS_INTEGRASI_URL;
   if (!posUrl || !process.env.POS_HANDOFF_SECRET) return { akses: 'galat' };
@@ -41,7 +42,7 @@ export async function panggilAlatPos(
     const res = await fetch(`${posUrl.replace(/\/+$/, '')}/api/ai/tools`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token: buatTokenPos(user, AI_QUERY_AUDIENCE), calls: panggilan }),
+      body: JSON.stringify({ token: buatTokenPos(user, AI_QUERY_AUDIENCE, { akses }), calls: panggilan }),
       signal: AbortSignal.timeout(25_000),
       cache: 'no-store',
     });

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient as createServerClient } from '../../../lib/supabase/server';
-import { buatTokenHandoffPos } from '../../../lib/posHandoff';
+import { buatTokenHandoffPos, type AksesPos } from '../../../lib/posHandoff';
 
 /**
  * GET /api/pos-handoff — titik AWAL "satu pintu masuk" ke dashboard pos-fnb
@@ -32,6 +32,16 @@ export async function GET(request: Request) {
     );
   }
 
-  const token = buatTokenHandoffPos({ id: user.id, email: user.email });
+  // Akses POS orang INI dihitung database laporan (akses_pos_saya(), migrasi
+  // 0068) lewat sesinya sendiri. Kalau ditolak (tanpa_akses_pos, dst.) token
+  // tetap dikirim: pos-fnb yang menampilkan alasannya dengan jelas.
+  const [{ data: akses }, { data: profil }] = await Promise.all([
+    supabase.rpc('akses_pos_saya'),
+    supabase.from('profile').select('nama').eq('id', user.id).maybeSingle(),
+  ]);
+  const token = buatTokenHandoffPos(
+    { id: user.id, email: user.email },
+    { nama: (profil?.nama as string | undefined) ?? null, akses: (akses as AksesPos | null) ?? null },
+  );
   return NextResponse.redirect(`${posUrl.replace(/\/+$/, '')}/handoff?token=${token}`);
 }

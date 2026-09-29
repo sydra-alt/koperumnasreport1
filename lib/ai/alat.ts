@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { DeklarasiFungsi } from './gemini';
 import type { KolomTabelAi, NilaiSel, TabelAi } from './tabel';
 import { panggilAlatPos, type HasilPos } from './jembatanPos';
+import type { AksesPos } from '../posHandoff';
 import { PERIODE_RELATIF, periodeRelatifValid, rentangPeriode } from './periode';
 
 /**
@@ -454,7 +455,10 @@ export async function jalankanPutaranAlat(
 
   const pos = panggilan.map((p, i) => ({ p, i })).filter(({ p }) => Object.hasOwn(NAMA_POS, p.name));
   if (pos.length > 0) {
-    const kirim = () => panggilAlatPos(user, pos.map(({ p }) => ({ name: NAMA_POS[p.name]!, args: p.args })));
+    // Akses POS penanya SENDIRI (dihitung database laporan), ikut di token.
+    const { data: aksesPos } = await supabase.rpc('akses_pos_saya');
+    const kirim = () =>
+      panggilAlatPos(user, pos.map(({ p }) => ({ name: NAMA_POS[p.name]!, args: p.args })), (aksesPos as AksesPos | null) ?? null);
     let jawaban = await kirim();
     // Koreksi CEO 29 September 2026: pertanyaan tentang outlet yang boleh
     // dilihat TIDAK BOLEH berakhir "tidak bisa diambil" gara-gara galat

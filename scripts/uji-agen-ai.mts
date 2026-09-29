@@ -92,6 +92,8 @@ const tabelContoh = { judul: 'x', kolom: [{ key: 'a', label: 'A', jenis: 'teks' 
 // menjawab `cakupan` (bawaan: CEO, melihat semua); rpc lain menjawab `data`
 // atau `galat`.
 type Cakupan = { laporan_semua: boolean; presensi_semua: boolean; omzet_pos: boolean };
+// Hasil akses_pos_saya() palsu -- harus sampai ke token apa adanya.
+const AKSES_POS_UJI = { boleh: true, peran_pos: 'manager', semua_outlet: false, audit_semua: false, outlet_pos_ids: ['11111111-1111-4111-8111-111111111111'] };
 const CAKUPAN_CEO: Cakupan = { laporan_semua: true, presensi_semua: true, omzet_pos: true };
 const CAKUPAN_MANAGER: Cakupan = { laporan_semua: false, presensi_semua: false, omzet_pos: false };
 function supabasePalsu(data: unknown[] = [], cakupan: Cakupan = CAKUPAN_CEO, galat: string | null = null) {
@@ -100,6 +102,10 @@ function supabasePalsu(data: unknown[] = [], cakupan: Cakupan = CAKUPAN_CEO, gal
     rpc: (nama: string, args: unknown) => {
       if (nama === 'ai_cakupan') {
         const jawab = { data: cakupan, error: null };
+        return Object.assign(Promise.resolve(jawab), { single: async () => jawab });
+      }
+      if (nama === 'akses_pos_saya') {
+        const jawab = { data: AKSES_POS_UJI, error: null };
         return Object.assign(Promise.resolve(jawab), { single: async () => jawab });
       }
       rpcDipanggil.push({ nama, args });
@@ -196,8 +202,9 @@ const jpa = (klien: SupabaseClient, panggilan: Parameters<typeof jalankanPutaran
   cek('dua alat POS dalam satu putaran -> SATU permintaan ke /api/ai/tools dengan nama alat pos-fnb',
     permintaan.length === 1 && permintaan[0]!.url === 'https://pos.contoh.test/api/ai/tools' &&
       permintaan[0]!.body.calls.map((c) => c.name).join() === 'stock_levels,opname_status');
-  cek('token jembatan: aud pos-fnb-ai-query, TANPA role/outlet (cuma aud,email,uid,nonce,iat,exp), TTL 60 detik',
-    payload.aud === 'pos-fnb-ai-query' && Object.keys(payload).sort().join() === 'aud,email,exp,iat,nonce,uid' && payload.exp - payload.iat === 60, payload);
+  cek('token jembatan: aud pos-fnb-ai-query, TTL 60 detik, akses = PERSIS hasil akses_pos_saya() penanya sendiri (tidak ada field lain)',
+    payload.aud === 'pos-fnb-ai-query' && Object.keys(payload).sort().join() === 'akses,aud,email,exp,iat,nama,nonce,uid' &&
+      payload.exp - payload.iat === 60 && JSON.stringify(payload.akses) === JSON.stringify(AKSES_POS_UJI) && payload.email === user.email, payload);
   cek('pos-fnb: no_pos_access -> tiap alat "tanpa_akses_pos", tidak ada data',
     r.every((h) => h.untukModel.status === 'tanpa_akses_pos' && h.tabel.length === 0 && h.catatan.status === 'tanpa_akses_pos'));
 

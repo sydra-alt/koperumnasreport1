@@ -373,5 +373,25 @@ Toko"; manager, semua outlet, `audit_all_outlets = true`). Bisnis pos-fnb
 "[DEV] Demo Cafe" dinamai ulang "Koperumnas Group" (satu-satunya bisnis
 sungguhan; berisi outlet Indosteak/Indokopi/Bestie Thrift).
 
+**Satu akun, peran dari sistem laporan (29 September 2026, disetujui CEO).**
+Menggantikan pemetaan manual `/team`. Sistem laporan menghitung akses POS
+tiap orang (`akses_pos_saya()`, migrasi 0068): `peta_akses_pos` (kunci =
+peran laporan ATAU form penugasan -- peran `karyawan` saja tidak cukup
+membedakan Kontrol FnB dari petugas kebersihan), outlet dari penugasan lewat
+`outlet_pos_map` (thrifting -> Bestie Thrift lewat `form_akses`; Bestie
+tetap dikecualikan dari sinkron omzet lewat `diabaikan`), tanda per orang
+`akses_semua_outlet_pos` (semua outlet + audit; hanya Ita). pos-fnb
+menyesuaikan akun & membership PERSIS pada setiap handoff dan panggilan
+jembatan AI -- maks manager, owner tidak disentuh.
+
+Peta awal: `ceo` -> manager semua outlet; form `kontrol_fnb`, `manager_resto`,
+`thrifting` -> manager outlet penugasan; lainnya (kebersihan, hrd,
+accounting, dst.) tidak dapat akses. `punya_akses_pos`: Putri, Ita, Cuko,
+Dea, Ery, Toni, Mba Rika (+ AKUN UJI - CEO).
+
+Bug handoff produksi yang ikut diperbaiki: Supabase pos-fnb mengganti
+redirect ke Site URL (localhost:3000) dan token sesi datang di fragmen URL
+yang tidak terbaca server -- kini login diselesaikan di server pos-fnb.
+
 **Belum dikerjakan (fase 1).** Pemantauan biaya per bulan di layar (datanya
 sudah ada di `ai_panggilan_alat`). Hapus/ganti nama percakapan.

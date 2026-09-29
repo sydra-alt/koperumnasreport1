@@ -7,14 +7,17 @@ import { createHmac, randomUUID } from 'crypto';
  * di sini diubah, berkas itu WAJIB ikut diubah, tidak ada cara berbagi kode
  * antara dua repo terpisah total.
  *
- * PENTING, jangan dilanggar: token ini HANYA pembawa "orang ini SEDANG
- * login di reportkoperumnasgroup sebagai email X, baru saja". TIDAK PERNAH
- * membawa role/outlet/izin apa pun -- pos-fnb yang menentukan itu semua
- * dari membership-nya sendiri SETELAH sesi Supabase asli terbentuk di
- * sana. reportkoperumnasgroup di sini murni PEMBAWA, bukan otoritas.
+ * SEJAK 29 September 2026 (disetujui CEO -- CLAUDE.md #13): sistem laporan
+ * adalah SUMBER KEBENARAN siapa bekerja di mana. Token membawa `akses` hasil
+ * `akses_pos_saya()` (dihitung di database laporan dari peran/form penugasan
+ * + outlet_pos_map) dan pos-fnb menyesuaikan akun & membership orang itu
+ * dengannya. Batas keras dijaga pos-fnb SENDIRI, tidak bergantung isi token:
+ * paling tinggi 'manager', owner tidak pernah disentuh, outlet disaring ke
+ * bisnisnya. `akses` HANYA boleh berasal dari akses_pos_saya() milik orang
+ * yang SEDANG login di request ini -- tidak pernah atas nama orang lain.
  *
  * Kedaluwarsa SANGAT pendek (60 detik) sengaja -- token ini cuma dipakai
- * untuk satu redirect, bukan disimpan/dipakai ulang.
+ * untuk satu redirect / satu putaran alat, bukan disimpan/dipakai ulang.
  */
 
 const HANDOFF_AUDIENCE = 'pos-fnb-handoff';
@@ -28,6 +31,16 @@ const HANDOFF_AUDIENCE = 'pos-fnb-handoff';
 export const AI_QUERY_AUDIENCE = 'pos-fnb-ai-query';
 const HANDOFF_TOKEN_TTL_SECONDS = 60;
 
+/** Hasil `akses_pos_saya()` (migrasi 0068), dibawa apa adanya. */
+export type AksesPos = {
+  boleh: boolean;
+  alasan?: string;
+  peran_pos?: string;
+  semua_outlet?: boolean;
+  audit_semua?: boolean;
+  outlet_pos_ids?: string[] | null;
+};
+
 function base64UrlEncode(buf: Buffer): string {
   return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
@@ -40,6 +53,7 @@ function base64UrlEncode(buf: Buffer): string {
 export function buatTokenPos(
   user: { id: string; email: string },
   audience: typeof HANDOFF_AUDIENCE | typeof AI_QUERY_AUDIENCE,
+  tambahan: { nama?: string | null; akses: AksesPos | null },
 ): string {
   const secret = process.env.POS_HANDOFF_SECRET;
   if (!secret) {
@@ -54,6 +68,8 @@ export function buatTokenPos(
     nonce: randomUUID(),
     iat: now,
     exp: now + HANDOFF_TOKEN_TTL_SECONDS,
+    nama: tambahan.nama ?? null,
+    akses: tambahan.akses,
   };
 
   const payloadB64 = base64UrlEncode(Buffer.from(JSON.stringify(payload)));
@@ -61,6 +77,6 @@ export function buatTokenPos(
   return `${payloadB64}.${sig}`;
 }
 
-export function buatTokenHandoffPos(user: { id: string; email: string }): string {
-  return buatTokenPos(user, HANDOFF_AUDIENCE);
+export function buatTokenHandoffPos(user: { id: string; email: string }, tambahan: { nama?: string | null; akses: AksesPos | null }): string {
+  return buatTokenPos(user, HANDOFF_AUDIENCE, tambahan);
 }
