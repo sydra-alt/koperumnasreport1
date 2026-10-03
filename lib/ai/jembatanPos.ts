@@ -116,6 +116,29 @@ export function panggilImporOpnamePos(user: { id: string; email: string }, body:
   return panggilImporPos<JawabanImporPos>('/api/ai/opname-import', user, body, akses);
 }
 
+/**
+ * Impor belanja dari foto (3 Oktober 2026): POST /api/ai/purchase-import
+ * pos-fnb HANYA menyimpan purchase_imports + foto (bucket privat), tidak
+ * pernah stok. Stok berubah saat manusia mengonfirmasi di /purchases.
+ */
+export type JawabanImporBelanjaPos =
+  | { akses: 'tanpa_akses_pos' }
+  | { akses: 'galat' }
+  | { akses: 'ok'; status: 'forbidden' | 'outlet_not_allowed' | 'invalid' }
+  | { akses: 'ok'; status: 'ok'; outlets: { id: string; name: string }[] }
+  | {
+      akses: 'ok';
+      status: 'ok';
+      importId: string;
+      outletName: string;
+      ringkasan: import('./imporBelanja').RingkasanBelanjaPos;
+      rows: import('./imporBelanja').BarisHasilBelanja[];
+    };
+
+export function panggilImporBelanjaPos(user: { id: string; email: string }, body: Record<string, unknown>, akses: AksesPos | null): Promise<JawabanImporBelanjaPos> {
+  return panggilImporPos<JawabanImporBelanjaPos>('/api/ai/purchase-import', user, body, akses);
+}
+
 /** Impor resep (29 September 2026): endpoint pos-fnb HANYA menyimpan recipe_imports, tidak pernah resep. */
 export function panggilImporResepPos(user: { id: string; email: string }, body: Record<string, unknown>, akses: AksesPos | null): Promise<JawabanImporResepPos> {
   return panggilImporPos<JawabanImporResepPos>('/api/ai/recipe-import', user, body, akses);
@@ -141,7 +164,7 @@ export function panggilTinjauanUkuranPos(user: { id: string; email: string }, bo
 }
 
 async function panggilImporPos<T>(
-  path: '/api/ai/opname-import' | '/api/ai/recipe-import' | '/api/ai/measure-review',
+  path: '/api/ai/opname-import' | '/api/ai/recipe-import' | '/api/ai/measure-review' | '/api/ai/purchase-import',
   user: { id: string; email: string },
   body: Record<string, unknown>,
   akses: AksesPos | null,

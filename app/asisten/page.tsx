@@ -14,6 +14,7 @@ import {
 import { KerangkaTeks } from '../../components/Kerangka';
 import { TabelJawaban } from '../../components/asisten/TabelJawaban';
 import { ImporOpname } from '../../components/asisten/ImporOpname';
+import { ImporBelanja } from '../../components/asisten/ImporBelanja';
 import { ImporResep } from '../../components/asisten/ImporResep';
 import { TinjauUkuran } from '../../components/asisten/TinjauUkuran';
 
@@ -63,7 +64,7 @@ function Asisten() {
   const [menunggu, setMenunggu] = useState<string | null>(null);
   const [galat, setGalat] = useState<string | null>(null);
   const [riwayatTerbuka, setRiwayatTerbuka] = useState(false);
-  const [panelImpor, setPanelImpor] = useState<'opname' | 'resep' | 'ukuran' | null>(null);
+  const [panelImpor, setPanelImpor] = useState<'opname' | 'resep' | 'belanja' | 'ukuran' | null>(null);
 
   const daftar = useDaftarPercakapan(true);
   const pesan = usePesanPercakapan(percakapanId);
@@ -166,6 +167,7 @@ function Asisten() {
           [
             ['opname', 'Impor opname (Excel)'],
             ['resep', 'Impor resep (Excel)'],
+            ['belanja', 'Impor belanja (foto nota)'],
             ['ukuran', 'Tinjau jenis ukuran bahan'],
           ] as const
         ).map(([jenis, label]) => (
@@ -209,7 +211,15 @@ function Asisten() {
                 if (id) setPercakapanId(id);
               },
             };
-            return panelImpor === 'opname' ? <ImporOpname {...props} /> : panelImpor === 'resep' ? <ImporResep {...props} /> : <TinjauUkuran {...props} />;
+            return panelImpor === 'opname' ? (
+              <ImporOpname {...props} />
+            ) : panelImpor === 'resep' ? (
+              <ImporResep {...props} />
+            ) : panelImpor === 'belanja' ? (
+              <ImporBelanja {...props} />
+            ) : (
+              <TinjauUkuran {...props} />
+            );
           })()
         ) : null}
 

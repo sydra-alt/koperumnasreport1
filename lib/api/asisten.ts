@@ -137,6 +137,49 @@ export function useImporOpname() {
   });
 }
 
+/** Outlet yang boleh dicatat pembeliannya (impor belanja, 3 Oktober 2026). */
+export function useOutletBelanja(enabled: boolean) {
+  return useQuery({
+    queryKey: ['ai-belanja-outlet'],
+    enabled,
+    retry: false,
+    queryFn: async (): Promise<{ id: string; name: string }[]> => {
+      const res = await fetch('/api/asisten/impor-belanja', { cache: 'no-store' });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error ?? 'Daftar outlet tidak bisa dibaca.');
+      return body.outlets as { id: string; name: string }[];
+    },
+  });
+}
+
+/** Impor belanja dari foto nota (3 Oktober 2026) -- satu impor = satu percakapan. Foto sudah dikecilkan pemanggil. */
+export function useImporBelanja() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { outletId: string; foto: Blob; namaFoto: string; pembelanja: string; tanggalBelanja: string }) => {
+      const form = new FormData();
+      form.set('outletId', input.outletId);
+      form.set('foto', input.foto, input.namaFoto);
+      form.set('pembelanja', input.pembelanja);
+      form.set('tanggalBelanja', input.tanggalBelanja);
+      const res = await fetch('/api/asisten/impor-belanja', { method: 'POST', body: form });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new GalatKirimAi(body.error ?? 'Terjadi kesalahan. Coba lagi.', Boolean(body.batasTercapai), body.percakapanId ?? null);
+      }
+      return {
+        percakapanId: body.percakapanId as string,
+        pesanUser: kePesan(body.pesanUser as BarisPesan),
+        pesanModel: kePesan(body.pesanModel as BarisPesan),
+      };
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['ai-percakapan'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-status'] });
+    },
+  });
+}
+
 /** Impor resep dari Excel (29 September 2026) -- satu file untuk seluruh bisnis, tanpa pilihan outlet. */
 export function useImporResep() {
   const queryClient = useQueryClient();

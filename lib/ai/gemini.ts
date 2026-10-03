@@ -131,7 +131,13 @@ export function buatPanggilGemini(tunggu: Tunggu = tungguBawaan): PanggilModel {
  * mentah -- pemanggil yang mem-parse dan memvalidasi, tidak pernah dipercaya
  * begitu saja.
  */
-export type PanggilModelJson = (permintaan: { instruksiSistem: string; teks: string; skema: Record<string, unknown> }) => Promise<string>;
+export type PanggilModelJson = (permintaan: {
+  instruksiSistem: string;
+  teks: string;
+  skema: Record<string, unknown>;
+  /** Opsional (impor belanja dari foto, 3 Oktober 2026): satu gambar, dikirim sebagai inlineData. */
+  gambar?: { mimeType: string; base64: string };
+}) => Promise<string>;
 
 export function namaModelGemini(): string {
   return process.env.GEMINI_MODEL || MODEL_BAWAAN;
@@ -139,13 +145,15 @@ export function namaModelGemini(): string {
 
 export function buatPanggilGeminiJson(tunggu: Tunggu = tungguBawaan): PanggilModelJson {
   const { kunci, model } = konfigurasi();
-  return async ({ instruksiSistem, teks, skema }) => {
+  return async ({ instruksiSistem, teks, skema, gambar }) => {
+    const parts: Record<string, unknown>[] = [{ text: teks }];
+    if (gambar) parts.unshift({ inlineData: { mimeType: gambar.mimeType, data: gambar.base64 } });
     const data = await kirimGemini(
       kunci,
       model,
       {
         systemInstruction: { parts: [{ text: instruksiSistem }] },
-        contents: [{ role: 'user', parts: [{ text: teks }] }],
+        contents: [{ role: 'user', parts }],
         generationConfig: { temperature: 0, maxOutputTokens: 32768, responseMimeType: 'application/json', responseSchema: skema },
       },
       tunggu,

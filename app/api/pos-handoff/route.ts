@@ -19,6 +19,8 @@ const NEXT_POS_DIIZINKAN = [
   /^\/stock-opnames\?import=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
   /^\/recipes\?import=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
   /^\/ingredients\/jenis-ukuran\?review=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  // Impor belanja dari foto nota (3 Oktober 2026, disetujui CEO).
+  /^\/purchases\?import=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
 ];
 
 export async function GET(request: Request) {
