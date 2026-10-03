@@ -155,7 +155,7 @@ export async function tanganiImporBelanja(deps: {
       percakapan_id: percakapanId,
       peran: 'model',
       balasan_untuk: pesanUser.id,
-      isi: ringkasanBelanja({ outletNama: j.outletName, ringkasan: j.ringkasan }),
+      isi: ringkasanBelanja({ outletNama: j.outletName, ringkasan: j.ringkasan, barisPerluCentang: j.rows.filter((r) => r.perluKonfirmasiHarga).length }),
       tabel: [tabelHasilBelanja(j.rows, j.importId)],
     })
     .select('id, peran, isi, tabel, created_at')

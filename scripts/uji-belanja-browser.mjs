@@ -73,12 +73,29 @@ const bahan = (await pos.query(
       and i.name !~ '[0-9/]' order by i.name limit 2`, [outletPos.id],
 )).rows;
 if (bahan.length < 2) throw new Error('bahan berharga Jatinegara kurang dari 2');
-// 1 kg / 1 liter dengan harga = rata-rata x 1000 -> x1000 (kuning), harga dekat rata-rata.
+// Bahan dilacak TANPA rata-rata di Jatinegara (tidak punya baris stok): harganya akan menetapkan rata-rata.
+const [tanpaRata] = (await pos.query(
+  `select i.name from ingredients i where i.business_id = $1 and i.is_active and i.lacak_stok and i.base_unit = 'gram'
+      and i.name !~ '[0-9/]' and not exists (select 1 from stock_levels sl where sl.ingredient_id = i.id and sl.outlet_id = $2 and sl.avg_cost > 0)
+    order by i.name limit 1`, [outletPos.business_id, outletPos.id],
+)).rows;
+if (!tanpaRata) throw new Error('tidak ada bahan tanpa rata-rata di Jatinegara');
+const satuanBesar = (b) => (b.base_unit === 'gram' ? 'kg' : 'liter');
+const hargaBesar = (b) => Math.round(b.avg * 1000);
+// Satu baris per aturan (3 Oktober 2026): qty, satuan, harga satuan (@), total.
 const NOTA = [
-  ...bahan.map((b) => ({ nama: b.name, qty: '1', satuan: b.base_unit === 'gram' ? 'kg' : 'liter', total: Math.round(b.avg * 1000) })),
-  { nama: 'Barang Uji Tidak Ada', qty: '2', satuan: 'pcs', total: 7000 },
+  // 1: cocok qty x harga = total (x1000 kuning)
+  { nama: bahan[0].name, qty: 1, satuan: satuanBesar(bahan[0]), harga: hargaBesar(bahan[0]), total: hargaBesar(bahan[0]) },
+  // 2: qty x harga != total (selisih 3%, di luar toleransi) -> kuning dengan ketiga angka
+  { nama: bahan[1].name, qty: 2, satuan: satuanBesar(bahan[1]), harga: hargaBesar(bahan[1]), total: Math.round(2 * hargaBesar(bahan[1]) * 1.03) },
+  // 3: ons, tanpa total (diturunkan 5 x 10.000), tanpa rata-rata -> wajib "harga ini benar"
+  { nama: tanpaRata.name, qty: 5, satuan: 'ons', harga: 10000, total: null },
+  // 4: satuan tak dikenal -> merah, teks mentah dicatat
+  { nama: bahan[0].name, qty: 2, satuan: 'ikat', harga: 3500, total: 7000 },
+  // 5: tidak ada di master -> merah (untuk uji pemilih bahan)
+  { nama: 'Barang Uji Tidak Ada', qty: 2, satuan: 'pcs', harga: null, total: 7000 },
 ];
-const jumlahBaris = NOTA.reduce((s, n) => s + n.total, 0);
+const jumlahBaris = NOTA.reduce((s, n) => s + (n.total ?? n.qty * n.harga), 0); // termasuk total yang diturunkan
 const TOTAL_NOTA = jumlahBaris + 5000; // sengaja beda
 const rupiah = (n) => n.toLocaleString('id-ID');
 
@@ -94,10 +111,10 @@ const sebelum = await snapshot();
 const browser = await chromium.launch();
 try {
   // Gambar nota (tulisan seperti struk) -> PNG.
-  const kanvas = await browser.newPage({ viewport: { width: 700, height: 520 } });
+  const kanvas = await browser.newPage({ viewport: { width: 820, height: 560 } });
   await kanvas.setContent(`<body style="font:22px 'Courier New',monospace;background:#fbfaf3;padding:28px;color:#222">
     <div style="text-align:center;font-weight:bold">TOKO SUMBER REJEKI</div><div style="text-align:center">Nota belanja</div><hr>
-    ${NOTA.map((n, i) => `<div style="display:flex;justify-content:space-between"><span>${i + 1}. ${n.nama} ${n.qty} ${n.satuan}</span><span>${rupiah(n.total)}</span></div>`).join('')}
+    ${NOTA.map((n, i) => `<div style="display:flex;justify-content:space-between;gap:16px"><span>${i + 1}. ${n.nama} ${n.qty} ${n.satuan}${n.harga ? ` @${rupiah(n.harga)}` : ''}</span><span>${n.total ? rupiah(n.total) : ''}</span></div>`).join('')}
     <hr><div style="display:flex;justify-content:space-between;font-weight:bold"><span>TOTAL</span><span>${rupiah(TOTAL_NOTA)}</span></div></body>`);
   const foto = path.join(mkdtempSync(path.join(os.tmpdir(), 'uji-belanja-')), 'nota.png');
   await kanvas.screenshot({ path: foto });
@@ -150,12 +167,15 @@ try {
   const tabel = pesan.tabel?.[0];
   catat('tidak ada baris hijau', tabel?.baris.every((b) => b.bendera !== 'Hijau'), tabel?.baris.map((b) => b.bendera).join());
   catat('peringatan total nota dengan KEDUA angka', pesan.isi.includes(`Rp${rupiah(TOTAL_NOTA)}`) && pesan.isi.includes(`Rp${rupiah(jumlahBaris)}`), pesan.isi.slice(0, 200));
-  const asing = tabel?.baris.find((b) => /Barang Uji/i.test(b.nama_foto));
-  catat('barang tidak ada di master -> merah', asing?.bendera === 'Merah', asing ? `${asing.bendera}; ${asing.alasan}` : 'tidak terbaca');
-  for (const b of bahan) {
-    const r = tabel?.baris.find((x) => x.bahan === b.name);
-    catat(`${b.name} 1 ${b.base_unit === 'gram' ? 'kg' : 'liter'} -> kuning (x1000, harga dekat rata-rata)`, r?.bendera === 'Kuning' && /x1000/.test(r?.alasan ?? ''), r ? `${r.bendera}; ${r.alasan}` : 'tidak cocok');
-  }
+  const baris = (n) => tabel?.baris.find((b) => b.nomor === n);
+  const tampil = (r) => (r ? `${r.bendera}; ${r.alasan}` : 'tidak terbaca');
+  catat('1: qty x harga = total, x1000 -> kuning tanpa selisih', baris(1)?.bendera === 'Kuning' && /x1000/.test(baris(1)?.alasan ?? '') && !/beda dengan total/.test(baris(1)?.alasan ?? ''), tampil(baris(1)));
+  catat('2: qty x harga beda dari total -> kuning dengan ketiga angka', baris(2)?.bendera === 'Kuning' && /qty x harga satuan = 2 x .* beda dengan total baris/.test(baris(2)?.alasan ?? ''), tampil(baris(2)));
+  catat('3: ons -> x100, total diturunkan "(dihitung)", wajib "harga ini benar", tidak bisa dicek', baris(3)?.bendera === 'Kuning' && /ons -> gram \(x100\)/.test(baris(3)?.alasan ?? '') &&
+    /\(dihitung\)/.test(String(baris(3)?.total_foto)) && /harga ini benar/.test(baris(3)?.alasan ?? '') && /harga tidak bisa dicek/.test(baris(3)?.alasan ?? ''), `${tampil(baris(3))}; total ${baris(3)?.total_foto}`);
+  catat('4: "ikat" -> merah tidak dikenal', baris(4)?.bendera === 'Merah' && /satuan "ikat" tidak dikenal/i.test(baris(4)?.alasan ?? ''), tampil(baris(4)));
+  catat('5: tidak ada di master -> merah', baris(5)?.bendera === 'Merah' && /tidak ada di master/.test(baris(5)?.alasan ?? ''), tampil(baris(5)));
+  catat('ringkasan menyebut baris yang wajib "harga ini benar"', /1 baris belum punya pembanding harga/.test(pesan.isi), pesan.isi.slice(0, 300));
   await page.screenshot({ path: `${SCREENSHOT}-asisten.png`, fullPage: true });
 
   const hrefTabel = tabel?.tautan?.href ?? '';
@@ -174,6 +194,23 @@ try {
   catat('draf POS: foto nota tampil (URL bertanda tangan, bucket privat)', (await p2.locator('img[alt="Foto nota belanja"]').count()) === 1);
   catat('draf POS: peringatan total nota tampil', (await p2.getByText(/Total di nota/).count()) > 0);
   catat('draf POS: tiap baris punya pilihan outlet', (await p2.locator('select').filter({ hasText: OUTLET }).count()) >= NOTA.length);
+  const importIdDraf = next.split('import=')[1];
+  const [mr] = (await pos.query('select matched_rows from purchase_imports where id = $1', [importIdDraf])).rows;
+  const takDikenal = (mr?.matched_rows ?? []).map((r) => r.satuanTakDikenal).filter(Boolean);
+  catat('riwayat impor mencatat teks satuan tak dikenal', takDikenal.length === 1 && /^ikat$/i.test(takDikenal[0]), JSON.stringify(takDikenal));
+  // Harga tanpa pembanding: panel besar di samping foto, Konfirmasi terkunci sampai dicentang.
+  const konfirmasi = p2.getByRole('button', { name: 'Konfirmasi', exact: true });
+  catat('panel "harga ini benar" tampil di samping foto', (await p2.getByText('Harga yang akan menetapkan harga rata-rata / harga terakhir').count()) === 1);
+  catat('Konfirmasi TERKUNCI sebelum centang harga', await konfirmasi.isDisabled(), await p2.getByText(/menunggu centang/).first().innerText().catch(() => ''));
+  await p2.getByRole('checkbox', { name: new RegExp(`^harga ini benar ${tanpaRata.name}`) }).check();
+  catat('sesudah centang: Konfirmasi terbuka (TIDAK diklik)', await konfirmasi.isEnabled());
+  // Pemilih bahan: ketik potongan nama huruf kecil -> bahan muncul dengan satuannya.
+  const potongan = bahan[0].name.toLowerCase().slice(1, 6);
+  await p2.locator('#bahan-5').click();
+  await p2.locator('#bahan-5').fill(potongan);
+  const opsiBahan = p2.getByRole('button').filter({ hasText: `${bahan[0].name} (${bahan[0].base_unit}` });
+  catat(`pemilih bahan: "${potongan}" menemukan ${bahan[0].name} (dengan satuan)`, (await opsiBahan.count()) >= 1);
+  await p2.locator('#bahan-5').press('Escape');
   await p2.screenshot({ path: `${SCREENSHOT}-draf-pos.png`, fullPage: true });
   await p2.getByRole('button', { name: 'Batalkan impor' }).first().click();
   await p2.getByRole('dialog').getByRole('button', { name: 'Batalkan impor' }).click();

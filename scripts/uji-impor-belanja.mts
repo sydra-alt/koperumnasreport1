@@ -77,6 +77,32 @@ const ROWS: BarisHasilBelanja[] = [
   cek('ringkasan: tanpa total nota & baris tanpa total disebut', tanpa.includes('Total nota tidak tertulis') && tanpa.includes('1 baris tanpa total'), tanpa);
 }
 
+// --- 2b. Harga satuan, nilai turunan, centang harga (3 Oktober 2026) ---
+{
+  const r = parseBacaanBelanja(
+    JSON.stringify({
+      baris: [
+        { nomor: 1, nama: 'Gula', qty: 2, satuan: 'kg', total: null, harga: 18000 },
+        { nomor: 2, nama: 'Telur', qty: 10, satuan: 'butir', total: 25000, harga: 'mahal' },
+      ],
+      total_nota: null,
+    }),
+  );
+  cek('parse: harga satuan angka dibawa, bukan angka -> null', r.baris[0]!.harga === 18000 && r.baris[1]!.harga === null, r.baris);
+  cek('instruksi: harga satuan TERTULIS, jangan membagi total dengan qty', /harga SATUAN yang TERTULIS/.test(INSTRUKSI_BELANJA) && /jangan membagi total dengan qty/.test(INSTRUKSI_BELANJA));
+  const t = tabelHasilBelanja(
+    [
+      { ...ROWS[0]!, hargaFoto: '18000', totalFoto: null, diturunkan: 'total', totalDipakai: '36000', hargaSatuanDipakai: '18000', qtyDipakai: '2' },
+      { ...ROWS[1]!, hargaFoto: null, diturunkan: null },
+    ],
+    IMPORT_ID,
+  );
+  const gula = t.baris.find((b) => b.nomor === 1)!;
+  cek('tabel: kolom harga satuan + nilai turunan bertanda "(dihitung)"', t.kolom.some((k) => k.key === 'harga_foto') && gula.total_foto === '36.000 (dihitung)' && gula.harga_foto === 18000, gula);
+  const rk = ringkasanBelanja({ outletNama: 'X', ringkasan: { kuning: 2, merah: 0, jumlahTotalBaris: '91000', totalNota: null, totalBeda: false, barisTanpaTotal: 0 }, barisPerluCentang: 1 });
+  cek('ringkasan: baris tanpa pembanding wajib "harga ini benar"', rk.includes('1 baris belum punya pembanding harga') && rk.includes('harga ini benar'), rk);
+}
+
 // --- 3. Handler: gerbang, isian, urutan, log ---
 type Catatan = { tabel: string; baris: Record<string, unknown> }[];
 function supabasePalsu(opsi: { status?: Record<string, unknown>; tolakPesan?: string } = {}) {

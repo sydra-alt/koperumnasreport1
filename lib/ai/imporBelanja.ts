@@ -27,6 +27,7 @@ export const INSTRUKSI_BELANJA = [
   '- qty: jumlah yang dibeli sebagai angka (1,5 kg -> 1.5). null kalau tidak tertulis atau tidak terbaca.',
   '- satuan: satuan PERSIS seperti tertulis (kg, gr, liter, pcs, pack, dus, ikat, ...). null kalau tidak tertulis. Jangan menebak.',
   '- total: total rupiah BARIS ITU sebagai angka bulat (titik pemisah ribuan dibuang: "15.000" -> 15000, "15rb" -> 15000). Kalau baris hanya menulis harga satuan, isi total = null. Jangan menghitung qty x harga.',
+  '- harga: harga SATUAN yang TERTULIS di baris itu (mis. "@12.000", "12rb/kg", kolom harga), angka bulat rupiah per satuan yang tertulis. null kalau tidak tertulis. Jangan menghitung (jangan membagi total dengan qty).',
   '- total_nota: total keseluruhan yang TERTULIS di nota (angka bulat rupiah), null kalau tidak ada. Jangan menjumlahkan sendiri.',
   'Lewati judul toko, tanggal, subtotal, diskon, dan baris tanpa barang. Jangan menambah barang yang tidak ada di foto.',
 ].join('\n');
@@ -44,6 +45,7 @@ export const SKEMA_BELANJA = {
           qty: { type: 'NUMBER', nullable: true },
           satuan: { type: 'STRING', nullable: true },
           total: { type: 'NUMBER', nullable: true },
+          harga: { type: 'NUMBER', nullable: true },
         },
         required: ['nomor', 'nama', 'qty', 'satuan', 'total'],
       },
@@ -54,7 +56,7 @@ export const SKEMA_BELANJA = {
 } as const;
 
 /** Satu baris bacaan AI (dikirim ke pos-fnb apa adanya; disimpan sebagai bacaan mentah). */
-export type BarisBacaanBelanja = { nomor: number; nama: string; qty: number | null; satuan: string | null; total: number | null };
+export type BarisBacaanBelanja = { nomor: number; nama: string; qty: number | null; satuan: string | null; total: number | null; harga: number | null };
 
 const angka = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
@@ -78,6 +80,7 @@ export function parseBacaanBelanja(teks: string): { baris: BarisBacaanBelanja[];
       qty: angka(r.qty),
       satuan: typeof r.satuan === 'string' && r.satuan.trim() !== '' ? r.satuan.trim().slice(0, 40) : null,
       total: angka(r.total),
+      harga: angka(r.harga),
     });
   }
   if (baris.length > MAKS_BARIS_NOTA) {
@@ -102,6 +105,14 @@ export type BarisHasilBelanja = {
   qtyDasar: string | null;
   hargaPerDasar: string | null;
   pembanding: string | null;
+  // 3 Oktober 2026 -- tidak ada di jawaban pos-fnb lama.
+  hargaFoto?: string | null;
+  diturunkan?: 'qty' | 'harga' | 'total' | null;
+  qtyDipakai?: string | null;
+  hargaSatuanDipakai?: string | null;
+  totalDipakai?: string | null;
+  perluKonfirmasiHarga?: boolean;
+  satuanTakDikenal?: string | null;
 };
 
 export type RingkasanBelanjaPos = {
@@ -133,19 +144,22 @@ export function tabelHasilBelanja(rows: BarisHasilBelanja[], importId: string): 
       { key: 'nama_foto', label: 'Tertulis di nota', jenis: 'teks' },
       { key: 'qty_foto', label: 'Qty', jenis: 'teks' },
       { key: 'satuan_foto', label: 'Satuan', jenis: 'teks' },
+      { key: 'harga_foto', label: 'Harga satuan', jenis: 'rupiah' },
       { key: 'total_foto', label: 'Total baris', jenis: 'rupiah' },
       { key: 'bahan', label: 'Bahan master', jenis: 'teks' },
       { key: 'harga_dasar', label: 'Harga (Rp/satuan dasar)', jenis: 'angka' },
       { key: 'satuan_dasar', label: 'Satuan dasar', jenis: 'teks' },
       { key: 'alasan', label: 'Alasan', jenis: 'teks' },
     ],
+    // Nilai yang DITURUNKAN pos-fnb dari dua angka lain ditampilkan dengan tanda "(dihitung)".
     baris: urut.map((r) => ({
       bendera: r.flag === 'merah' ? 'Merah' : 'Kuning',
       nomor: r.nomor,
       nama_foto: r.namaFoto,
-      qty_foto: r.qtyFoto,
+      qty_foto: r.diturunkan === 'qty' && r.qtyDipakai ? `${r.qtyDipakai} (dihitung)` : r.qtyFoto,
       satuan_foto: r.satuanFoto,
-      total_foto: n(r.totalFoto),
+      harga_foto: r.diturunkan === 'harga' && r.hargaSatuanDipakai ? `${Number(r.hargaSatuanDipakai).toLocaleString('id-ID', { maximumFractionDigits: 0 })} (dihitung)` : n(r.hargaFoto ?? null),
+      total_foto: r.diturunkan === 'total' && r.totalDipakai ? `${Number(r.totalDipakai).toLocaleString('id-ID', { maximumFractionDigits: 0 })} (dihitung)` : n(r.totalFoto),
       bahan: r.ingredientName,
       harga_dasar: n(r.hargaPerDasar),
       satuan_dasar: r.baseUnit,
@@ -159,7 +173,7 @@ export function tabelHasilBelanja(rows: BarisHasilBelanja[], importId: string): 
 const rupiah = (s: string) => `Rp${Number(s).toLocaleString('id-ID', { maximumFractionDigits: 0 })}`;
 
 /** Kalimat utama -- semua angka dari pos-fnb. */
-export function ringkasanBelanja(p: { outletNama: string; ringkasan: RingkasanBelanjaPos }): string {
+export function ringkasanBelanja(p: { outletNama: string; ringkasan: RingkasanBelanjaPos; barisPerluCentang?: number }): string {
   const r = p.ringkasan;
   const n = r.kuning + r.merah;
   const bagian = [`${p.outletNama}: ${n} baris dibaca dari foto nota -- ${r.kuning} kuning, ${r.merah} merah. Tidak ada baris hijau: bacaan foto selalu diperiksa manusia.`];
@@ -169,6 +183,9 @@ export function ringkasanBelanja(p: { outletNama: string; ringkasan: RingkasanBe
     bagian.push(`Total nota tidak tertulis/terbaca; jumlah baris yang terbaca ${rupiah(r.jumlahTotalBaris)}.`);
   }
   if (r.barisTanpaTotal > 0) bagian.push(`${r.barisTanpaTotal} baris tanpa total terbaca.`);
+  if ((p.barisPerluCentang ?? 0) > 0) {
+    bagian.push(`${p.barisPerluCentang} baris belum punya pembanding harga -- harganya akan menetapkan harga rata-rata/terakhir dan wajib dicentang "harga ini benar" di POS.`);
+  }
   bagian.push('Belum ada yang tercatat ke stok. Buka draf di layar Pembelian POS, periksa tiap baris, lalu konfirmasi di sana.');
   return bagian.join(' ');
 }
