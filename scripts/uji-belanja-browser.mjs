@@ -116,6 +116,10 @@ try {
   await page.waitForURL((u) => !u.pathname.startsWith('/masuk'), { timeout: 20000 });
   await page.goto(`${BASE_URL}/asisten`);
 
+  // UJI_IMPORT_ID: lanjutkan impor yang SUDAH dibuat (mis. uji sebelumnya berhenti sesudah unggah) --
+  // tanpa unggah/Gemini baru; hasil dibaca dari pesan tersimpan, lalu draf dibuka & dibatalkan.
+  const lanjut = process.env.UJI_IMPORT_ID;
+  if (!lanjut) {
   await page.getByRole('button', { name: 'Impor belanja (foto nota)' }).click();
   const pilih = page.locator('#belanja-outlet');
   await pilih.waitFor({ state: 'visible', timeout: 20000 });
@@ -128,10 +132,15 @@ try {
   const mulai = Date.now();
   await page.getByRole('button', { name: 'Baca dan cocokkan' }).click();
   await page.getByRole('button', { name: /Menyiapkan foto|Membaca nota/ }).first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
-  await page.getByRole('button', { name: 'Baca dan cocokkan' }).waitFor({ state: 'visible', timeout: 120000 });
+  // Sukses = panel tertutup & tautan draf muncul; gagal = galat tampil di panel.
+  await Promise.race([
+    page.locator('a[href*="purchases%3Fimport"]').first().waitFor({ state: 'visible', timeout: 120000 }),
+    page.locator('[role="alert"]').first().waitFor({ state: 'visible', timeout: 120000 }),
+  ]);
   console.log(`Waktu baca: ${((Date.now() - mulai) / 1000).toFixed(1)} detik`);
   const galat = (await page.locator('[role="alert"]').allInnerTexts()).filter((t) => t.trim() !== '');
   catat('impor selesai tanpa galat di layar', galat.length === 0, galat.join(' | '));
+  }
 
   const pesan = (await db.query(
     `select m.isi, m.tabel from ai_pesan m join ai_percakapan p on p.id = m.percakapan_id
@@ -149,11 +158,16 @@ try {
   }
   await page.screenshot({ path: `${SCREENSHOT}-asisten.png`, fullPage: true });
 
-  const tautan = page.locator('a[href^="/api/pos-handoff?next="]').last();
-  const href = await tautan.getAttribute('href');
-  const next = decodeURIComponent(href.split('next=')[1] ?? '');
+  const hrefTabel = tabel?.tautan?.href ?? '';
+  const next = decodeURIComponent(hrefTabel.split('next=')[1] ?? '');
   catat('tautan HANYA /purchases?import=<uuid>', /^\/purchases\?import=[0-9a-f-]{36}$/i.test(next), next);
-  const [posPage] = await Promise.all([page.context().waitForEvent('page', { timeout: 20000 }).catch(() => null), tautan.click()]);
+  if (lanjut) catat('pesan tersimpan milik impor yang dilanjutkan', next.endsWith(lanjut), next);
+  let posPage = null;
+  if (lanjut) await page.goto(`${BASE_URL}${hrefTabel}`);
+  else {
+    const tautan = page.locator('a[href^="/api/pos-handoff?next="]').last();
+    [posPage] = await Promise.all([page.context().waitForEvent('page', { timeout: 20000 }).catch(() => null), tautan.click()]);
+  }
   const p2 = posPage ?? page;
   await p2.waitForURL((u) => u.pathname.startsWith('/purchases'), { timeout: 60000 });
   await p2.getByText('Ikut disimpan').first().waitFor({ state: 'visible', timeout: 60000 });
