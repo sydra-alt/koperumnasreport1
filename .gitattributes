@@ -1,0 +1,2 @@
+# Hook shell harus LF (CRLF merusak shebang di Git for Windows).
+.githooks/* text eol=lf
