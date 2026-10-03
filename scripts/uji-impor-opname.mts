@@ -11,6 +11,7 @@ import {
   bacaGrid,
   GalatFileImpor,
   gridUntukModel,
+  INSTRUKSI_BACA,
   MAKS_BARIS_FILE,
   parseBacaan,
   ringkasanImpor,
@@ -123,6 +124,44 @@ const IMPORT_ID = '0e6b7c1a-3f4d-4b5e-9a8b-1c2d3e4f5a6b';
   );
   const r = ringkasanImpor({ outletNama: 'Indokopi Jatinegara', fileNama: 'opname.xlsx', counts: { hijau: 1, kuning: 1, merah: 1 } });
   cek('ringkasan: hitungan + "belum ada yang tercatat ke stok"', r.startsWith('Indokopi Jatinegara: 3 baris dibaca dari opname.xlsx -- 1 hijau, 1 kuning, 1 merah.') && r.includes('Belum ada yang tercatat ke stok'), r);
+  cek('tabel tanpa harga di file: TIDAK ada kolom harga', !t.kolom.some((k) => k.key.startsWith('harga')), t.kolom.map((k) => k.key));
+}
+
+// --- 3b. Kolom "harga per satuan" (3 Oktober 2026) ---
+{
+  const berharga = await buatXlsx((ws) => {
+    ws.addRow(['Nama Bahan', 'Qty', 'Satuan', 'Harga per satuan', 'Total']);
+    ws.addRow(['Gula Aren', 2, 'kg', 18000, 36000]);
+    ws.addRow(['Telur / pcs', 30, 'pcs', 2000, 60000]);
+  });
+  const grid = await bacaGrid(berharga);
+  const bacaan = parseBacaan(
+    JSON.stringify({
+      baris: [
+        { lembar: 1, baris: 2, nama: 'Gula Aren', qty: 2, satuan: 'kg', harga: 18000 },
+        { lembar: 1, baris: 3, nama: 'Telur / pcs', qty: 30, satuan: 'pcs', harga: 2500 }, // harga karangan
+        { lembar: 1, baris: 3, nama: 'Telur / pcs', qty: 30, satuan: 'pcs' }, // tanpa harga
+        { lembar: 1, baris: 2, nama: 'Gula Aren', qty: 2, satuan: 'kg', harga: 'mahal' }, // bukan angka -> null
+      ],
+    }),
+    grid,
+  );
+  cek('parseBacaan: harga angka dibawa, tidak ada / bukan angka -> null', JSON.stringify(bacaan.map((b) => b.harga)) === '[18000,2500,null,null]', bacaan.map((b) => b.harga));
+  const v = verifikasiBacaan(bacaan, grid).map((x) => x.terverifikasi);
+  cek('verifikasi: harga harus ada sebagai sel angka di baris itu; harga karangan -> false', JSON.stringify(v) === '[true,false,true,true]', v);
+  cek('instruksi: harga per satuan, BUKAN kolom total, jangan dihitung', /BUKAN kolom total/.test(INSTRUKSI_BACA) && /jangan membagi total dengan qty/.test(INSTRUKSI_BACA));
+
+  const rows: BarisHasilImpor[] = [
+    { ...ROWS[0]!, flag: 'kuning', alasan: ['harga jauh dari rata-rata (>= 3x)'], hargaFile: '18000', hargaUsulan: '18.00000000', hargaRataRata: '5.00000000' },
+    { ...ROWS[1]!, hargaFile: '20000', hargaUsulan: '20.00000000', hargaRataRata: null },
+    { ...ROWS[2]!, hargaFile: null, hargaUsulan: null, hargaRataRata: null },
+  ];
+  const t = tabelHasilImpor(rows, IMPORT_ID);
+  const susu = t.baris.find((b) => b.nama_file === 'Susu UHT')!;
+  cek('tabel berharga: kolom harga file, harga usulan, harga rata-rata', ['harga_file', 'harga_usulan', 'harga_rata'].every((k) => t.kolom.some((c) => c.key === k)), t.kolom.map((k) => k.key));
+  cek('tabel berharga: rata-rata belum ada -> "belum ada harga" (bukan 0)', susu.harga_rata === 'belum ada harga' && susu.harga_usulan === 20, susu);
+  const r = ringkasanImpor({ outletNama: 'Indokopi Jatinegara', fileNama: 'opname.xlsx', counts: { hijau: 0, kuning: 2, merah: 1 }, barisBerharga: 2 });
+  cek('ringkasan: jumlah baris berharga + harga baru jadi rata-rata setelah dikonfirmasi', r.includes('2 baris membawa harga per satuan; harga itu menjadi harga rata-rata hanya setelah draf dikonfirmasi.'), r);
 }
 
 // --- 4. Handler: gerbang, jatah, urutan, log ---

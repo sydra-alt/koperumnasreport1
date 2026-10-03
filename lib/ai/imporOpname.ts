@@ -83,6 +83,7 @@ export const INSTRUKSI_BACA = [
   '- nama: salin PERSIS isi sel nama bahan (huruf, spasi, tanda baca apa adanya). Jangan diterjemahkan, dirapikan, disingkat, atau digabung.',
   '- qty: angka jumlah fisik PERSIS dari sel. Jangan dikonversi, dibulatkan, atau dihitung. Kalau ada beberapa kolom angka (stok awal, masuk, keluar, stok akhir), pakai kolom hasil hitung fisik / stok akhir. null kalau sel kosong.',
   '- satuan: salin PERSIS satuan yang tertulis untuk baris itu (di sel baris itu, atau di judul kolom). null kalau tidak tertulis. Jangan menebak.',
+  '- harga: HANYA kalau file punya kolom harga PER SATUAN (mis. "harga per satuan", "harga satuan", "harga/kg"): salin angkanya PERSIS dari sel baris itu. BUKAN kolom total/nilai/jumlah rupiah. Jangan dihitung (jangan membagi total dengan qty). null kalau tidak ada kolom harga per satuan atau selnya kosong.',
   '- lembar: nomor lembar; baris: nomor baris file (angka di awal baris).',
   'Lewati judul, subtotal, total, dan baris tanpa bahan. Jangan menambah bahan yang tidak ada di file.',
 ].join('\n');
@@ -100,6 +101,7 @@ export const SKEMA_BACA = {
           nama: { type: 'STRING' },
           qty: { type: 'NUMBER', nullable: true },
           satuan: { type: 'STRING', nullable: true },
+          harga: { type: 'NUMBER', nullable: true },
         },
         required: ['lembar', 'baris', 'nama', 'qty', 'satuan'],
       },
@@ -109,7 +111,15 @@ export const SKEMA_BACA = {
 } as const;
 
 /** Bacaan mentah AI (disimpan apa adanya di riwayat pos-fnb). */
-export type BacaanAi = { lembar: string; baris: number; nama: string; qty: number | null; satuan: string | null };
+export type BacaanAi = {
+  lembar: string;
+  baris: number;
+  nama: string;
+  qty: number | null;
+  satuan: string | null;
+  /** Harga per satuan file (kolom opsional, 3 Oktober 2026); null = tidak ada. */
+  harga: number | null;
+};
 
 export function parseBacaan(teks: string, grid: Lembar[]): BacaanAi[] {
   let data: unknown;
@@ -133,6 +143,7 @@ export function parseBacaan(teks: string, grid: Lembar[]): BacaanAi[] {
       nama: o.nama,
       qty: typeof o.qty === 'number' && Number.isFinite(o.qty) ? o.qty : null,
       satuan: typeof o.satuan === 'string' && o.satuan.trim() !== '' ? o.satuan.trim() : null,
+      harga: typeof o.harga === 'number' && Number.isFinite(o.harga) ? o.harga : null,
     });
   }
   return hasil;
@@ -147,6 +158,7 @@ export type BarisSumber = BacaanAi & { terverifikasi: boolean };
  * Bacaan AI dianggap benar HANYA kalau, di lembar + baris yang ia sebut:
  * - ada sel teks yang sama persis dengan `nama` (huruf besar/kecil & spasi ganda diabaikan);
  * - ada sel angka yang sama dengan `qty` (kalau qty tidak null);
+ * - ada sel angka yang sama dengan `harga` (kalau harga tidak null);
  * - `satuan` (kalau ada) muncul sebagai kata di baris itu atau di baris di atasnya (judul kolom).
  * Selain itu `terverifikasi: false` -> pos-fnb menandai MERAH, tidak diisi otomatis.
  */
@@ -157,9 +169,10 @@ export function verifikasiBacaan(bacaan: BacaanAi[], grid: Lembar[]): BarisSumbe
     if (!lembar || idx < 0) return { ...b, terverifikasi: false };
     const sel = lembar.baris[idx]!.sel;
     const namaOk = sel.some((s) => typeof s === 'string' && normTeks(s) === normTeks(b.nama));
-    const qtyOk =
-      b.qty === null ||
-      sel.some((s) => (typeof s === 'number' ? Math.abs(s - b.qty!) < 1e-9 : typeof s === 'string' && /^-?\d+(\.\d+)?$/.test(s.trim()) && Number(s) === b.qty));
+    const adaAngka = (n: number) =>
+      sel.some((s) => (typeof s === 'number' ? Math.abs(s - n) < 1e-9 : typeof s === 'string' && /^-?\d+(\.\d+)?$/.test(s.trim()) && Number(s) === n));
+    const qtyOk = b.qty === null || adaAngka(b.qty);
+    const hargaOk = b.harga === null || adaAngka(b.harga);
     let satuanOk = true;
     if (b.satuan !== null) {
       const cari = b.satuan.toLowerCase().replace(/[.\s]/g, '');
@@ -167,7 +180,7 @@ export function verifikasiBacaan(bacaan: BacaanAi[], grid: Lembar[]): BarisSumbe
         .slice(0, idx + 1)
         .some((r) => r.sel.some((s) => s !== null && token(String(s)).includes(cari)));
     }
-    return { ...b, terverifikasi: namaOk && qtyOk && satuanOk };
+    return { ...b, terverifikasi: namaOk && qtyOk && hargaOk && satuanOk };
   });
 }
 
@@ -187,6 +200,10 @@ export type BarisHasilImpor = {
   qtyUsulan: string | null;
   stokBerjalan: string | null;
   kandidat: string[];
+  /** Kolom harga per satuan (3 Oktober 2026); tidak ada di jawaban pos-fnb lama. */
+  hargaFile?: string | null;
+  hargaUsulan?: string | null;
+  hargaRataRata?: string | null;
 };
 
 const URUT_BENDERA = { merah: 0, kuning: 1, hijau: 2 } as const;
@@ -198,6 +215,9 @@ export function tautanDrafOpname(importId: string): string {
 
 export function tabelHasilImpor(rows: BarisHasilImpor[], importId: string): TabelAi {
   const urut = [...rows].sort((a, b) => URUT_BENDERA[a.flag] - URUT_BENDERA[b.flag]);
+  // Kolom harga hanya kalau file membawa harga (3 Oktober 2026).
+  const adaHarga = rows.some((r) => r.hargaFile != null);
+  const angkaAtauNull = (v: string | null | undefined) => (v == null ? null : Number(v));
   return {
     judul: 'Hasil impor opname',
     kolom: [
@@ -206,9 +226,16 @@ export function tabelHasilImpor(rows: BarisHasilImpor[], importId: string): Tabe
       { key: 'nama_file', label: 'Nama di file', jenis: 'teks' },
       { key: 'qty_file', label: 'Qty file', jenis: 'teks' },
       { key: 'satuan_file', label: 'Satuan file', jenis: 'teks' },
+      ...(adaHarga ? [{ key: 'harga_file', label: 'Harga file (per satuan file)', jenis: 'teks' } as const] : []),
       { key: 'bahan', label: 'Bahan master', jenis: 'teks' },
       { key: 'qty_usulan', label: 'Qty usulan', jenis: 'angka' },
       { key: 'satuan_dasar', label: 'Satuan dasar', jenis: 'teks' },
+      ...(adaHarga
+        ? ([
+            { key: 'harga_usulan', label: 'Harga usulan (Rp/satuan dasar)', jenis: 'angka' },
+            { key: 'harga_rata', label: 'Harga rata-rata sekarang (Rp/satuan dasar)', jenis: 'angka' },
+          ] as const)
+        : []),
       { key: 'alasan', label: 'Alasan', jenis: 'teks' },
     ],
     baris: urut.map((r) => ({
@@ -217,6 +244,13 @@ export function tabelHasilImpor(rows: BarisHasilImpor[], importId: string): Tabe
       nama_file: r.namaFile,
       qty_file: r.qtyFile,
       satuan_file: r.satuanFile,
+      ...(adaHarga
+        ? {
+            harga_file: r.hargaFile ?? null,
+            harga_usulan: angkaAtauNull(r.hargaUsulan),
+            harga_rata: r.hargaRataRata == null ? 'belum ada harga' : Number(r.hargaRataRata),
+          }
+        : {}),
       bahan: r.ingredientName,
       qty_usulan: r.qtyUsulan === null ? null : Number(r.qtyUsulan),
       satuan_dasar: r.baseUnit,
@@ -231,10 +265,15 @@ export function ringkasanImpor(p: {
   outletNama: string;
   fileNama: string;
   counts: { hijau: number; kuning: number; merah: number };
+  /** Baris yang membawa harga per satuan dari file (dihitung dari jawaban pos-fnb). */
+  barisBerharga?: number;
 }): string {
   const n = p.counts.hijau + p.counts.kuning + p.counts.merah;
   return (
     `${p.outletNama}: ${n} baris dibaca dari ${p.fileNama} -- ${p.counts.hijau} hijau, ${p.counts.kuning} kuning, ${p.counts.merah} merah. ` +
+    ((p.barisBerharga ?? 0) > 0
+      ? `${p.barisBerharga} baris membawa harga per satuan; harga itu menjadi harga rata-rata hanya setelah draf dikonfirmasi. `
+      : '') +
     'Belum ada yang tercatat ke stok. Buka draf di layar opname POS: hijau dan kuning sudah terisi (periksa yang kuning), merah tidak diisi, lalu konfirmasi di sana.'
   );
 }

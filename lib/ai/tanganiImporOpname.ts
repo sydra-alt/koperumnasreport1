@@ -174,7 +174,7 @@ export async function tanganiImporOpname(deps: {
       percakapan_id: percakapanId,
       peran: 'model',
       balasan_untuk: pesanUser.id,
-      isi: ringkasanImpor({ outletNama: j.outletName, fileNama, counts: j.counts }),
+      isi: ringkasanImpor({ outletNama: j.outletName, fileNama, counts: j.counts, barisBerharga: j.rows.filter((r) => r.hargaFile != null).length }),
       tabel: [tabelHasilImpor(j.rows, j.importId)],
     })
     .select('id, peran, isi, tabel, created_at')
