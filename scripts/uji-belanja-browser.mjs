@@ -150,10 +150,11 @@ try {
   await page.getByRole('button', { name: 'Baca dan cocokkan' }).click();
   await page.getByRole('button', { name: /Menyiapkan foto|Membaca nota/ }).first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
   // Sukses = panel tertutup & tautan draf muncul; gagal = galat tampil di panel.
-  await Promise.race([
-    page.locator('a[href*="purchases%3Fimport"]').first().waitFor({ state: 'visible', timeout: 120000 }),
-    page.locator('[role="alert"]').first().waitFor({ state: 'visible', timeout: 120000 }),
-  ]);
+  await page.waitForFunction(
+    () => !document.querySelector('#belanja-foto') || [...document.querySelectorAll('[role="alert"]')].some((e) => e.textContent.trim() !== ''),
+    null,
+    { timeout: 120000 },
+  );
   console.log(`Waktu baca: ${((Date.now() - mulai) / 1000).toFixed(1)} detik`);
   const galat = (await page.locator('[role="alert"]').allInnerTexts()).filter((t) => t.trim() !== '');
   catat('impor selesai tanpa galat di layar', galat.length === 0, galat.join(' | '));
@@ -182,13 +183,9 @@ try {
   const next = decodeURIComponent(hrefTabel.split('next=')[1] ?? '');
   catat('tautan HANYA /purchases?import=<uuid>', /^\/purchases\?import=[0-9a-f-]{36}$/i.test(next), next);
   if (lanjut) catat('pesan tersimpan milik impor yang dilanjutkan', next.endsWith(lanjut), next);
-  let posPage = null;
-  if (lanjut) await page.goto(`${BASE_URL}${hrefTabel}`);
-  else {
-    const tautan = page.locator('a[href^="/api/pos-handoff?next="]').last();
-    [posPage] = await Promise.all([page.context().waitForEvent('page', { timeout: 20000 }).catch(() => null), tautan.click()]);
-  }
-  const p2 = posPage ?? page;
+  // Tautan dari pesan tersimpan, dibuka di tab yang sama (handoff -> pos-fnb).
+  await page.goto(`${BASE_URL}${hrefTabel}`);
+  const p2 = page;
   await p2.waitForURL((u) => u.pathname.startsWith('/purchases'), { timeout: 60000 });
   await p2.getByText('Ikut disimpan').first().waitFor({ state: 'visible', timeout: 60000 });
   catat('draf POS: foto nota tampil (URL bertanda tangan, bucket privat)', (await p2.locator('img[alt="Foto nota belanja"]').count()) === 1);
