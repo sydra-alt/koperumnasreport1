@@ -64,3 +64,7 @@ certificates
 .kilo/
 .vercel
 .env*
+
+# Tangkapan layar uji browser (data produksi) -- JANGAN di-commit, repo publik.
+/*-uji*.png
+/*-uji-*.png
