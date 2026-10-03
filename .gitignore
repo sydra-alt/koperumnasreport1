@@ -75,3 +75,5 @@ certificates
 *.csv
 /test-results/
 /playwright-report/
+# Data pribadi karyawan -- hanya lokal, tidak pernah di git (3 Oktober 2026).
+scripts/akun.json

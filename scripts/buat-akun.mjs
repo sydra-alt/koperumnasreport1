@@ -21,12 +21,12 @@
 // SUPABASE_SERVICE_ROLE_KEY dibaca dari .env.local dan TIDAK PERNAH ditulis
 // ke file lain / log / commit. Kunci ini melewati seluruh RLS.
 
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { Client } from 'pg';
+import { bacaAkunLokal } from './_akun-lokal.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
@@ -52,8 +52,7 @@ if (!dbUrl) {
   process.exit(1);
 }
 
-const daftarPath = path.join(__dirname, 'akun.json');
-const daftarAkun = JSON.parse(readFileSync(daftarPath, 'utf8'));
+const daftarAkun = bacaAkunLokal(); // scripts/akun.json lokal, tidak di git
 
 const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
   auth: { autoRefreshToken: false, persistSession: false },

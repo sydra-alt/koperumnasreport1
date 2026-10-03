@@ -20,12 +20,12 @@
 // Password SEBELUM ini (dari scripts/set-password.mjs, unik per akun) tidak
 // berlaku lagi setelah ini dijalankan.
 
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { Client } from 'pg';
+import { bacaAkunLokal } from './_akun-lokal.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -42,7 +42,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const dbUrl = process.env.SUPABASE_DB_URL;
 
-const daftarAkun = JSON.parse(readFileSync(path.join(__dirname, 'akun.json'), 'utf8'));
+const daftarAkun = bacaAkunLokal(); // scripts/akun.json lokal, tidak di git
 const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
 const db = new Client({ connectionString: dbUrl });
 await db.connect();
