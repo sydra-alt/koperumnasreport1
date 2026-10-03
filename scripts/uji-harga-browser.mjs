@@ -73,7 +73,14 @@ const level = (await pos.query(
       and i.name !~ '[0-9]' order by i.name`, [outletPos.id],
 )).rows;
 const berharga = level.filter((l) => Number(l.avg) > 0);
-const tanpaHarga = level.filter((l) => Number(l.avg) === 0);
+// Tanpa rata-rata: baris stok rata-rata 0 ATAU belum punya baris stok di outlet ini
+// (stok 0/tidak ada = tanpa pembanding besaran, jadi bendera hanya dari harga).
+const tanpaHarga = (await pos.query(
+  `select i.id, i.name, i.base_unit, coalesce(sl.qty_on_hand, 0)::text qty, coalesce(sl.avg_cost, 0)::text avg
+     from ingredients i left join stock_levels sl on sl.ingredient_id = i.id and sl.outlet_id = $1
+    where i.business_id = $2 and i.is_active and i.lacak_stok and coalesce(sl.avg_cost, 0) = 0 and coalesce(sl.qty_on_hand, 0) <= 0
+      and i.name !~ '[0-9]' and i.base_unit in ('gram', 'ml', 'pcs') order by i.name limit 1`, [outletPos.id, outletPos.business_id],
+)).rows.map((l) => ({ ...l, qty: '5' }));
 if (berharga.length < 3 || tanpaHarga.length < 1) throw new Error(`data ${OUTLET} kurang: ${berharga.length} berharga, ${tanpaHarga.length} tanpa harga`);
 // Qty = stok sekarang dan satuan = satuan dasar: bendera HANYA dari harga.
 const BARIS = [
@@ -129,7 +136,8 @@ try {
   // --- 1. Alat stok ---
   const kotak = page.locator('#pertanyaan-ai');
   await kotak.waitFor({ state: 'visible', timeout: 20000 });
-  await kotak.fill(`Stok bahan di ${OUTLET} sekarang, dengan harga rata-rata dan nilai stoknya`);
+  // Semua outlet: Jatinegara semua berharga, Cempaka Putih belum (3 Oktober 2026) -- dua kasus sekaligus.
+  await kotak.fill('Stok bahan di semua outlet sekarang, dengan harga rata-rata dan nilai stoknya');
   await page.getByRole('button', { name: 'Kirim', exact: true }).click();
   await page.getByText('Menunggu jawaban...').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
   await page.getByText('Menunggu jawaban...').waitFor({ state: 'detached', timeout: 90000 });
@@ -143,7 +151,8 @@ try {
   catat('alat stok: jawaban menyebut jumlah "belum ada harga"', /belum ada harga/.test(stok.isi), '');
   await page.screenshot({ path: `${SCREENSHOT}-stok.png`, fullPage: true });
 
-  // --- 2. Impor opname dengan harga ---
+  // --- 2. Impor opname dengan harga --- (UJI_HANYA_STOK=1: lewati, tanpa draf baru)
+  if (process.env.UJI_HANYA_STOK === '1') throw new Error('LEWATI_IMPOR');
   await page.getByRole('button', { name: 'Impor opname (Excel)' }).click();
   const pilih = page.locator('#impor-outlet');
   await pilih.waitFor({ state: 'visible', timeout: 20000 });
@@ -189,7 +198,7 @@ try {
   )).rows;
   catat('draf dibatalkan (tidak dikonfirmasi): impor dibatalkan, opname cancelled', opImp?.status === 'dibatalkan' && opImp?.opname_status === 'cancelled', JSON.stringify(opImp));
 } catch (e) {
-  catat('skrip selesai tanpa galat', false, e instanceof Error ? e.message : String(e));
+  if (!(e instanceof Error && e.message === 'LEWATI_IMPOR')) catat('skrip selesai tanpa galat', false, e instanceof Error ? e.message : String(e));
 } finally {
   await browser.close();
   const sesudah = await snapshot();
