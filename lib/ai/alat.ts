@@ -128,7 +128,8 @@ export const DEKLARASI_ALAT: DeklarasiFungsi[] = [
   },
   {
     name: 'stok_bahan',
-    description: 'Stok bahan SAAT INI per outlet (jumlah, satuan, stok minimum, apakah di bawah minimum).',
+    description:
+      'Stok bahan SAAT INI per outlet (jumlah, satuan, stok minimum, apakah di bawah minimum, harga rata-rata per satuan, nilai stok = stok x harga rata-rata). Harga rata-rata 0 berarti BELUM ADA HARGA, bukan gratis.',
     parameters: {
       type: 'OBJECT',
       properties: { outlet: outletOpsional, ingredient: { type: 'STRING', description: 'Opsional. Potongan nama bahan.' } },
@@ -211,6 +212,8 @@ const KOLOM: Record<string, { judul: string; kolom: KolomTabelAi[] }> = {
     kolom: [
       k('outlet', 'Outlet'), k('bahan', 'Bahan'), k('satuan', 'Satuan'), k('stok', 'Stok', 'angka'),
       k('minimum', 'Minimum', 'angka'), k('di_bawah_minimum', 'Di bawah minimum'),
+      // Harga per satuan dasar (gram/ml) bisa di bawah Rp1 -- 'angka' (4 desimal), bukan 'rupiah' yang membulatkan ke Rp0.
+      k('harga_rata', 'Harga rata-rata (Rp/satuan)', 'angka'), k('nilai_stok', 'Nilai stok', 'rupiah'),
     ],
   },
   status_opname: {
@@ -245,6 +248,8 @@ const KOLOM: Record<string, { judul: string; kolom: KolomTabelAi[] }> = {
     ],
   },
 };
+
+export const BELUM_ADA_HARGA = 'belum ada harga';
 
 const LABEL_STATUS: Record<string, string> = {
   missing: 'Kurang',
@@ -425,7 +430,13 @@ function hasilPosKeAlat(p: PanggilanAlat, hasil: HasilPos, cakupanOutlet: 'all' 
     ...(typeof b.status_harian === 'string' ? { status_harian: LABEL_STATUS[b.status_harian] ?? b.status_harian } : {}),
     ...(typeof b.status_mingguan === 'string' ? { status_mingguan: LABEL_STATUS[b.status_mingguan] ?? b.status_mingguan } : {}),
   });
-  const baris = hasil.rows.map(ubahStatus);
+  // Stok tanpa harga (biaya rata-rata 0 = belum diketahui) datang null dari pos-fnb:
+  // tampil "belum ada harga", tidak pernah Rp0.
+  const tandaiHarga = (b: Baris): Baris =>
+    p.name === 'stok_bahan'
+      ? { ...b, harga_rata: b.harga_rata ?? BELUM_ADA_HARGA, nilai_stok: b.nilai_stok ?? BELUM_ADA_HARGA }
+      : b;
+  const baris = hasil.rows.map(ubahStatus).map(tandaiHarga);
   const mingguan = (hasil.extra?.weekly ?? []).map(ubahStatus);
 
   const outlet =
@@ -465,6 +476,12 @@ function hasilPosKeAlat(p: PanggilanAlat, hasil: HasilPos, cakupanOutlet: 'all' 
         `${cakupanStok.withoutMinimum} dari ${cakupanStok.stockRows} catatan stok belum punya stok minimum, jadi "di bawah minimum" belum bisa dinilai untuk bahan itu.`,
       );
       tambahanStok.catatan_stok_tanpa_minimum = cakupanStok.withoutMinimum;
+    }
+    if ((cakupanStok.withoutPrice ?? 0) > 0) {
+      catatanWajib.push(
+        `${cakupanStok.withoutPrice} dari ${cakupanStok.stockRows} catatan stok belum ada harga (biaya rata-rata belum diketahui), jadi nilai stok hanya dari bahan yang sudah ada harganya.`,
+      );
+      tambahanStok.catatan_stok_tanpa_harga = cakupanStok.withoutPrice;
     }
   }
 
@@ -507,6 +524,9 @@ function hasilPosKeAlat(p: PanggilanAlat, hasil: HasilPos, cakupanOutlet: 'all' 
           mingguan,
           ...(cakupanResep ? { resep: cakupanResep } : {}),
           ...(cakupanStok ? { outletTanpaStok: cakupanStok.outletsWithoutStock } : {}),
+          ...(cakupanStok && cakupanStok.withoutPrice !== undefined
+            ? { hargaStok: { tanpaHarga: cakupanStok.withoutPrice, nilai: cakupanStok.stockValue ?? 0 } }
+            : {}),
           ...(hasil.extra?.anomalySummary ? { anomali: hasil.extra.anomalySummary } : {}),
         })
       : null;

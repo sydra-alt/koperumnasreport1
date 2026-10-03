@@ -61,6 +61,8 @@ export type KonteksAngka = {
   };
   /** Outlet tanpa catatan stok (stok_bahan). */
   outletTanpaStok?: string[];
+  /** Dari pos-fnb atas SEMUA catatan stok (bukan cuma baris terambil): tanpa harga & nilai stok yang berharga. */
+  hargaStok?: { tanpaHarga: number; nilai: number };
   /** Hitungan anomali dari pos-fnb (anomali_data). */
   anomali?: { perAturan: Record<string, number>; jenisBelumDitentukan: number; bahanDicek: number; tanpaDataPemakaian?: number };
 };
@@ -114,6 +116,8 @@ const num = (v: NilaiSel | undefined): number => {
   return Number.isFinite(n) ? n : 0;
 };
 const jumlah = (baris: Baris[], kunci: string) => baris.reduce((s, b) => s + num(b[kunci]), 0);
+/** Catatan stok yang punya harga rata-rata (bukan null / "belum ada harga"). */
+const berharga = (b: Baris) => typeof b.harga_rata === 'number' || (typeof b.harga_rata === 'string' && /^-?\d+(\.\d+)?$/.test(b.harga_rata));
 
 function perOutletHitung(baris: Baris[], syarat: (b: Baris) => boolean = () => true): Record<string, number> {
   const m: Record<string, number> = {};
@@ -214,17 +218,43 @@ export function hitungAngkaUtama(alat: string, baris: Baris[], totalBaris: numbe
       if (lengkap) {
         const catatan = perOutletHitung(baris);
         const bawah = perOutletHitung(baris, (b) => b.di_bawah_minimum === true);
+        const tanpaHarga = perOutletHitung(baris, (b) => !berharga(b));
         ringkasan = {
           bahan_total: totalBaris,
           bahan_di_bawah_minimum: baris.filter((b) => b.di_bawah_minimum === true).length,
           outlet_dengan_data: Object.keys(catatan).length,
         };
-        perOutlet = Object.fromEntries(Object.entries(catatan).map(([o, n]) => [o, { catatan_stok: n, di_bawah_minimum: bawah[o] ?? 0 }]));
-        kalimat = `${angkaId(totalBaris)} catatan stok bahan${di}; ${ringkasan.bahan_di_bawah_minimum} di bawah minimum.`;
+        perOutlet = Object.fromEntries(
+          Object.entries(catatan).map(([o, n]) => {
+            const adaHarga = baris.filter((b) => b.outlet === o && berharga(b));
+            // Outlet tanpa satu pun harga: TIDAK ada nilai stok (bukan Rp0).
+            return [
+              o,
+              {
+                catatan_stok: n,
+                di_bawah_minimum: bawah[o] ?? 0,
+                tanpa_harga: tanpaHarga[o] ?? 0,
+                ...(adaHarga.length > 0 ? { nilai_stok: jumlah(adaHarga, 'nilai_stok') } : {}),
+              },
+            ];
+          }),
+        );
+        kalimat = `${angkaId(totalBaris)} catatan stok bahan${di}; ${ringkasan.bahan_di_bawah_minimum} di bawah minimum`;
       } else {
         ringkasan = { bahan_total: totalBaris };
-        kalimat = `${angkaId(totalBaris)} catatan stok bahan${di}.`;
+        kalimat = `${angkaId(totalBaris)} catatan stok bahan${di}`;
       }
+      // Hitungan harga dari pos-fnb atas SEMUA catatan (lengkap atau tidak barisnya).
+      if (k.hargaStok) {
+        ringkasan.bahan_tanpa_harga = k.hargaStok.tanpaHarga;
+        ringkasan.nilai_stok_berharga = k.hargaStok.nilai;
+        const adaHarga = totalBaris - k.hargaStok.tanpaHarga;
+        kalimat +=
+          `; ${k.hargaStok.tanpaHarga} belum ada harga` +
+          (adaHarga > 0
+            ? `; nilai stok ${rp(k.hargaStok.nilai)}${k.hargaStok.tanpaHarga > 0 ? ' (hanya bahan yang sudah ada harganya)' : ''}.`
+            : '.');
+      } else kalimat += '.';
       if (k.outletTanpaStok) ringkasan.outlet_tanpa_catatan_stok = k.outletTanpaStok.length;
       break;
     }

@@ -9,7 +9,7 @@ import { jalankanAgen, instruksiSistem, satuKalimat, JAWABAN_MELEBIHI_PUTARAN, M
 import { rentangPeriode } from '../lib/ai/periode';
 import { jalankanPutaranAlat, BARIS_UNTUK_MODEL, DEKLARASI_ALAT } from '../lib/ai/alat';
 import { buatPanggilGemini, GalatPenyediaAi, type IsiGemini, type PermintaanGemini } from '../lib/ai/gemini';
-import { catatanTerpotong } from '../lib/ai/tabel';
+import { catatanTerpotong, tabelKeTsv, teksSel } from '../lib/ai/tabel';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 const hasil: { nama: string; lolos: boolean; detail?: unknown }[] = [];
@@ -510,6 +510,42 @@ const jpa = (klien: SupabaseClient, panggilan: Parameters<typeof jalankanPutaran
   cek('tanggal hari ini boleh disebut walau alat stok tanpa periode', !perHariIni.kalimatDiganti, perHariIni.kalimatDiganti);
   const persen = await jawab(stok!, 'Sekitar 98% catatan stok ada di Indokopi Jatinegara.');
   cek('persen yang tidak ada di ringkasan -> diganti', Boolean(persen.kalimatDiganti), persen.kalimatDiganti);
+
+  // Harga rata-rata & nilai stok (3 Okt 2026): null dari pos-fnb = "belum ada harga", tidak pernah Rp0;
+  // jumlah tanpa harga & nilai stok dari pos-fnb atas SEMUA catatan.
+  pos({
+    status: 'ok', outletFilter: 'all_visible', period: null, totalCount: 3,
+    rows: [
+      { outlet: 'Indokopi Jatinegara', bahan: 'Gula', satuan: 'gram', stok: '1000', minimum: '0', di_bawah_minimum: false, harga_rata: '15', nilai_stok: '15000' },
+      { outlet: 'Indokopi Jatinegara', bahan: 'Air', satuan: 'ml', stok: '2000', minimum: '0', di_bawah_minimum: false, harga_rata: '0.3', nilai_stok: '600' },
+      { outlet: 'Indosteak Cempaka Putih', bahan: 'Beras', satuan: 'gram', stok: '500', minimum: '0', di_bawah_minimum: false, harga_rata: null, nilai_stok: null },
+    ],
+    extra: { stockCoverage: { outletsWithoutStock: [], withoutMinimum: 3, stockRows: 3, withoutPrice: 1, stockValue: 15600 } },
+  });
+  const [harga] = await jpa(supabasePalsu().klien, [{ name: 'stok_bahan', args: {} }]);
+  const tabelHarga = harga!.tabel[0]!;
+  const beras = tabelHarga.baris.find((b) => b.bahan === 'Beras')!;
+  cek('harga: kolom Harga rata-rata & Nilai stok ada di tabel (ikut Salin & Excel)',
+    tabelHarga.kolom.some((k) => k.key === 'harga_rata') && tabelHarga.kolom.some((k) => k.key === 'nilai_stok' && k.jenis === 'rupiah'), tabelHarga.kolom);
+  cek('harga: biaya tidak diketahui -> "belum ada harga" di sel, Salin, dan tampilan (bukan Rp0)',
+    beras.harga_rata === 'belum ada harga' && beras.nilai_stok === 'belum ada harga' &&
+      tabelKeTsv(tabelHarga).includes('belum ada harga\tbelum ada harga') && teksSel(beras.nilai_stok, 'rupiah') === 'belum ada harga', beras);
+  cek('harga: harga per satuan di bawah Rp1 tidak dibulatkan ke 0 (kolom angka)',
+    teksSel(tabelHarga.baris.find((b) => b.bahan === 'Air')!.harga_rata!, tabelHarga.kolom.find((k) => k.key === 'harga_rata')!.jenis) === '0,3');
+  cek('harga: kalimat server menyebut jumlah tanpa harga + nilai stok hanya dari yang berharga',
+    harga!.utama?.kalimat === '3 catatan stok bahan; 0 di bawah minimum; 1 belum ada harga; nilai stok Rp15.600 (hanya bahan yang sudah ada harganya).', harga!.utama?.kalimat);
+  cek('harga: catatan wajib server menyebut catatan tanpa harga',
+    (harga!.catatanWajib ?? []).some((c) => c.startsWith('1 dari 3 catatan stok belum ada harga')), harga!.catatanWajib);
+  const ringkasHarga = harga!.untukModel as { ringkasan?: Record<string, number>; ringkasan_per_outlet?: Record<string, Record<string, number>> };
+  cek('harga: ringkasan & per outlet dari server (tanpa harga, nilai stok per outlet)',
+    ringkasHarga.ringkasan?.bahan_tanpa_harga === 1 && ringkasHarga.ringkasan?.nilai_stok_berharga === 15600 &&
+      ringkasHarga.ringkasan_per_outlet?.['Indokopi Jatinegara']?.nilai_stok === 15600 && ringkasHarga.ringkasan_per_outlet?.['Indosteak Cempaka Putih']?.tanpa_harga === 1 &&
+      !('nilai_stok' in (ringkasHarga.ringkasan_per_outlet?.['Indosteak Cempaka Putih'] ?? {})),
+    ringkasHarga);
+  const kutipHarga = await jawab(harga!, 'Nilai stok Rp15.600, 1 bahan belum ada harga.');
+  cek('harga: model mengutip nilai server -> dipertahankan', !kutipHarga.kalimatDiganti, kutipHarga.kalimatDiganti);
+  const tebakHarga = await jawab(harga!, 'Nilai stok total sekitar Rp20.000.');
+  cek('harga: nilai karangan model -> diganti', Boolean(tebakHarga.kalimatDiganti), tebakHarga.kalimatDiganti);
 
   // Status laporan: angka ringkasan + tanggal periode boleh.
   const s = supabasePalsu([
