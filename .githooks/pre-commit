@@ -1,0 +1,18 @@
+#!/bin/sh
+# Menolak commit yang memuat gambar, spreadsheet/ekspor, atau berkas env
+# (3 Oktober 2026 -- insiden tangkapan layar & ekspor data produksi ter-commit
+# ke repo yang saat itu publik). Aset tampilan yang sah hanya di public/ atau
+# src/assets/; contoh env (*.example) boleh.
+# Aktifkan sekali per clone:  git config core.hooksPath .githooks
+# JANGAN dilewati dengan --no-verify; stage berkas satu per satu menurut nama.
+terlarang=$(git diff --cached --name-only --diff-filter=ACMR \
+  | grep -Ei '\.(png|jpe?g|webp|gif|bmp|tiff?|heic|xlsx?|xlsm|csv|ods|pdf)$|(^|/)\.env($|\.)|(^|/)\.dev\.vars$' \
+  | grep -Ev '^(public|src/assets)/' \
+  | grep -Ev '\.example$')
+if [ -n "$terlarang" ]; then
+  echo "pre-commit DITOLAK: berkas ini tidak boleh di-commit (gambar / spreadsheet / ekspor / env):" >&2
+  echo "$terlarang" | sed 's/^/  - /' >&2
+  echo "Tangkapan layar uji -> folder temp OS; ekspor data -> di luar repo. Batalkan stage: git restore --staged <berkas>" >&2
+  exit 1
+fi
+exit 0

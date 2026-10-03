@@ -504,7 +504,7 @@ export function useHapusRole() {
 }
 
 // ─── Buat pengguna baru -- SATU-SATUNYA yang lewat Route Handler ──────
-// Password TIDAK jadi input -- SELALU 'admin123' (instruksi eksplisit
+// Password TIDAK jadi input -- SELALU PASSWORD_AWAL (lib/passwordAwal.ts; instruksi eksplisit
 // user, 30 Agustus 2026), ditentukan server-side di
 // app/api/admin/user/route.ts supaya tidak ada jalan bikin akun dengan
 // password yang tidak seragam. Aman karena harus_ganti_password + proxy.ts

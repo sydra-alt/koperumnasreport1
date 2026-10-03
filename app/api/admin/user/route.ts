@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '../../../../lib/supabase/server';
+import { PASSWORD_AWAL } from '../../../../lib/passwordAwal';
 
 /**
  * Task 23 -- SATU-SATUNYA jalan resmi untuk membuat pengguna baru
@@ -21,13 +22,12 @@ import { createClient as createServerClient } from '../../../../lib/supabase/ser
  * SENDIRI, bukan admin client -- RLS `role_select` tetap mengizinkan baca
  * baris sendiri, cukup untuk pengecekan ini).
  *
- * Password SELALU 'admin123' (instruksi eksplisit user, 30 Agustus 2026) --
+ * Password SELALU PASSWORD_AWAL (lib/passwordAwal.ts; instruksi eksplisit user, 30 Agustus 2026) --
  * TIDAK PERNAH dibaca dari body permintaan, supaya tidak ada jalan CEO
  * (sengaja atau tidak) membuat akun dengan password lain yang tidak
  * seragam. Aman karena `profile.harus_ganti_password` (default true) +
  * `proxy.ts` memaksa ganti sebelum halaman apa pun terbuka.
  */
-const PASSWORD_AWAL = 'admin123';
 export async function POST(request: Request) {
   const supabase = await createServerClient();
   const {

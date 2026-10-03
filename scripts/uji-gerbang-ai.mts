@@ -1,4 +1,5 @@
 #!/usr/bin/env -S npx tsx
+// ⚠️ LIVE: menulis ke database PRODUKSI (akun uji saja); dipulihkan otomatis lewat scripts/_pengaman-uji.mjs.
 // Uji GERBANG AKSES asisten AI -- yang paling mahal kalau salah: orang tanpa
 // akses TIDAK BOLEH sampai memanggil Gemini.
 //
@@ -32,6 +33,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { tanganiChat, PESAN_TIDAK_AKTIF, PESAN_TIDAK_BOLEH } from '../lib/ai/tanganiChat';
 import type { PanggilModel } from '../lib/ai/gemini';
 import { pasangPemulih } from './_pengaman-uji.mjs';
+import { passwordUji } from './_kredensial-uji.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env.local'), quiet: true });
@@ -79,7 +81,7 @@ const pulihkan = pasangPemulih('uji-gerbang-ai', async () => {
     await db.query('delete from public.role where user_id = $1', [a.id]);
     for (const r of a.peran) await db.query('insert into public.role (user_id, role) values ($1, $2)', [a.id, r]);
     await db.query('update public.profile set punya_akses_ai = $2 where id = $1', [a.id, a.aksesAi]);
-    const { error } = await admin.auth.admin.updateUserById(a.id, { password: 'admin123' });
+    const { error } = await admin.auth.admin.updateUserById(a.id, { password: passwordUji(a.email) });
     if (error) throw new Error(`gagal mengembalikan password ${a.email}: ${error.message}`);
     const peranKini = (await db.query('select role from public.role where user_id = $1 order by role', [a.id])).rows.map((r: { role: string }) => r.role);
     const aksesKini = (await db.query('select punya_akses_ai from public.profile where id = $1', [a.id])).rows[0].punya_akses_ai;
@@ -87,7 +89,7 @@ const pulihkan = pasangPemulih('uji-gerbang-ai', async () => {
       throw new Error(`pemulihan ${a.email} tidak sempurna: peran=${JSON.stringify(peranKini)}, akses_ai=${aksesKini}`);
     }
   }
-  console.log('[pulih] uji1/uji3/uji5: peran, akses AI, password admin123, percakapan AI dihapus.');
+  console.log('[pulih] uji1/uji3/uji5: peran, akses AI, password dari berkas kredensial uji, percakapan AI dihapus.');
   await db.end();
 });
 

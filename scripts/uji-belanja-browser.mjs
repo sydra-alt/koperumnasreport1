@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// ⚠️ LIVE: menulis ke database PRODUKSI (akun uji saja); dipulihkan otomatis lewat scripts/_pengaman-uji.mjs.
 // Uji impor belanja dari FOTO nota di browser sungguhan (3 Oktober 2026).
 // BUTUH migrasi 0055 diterapkan + pos-fnb & sistem laporan ter-deploy.
 //
@@ -21,7 +22,7 @@
 
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, mkdirSync } from 'node:fs';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
@@ -29,6 +30,7 @@ import pg from 'pg';
 import { createClient } from '@supabase/supabase-js';
 import { chromium } from 'playwright';
 import { pasangPemulih } from './_pengaman-uji.mjs';
+import { passwordUji } from './_kredensial-uji.mjs';
 import { aksesPosUjiSementara } from './_akses-pos-uji.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,7 +38,8 @@ dotenv.config({ path: path.join(__dirname, '..', '.env.local'), quiet: true });
 const envPos = dotenv.parse(readFileSync(path.join(__dirname, '..', '..', 'pos-fnb', '.env.local')));
 
 const BASE_URL = process.env.UJI_BASE_URL ?? 'http://localhost:3000';
-const SCREENSHOT = path.join(__dirname, '..', 'belanja-uji');
+const SCREENSHOT = path.join(os.tmpdir(), 'koperumnas-uji', 'belanja-uji');
+mkdirSync(path.dirname(SCREENSHOT.endsWith('.png') ? SCREENSHOT : `${SCREENSHOT}.png`), { recursive: true }); // tangkapan layar = data produksi -> temp OS, tidak pernah di repo
 const EMAIL = 'uji-ceo@koperumnas.local';
 const OUTLET = 'Indokopi Jatinegara';
 
@@ -53,10 +56,10 @@ const pw = `Uji-${crypto.randomBytes(9).toString('base64url')}`;
 let pulihAkses = null;
 const pulihkan = pasangPemulih('uji-belanja-browser', async () => {
   if (pulihAkses) await pulihAkses();
-  const { error } = await admin.auth.admin.updateUserById(id, { password: 'admin123' });
+  const { error } = await admin.auth.admin.updateUserById(id, { password: passwordUji(EMAIL) });
   if (error) throw new Error(`gagal mengembalikan password ${EMAIL}: ${error.message}`);
   await db.query('update public.profile set harus_ganti_password = $2 where id = $1', [id, gantiAwal]);
-  console.log(`[pulih] ${EMAIL}: password admin123, harus_ganti_password=${gantiAwal}.`);
+  console.log(`[pulih] ${EMAIL}: password dari berkas kredensial uji, harus_ganti_password=${gantiAwal}.`);
   await db.end();
   await pos.end();
 });

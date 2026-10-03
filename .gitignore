@@ -68,3 +68,10 @@ certificates
 # Tangkapan layar uji browser (data produksi) -- JANGAN di-commit, repo publik.
 /*-uji*.png
 /*-uji-*.png
+!.env.local.example
+# Ekspor / spreadsheet / tangkapan layar -- data produksi, JANGAN di-commit (3 Oktober 2026).
+*.xlsx
+*.xls
+*.csv
+/test-results/
+/playwright-report/

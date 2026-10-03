@@ -51,9 +51,15 @@ console.log(`Menyamakan password ${daftarAkun.length} akun di akun.json ke "admi
 
 let berhasil = 0;
 for (const akun of daftarAkun) {
-  const { rows } = await db.query('select id from auth.users where email = $1', [akun.email]);
+  const { rows } = await db.query('select u.id, coalesce(p.akun_uji, false) akun_uji from auth.users u left join public.profile p on p.id = u.id where u.email = $1', [akun.email]);
   if (rows.length === 0) {
     console.log(`${akun.email.padEnd(30)}  TIDAK DITEMUKAN -- dilewati`);
+    continue;
+  }
+  // Akun uji TIDAK PERNAH diberi password awal (3 Oktober 2026): password-nya di berkas kredensial
+  // uji di luar repo (scripts/_kredensial-uji.mjs, scripts/rotasi-akun-uji.mjs).
+  if (rows[0].akun_uji || /^uji([0-9]+|-[a-z]+)@/.test(akun.email)) {
+    console.log(`${akun.email.padEnd(30)}  AKUN UJI -- dilewati (bukan password awal)`);
     continue;
   }
   const { error } = await supabaseAdmin.auth.admin.updateUserById(rows[0].id, { password: 'admin123' });

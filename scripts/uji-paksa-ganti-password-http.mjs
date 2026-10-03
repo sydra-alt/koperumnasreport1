@@ -25,6 +25,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { pasangPemulih } from './_pengaman-uji.mjs';
+import { passwordSementaraAcak, passwordUji } from './_kredensial-uji.mjs';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { Client as PgClient } from 'pg';
@@ -62,31 +63,34 @@ let semuaLolos = false;
 
 // Pemulihan idempoten -- dipanggil dari finally DAN dari penangan sinyal/galat.
 const pulihkan = pasangPemulih('uji-paksa-ganti-password-http', async () => {
-  // Kembalikan AKUN UJI ke admin123 + harus_ganti_password=true OTOMATIS --
+  // Kembalikan AKUN UJI ke password di berkas kredensial uji (BUKAN password
+  // awal karyawan, 3 Oktober 2026) + harus_ganti_password=true OTOMATIS --
   // lewat Admin API (satu-satunya jalur yang bisa mengubah password TANPA
   // tahu password saat ini), DIBUKTIKAN lewat baca ulang DB. Versi Toyib
   // SEBELUMNYA cuma meninggalkan catatan "jalankan skrip lain kalau perlu
   // dikembalikan" -- persis pola gagal-senyap yang ditemukan sisir skrip 7
   // September 2026 (lihat docs/04-CATATAN-TEKNIS.md §7).
-  const { error: errPw } = await admin.auth.admin.updateUserById(idAkun, { password: 'admin123' });
-  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke admin123: ${errPw.message}`);
+  const { error: errPw } = await admin.auth.admin.updateUserById(idAkun, { password: passwordUji(EMAIL) });
+  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke berkas kredensial uji: ${errPw.message}`);
   await db.query('update public.profile set harus_ganti_password = true where id = $1;', [idAkun]);
   const { rows: cekAkun } = await db.query(`select harus_ganti_password from public.profile where id = $1`, [idAkun]);
   console.log(cekAkun[0]?.harus_ganti_password === true
-    ? 'AKUN UJI dikembalikan: password admin123, harus_ganti_password = true (dibuktikan baca ulang DB).'
+    ? 'AKUN UJI dikembalikan: password dari berkas kredensial uji, harus_ganti_password = true (dibuktikan baca ulang DB).'
     : `🛑 AKUN UJI BELUM PULIH -- harus_ganti_password=${cekAkun[0]?.harus_ganti_password}.`);
   await db.end();
 });
 
 try {
-  // 0) Pastikan AKUN UJI mulai dari admin123 + harus_ganti_password=true --
+  // 0) Pastikan AKUN UJI mulai dari password sementara ACAK + harus_ganti_password=true --
+  //    (yang diuji adalah tanda harus_ganti_password, bukan nilai password awal)
   //    keadaan yang diminta skenario ini -- TERLEPAS dari sisa run
   //    sebelumnya (idempoten, bukan berasumsi).
-  const { error: errSiap } = await admin.auth.admin.updateUserById(idAkun, { password: 'admin123' });
+  const passwordAwalUji = passwordSementaraAcak();
+  const { error: errSiap } = await admin.auth.admin.updateUserById(idAkun, { password: passwordAwalUji });
   if (errSiap) throw new Error(`Gagal menyiapkan password awal AKUN UJI: ${errSiap.message}`);
   await db.query('update public.profile set harus_ganti_password = true where id = $1;', [idAkun]);
 
-  // 1) Login SUNGGUHAN sebagai AKUN UJI (admin123, harus_ganti_password=true).
+  // 1) Login SUNGGUHAN sebagai AKUN UJI (password sementara, harus_ganti_password=true).
   const jar = new Map();
   const supabase = createServerClient(supabaseUrl, anonKey, {
     cookies: {
@@ -97,12 +101,12 @@ try {
     },
   });
 
-  const { error: errLogin } = await supabase.auth.signInWithPassword({ email: EMAIL, password: 'admin123' });
+  const { error: errLogin } = await supabase.auth.signInWithPassword({ email: EMAIL, password: passwordAwalUji });
   if (errLogin) throw new Error(`Login AKUN UJI gagal: ${errLogin.message}`);
   function cookieHeader() {
     return Array.from(jar.entries()).map(([name, value]) => `${name}=${value}`).join('; ');
   }
-  console.log(`OK -- login AKUN UJI sungguhan (admin123) berhasil, ${jar.size} cookie sesi ditangkap.\n`);
+  console.log(`OK -- login AKUN UJI sungguhan (password sementara) berhasil, ${jar.size} cookie sesi ditangkap.\n`);
 
   async function ambil(path) {
     return fetch(`${BASE_URL}${path}`, { headers: { Cookie: cookieHeader() }, redirect: 'manual' });
@@ -134,7 +138,7 @@ try {
   catat(3, 'GET /ganti-password itu sendiri', 'TIDAK dialihkan (status 200)', `status=${rHalamanGanti.status}`, rHalamanGanti.status === 200);
 
   // 4) Ganti password SUNGGUHAN lewat /api/ganti-password (endpoint ini TIDAK BOLEH ikut kena redirect).
-  const passwordBaru = `Uji-${Date.now()}-aman`;
+  const passwordBaru = passwordSementaraAcak();
   const rGanti = await fetch(`${BASE_URL}/api/ganti-password`, {
     method: 'POST',
     redirect: 'manual',

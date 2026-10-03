@@ -54,11 +54,15 @@ import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { Client } from 'pg';
+import { passwordSementaraAcak } from './_kredensial-uji.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
 
-const PASSWORD_SEMENTARA = 'admin123'; // sama seragam dgn buat-akun.mjs -- harus_ganti_password=true memaksa ganti sebelum dipakai
+// Akun uji TIDAK memakai password awal karyawan (3 Oktober 2026): dibuat dengan password acak,
+// lalu `node scripts/rotasi-akun-uji.mjs --jalankan` menetapkan & menyimpannya di berkas
+// kredensial uji di luar repo (scripts/_kredensial-uji.mjs).
+const PASSWORD_SEMENTARA = passwordSementaraAcak();
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -158,3 +162,5 @@ const { rows: cekTugas } = await db.query(
 console.table(cekTugas);
 
 await db.end();
+
+console.log('Password akun uji baru masih acak sementara -- jalankan: node scripts/rotasi-akun-uji.mjs --jalankan');

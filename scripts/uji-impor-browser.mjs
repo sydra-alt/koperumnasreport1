@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// ⚠️ LIVE: menulis ke database PRODUKSI (akun uji saja); dipulihkan otomatis lewat scripts/_pengaman-uji.mjs.
 // Uji impor opname Excel di BROWSER SUNGGUHAN terhadap produksi (29
 // September 2026): login -> /asisten -> "Impor opname (Excel)" -> pilih
 // outlet -> unggah .xlsx buatan skrip -> "Baca dan cocokkan" -> bendera per
@@ -17,7 +18,7 @@
 
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
@@ -26,13 +27,15 @@ import ExcelJS from 'exceljs';
 import { createClient } from '@supabase/supabase-js';
 import { chromium } from 'playwright';
 import { pasangPemulih } from './_pengaman-uji.mjs';
+import { passwordUji } from './_kredensial-uji.mjs';
 import { aksesPosUjiSementara } from './_akses-pos-uji.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env.local'), quiet: true });
 
 const BASE_URL = process.env.UJI_BASE_URL ?? 'http://localhost:3000';
-const SCREENSHOT = process.env.UJI_SCREENSHOT ?? path.join(__dirname, '..', 'impor-uji.png');
+const SCREENSHOT = process.env.UJI_SCREENSHOT ?? path.join(os.tmpdir(), 'koperumnas-uji', 'impor-uji.png');
+mkdirSync(path.dirname(SCREENSHOT.endsWith('.png') ? SCREENSHOT : `${SCREENSHOT}.png`), { recursive: true }); // tangkapan layar = data produksi -> temp OS, tidak pernah di repo
 const EMAIL = 'uji-ceo@koperumnas.local';
 const OUTLET = 'Indokopi Jatinegara';
 
@@ -59,10 +62,10 @@ const pw = `Uji-${crypto.randomBytes(9).toString('base64url')}`;
 let pulihAkses = null;
 const pulihkan = pasangPemulih('uji-impor-browser', async () => {
   if (pulihAkses) await pulihAkses();
-  const { error } = await admin.auth.admin.updateUserById(id, { password: 'admin123' });
+  const { error } = await admin.auth.admin.updateUserById(id, { password: passwordUji(EMAIL) });
   if (error) throw new Error(`gagal mengembalikan password ${EMAIL}: ${error.message}`);
   await db.query('update public.profile set harus_ganti_password = $2 where id = $1', [id, gantiAwal]);
-  console.log(`[pulih] ${EMAIL}: password admin123, harus_ganti_password=${gantiAwal}.`);
+  console.log(`[pulih] ${EMAIL}: password dari berkas kredensial uji, harus_ganti_password=${gantiAwal}.`);
   await db.end();
 });
 

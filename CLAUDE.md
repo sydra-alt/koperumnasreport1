@@ -44,6 +44,14 @@ Jangan pasang: React Router (App Router sudah menangani rute), ORM apa pun, Redu
 - Setelah selesai, laporkan bagian "Selesai kalau" mana yang sudah diverifikasi dan bagaimana caranya.
 - Kalau dokumen tidak jelas, **bertanya**. Jangan menebak lalu jalan terus.
 - Kalau menurutmu ada yang salah di skema atau spesifikasi, berhenti dan tunjukkan. Jangan diperbaiki diam-diam.
+- **Jangan pernah meng-commit tangkapan layar atau ekspor data produksi; stage berkas satu per satu menurut nama** (tidak pernah `git add -A` / `git add .`). Skrip uji browser menulis tangkapan layar ke folder temp OS, bukan ke repo. Hook `.githooks/pre-commit` menolak gambar/spreadsheet/`.env` yang ter-stage (aktifkan sekali per clone: `git config core.hooksPath .githooks`). Insiden 3 Oktober 2026: tangkapan layar stok & harga produksi ter-commit ke repo publik lalu dihapus dari riwayat.
+- **Password akun uji tidak pernah di kode.** Ada di berkas lokal di luar repo (`scripts/_kredensial-uji.mjs`, dibuat `scripts/rotasi-akun-uji.mjs`); skrip uji memulihkan ke nilai itu, tidak pernah ke `PASSWORD_AWAL`.
+
+## Go-live checklist
+
+Wajib selesai SEBELUM sistem dipakai karyawan sungguhan:
+
+- [ ] **Before any real employee gets an account: replace the fixed initial password with random one-time passwords and reset every must-change account.** (Saat ini `PASSWORD_AWAL` di `lib/passwordAwal.ts` seragam dan ada di riwayat git -- keputusan CEO 3 Oktober 2026: tetap selama pengembangan.)
 
 ## Perintah
 

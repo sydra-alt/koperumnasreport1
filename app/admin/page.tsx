@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Terlindungi } from '../../components/Terlindungi';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import { usePolicy } from '../../lib/api/policy';
+import { PASSWORD_AWAL } from '../../lib/passwordAwal';
 import { pesanKesalahanDb } from '../../lib/pesanErrorDb';
 import {
   useDaftarLokasiAdmin,
@@ -605,7 +606,7 @@ function TabPengguna() {
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="border p-2" style={gayaInput} />
         <input value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Nama" className="border p-2" style={gayaInput} />
         <p className="text-sm" style={{ color: 'var(--kosong)' }}>
-          Password awal otomatis &quot;admin123&quot; -- pengguna wajib menggantinya saat login pertama.
+          Password awal otomatis &quot;{PASSWORD_AWAL}&quot; -- pengguna wajib menggantinya saat login pertama.
         </p>
         <input value={jabatan} onChange={(e) => setJabatan(e.target.value)} placeholder="Jabatan (opsional)" className="border p-2" style={gayaInput} />
         <input value={divisi} onChange={(e) => setDivisi(e.target.value)} placeholder="Divisi (opsional)" className="border p-2" style={gayaInput} />

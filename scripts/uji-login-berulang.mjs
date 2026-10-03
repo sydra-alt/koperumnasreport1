@@ -16,7 +16,7 @@
 // (Playwright, setara "sudah logout total" -- tidak ada cookie tersisa):
 //   1. /masuk -- AKUN UJI - Karyawan Resto (uji2), password TETAP (bukan
 //      dipaksa ganti), murni menguji race sign-in -> halaman utama.
-//   2. /ganti-password -- uji2 di-reset ke admin123+harus_ganti_password=
+//   2. /ganti-password -- uji2 di-reset ke password sementara+harus_ganti_password=
 //      true SEBELUM tiap putaran, jalani alur penuh: masuk (dipaksa ganti)
 //      -> submit password baru -> klik "Lanjutkan" di layar konfirmasi ->
 //      harus mendarat di '/', BUKAN balik ke /masuk atau /ganti-password.
@@ -32,6 +32,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { pasangPemulih } from './_pengaman-uji.mjs';
+import { passwordSementaraAcak, passwordUji } from './_kredensial-uji.mjs';
 import { chromium } from 'playwright';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { Client as PgClient } from 'pg';
@@ -46,7 +47,10 @@ const BASE_URL = process.env.UJI_BASE_URL ?? 'http://localhost:3000';
 const N = Number(process.argv[2] ?? 20);
 
 const EMAIL = 'uji2@koperumnas.local';
-const PASSWORD_TETAP = 'Uji-Login-Berulang-2026';
+// Password sementara ACAK per jalan (3 Oktober 2026) -- tidak ada literal password di kode.
+const PASSWORD_TETAP = passwordSementaraAcak();
+// Pengganti password awal untuk skenario 'belum ganti password' (yang diuji tandanya, bukan nilainya).
+const PASSWORD_AWAL_UJI = passwordSementaraAcak();
 
 const db = new PgClient({ connectionString: dbUrl });
 await db.connect();
@@ -63,8 +67,8 @@ async function tandaiSudahGantiPassword() {
 }
 
 async function tandaiBelumGantiPassword() {
-  const { error } = await admin.auth.admin.updateUserById(idAkun, { password: 'admin123' });
-  if (error) throw new Error(`Gagal set admin123: ${error.message}`);
+  const { error } = await admin.auth.admin.updateUserById(idAkun, { password: PASSWORD_AWAL_UJI });
+  if (error) throw new Error(`Gagal set password awal uji: ${error.message}`);
   await db.query('update public.profile set harus_ganti_password = true where id = $1', [idAkun]);
 }
 
@@ -92,11 +96,11 @@ async function ujiGantiPasswordSekali(browser) {
   try {
     await page.goto(`${BASE_URL}/masuk`);
     await page.locator('input[type="email"]').fill(EMAIL);
-    await page.locator('input[type="password"]').fill('admin123');
+    await page.locator('input[type="password"]').fill(PASSWORD_AWAL_UJI);
     await page.getByRole('button', { name: 'Masuk' }).click();
     await page.waitForURL(/\/ganti-password/, { timeout: 10000 });
 
-    const passwordBaru = `Uji-Ganti-${Date.now()}`;
+    const passwordBaru = passwordSementaraAcak();
     await page.locator('input[type="password"]').nth(0).fill(passwordBaru);
     await page.locator('input[type="password"]').nth(1).fill(passwordBaru);
     await page.getByRole('button', { name: 'Simpan & Lanjutkan' }).click();
@@ -124,12 +128,12 @@ async function ujiGantiPasswordSekali(browser) {
 
 // Pemulihan idempoten -- dipanggil dari finally DAN dari penangan sinyal/galat.
 const pulihkan = pasangPemulih('uji-login-berulang', async () => {
-  // Pulihkan uji2 ke baseline admin123 + harus_ganti_password=true.
-  const { error: errPw } = await admin.auth.admin.updateUserById(idAkun, { password: 'admin123' });
+  // Pulihkan uji2 ke password di berkas kredensial uji + harus_ganti_password=true.
+  const { error: errPw } = await admin.auth.admin.updateUserById(idAkun, { password: passwordUji(EMAIL) });
   if (errPw) console.error(`🛑 GAGAL memulihkan password uji2: ${errPw.message}`);
   await db.query('update public.profile set harus_ganti_password = true where id = $1', [idAkun]);
   const { rows: cek } = await db.query('select harus_ganti_password from public.profile where id = $1', [idAkun]);
-  console.log(cek[0]?.harus_ganti_password === true ? '\nuji2 dipulihkan ke baseline (admin123, harus_ganti_password=true).' : '\n🛑 uji2 BELUM PULIH.');
+  console.log(cek[0]?.harus_ganti_password === true ? '\nuji2 dipulihkan ke baseline (password dari berkas kredensial uji, harus_ganti_password=true).' : '\n🛑 uji2 BELUM PULIH.');
   await db.end();
 });
 

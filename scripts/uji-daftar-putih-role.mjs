@@ -36,6 +36,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { pasangPemulih } from './_pengaman-uji.mjs';
+import { passwordUji } from './_kredensial-uji.mjs';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { Client as PgClient } from 'pg';
@@ -71,8 +72,8 @@ const pulihkan = pasangPemulih('uji-daftar-putih-role', async () => {
   // baseline-nya 'karyawan'), apa pun hasil uji di atas.
   await db.query('delete from public.role where user_id = $1', [idAkunTarget]);
 
-  const { error: errPw } = await admin.auth.admin.updateUserById(idAkunAdmin, { password: 'admin123' });
-  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI - Admin ke admin123: ${errPw.message}`);
+  const { error: errPw } = await admin.auth.admin.updateUserById(idAkunAdmin, { password: passwordUji('uji6@koperumnas.local') });
+  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI - Admin ke berkas kredensial uji: ${errPw.message}`);
   await db.query('update public.profile set harus_ganti_password = true where id = $1;', [idAkunAdmin]);
   const { rows: cekAkun } = await db.query(
     `select p.harus_ganti_password, u.updated_at, u.last_sign_in_at from public.profile p join auth.users u on u.id = p.id where p.id = $1`,

@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import { createClient } from '../../lib/supabase/client';
 
-const PASSWORD_AWAL = 'admin123';
+import { PASSWORD_AWAL } from '../../lib/passwordAwal';
 
 export default function GantiPasswordPage() {
   const { session } = useAuth();

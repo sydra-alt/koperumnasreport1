@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// ⚠️ LIVE: menulis ke database PRODUKSI (akun uji saja); dipulihkan otomatis lewat scripts/_pengaman-uji.mjs.
 // Uji asisten AI di BROWSER SUNGGUHAN (Chromium lewat Playwright) terhadap
 // situs yang ter-deploy (28 September 2026): login, buka /asisten, kirim SATU
 // pertanyaan sungguhan (Gemini sungguhan dipanggil -- berbayar, satu pesan),
@@ -6,13 +7,15 @@
 //
 // ⚠️ LIVE: HANYA akun uji-ceo@koperumnas.local (akun uji, bukan orang
 // sungguhan): password sementara + harus_ganti_password=false selama uji,
-// dikembalikan ke admin123 + nilai semula lewat pasangPemulih. Percakapan
+// dikembalikan ke password di berkas kredensial uji (scripts/_kredensial-uji.mjs) + nilai semula lewat pasangPemulih. Percakapan
 // yang dibuat SENGAJA dibiarkan (bukti jawaban pertama; tercatat di
 // ai_panggilan_alat).
 //
 // Jalankan: UJI_BASE_URL=https://koperumnasreport.vercel.app node scripts/uji-asisten-browser.mjs "pertanyaan lokal" ["pertanyaan POS"]
 
 import path from 'node:path';
+import { mkdirSync } from 'node:fs';
+import os from 'node:os';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
@@ -20,6 +23,7 @@ import pg from 'pg';
 import { createClient } from '@supabase/supabase-js';
 import { chromium } from 'playwright';
 import { pasangPemulih } from './_pengaman-uji.mjs';
+import { passwordUji } from './_kredensial-uji.mjs';
 import { aksesPosUjiSementara } from './_akses-pos-uji.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -38,7 +42,8 @@ const PERIODE_HARAPAN = process.env.UJI_MINGGU_INI
       return { periode: 'minggu_ini', dari, sampai, cocok: new RegExp(`(${hari(dari)}\\D{1,12}${hari(sampai)}|${dari})`) };
     })()
   : null;
-const SCREENSHOT = process.env.UJI_SCREENSHOT ?? path.join(__dirname, '..', 'asisten-uji.png');
+const SCREENSHOT = process.env.UJI_SCREENSHOT ?? path.join(os.tmpdir(), 'koperumnas-uji', 'asisten-uji.png');
+mkdirSync(path.dirname(SCREENSHOT.endsWith('.png') ? SCREENSHOT : `${SCREENSHOT}.png`), { recursive: true }); // tangkapan layar = data produksi -> temp OS, tidak pernah di repo
 const EMAIL = 'uji-ceo@koperumnas.local';
 
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
@@ -58,10 +63,10 @@ const pw = `Uji-${crypto.randomBytes(9).toString('base64url')}`;
 let pulihAkses = null;
 const pulihkan = pasangPemulih('uji-asisten-browser', async () => {
   if (pulihAkses) await pulihAkses();
-  const { error } = await admin.auth.admin.updateUserById(id, { password: 'admin123' });
+  const { error } = await admin.auth.admin.updateUserById(id, { password: passwordUji(EMAIL) });
   if (error) throw new Error(`gagal mengembalikan password ${EMAIL}: ${error.message}`);
   await db.query('update public.profile set harus_ganti_password = $2 where id = $1', [id, gantiAwal]);
-  console.log(`[pulih] ${EMAIL}: password admin123, harus_ganti_password=${gantiAwal}.`);
+  console.log(`[pulih] ${EMAIL}: password dari berkas kredensial uji, harus_ganti_password=${gantiAwal}.`);
   await db.end();
 });
 

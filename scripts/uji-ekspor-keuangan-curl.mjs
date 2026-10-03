@@ -27,7 +27,7 @@
 // memory) untuk login sungguhan lalu MENANGKAP persis Set-Cookie yang
 // ditulisnya -- bukan hasil reka-reka format.
 //
-// Password AKUN UJI di-reset di sini lalu DIKEMBALIKAN ke admin123 +
+// Password AKUN UJI di-reset di sini lalu DIKEMBALIKAN ke password di berkas kredensial uji +
 // harus_ganti_password=true di blok finally, DIBUKTIKAN lewat baca ulang
 // dari DB -- bukan dipercaya dari nilai kembalian.
 
@@ -36,6 +36,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { pasangPemulih } from './_pengaman-uji.mjs';
+import { passwordUji } from './_kredensial-uji.mjs';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { Client as PgClient } from 'pg';
@@ -70,12 +71,12 @@ let semuaLolos = false;
 
 // Pemulihan idempoten -- dipanggil dari finally DAN dari penangan sinyal/galat.
 const pulihkan = pasangPemulih('uji-ekspor-keuangan-curl', async () => {
-  // Kembalikan AKUN UJI ke keadaan semula -- password admin123 seragam +
+  // Kembalikan AKUN UJI ke keadaan semula -- password dari berkas kredensial uji +
   // harus_ganti_password=true, DIBUKTIKAN lewat baca ulang DB (versi
   // sebelumnya TIDAK PERNAH memulihkan Sabrina sama sekali -- ditemukan
   // lewat sisir skrip 7 September 2026, lihat docs/04-CATATAN-TEKNIS.md §7).
-  const { error: errPw } = await admin.auth.admin.updateUserById(idPenguji, { password: 'admin123' });
-  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke admin123: ${errPw.message}`);
+  const { error: errPw } = await admin.auth.admin.updateUserById(idPenguji, { password: passwordUji('uji4@koperumnas.local') });
+  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke berkas kredensial uji: ${errPw.message}`);
   await db.query('update public.profile set harus_ganti_password = true where id = $1;', [idPenguji]);
   const { rows: cekAkun } = await db.query(
     `select p.harus_ganti_password, u.updated_at, u.last_sign_in_at from public.profile p join auth.users u on u.id = p.id where p.id = $1`,
@@ -83,7 +84,7 @@ const pulihkan = pasangPemulih('uji-ekspor-keuangan-curl', async () => {
   );
   const pulihSempurna = cekAkun[0]?.harus_ganti_password === true && new Date(cekAkun[0].updated_at) > new Date(cekAkun[0].last_sign_in_at);
   console.log(pulihSempurna
-    ? 'AKUN UJI dikembalikan: password admin123 (dibuktikan lewat updated_at > last_sign_in_at), harus_ganti_password = true.'
+    ? 'AKUN UJI dikembalikan: password dari berkas kredensial uji (dibuktikan lewat updated_at > last_sign_in_at), harus_ganti_password = true.'
     : `🛑 AKUN UJI BELUM PULIH SEPENUHNYA -- ${JSON.stringify(cekAkun[0])}.`);
   await db.end();
 });

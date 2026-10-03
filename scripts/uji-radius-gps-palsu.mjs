@@ -41,6 +41,7 @@ import dotenv from 'dotenv';
 import { chromium } from 'playwright';
 import { Client } from 'pg';
 import { pasangPemulih } from './_pengaman-uji.mjs';
+import { passwordSementaraAcak, passwordUji } from './_kredensial-uji.mjs';
 import { createClient } from '@supabase/supabase-js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -54,12 +55,12 @@ const { rows: uji5Rows } = await db0.query("select id from auth.users where emai
 if (uji5Rows.length === 0) throw new Error(`${EMAIL} tidak ditemukan -- jalankan scripts/buat-akun-uji.mjs dulu.`);
 const AKUN_UJI_ID = uji5Rows[0].id;
 await db0.end();
-// Password SEMENTARA khusus uji ini -- BUKAN admin123, supaya tidak
-// tertukar dengan kredensial akun uji standar. Dikembalikan (password +
+// Password SEMENTARA ACAK per jalan (3 Oktober 2026; dulu literal di kode),
+// supaya tidak tertukar dengan kredensial akun uji standar. Dikembalikan (password +
 // harus_ganti_password) ke keadaan semula di blok finally, DIBUKTIKAN lewat
 // baca ulang DB (bukan dipercaya dari nilai kembalian) -- pelajaran insiden
 // Qasim/Ryan.
-const PASSWORD_UJI = 'uji-radius-sementara-2026';
+const PASSWORD_UJI = passwordSementaraAcak();
 
 // Titik uji SINTETIS (bukan lokasi siapa pun) -- hanya disuntikkan ke respons
 // REST di browser, tidak pernah ditulis ke database. Posisi PALSU = ~150 km ke
@@ -111,8 +112,8 @@ async function pasangIntersepsi(context, nilaiPolicy) {
 // DAN dari penangan sinyal/galat. Dibuktikan lewat baca ulang DB, bukan dipercaya
 // dari nilai kembalian (pelajaran insiden Qasim/Ryan, 7 September 2026).
 const pulihkan = pasangPemulih('uji-radius-gps-palsu', async () => {
-  const { error: errPw } = await admin.auth.admin.updateUserById(AKUN_UJI_ID, { password: 'admin123' });
-  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke admin123: ${errPw.message}`);
+  const { error: errPw } = await admin.auth.admin.updateUserById(AKUN_UJI_ID, { password: passwordUji('uji5@koperumnas.local') });
+  if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke berkas kredensial uji: ${errPw.message}`);
   await db.query(`update profile set harus_ganti_password = true where id = $1;`, [AKUN_UJI_ID]);
   const { rows: cekAkun } = await db.query(
     `select p.harus_ganti_password, u.updated_at, u.last_sign_in_at from public.profile p join auth.users u on u.id = p.id where p.id = $1`,
@@ -120,7 +121,7 @@ const pulihkan = pasangPemulih('uji-radius-gps-palsu', async () => {
   );
   const pulihSempurna = cekAkun[0]?.harus_ganti_password === true && new Date(cekAkun[0].updated_at) > new Date(cekAkun[0].last_sign_in_at);
   console.log(pulihSempurna
-    ? 'AKUN UJI dikembalikan: password admin123 (dibuktikan lewat updated_at > last_sign_in_at), harus_ganti_password = true.'
+    ? 'AKUN UJI dikembalikan: password dari berkas kredensial uji (dibuktikan lewat updated_at > last_sign_in_at), harus_ganti_password = true.'
     : `🛑 AKUN UJI BELUM PULIH SEPENUHNYA -- ${JSON.stringify(cekAkun[0])}. Jalankan: node scripts/pulihkan-akun-uji.mjs`);
   await db.end();
 });

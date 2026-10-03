@@ -11,8 +11,10 @@
 // scripts/terapkan-admin123-uji.mjs (namanya menyesatkan) mereset SEMUA akun di
 // akun.json dan BUKAN alat pemulih.
 //
-// Yang dikembalikan per akun uji: password 'admin123' + profile.harus_ganti_password
-// = true (baseline dari scripts/buat-akun-uji.mjs). Juga MELAPORKAN (tidak mengubah)
+// Yang dikembalikan per akun uji: password dari berkas kredensial uji DI LUAR repo
+// (scripts/_kredensial-uji.mjs; dibuat scripts/rotasi-akun-uji.mjs -- 3 Oktober 2026,
+// TIDAK LAGI password awal karyawan) + profile.harus_ganti_password = true
+// (baseline dari scripts/buat-akun-uji.mjs). Juga MELAPORKAN (tidak mengubah)
 // policy.absen_di_luar_radius, sebagai pemeriksaan bahwa tidak ada uji yang
 // meninggalkan kebijakan produksi berubah.
 
@@ -21,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { Client } from 'pg';
+import { passwordUji } from './_kredensial-uji.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env.local'), quiet: true });
@@ -38,7 +41,7 @@ try {
   if (akun.length === 0) throw new Error('Tidak ada akun uji ditemukan -- jalankan scripts/buat-akun-uji.mjs.');
   let gagal = 0;
   for (const a of akun) {
-    const { error } = await admin.auth.admin.updateUserById(a.id, { password: 'admin123' });
+    const { error } = await admin.auth.admin.updateUserById(a.id, { password: passwordUji(a.email) });
     if (error) {
       console.log(`${a.email.padEnd(28)} GAGAL: ${error.message}`);
       gagal++;
@@ -48,7 +51,7 @@ try {
     const { rows } = await db.query('select harus_ganti_password from public.profile where id = $1', [a.id]);
     const ok = rows[0]?.harus_ganti_password === true;
     if (!ok) gagal++;
-    console.log(`${a.email.padEnd(28)} ${ok ? 'OK -- admin123, harus_ganti_password=true' : 'BELUM PULIH'}`);
+    console.log(`${a.email.padEnd(28)} ${ok ? 'OK -- password dari berkas kredensial uji, harus_ganti_password=true' : 'BELUM PULIH'}`);
   }
   const { rows: pol } = await db.query(`select value from public.policy where key = 'absen_di_luar_radius'`);
   console.log(`\npolicy.absen_di_luar_radius = ${JSON.stringify(pol[0]?.value)} (nilai produksi normal: "izinkan_dengan_tanda")`);

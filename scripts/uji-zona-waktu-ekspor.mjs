@@ -35,6 +35,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { pasangPemulih } from './_pengaman-uji.mjs';
+import { passwordUji } from './_kredensial-uji.mjs';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { Client as PgClient } from 'pg';
@@ -71,13 +72,13 @@ const pulihkan = pasangPemulih('uji-zona-waktu-ekspor', async () => {
     await db.query('delete from public.absensi where id = $1', [idBaris]);
     console.log(`\nBaris absensi uji (id=${idBaris}) dihapus.`);
   }
-  // Kembalikan AKUN UJI ke keadaan semula -- password admin123 seragam +
+  // Kembalikan AKUN UJI ke keadaan semula -- password dari berkas kredensial uji +
   // harus_ganti_password=true, DIBUKTIKAN lewat baca ulang DB (bukan
   // dipercaya dari nilai kembalian -- pelajaran insiden Qasim/Ryan, 7
   // September 2026, lihat docs/04-CATATAN-TEKNIS.md §7).
   if (idPenguji && admin) {
-    const { error: errPw } = await admin.auth.admin.updateUserById(idPenguji, { password: 'admin123' });
-    if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke admin123: ${errPw.message}`);
+    const { error: errPw } = await admin.auth.admin.updateUserById(idPenguji, { password: passwordUji('uji4@koperumnas.local') });
+    if (errPw) console.error(`🛑 GAGAL mengembalikan password AKUN UJI ke berkas kredensial uji: ${errPw.message}`);
     await db.query('update public.profile set harus_ganti_password = true where id = $1;', [idPenguji]);
     const { rows: cekAkun } = await db.query(
       `select p.harus_ganti_password, u.updated_at, u.last_sign_in_at from public.profile p join auth.users u on u.id = p.id where p.id = $1`,
@@ -85,7 +86,7 @@ const pulihkan = pasangPemulih('uji-zona-waktu-ekspor', async () => {
     );
     const pulihSempurna = cekAkun[0]?.harus_ganti_password === true && new Date(cekAkun[0].updated_at) > new Date(cekAkun[0].last_sign_in_at);
     console.log(pulihSempurna
-      ? 'AKUN UJI dikembalikan: password admin123 (dibuktikan lewat updated_at > last_sign_in_at), harus_ganti_password = true.'
+      ? 'AKUN UJI dikembalikan: password dari berkas kredensial uji (dibuktikan lewat updated_at > last_sign_in_at), harus_ganti_password = true.'
       : `🛑 AKUN UJI BELUM PULIH SEPENUHNYA -- ${JSON.stringify(cekAkun[0])}.`);
   }
   await db.end();

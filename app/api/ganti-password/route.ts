@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '../../../lib/supabase/server';
+import { PASSWORD_AWAL } from '../../../lib/passwordAwal';
 
 /**
  * Paksa ganti password (instruksi eksplisit user, 30 Agustus 2026) --
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
   if (passwordBaru.length < 8) {
     return NextResponse.json({ error: 'Password baru minimal 8 karakter.' }, { status: 400 });
   }
-  if (passwordBaru === 'admin123') {
+  if (passwordBaru === PASSWORD_AWAL) {
     return NextResponse.json({ error: 'Password baru tidak boleh sama dengan password awal.' }, { status: 400 });
   }
 
