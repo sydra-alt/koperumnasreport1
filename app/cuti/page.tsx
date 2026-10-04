@@ -77,25 +77,26 @@ export default function CutiPage() {
           </select>
         </label>
 
-        <div className="flex gap-3">
-          <label className="flex flex-1 flex-col gap-1 text-sm">
+        {/* Di layar 360px dua isian tanggal bertumpuk -- berdampingan, isian tanggal selesai keluar layar 24px (audit UI R03). */}
+        <div className="flex flex-col gap-3 min-[400px]:flex-row">
+          <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
             Tanggal mulai
             <input
               type="date"
               value={tanggalMulai}
               onChange={(e) => setTanggalMulai(e.target.value)}
-              className="border px-3"
+              className="w-full min-w-0 border px-3"
               style={{ borderColor: 'var(--garis)', minHeight: 44, borderRadius: 'var(--radius-kecil)' }}
               required
             />
           </label>
-          <label className="flex flex-1 flex-col gap-1 text-sm">
+          <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
             Tanggal selesai
             <input
               type="date"
               value={tanggalSelesai}
               onChange={(e) => setTanggalSelesai(e.target.value)}
-              className="border px-3"
+              className="w-full min-w-0 border px-3"
               style={{ borderColor: 'var(--garis)', minHeight: 44, borderRadius: 'var(--radius-kecil)' }}
               required
             />
@@ -113,15 +114,27 @@ export default function CutiPage() {
           />
         </label>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Lampirkan surat (opsional -- foto/scan surat sakit atau izin)
-          <input
-            type="file"
-            accept="image/jpeg,image/png,application/pdf"
-            onChange={(e) => setSuratFile(e.target.files?.[0] ?? null)}
-            className="text-sm"
-          />
-        </label>
+        <div className="flex flex-col gap-1 text-sm">
+          <span>Surat (opsional -- foto/scan surat sakit atau izin)</span>
+          {/* Tombol pil aplikasi, bukan isian file bawaan browser ("Choose File / No file chosen"). */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <label
+              className="tombol-pil inline-flex w-fit shrink-0 cursor-pointer items-center border px-4"
+              style={{ borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 44 }}
+            >
+              {suratFile ? 'Ganti surat' : 'Lampirkan surat'}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,application/pdf"
+                hidden
+                onChange={(e) => setSuratFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            <span className="min-w-0 break-all" style={{ fontSize: 12, color: 'var(--kosong)' }}>
+              {suratFile ? suratFile.name : 'Belum ada surat'}
+            </span>
+          </div>
+        </div>
 
         <button
           type="submit"

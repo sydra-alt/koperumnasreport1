@@ -88,7 +88,7 @@ export const f14Hrd: FormSchema = {
       fields: [
         { key: 'kontrak_habis_30_hari', label: 'Kontrak akan habis 30 hari ke depan (orang)', type: 'angka' },
         { key: 'berkas_belum_lengkap', label: 'Berkas karyawan belum lengkap (orang)', type: 'angka' },
-        { key: 'data_update_sistem', label: 'Data karyawan sudah update di sistem', type: 'ya_tidak' },
+        { key: 'data_update_sistem', label: 'Data karyawan sudah diperbarui di sistem', type: 'ya_tidak' },
         { key: 'nama_berkas_kurang', label: 'Nama & berkas yang kurang', type: 'teks_panjang' },
       ],
     },

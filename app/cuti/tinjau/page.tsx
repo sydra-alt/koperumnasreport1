@@ -6,6 +6,8 @@ import { KerangkaDaftarKartu } from '../../../components/Kerangka';
 import { useAuth } from '../../../lib/auth/AuthProvider';
 import { useAntreanTinjauCuti, usePutuskanCuti, useSignedUrlCuti, type CutiTinjau } from '../../../lib/api/cuti';
 import { tanggalIndonesiaDariYmd } from '../../../lib/tanggal';
+import { Istilah } from '../../../components/Istilah';
+import { TEKS_TINJAU } from '../../../lib/istilah';
 
 const LABEL_JENIS: Record<string, string> = { cuti: 'Cuti', sakit: 'Sakit', izin: 'Izin' };
 
@@ -115,7 +117,7 @@ export default function TinjauCutiPage() {
     <Terlindungi peran={['ceo']} boleh={bolehHrdKadiv}>
       <main className="mx-auto flex max-w-md flex-col gap-4 p-6">
         <h1 className="text-2xl" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
-          Tinjau Cuti / Sakit / Izin
+          <Istilah nama="Tinjau" teks={TEKS_TINJAU}>Tinjau Cuti / Sakit / Izin</Istilah>
         </h1>
         <Isi />
       </main>

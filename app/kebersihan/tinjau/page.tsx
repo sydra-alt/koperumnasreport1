@@ -8,6 +8,8 @@ import { useAuth } from '../../../lib/auth/AuthProvider';
 import { useLaporanKebersihanUntukTanggal, SLOT_KEBERSIHAN, type LaporanKebersihanRow } from '../../../lib/api/kebersihan';
 import { useSignedUrl } from '../../../lib/api/attachment';
 import { jamWIB, tanggalWIB } from '../../../lib/tanggal';
+import { Istilah } from '../../../components/Istilah';
+import { TEKS_TINJAU } from '../../../lib/istilah';
 
 /**
  * Tinjau Laporan Kebersihan (CEO, 6 September 2026) -- gerbang SAMA PERSIS
@@ -138,7 +140,7 @@ export default function TinjauKebersihanPage() {
     <Terlindungi peran={['ceo', 'pusat']} boleh={bolehHrdKadiv}>
       <main className="mx-auto flex max-w-md flex-col gap-4 p-6">
         <h1 className="text-2xl" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
-          Tinjau Kebersihan
+          <Istilah nama="Tinjau" teks={TEKS_TINJAU}>Tinjau Kebersihan</Istilah>
         </h1>
         <TinjauKebersihanIsi />
       </main>

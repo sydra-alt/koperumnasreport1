@@ -14,6 +14,8 @@ import {
   type PresensiHarianRow,
 } from '../../../lib/api/absensi';
 import { jamWIB, tanggalWIB } from '../../../lib/tanggal';
+import { Istilah } from '../../../components/Istilah';
+import { TEKS_TINJAU } from '../../../lib/istilah';
 
 type Filter = 'semua' | 'belum_absen' | 'terlambat' | 'luar_radius';
 
@@ -328,7 +330,7 @@ export default function TinjauAbsenPage() {
     <Terlindungi peran={['ceo', 'pusat']} boleh={bolehHrdKadiv}>
       <main className="mx-auto flex max-w-md flex-col gap-4 p-6">
         <h1 className="text-2xl" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
-          Tinjau Absensi
+          <Istilah nama="Tinjau" teks={TEKS_TINJAU}>Tinjau Absensi</Istilah>
         </h1>
         <TinjauAbsenIsi />
       </main>

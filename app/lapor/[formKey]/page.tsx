@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { LaporForm } from '../../../components/LaporForm';
 import { LaporanKebersihan } from '../../../components/LaporanKebersihan';
 import { createClient } from '../../../lib/supabase/server';
+import { TEKS_PENUGASAN } from '../../../lib/istilah';
 
 export default async function LaporPage({ params }: PageProps<'/lapor/[formKey]'>) {
   const { formKey } = await params;
@@ -24,6 +25,11 @@ export default async function LaporPage({ params }: PageProps<'/lapor/[formKey]'
             ? 'Muat ulang halaman ini. Kalau tetap gagal, hubungi Admin.'
             : 'Form ini hanya bisa diisi oleh yang ditugaskan. Kalau ini memang tugas Anda, minta Admin menambahkan penugasannya.'}
         </p>
+        {!error && (
+          <p className="text-sm" style={{ maxWidth: 360, color: 'var(--label)' }}>
+            {TEKS_PENUGASAN}
+          </p>
+        )}
         <Link href="/" className="tombol-utama" style={{ minHeight: 48, paddingInline: 24, display: 'inline-flex', alignItems: 'center' }}>
           Kembali ke Beranda
         </Link>

@@ -41,6 +41,7 @@ import {
   useUbahAksesAi,
   daftarRoleUntuk,
 } from '../../lib/api/admin';
+import { KonfirmasiDialog } from '../../components/KonfirmasiDialog';
 
 type Tab = 'lokasi' | 'outlet' | 'assignment' | 'policy' | 'pengguna' | 'titik-absen' | 'shift';
 
@@ -369,9 +370,9 @@ function TabPenugasan() {
               sana). Menyalakan ini tanpa pemetaan yang cocok di sana cuma
               membuat tombol berakhir "akun toko belum disiapkan". */}
           <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
-            <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Tombol Dashboard Toko (POS)</p>
+            <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>Tombol Sistem Toko (POS)</p>
             <p className="text-sm" style={{ color: 'var(--label)' }}>
-              Cuma menentukan tampil-tidaknya tombol &ldquo;Buka Dashboard Toko&rdquo; di Beranda orang ini. Akses sungguhan ke pos-fnb diatur terpisah di sana.
+              Cuma menentukan tampil-tidaknya tombol &ldquo;Buka Sistem Toko&rdquo; di Beranda orang ini. Akses sungguhan ke pos-fnb diatur terpisah di sana.
             </p>
             <p className="text-sm" style={{ color: orang.punya_akses_pos ? 'var(--hijau)' : 'var(--kosong)' }}>
               {orang.punya_akses_pos ? '✅ Tombol tampil' : '⚪ Tombol disembunyikan'}
@@ -598,6 +599,9 @@ function TabPengguna() {
   // atau begitu reset lain dijalankan. Tidak pernah disimpan ke state lain,
   // tidak pernah dikirim ke mana pun selain kotak ini.
   const [passwordBaruUntuk, setPasswordBaruUntuk] = useState<{ userId: string; password: string } | null>(null);
+  // Konfirmasi dalam aplikasi + galat di tempat (audit UI P21/R02) -- dulu confirm()/alert() bawaan browser.
+  const [konfirmasiReset, setKonfirmasiReset] = useState<{ id: string; nama: string } | null>(null);
+  const [galatReset, setGalatReset] = useState<{ userId: string; pesan: string } | null>(null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -679,24 +683,23 @@ function TabPengguna() {
             <button
               type="button"
               disabled={aturUlang.isPending}
-              onClick={() => {
-                if (!confirm(`Atur ulang kata sandi ${p.nama}? Kata sandi lamanya langsung tidak berlaku.`)) return;
-                setPasswordBaruUntuk(null);
-                aturUlang.mutate(p.id, {
-                  onSuccess: (hasil) => setPasswordBaruUntuk({ userId: p.id, password: hasil.password }),
-                  onError: (err) => alert(pesanKesalahanDb(err, 'mengatur ulang kata sandi')),
-                });
-              }}
+              onClick={() => setKonfirmasiReset({ id: p.id, nama: p.nama })}
               className="mt-2 border px-2 py-1"
               style={{ borderColor: 'var(--merah)', color: 'var(--merah)', minHeight: 44 }}
             >
               {aturUlang.isPending ? 'Mengatur ulang…' : 'Atur ulang kata sandi'}
             </button>
+            {galatReset?.userId === p.id && (
+              <p className="mt-2 text-sm" style={{ color: 'var(--merah)' }}>
+                {galatReset.pesan}
+              </p>
+            )}
             {passwordBaruUntuk?.userId === p.id && (
               <div className="mt-2 border p-2" style={{ borderColor: 'var(--hijau)', background: 'var(--kertas-2)' }}>
                 <p>
-                  Kata sandi baru untuk <strong>{p.nama}</strong> (salin & berikan langsung ke orangnya sekarang --
-                  tidak akan ditampilkan lagi setelah kotak ini ditutup):
+                  Kata sandi sementara untuk <strong>{p.nama}</strong>. Salin dan berikan langsung ke orangnya sekarang --
+                  kata sandi ini tidak disimpan dan tidak akan ditampilkan lagi setelah kotak ini ditutup. Saat masuk,
+                  {' '}{p.nama} wajib menggantinya dengan kata sandi sendiri.
                 </p>
                 <p className="mt-1 select-all border px-2 py-1" style={{ fontFamily: 'var(--mono)', borderColor: 'var(--garis)', background: 'var(--kertas)' }}>
                   {passwordBaruUntuk.password}
@@ -714,6 +717,25 @@ function TabPengguna() {
           </li>
         ))}
       </ul>
+      <KonfirmasiDialog
+        terbuka={konfirmasiReset !== null}
+        judul={`Atur ulang kata sandi ${konfirmasiReset?.nama ?? ''}?`}
+        pesan="Kata sandi lamanya langsung tidak berlaku. Anda akan melihat kata sandi sementara satu kali untuk diberikan ke orangnya."
+        ya="Ya, atur ulang kata sandi"
+        bahaya
+        onBatal={() => setKonfirmasiReset(null)}
+        onYa={() => {
+          const target = konfirmasiReset;
+          setKonfirmasiReset(null);
+          if (!target) return;
+          setPasswordBaruUntuk(null);
+          setGalatReset(null);
+          aturUlang.mutate(target.id, {
+            onSuccess: (hasil) => setPasswordBaruUntuk({ userId: target.id, password: hasil.password }),
+            onError: (err) => setGalatReset({ userId: target.id, pesan: pesanKesalahanDb(err, 'mengatur ulang kata sandi') }),
+          });
+        }}
+      />
     </div>
   );
 }

@@ -83,7 +83,7 @@ export const f16KontrolFnb: FormSchema = {
     {
       id: 'kontrol_stok_resto',
       judul: 'Kontrol Stok Restoran',
-      catatan: 'Angka pengecekan Manager Resto ditampilkan otomatis di atas sebagai pembanding -- Anda tetap mengisi hasil pengecekan sendiri.',
+      catatan: 'Angka pengecekan Manajer Resto ditampilkan otomatis di atas sebagai pembanding -- Anda tetap mengisi hasil pengecekan sendiri.',
       fields: [
         { key: 'stok_sesuai', label: 'Stok sistem = stok aktual (versi Anda)', type: 'ya_tidak' },
         { key: 'stok_habis', label: 'Stok habis', type: 'teks_panjang' },
@@ -94,7 +94,7 @@ export const f16KontrolFnb: FormSchema = {
     {
       id: 'rab_stok',
       judul: 'Kebutuhan Stok / RAB',
-      catatan: 'Daftar stok habis/kebutuhan kiriman pusat ditampilkan otomatis di atas, dari laporan Manager Resto hari ini -- tidak diketik ulang.',
+      catatan: 'Daftar stok habis/kebutuhan kiriman pusat ditampilkan otomatis di atas, dari laporan Manajer Resto hari ini -- tidak diketik ulang.',
       fields: [
         { key: 'rab_kebutuhan_stok', label: 'RAB', type: 'uang' },
         { key: 'diajukan_pak_eri', label: 'Sudah diajukan ke Pak Eri', type: 'ya_tidak' },

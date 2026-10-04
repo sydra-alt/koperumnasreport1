@@ -134,7 +134,7 @@ function Isi() {
                 { label: 'STKB', nilai: angka(it.data, 'konsumen_stkb') },
                 { label: 'Suspend', nilai: angka(it.data, 'konsumen_suspend') },
                 { label: 'Menunggak', nilai: angka(it.data, 'konsumen_menunggak') },
-                { label: 'Refund', nilai: angka(it.data, 'konsumen_refund') },
+                { label: 'Pengembalian dana', nilai: angka(it.data, 'konsumen_refund') },
                 { label: 'Take over', nilai: angka(it.data, 'konsumen_take_over') },
               ]}
             />

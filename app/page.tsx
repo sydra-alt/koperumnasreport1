@@ -36,6 +36,8 @@ import { SilangCekOmzetBeranda } from '../components/SilangCekOmzet';
 import { useLaporanAccountingHariIni, hitungRingkasanKeuanganCeo } from '../lib/api/accounting';
 import { formatRupiah } from '../lib/rupiah';
 import { bolehLihatTautanPos } from '../lib/posLink';
+import { Istilah } from '../components/Istilah';
+import { teksClosing, teksPte } from '../lib/istilah';
 
 /**
  * Lembar angka datar untuk rekap Beranda: label kecil + angka mono, dipisah
@@ -171,7 +173,7 @@ function TombolPos() {
 
   return (
     <section>
-      <p className="judul-seksi mb-2">Buka Dashboard Toko</p>
+      <p className="judul-seksi mb-2">Buka Sistem Toko</p>
       <div className="panel panel-baris flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
         <div className="flex flex-col gap-1">
           <p className="text-sm">
@@ -189,7 +191,7 @@ function TombolPos() {
           rel="noopener noreferrer"
           aria-label="Buka dashboard sistem kasir di tab baru"
         >
-          Buka Dashboard Toko ↗
+          Buka Sistem Toko ↗
         </a>
       </div>
     </section>
@@ -283,7 +285,9 @@ function BagianPte({ policy, poinBulanIni, progres }: { policy: PolicyMap; poinB
   return (
     <div className="panel">
       <div className="panel-baris status-biru flex flex-col gap-1">
-        <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--biru)' }}>PTE poin hari ini</p>
+        <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--biru)' }}>
+          <Istilah nama="PTE" teks={teksPte(poinMaksimal)}>PTE poin hari ini</Istilah>
+        </p>
         <div className="flex items-baseline gap-2">
           <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{poinHariIni?.poin_total ?? 0}</span>
           <span className="text-sm" style={{ color: 'var(--label)' }}>dari {poinMaksimal} poin</span>
@@ -321,7 +325,9 @@ function BagianPte({ policy, poinBulanIni, progres }: { policy: PolicyMap; poinB
           eksplisit user 20 September 2026). */}
       {progres?.pte_berlaku && (
         <div className="panel-baris status-biru flex flex-col gap-1">
-          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--biru)' }}>Closing bulan ini</p>
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--biru)' }}>
+            <Istilah nama="Closing" teks={teksClosing(Number(closingTarget) || null)}>Closing bulan ini</Istilah>
+          </p>
           <div className="flex items-baseline gap-2">
             <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{progres.closing}</span>
             <span className="text-sm" style={{ color: 'var(--label)' }}>dari {closingTarget}</span>

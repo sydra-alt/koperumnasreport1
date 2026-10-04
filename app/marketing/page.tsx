@@ -215,7 +215,7 @@ export default function MarketingPage() {
     <Terlindungi peran={['kontrol_marketing', 'ceo', 'pusat']}>
       <main className="flex flex-col gap-4 p-6">
         <h1 className="text-2xl" style={{ color: 'var(--biru)' }}>
-          Dashboard Kontrol Marketing
+          Kontrol Marketing
         </h1>
         <TombolEkspor path="/api/ekspor/marketing" label="Kepatuhan marketing bulanan" />
         <Isi />

@@ -33,7 +33,7 @@ import type { FormSchema } from './types';
  */
 export const f16ManagerResto: FormSchema = {
   key: 'manager_resto',
-  nama: 'Laporan Harian Manager Resto',
+  nama: 'Laporan Harian Manajer Resto',
   navLabel: 'Lapor Resto',
   scope: 'outlet',
   blocks: [
@@ -103,7 +103,7 @@ export const f16ManagerResto: FormSchema = {
     {
       id: 'stok_habis',
       judul: 'Stok Habis / Kebutuhan Kiriman Pusat',
-      catatan: 'Manager tidak melakukan pembelanjaan stok. Seluruh kebutuhan stok dilaporkan untuk dikirim dari pusat.',
+      catatan: 'Manajer tidak melakukan pembelanjaan stok. Seluruh kebutuhan stok dilaporkan untuk dikirim dari pusat.',
       fields: [
         {
           key: 'stok_habis',
@@ -131,7 +131,7 @@ export const f16ManagerResto: FormSchema = {
     {
       id: 'utilitas',
       judul: 'Utilitas',
-      catatan: 'Manager wajib kontrol setiap hari.',
+      catatan: 'Manajer wajib kontrol setiap hari.',
       fields: [
         { key: 'es_batu_stok_awal', label: 'Es batu -- stok awal', type: 'angka' },
         { key: 'es_batu_pemakaian', label: 'Es batu -- pemakaian', type: 'angka' },
@@ -152,7 +152,7 @@ export const f16ManagerResto: FormSchema = {
     {
       id: 'dapur',
       judul: 'Kesiapan Dapur',
-      catatan: 'Sebelum operasional, Manager memastikan hal-hal berikut.',
+      catatan: 'Sebelum operasional, Manajer memastikan hal-hal berikut.',
       fields: [
         { key: 'soto_siap', label: 'Soto siap', type: 'ya_tidak' },
         { key: 'ayam_siap', label: 'Ayam siap', type: 'ya_tidak' },
@@ -238,7 +238,7 @@ export const f16ManagerResto: FormSchema = {
     {
       id: 'kontrol_pte',
       judul: 'Kontrol PTA/PTE Seluruh Karyawan',
-      catatan: 'Manager tidak perlu membuat laporan PTA personal karyawan. Manager hanya memastikan kewajiban PTE tiap karyawan terpenuhi.',
+      catatan: 'Manajer tidak perlu membuat laporan PTA personal karyawan. Manajer hanya memastikan kewajiban PTE tiap karyawan terpenuhi.',
       fields: [
         { key: 'total_wajib_pte', label: 'Total karyawan wajib PTA/PTE', type: 'angka' },
         { key: 'sudah_kirim_pte', label: 'Sudah mengirim laporan personal', type: 'angka' },
@@ -257,9 +257,9 @@ export const f16ManagerResto: FormSchema = {
         { key: 'cek_mentahan_total', label: 'Video mentahan -- dari total', type: 'angka' },
         { key: 'karyawan_pte_tidak_lengkap', label: 'Karyawan PTA/PTE tidak lengkap', type: 'teks_panjang' },
         { key: 'alasan_pte_tidak_lengkap', label: 'Alasan', type: 'teks_panjang' },
-        { key: 'tindakan_manager_pte', label: 'Tindakan Manager', type: 'teks_panjang' },
+        { key: 'tindakan_manager_pte', label: 'Tindakan Manajer', type: 'teks_panjang' },
       ],
     },
-    blokKeputusanCeo('Rekap Manager Hari Ini', 'Status resto hari ini'),
+    blokKeputusanCeo('Rekap Manajer Hari Ini', 'Status resto hari ini'),
   ],
 };

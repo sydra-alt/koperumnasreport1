@@ -195,7 +195,7 @@ const KOLOM: Record<string, { judul: string; kolom: KolomTabelAi[] }> = {
     judul: 'Omzet POS harian',
     kolom: [
       k('outlet', 'Outlet'), k('tanggal', 'Tanggal'), k('jumlah_order', 'Order', 'angka'),
-      k('penjualan_bersih', 'Penjualan bersih', 'rupiah'), k('uang_diterima', 'Uang diterima', 'rupiah'), k('refund', 'Refund', 'rupiah'),
+      k('penjualan_bersih', 'Penjualan bersih', 'rupiah'), k('uang_diterima', 'Uang diterima', 'rupiah'), k('refund', 'Pengembalian dana', 'rupiah'),
     ],
   },
   penjualan_per_item: {

@@ -51,7 +51,7 @@ const batasUntuk = (formKey, shiftId) => (formKey === 'manager_resto' ? '23:00' 
 const tugas = [
   { formKey: 'personal_marketing', namaForm: 'Laporan Personal Marketing', scopeLabel: null, status: 'belum', label: 'batas 18.00', lewatDeadline: false, tombol: 'Isi sekarang' },
   { formKey: 'kebersihan', namaForm: 'Laporan Kebersihan', scopeLabel: 'Indosteak Cempaka', status: 'draft', label: 'tersimpan, belum dikirim', lewatDeadline: false, tombol: 'Lanjutkan' },
-  { formKey: 'manager_resto', namaForm: 'Laporan Harian Manager Resto', scopeLabel: 'Indosteak Cempaka', status: 'belum', label: 'batas 23.00', lewatDeadline: false, tombol: 'Isi sekarang' },
+  { formKey: 'manager_resto', namaForm: 'Laporan Harian Manajer Resto', scopeLabel: 'Indosteak Cempaka', status: 'belum', label: 'batas 23.00', lewatDeadline: false, tombol: 'Isi sekarang' },
   { formKey: 'security', namaForm: 'Laporan Keamanan', scopeLabel: 'Tajur · Pagi', status: 'belum', label: 'terlambat 30 menit', lewatDeadline: true, tombol: 'Isi sekarang' },
 ];
 const opsi = (jam) => ({ assignments, jamSekarang: jam, ambangMenit: 60, batasUntuk, labelScope });

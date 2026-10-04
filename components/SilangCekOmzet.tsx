@@ -81,10 +81,10 @@ const kosongGaya = { fontSize: 14, color: 'var(--kosong)' } as const;
  */
 function KartuOutlet({ r, tampilPos, datar = false }: { r: OmzetTigaSumberRow; tampilPos: boolean; datar?: boolean }) {
   const daftar: { nama: string; nilai: number | null }[] = [
-    { nama: 'Manager vs Kontrol F&B', nilai: r.selisihManagerKontrol },
+    { nama: 'Manajer vs Kontrol F&B', nilai: r.selisihManagerKontrol },
     ...(tampilPos
       ? [
-          { nama: 'Manager vs POS', nilai: r.selisihManagerPos },
+          { nama: 'Manajer vs POS', nilai: r.selisihManagerPos },
           { nama: 'Kontrol F&B vs POS', nilai: r.selisihKontrolPos },
         ]
       : []),
@@ -103,7 +103,7 @@ function KartuOutlet({ r, tampilPos, datar = false }: { r: OmzetTigaSumberRow; t
       <div className={datar ? 'panel-baris flex flex-col gap-0.5' : 'kartu-status rail-netral flex flex-col gap-0.5'} style={{ padding: '10px 16px' }}>
         <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{r.outlet}</p>
         <p style={{ fontSize: 13, color: 'var(--kosong)', lineHeight: 1.35 }}>
-          Belum ada laporan Manager Resto maupun Kontrol F&amp;B
+          Belum ada laporan Manajer Resto maupun Kontrol F&amp;B
           {tampilPos ? ` · ${(TEKS_POS_KOSONG[r.posStatus] ?? 'Belum ada data POS').replace(/^./, (c) => c.toLowerCase())}` : ''}
         </p>
       </div>
@@ -114,7 +114,7 @@ function KartuOutlet({ r, tampilPos, datar = false }: { r: OmzetTigaSumberRow; t
     <div className={datar ? `panel-baris ${rail === 'kuning' ? 'status-kuning' : rail === 'hijau' ? 'status-hijau' : ''} flex flex-col gap-3` : `kartu-status ${RAIL[rail]} flex flex-col gap-3`}>
       <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{r.outlet}</p>
       <div className={`grid grid-cols-1 gap-2 ${tampilPos ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
-        <Sel label="Manager Resto · diketik">
+        <Sel label="Manajer Resto · diketik">
           {r.manager === null ? <span style={kosongGaya}>Belum ada laporan</span> : <span style={nilaiGaya}>{formatRupiah(r.manager)}</span>}
         </Sel>
         <Sel label="Kontrol F&B · diketik">

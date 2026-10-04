@@ -83,5 +83,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     console.error('Gagal mencatat reset_password_log:', errLog.message);
   }
 
-  return NextResponse.json({ password: passwordBaru });
+  // Kata sandi sementara hanya ada di respons ini: tidak disimpan, tidak di-log, tidak boleh di-cache.
+  return NextResponse.json({ password: passwordBaru }, { headers: { 'Cache-Control': 'no-store' } });
 }

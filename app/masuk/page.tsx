@@ -108,6 +108,11 @@ export default function MasukPage() {
         >
           {mengirim ? 'Memeriksa…' : 'Masuk'}
         </button>
+
+        {/* Tidak ada reset lewat email (keputusan pemilik proyek) -- admin mengatur ulang dari halaman Admin (audit UI R02). */}
+        <p className="text-center text-sm" style={{ color: 'var(--label)' }}>
+          Lupa kata sandi? Hubungi admin.
+        </p>
       </form>
     </main>
   );

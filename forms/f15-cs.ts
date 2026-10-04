@@ -92,7 +92,7 @@ export const f15Cs: FormSchema = {
       id: 'perubahan_status',
       judul: 'Perubahan Status Konsumen',
       fields: [
-        { key: 'refund_diajukan', label: 'Refund diajukan', type: 'angka' },
+        { key: 'refund_diajukan', label: 'Pengembalian dana diajukan', type: 'angka' },
         { key: 'take_over_diajukan', label: 'Take over diajukan', type: 'angka' },
         { key: 'suspend_jumlah', label: 'Suspend', type: 'angka' },
         { key: 'pindah_lokasi_kavling', label: 'Pindah lokasi/kavling', type: 'angka' },

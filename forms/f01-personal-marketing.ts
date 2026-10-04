@@ -64,14 +64,14 @@ function blokPteHarian(labelUndangan: string): Block {
       },
       {
         key: 'review_list',
-        label: 'Google Review',
+        label: 'Ulasan Google',
         type: 'tabel',
         buktiWajib: true,
         buktiPerBaris: true,
         buktiKunci: 'review',
         kolom: [
           { key: 'nama', label: 'Nama Reviewer', type: 'teks', wajib: true },
-          { key: 'tanggal', label: 'Tanggal Review (YYYY-MM-DD)', type: 'teks', wajib: true },
+          { key: 'tanggal', label: 'Tanggal Ulasan (contoh 2026-10-04)', type: 'teks', wajib: true },
         ],
         bantuan: '2 review = 10 poin, 1 review = 0 poin (semua atau tidak sama sekali). Tangkapan layar wajib per review.',
       },
@@ -122,7 +122,7 @@ function blokPteArsipEnamKewajiban(): Block {
         bantuan: 'Bukti: undangan / follow-up. Angka ini juga dipakai untuk progres undangan yang ditampilkan di bagian atas.',
       },
       { key: 'kesaksian_jumlah', label: 'Kesaksian / Testimoni', type: 'angka', buktiWajib: true, buktiKunci: 'kesaksian', bantuan: 'Bukti: video atau foto' },
-      { key: 'review_jumlah', label: 'Google Review', type: 'angka', buktiWajib: true, buktiKunci: 'review', bantuan: 'Bukti: link atau screenshot' },
+      { key: 'review_jumlah', label: 'Ulasan Google', type: 'angka', buktiWajib: true, buktiKunci: 'review', bantuan: 'Bukti: link atau screenshot' },
       {
         key: 'konten_jumlah',
         label: 'VT / Konten Medsos',

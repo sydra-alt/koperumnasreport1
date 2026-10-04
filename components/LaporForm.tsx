@@ -41,6 +41,8 @@ import { urgensiTerburukDariKirim, warnaDipilihDari, warnaOtomatis, warnaTerburu
 import { debounce } from '../lib/debounce';
 import { formRegistry } from '../forms';
 import { FormRenderer, type LaporanTerkirim } from './FormRenderer';
+import { Istilah } from './Istilah';
+import { teksPte } from '../lib/istilah';
 
 // Label PENCAPAIAN TARGET (closing/undangan bulanan) -- SENGAJA beda dari
 // label "belum lapor" (PapanKartu dkk.). DESIGN.md §6.1: "Belum mencapai
@@ -444,7 +446,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
                 </p>
               </div>
               <p className="text-sm" style={{ color: 'var(--label)' }}>
-                PTE hari ini: {poinBulanIni?.find((r) => r.tanggal === tanggalWIB())?.poin_total ?? 0} / {poinMaksimal} poin
+                <Istilah nama="PTE" teks={teksPte(poinMaksimal)}>PTE hari ini</Istilah>: {poinBulanIni?.find((r) => r.tanggal === tanggalWIB())?.poin_total ?? 0} / {poinMaksimal} poin
                 {progres.pte_berlaku
                   ? ` · Poin bulan ini: ${ringkasanBulanIni?.totalPoin ?? 0} / ${(targetPoinBulanIni ?? 0).toLocaleString('id-ID')} (${ringkasanBulanIni?.hariPenuh ?? 0} dari ${hariWajibBulanIni} hari penuh)`
                   : ''}
@@ -496,7 +498,9 @@ export function LaporForm({ formKey }: { formKey: string }) {
             {poinPte && poinMaksimal !== null && policy && (
               <>
                 <div className="panel-baris flex flex-col gap-2">
-                  <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>PTE hari ini</p>
+                  <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>
+                    <Istilah nama="PTE" teks={teksPte(poinMaksimal)}>PTE hari ini</Istilah>
+                  </p>
                   <div className="flex items-baseline gap-2">
                     <span className="angka-kecil" style={{ color: 'var(--biru)' }}>{poinPte.poinTotal}</span>
                     <span className="text-sm" style={{ color: 'var(--label)' }}>dari maksimal {poinMaksimal} poin</span>
@@ -861,14 +865,14 @@ function StokManagerUntukKontrolFnbOtomatis({ data }: { data: ManagerRestoUntukK
   return (
     <div className="panel p-4">
       <p className="judul-seksi">
-        Angka Manager Resto (pembanding &amp; kebutuhan stok)
+        Angka Manajer Resto (pembanding &amp; kebutuhan stok)
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
-        Dari laporan Manager Resto hari ini, per outlet. Hanya baca -- dipakai sebagai pembanding di &quot;Kontrol Stok Restoran&quot; dan sumber daftar di &quot;Kebutuhan Stok / RAB&quot;.
+        Dari laporan Manajer Resto hari ini, per outlet. Hanya baca -- dipakai sebagai pembanding di &quot;Kontrol Stok Restoran&quot; dan sumber daftar di &quot;Kebutuhan Stok / RAB&quot;.
       </p>
       {data.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--kosong)' }}>
-          Belum ada laporan Manager Resto hari ini.
+          Belum ada laporan Manajer Resto hari ini.
         </p>
       ) : (
         <div className="flex flex-col gap-3">
@@ -876,7 +880,7 @@ function StokManagerUntukKontrolFnbOtomatis({ data }: { data: ManagerRestoUntukK
             <div key={o.outlet} className="border p-3 text-sm" style={{ borderColor: 'var(--garis)' }}>
               <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>{o.outlet}</p>
               <p>
-                Ada selisih stok (versi Manager): {o.ada_selisih_stok === null ? '—' : o.ada_selisih_stok ? '✅' : '❌'} -- jumlah item
+                Ada selisih stok (versi Manajer): {o.ada_selisih_stok === null ? '—' : o.ada_selisih_stok ? '✅' : '❌'} -- jumlah item
                 selisih: {o.jumlah_item_selisih ?? 0}
               </p>
               {o.stok_habis.length > 0 && (
@@ -970,11 +974,11 @@ function OmzetRestoOtomatis({ data }: { data: OmzetRestoRow[] }) {
         Omzet Resto -- Tiga Pengukuran
       </p>
       <p className="mb-3 text-sm" style={{ color: 'var(--biru-3)' }}>
-        Omzet versi Manager Resto dan versi Kontrol F&amp;B, hari ini. Hanya baca -- lengkapi angka sisi bank di &quot;Rekonsiliasi Resto&quot;, selisih dihitung otomatis.
+        Omzet versi Manajer Resto dan versi Kontrol F&amp;B, hari ini. Hanya baca -- lengkapi angka sisi bank di &quot;Rekonsiliasi Resto&quot;, selisih dihitung otomatis.
       </p>
       {data.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--kosong)' }}>
-          Belum ada laporan Manager Resto hari ini.
+          Belum ada laporan Manajer Resto hari ini.
         </p>
       ) : (
         <div className="flex flex-col gap-2 text-sm">
@@ -982,7 +986,7 @@ function OmzetRestoOtomatis({ data }: { data: OmzetRestoRow[] }) {
             const selisih = o.omzetManager !== null && o.omzetKontrolFnb !== null ? o.omzetManager - o.omzetKontrolFnb : null;
             return (
               <p key={o.outlet}>
-                <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{o.outlet}</b> -- versi Manager: {rupiah(o.omzetManager)} · versi Kontrol F&amp;B:{' '}
+                <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{o.outlet}</b> -- versi Manajer: {rupiah(o.omzetManager)} · versi Kontrol F&amp;B:{' '}
                 {rupiah(o.omzetKontrolFnb)} · selisih: {selisih === null ? '—' : rupiah(selisih)}
               </p>
             );
