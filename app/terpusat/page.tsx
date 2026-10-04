@@ -130,6 +130,7 @@ function Isi() {
           { id: 'seksi-14', label: '14 IT', ada: Boolean(it) },
           { id: 'seksi-15', label: '15 PIC Lokasi' },
           { id: 'seksi-17', label: '17 Keputusan' },
+          ...(tanggalHariIni ? [{ id: 'seksi-isian', label: 'Isian Pusat hari ini' }] : []),
         ]}
       />
 
@@ -485,10 +486,9 @@ function Isi() {
 
       {tanggalHariIni ? (
         <>
-          <p className="text-sm" style={{ color: 'var(--kosong)' }}>
-            Bagian 16 (Target Besok), 17 (Keputusan Tambahan dari Pusat), dan Kesimpulan bisa Anda isi di bawah.
-          </p>
-          <LaporForm formKey="pusat" />
+          <SeksiLipat id="seksi-isian" judul="16-17 · Isian Pusat: Target Besok, Keputusan Tambahan & Kesimpulan">
+            <LaporForm formKey="pusat" />
+          </SeksiLipat>
         </>
       ) : (
         <p className="text-sm" style={{ color: 'var(--kosong)' }}>
