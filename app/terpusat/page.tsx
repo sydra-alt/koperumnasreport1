@@ -28,22 +28,16 @@ import { usePapanUntukTanggal } from '../../lib/api/papan';
 import { useAntreanKeputusan } from '../../lib/api/decision';
 import { useCutiUntukTanggal } from '../../lib/api/cuti';
 import { formatRupiah } from '../../lib/rupiah';
+import { marketingAktif } from '../../lib/marketing';
+import { usePolicy } from '../../lib/api/policy';
+import { RingkasanSeksi, SeksiLipat } from '../../components/SeksiLipat';
 
-function Seksi({ nomor, judul, sumber, children }: { nomor: string; judul: string; sumber?: string; children: ReactNode }) {
+function Seksi({ nomor, judul, sumber, ada, children }: { nomor: string; judul: string; sumber?: string; ada?: boolean; children: ReactNode }) {
+  // Pola halaman panjang bersama (components/SeksiLipat.tsx, audit UI R07): dilipat di HP.
   return (
-    <div className="border p-4 print-seksi" style={{ borderColor: 'var(--garis)' }}>
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
-          {nomor} · {judul}
-        </p>
-        {sumber && (
-          <span className="text-sm" style={{ color: 'var(--biru-3)' }}>
-            {sumber}
-          </span>
-        )}
-      </div>
-      <div className="mt-2 flex flex-col gap-2 text-sm">{children}</div>
-    </div>
+    <SeksiLipat id={`seksi-${nomor.split(' ')[0]}`} judul={`${nomor} · ${judul}`} keterangan={sumber} ada={ada}>
+      {children}
+    </SeksiLipat>
   );
 }
 
@@ -91,6 +85,8 @@ function Isi() {
 
   const { data: security } = useSecurityUntukTanggal(tanggal);
   const { data: stk } = useStkUntukTanggal(tanggal);
+  const { data: policyTerpusat } = usePolicy();
+  const tampilMarketing = marketingAktif(policyTerpusat);
   const { data: marketing } = useMarketingUntukTanggal(tanggal);
   const { data: tertinggal } = useKaryawanTertinggal();
   const { data: picLokasi } = usePicLokasiUntukTanggal(tanggal);
@@ -116,12 +112,32 @@ function Isi() {
   return (
     <div className="flex flex-col gap-4">
       <PemilihTanggal tanggal={tanggal} onUbah={setTanggal} />
+      <RingkasanSeksi
+        butir={[
+          { id: 'seksi-1', label: '1 Data Konsumen', ada: Boolean(it) },
+          { id: 'seksi-2', label: '2 CS', ada: Boolean(csList && csList.length > 0) },
+          { id: 'seksi-3', label: '3 Operasional Kantor', ada: Boolean(ga) },
+          { id: 'seksi-4', label: '4 Security' },
+          { id: 'seksi-5', label: '5 HRD', ada: Boolean(hrd) },
+          { id: 'seksi-6', label: '6 Perizinan', ada: Boolean(perizinan) },
+          { id: 'seksi-7', label: '7 Pembangunan' },
+          { id: 'seksi-8', label: '8 Kontrol Lokasi' },
+          { id: 'seksi-9', label: '9 STK' },
+          { id: 'seksi-10', label: '10 DTI', ada: Boolean(dti) },
+          { id: 'seksi-11', label: '11 Keuangan' },
+          { id: 'seksi-12', label: '12 Kendaraan', ada: Boolean(kendaraan) },
+          ...(tampilMarketing ? [{ id: 'seksi-13', label: '13 Marketing' }] : []),
+          { id: 'seksi-14', label: '14 IT', ada: Boolean(it) },
+          { id: 'seksi-15', label: '15 PIC Lokasi' },
+          { id: 'seksi-17', label: '17 Keputusan' },
+        ]}
+      />
 
       <p className="text-sm" style={{ color: 'var(--kosong)' }}>
         Bagian 1-15 hanya baca -- terisi otomatis dari laporan divisi lain. Tidak ada satu pun angka di bagian ini yang bisa diketik manual.
       </p>
 
-      <Seksi nomor="1" judul="Data Konsumen / Sistem" sumber={it ? sumberDari('it', it.submittedAt) : undefined}>
+      <Seksi ada={Boolean(it)} nomor="1" judul="Data Konsumen / Sistem" sumber={it ? sumberDari('it', it.submittedAt) : undefined}>
         {!it ? (
           <Kosong nama="IT" />
         ) : (
@@ -144,7 +160,7 @@ function Isi() {
         )}
       </Seksi>
 
-      <Seksi nomor="2" judul="CS & Masalah Konsumen" sumber={csList && csList.length > 0 ? `dari ${csList.length} pengisi CS` : undefined}>
+      <Seksi ada={Boolean(csList && csList.length > 0)} nomor="2" judul="CS & Masalah Konsumen" sumber={csList && csList.length > 0 ? `dari ${csList.length} pengisi CS` : undefined}>
         {!csList || csList.length === 0 ? (
           <Kosong nama="CS" />
         ) : (
@@ -170,7 +186,7 @@ function Isi() {
         )}
       </Seksi>
 
-      <Seksi nomor="3" judul="Operasional Kantor" sumber={ga ? sumberDari('ga', ga.submittedAt) : undefined}>
+      <Seksi ada={Boolean(ga)} nomor="3" judul="Operasional Kantor" sumber={ga ? sumberDari('ga', ga.submittedAt) : undefined}>
         {!ga ? (
           <Kosong nama="GA" />
         ) : (
@@ -203,7 +219,7 @@ function Isi() {
         <p style={{ color: 'var(--kosong)' }}>Rincian per lokasi/shift ada di laporan Security masing-masing.</p>
       </Seksi>
 
-      <Seksi nomor="5" judul="HRD / Absensi" sumber={hrd ? sumberDari('hrd', hrd.submittedAt) : undefined}>
+      <Seksi ada={Boolean(hrd)} nomor="5" judul="HRD / Absensi" sumber={hrd ? sumberDari('hrd', hrd.submittedAt) : undefined}>
         {!hrd ? (
           <Kosong nama="HRD" />
         ) : (
@@ -224,7 +240,7 @@ function Isi() {
         )}
       </Seksi>
 
-      <Seksi nomor="6" judul="Perizinan" sumber={perizinan ? sumberDari('perizinan', perizinan.submittedAt) : undefined}>
+      <Seksi ada={Boolean(perizinan)} nomor="6" judul="Perizinan" sumber={perizinan ? sumberDari('perizinan', perizinan.submittedAt) : undefined}>
         {!perizinan ? (
           <Kosong nama="Perizinan" />
         ) : (
@@ -306,7 +322,7 @@ function Isi() {
         />
       </Seksi>
 
-      <Seksi nomor="10" judul="DTI / Precast / Perikas" sumber={dti ? sumberDari('dti', dti.submittedAt) : undefined}>
+      <Seksi ada={Boolean(dti)} nomor="10" judul="DTI / Precast / Perikas" sumber={dti ? sumberDari('dti', dti.submittedAt) : undefined}>
         {!dti ? (
           <Kosong nama="DTI" />
         ) : (
@@ -353,7 +369,7 @@ function Isi() {
         <SilangCekOmzetTanggal tanggal={tanggal} tampilPos={roles.includes('ceo') || roles.includes('accounting')} />
       </Seksi>
 
-      <Seksi nomor="12" judul="Kendaraan & Driver" sumber={kendaraan ? sumberDari('kendaraan', kendaraan.submittedAt) : undefined}>
+      <Seksi ada={Boolean(kendaraan)} nomor="12" judul="Kendaraan & Driver" sumber={kendaraan ? sumberDari('kendaraan', kendaraan.submittedAt) : undefined}>
         {!kendaraan ? (
           <Kosong nama="Kendaraan/GA" />
         ) : (
@@ -371,6 +387,9 @@ function Isi() {
         )}
       </Seksi>
 
+      {/* Seksi marketing disembunyikan kalau aktivitas marketing tidak berlaku (lib/marketing.ts). */}
+      {tampilMarketing && (
+      <>
       <Seksi nomor="13" judul="Marketing -- Kontrol Pak Fauzi &amp; Pak Dea" sumber="dari rekap laporan marketing harian &amp; bulanan">
         <AngkaGrid
           butir={[
@@ -396,8 +415,10 @@ function Isi() {
           </div>
         )}
       </Seksi>
+      </>
+      )}
 
-      <Seksi nomor="14" judul="IT / Digital / Medsos" sumber={it ? sumberDari('it', it.submittedAt) : undefined}>
+      <Seksi ada={Boolean(it)} nomor="14" judul="IT / Digital / Medsos" sumber={it ? sumberDari('it', it.submittedAt) : undefined}>
         {!it ? (
           <Kosong nama="IT" />
         ) : (

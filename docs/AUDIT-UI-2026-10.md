@@ -52,7 +52,7 @@ What works well:
 ## Top 10 for the first real day at an outlet (both apps)
 
 1. **P01** POS Worker hits the CPU limit and returns 503 after a few pages. Nothing else matters until this is solved.
-2. **P03** Tunai (cash) payment method is inactive in production.
+2. **P03** ~~Tunai (cash) payment method is inactive in production.~~ Closed 6 October 2026: CEO decision, Tunai stays inactive (cash is deposited to the bank and recorded as Transfer).
 3. **P02** Thrift cashier is never sent to the prepare report, so every thrift sale fails at "Konfirmasi Bayar".
 4. **Go-live data**: no cashier device registered at Kemayoran or Cempaka Putih, no cashier employee at Pekansari, and opening stock counts missing for Kemayoran and Pekansari (see Go-live checklist).
 5. **P04** No way back from the receipt page to the sales screen after payment.
@@ -129,7 +129,6 @@ State read on **3 October 2026**, read-only. No values were changed.
 - [ ] **Cloudflare Workers plan / CPU limit for pos-fnb** (P01). Until this is solved, the POS cannot be used for a full day.
 
 **POS configuration**
-- [ ] **Tunai (CASH) payment method is inactive.** Active methods: QRIS, Transfer (P03).
 - [ ] **Cashier devices:**
   - Jatinegara: 1 active device.
   - Pekansari: 1.

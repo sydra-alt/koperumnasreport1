@@ -3,6 +3,7 @@ import { LaporForm } from '../../../components/LaporForm';
 import { LaporanKebersihan } from '../../../components/LaporanKebersihan';
 import { createClient } from '../../../lib/supabase/server';
 import { TEKS_PENUGASAN } from '../../../lib/istilah';
+import { PESAN_MARKETING_NONAKTIF } from '../../../lib/marketing';
 
 export default async function LaporPage({ params }: PageProps<'/lapor/[formKey]'>) {
   const { formKey } = await params;
@@ -35,6 +36,23 @@ export default async function LaporPage({ params }: PageProps<'/lapor/[formKey]'
         </Link>
       </main>
     );
+  }
+
+  // Personal Marketing tidak berlaku lagi (keputusan CEO 6 Oktober 2026, policy marketing_aktif,
+  // lib/marketing.ts) -- form tidak dirender, tidak ada baris yang dibuat; data lama tetap ada.
+  if (formKey === 'personal_marketing') {
+    const { data: saklar } = await supabase.from('policy').select('value').eq('key', 'marketing_aktif').maybeSingle();
+    if (saklar?.value === false) {
+      return (
+        <main className="flex min-h-svh flex-col items-center justify-center gap-3 p-6 text-center">
+          <h1 className="text-2xl">Laporan Personal Marketing</h1>
+          <p style={{ maxWidth: 360 }}>{PESAN_MARKETING_NONAKTIF}</p>
+          <Link href="/" className="tombol-utama" style={{ minHeight: 48, paddingInline: 24, display: 'inline-flex', alignItems: 'center' }}>
+            Kembali ke Beranda
+          </Link>
+        </main>
+      );
+    }
   }
 
   // Laporan Kebersihan BUKAN form berbasis field (5 foto lewat kamera

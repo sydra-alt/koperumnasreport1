@@ -17,6 +17,7 @@ import { poinMaksimalHarian, ringkasanPoinBulanan, usePteHarianBulananSemua } fr
 import { kalenderPteBulanIni } from '../../lib/kalenderPte';
 import { TombolEkspor } from '../../components/TombolEkspor';
 import { tanggalWIB } from '../../lib/tanggal';
+import { marketingAktif, PESAN_MARKETING_NONAKTIF } from '../../lib/marketing';
 
 const IKON: Record<'hijau' | 'kuning' | 'merah', string> = { hijau: '🟢', kuning: '🟡', merah: '🔴' };
 const WARNA_HARI: Record<string, string> = {
@@ -211,6 +212,17 @@ function Isi() {
 }
 
 export default function MarketingPage() {
+  const { data: policy } = usePolicy();
+  // Aktivitas marketing tidak berlaku lagi (lib/marketing.ts): halaman tidak tampil di navigasi,
+  // dan kalau dibuka langsung hanya menampilkan keterangan -- data & ekspor lama tidak dihapus.
+  if (policy && !marketingAktif(policy)) {
+    return (
+      <main className="flex min-h-svh flex-col items-center justify-center gap-2 p-6 text-center">
+        <h1 className="text-2xl">Kontrol Marketing</h1>
+        <p style={{ maxWidth: 360 }}>{PESAN_MARKETING_NONAKTIF}</p>
+      </main>
+    );
+  }
   return (
     <Terlindungi peran={['kontrol_marketing', 'ceo', 'pusat']}>
       <main className="flex flex-col gap-4 p-6">

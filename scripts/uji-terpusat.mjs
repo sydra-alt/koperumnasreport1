@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// PENSIUN (6 Oktober 2026): memakai kolom report.shift (diganti shift_id, 0033) dan view v_*_hari_ini (diganti fungsi bertanggal, 0020); fungsi-fungsi itu kini diuji uji-tanggal-mundur.mjs.
+console.log('uji-terpusat.mjs PENSIUN -- lihat baris 2 berkas ini; tidak ada yang dijalankan.');
+process.exit(0);
 // Uji Task 21 (Laporan Terpusat) -- tiga view baru migrasi 0019, DB
 // sungguhan lewat penyamaran RLS, dibungkus BEGIN...ROLLBACK.
 //

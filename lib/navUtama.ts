@@ -59,9 +59,13 @@ export function tabTerlihat(
   formRegistry: Record<string, FormSchema>,
   divisi: string | null = null,
   bolehAi = false,
+  /** lib/marketing.ts -- false menyembunyikan "Lapor" (Personal Marketing) & "Marketing". */
+  marketingAktif = true,
 ): TabNav[] {
   const tetap = TAB_TETAP.filter(
-    (t) => t.peran === null || (Array.isArray(t.peran) ? t.peran : [t.peran]).some((p) => roles.includes(p)),
+    (t) =>
+      (marketingAktif || (t.key !== 'lapor' && t.key !== 'marketing')) &&
+      (t.peran === null || (Array.isArray(t.peran) ? t.peran : [t.peran]).some((p) => roles.includes(p))),
   );
   const dinamis = tabLaporDinamis(assignments, formRegistry).map((t, i) => ({ key: `lapor-dinamis-${i}-${t.href}`, ...t }));
   // "Tinjau Absensi" (presensi) -- ceo/pusat, ATAU kadiv KHUSUS divisi HRD

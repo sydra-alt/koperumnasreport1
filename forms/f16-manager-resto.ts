@@ -237,6 +237,7 @@ export const f16ManagerResto: FormSchema = {
     },
     {
       id: 'kontrol_pte',
+      marketing: true,
       judul: 'Kontrol PTA/PTE Seluruh Karyawan',
       catatan: 'Manajer tidak perlu membuat laporan PTA personal karyawan. Manajer hanya memastikan kewajiban PTE tiap karyawan terpenuhi.',
       fields: [

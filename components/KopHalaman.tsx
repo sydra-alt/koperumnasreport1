@@ -11,6 +11,8 @@ import { tanggalIndonesiaWIB } from '../lib/tanggal';
 import { useTitikAbsenSaya } from '../lib/api/absensi';
 import { NavIcon, ikonUntukTab } from './NavIcon';
 import { AbsenFab } from './AbsenFab';
+import { usePolicy } from '../lib/api/policy';
+import { marketingAktif } from '../lib/marketing';
 
 /**
  * Nav atas (layar lebar) dan nav bawah (layar sempit, §2
@@ -54,6 +56,8 @@ export function KopHalaman() {
     };
   }, [menuLainnyaTerbuka]);
 
+  const { data: policy } = usePolicy();
+
   // /masuk dan /ganti-password BERDIRI SENDIRI, tanpa kerangka aplikasi
   // (instruksi eksplisit user, 30 Agustus 2026 -- bug: nav akun lama masih
   // terlihat di /masuk setelah logout). Dicek lebih dulu, sebelum `loading`/
@@ -63,7 +67,7 @@ export function KopHalaman() {
   if (pathname === '/masuk' || pathname === '/ganti-password') return null;
   if (loading || !session) return null;
 
-  const semua = tabTerlihat(roles, assignments, formRegistry, profile?.divisi ?? null, profile?.punya_akses_ai ?? false);
+  const semua = tabTerlihat(roles, assignments, formRegistry, profile?.divisi ?? null, profile?.punya_akses_ai ?? false, marketingAktif(policy));
   const bawah = tabBawah(semua, punyaTitikAbsen);
   // FAB disisipkan di TENGAH -- 2 tab kiri (Beranda + 1 prioritas), 2 tab
   // kanan (1 prioritas + Akun) kalau tombolnya tampil; kalau tidak, `bawah`

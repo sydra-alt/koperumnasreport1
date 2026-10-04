@@ -51,6 +51,8 @@ export interface Block {
   fields: Field[];
   hanyaHari?: number[]; // blok cuma tampil & tervalidasi kalau hari ISO (1=Senin..7=Minggu, lib/tanggal.ts)
                         // ada di daftar ini -- dipakai utk "Stock Opname" ita yang cuma muncul Senin.
+  marketing?: boolean;  // blok aktivitas marketing (PTE/Personal Marketing) -- jadi `arsip` saat policy
+                        // marketing_aktif=false (components/LaporForm.tsx, lib/marketing.ts), 6 Oktober 2026.
   arsip?: boolean;      // blok skema LAMA yang sudah dipensiunkan (field-nya tidak lagi diisi) --
                         // DISEMBUNYIKAN dari FormRenderer/validasi (blokBerlakuHariIni, forms/validasi.ts)
                         // supaya tidak ada yang bisa mengisi ulang, TAPI TETAP dirender

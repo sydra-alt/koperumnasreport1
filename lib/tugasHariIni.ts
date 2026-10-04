@@ -1,6 +1,7 @@
 import type { PolicyMap } from './api/policy';
 import { batasJamKirim } from './api/report';
 import { formRegistry } from '../forms';
+import { marketingAktif } from './marketing';
 
 export interface AssignmentRingkas {
   form_key: string;
@@ -92,7 +93,8 @@ export function hitungTugasHariIni(
 
   const hasil: TugasHariIni[] = [];
 
-  if (roles.includes('karyawan')) {
+  // Personal Marketing hanya kalau aktivitas marketing masih berlaku (lib/marketing.ts, policy marketing_aktif).
+  if (roles.includes('karyawan') && marketingAktif(policy)) {
     hasil.push(baris('personal_marketing', formRegistry.personal_marketing?.nama ?? 'Laporan Personal Marketing', null, null, null, null));
   }
 

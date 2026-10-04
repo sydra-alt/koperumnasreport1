@@ -43,6 +43,7 @@ import { formRegistry } from '../forms';
 import { FormRenderer, type LaporanTerkirim } from './FormRenderer';
 import { Istilah } from './Istilah';
 import { teksPte } from '../lib/istilah';
+import { marketingAktif } from '../lib/marketing';
 
 // Label PENCAPAIAN TARGET (closing/undangan bulanan) -- SENGAJA beda dari
 // label "belum lapor" (PapanKartu dkk.). DESIGN.md §6.1: "Belum mencapai
@@ -73,7 +74,15 @@ export function LaporForm({ formKey }: { formKey: string }) {
   const outletPenugasanMarketing =
     formKey === 'personal_marketing' ? (assignments.find((a) => a.form_key === 'personal_marketing')?.outlet_id ?? null) : null;
   const { data: labelUndanganUnit } = useLabelUndanganOutlet(outletPenugasanMarketing);
-  const schema = formKey === 'personal_marketing' ? buatF01PersonalMarketing(labelUndanganUnit ?? undefined) : formRegistry[formKey];
+  const { data: policy } = usePolicy();
+  const skemaDasar = formKey === 'personal_marketing' ? buatF01PersonalMarketing(labelUndanganUnit ?? undefined) : formRegistry[formKey];
+  // Blok bertanda `marketing` (mis. "Kontrol PTA/PTE" di Laporan Manajer Resto) jadi arsip --
+  // tidak diisi/divalidasi, tetap terbaca di riwayat -- kalau marketing tidak berlaku (lib/marketing.ts).
+  const marketingBerlaku = marketingAktif(policy);
+  const schema = useMemo(
+    () => (skemaDasar && !marketingBerlaku ? { ...skemaDasar, blocks: skemaDasar.blocks.map((b) => (b.marketing ? { ...b, arsip: true } : b)) } : skemaDasar),
+    [skemaDasar, marketingBerlaku],
+  );
   const { data: daftarLokasi } = useDaftarLokasi();
   const { data: daftarOutlet } = useDaftarOutlet();
   const { data: daftarShift } = useDaftarShift();
@@ -121,7 +130,6 @@ export function LaporForm({ formKey }: { formKey: string }) {
     : undefined;
 
   const { data: reportHariIni, isLoading: memuatReport } = useReportHariIni(formKey, opsi);
-  const { data: policy } = usePolicy();
   const { data: progres } = useProgresBulananSaya();
   const { data: rekapPembangunan } = useRekapPembangunanPerLokasi(formKey === 'pembangunan');
   const { data: belumUpload } = usePicLokasiBelumUpload(formKey === 'it');
@@ -132,7 +140,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
   // Blok "Laporan Personal Marketing" (rekap PTE/undangan/closing milik pengirim
   // sendiri) muncul di HAMPIR SEMUA form divisi -- lihat forms/blok-bersama.ts.
   // Query ini cuma perlu jalan utk form SELAIN personal_marketing itu sendiri.
-  const perluRollupMarketing = formKey !== 'personal_marketing';
+  const perluRollupMarketing = formKey !== 'personal_marketing' && marketingBerlaku;
   const { data: laporanMarketingHariIni } = useReportHariIni('personal_marketing', { aktif: perluRollupMarketing });
   // Poin PTE Harian bulan berjalan MILIK SENDIRI -- dipakai baik oleh panel
   // "PTE hari ini" (dalam form personal_marketing sendiri) MAUPUN rollup

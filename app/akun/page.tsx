@@ -7,6 +7,8 @@ import { tabTerlihat, tabLuapan } from '../../lib/navUtama';
 import { KerangkaPresensiRingkas } from '../../components/Kerangka';
 import { useTitikAbsenSaya, usePresensiSayaUntukBulan } from '../../lib/api/absensi';
 import { jamWIB, tanggalIndonesiaDariYmd, tanggalWIB } from '../../lib/tanggal';
+import { usePolicy } from '../../lib/api/policy';
+import { marketingAktif } from '../../lib/marketing';
 
 /**
  * Halaman "Akun" -- slot terakhir nav bawah (§2 06-RENCANA-PRESENSI-MOBILE.md).
@@ -22,7 +24,8 @@ export default function AkunPage() {
   // kehilangannya di sini juga (bolehTinjauAbsen salah mengira false),
   // sama seperti bug yang sudah pernah terjadi di KopHalaman sebelum ini
   // ditemukan (ditemukan saat menata ulang halaman ini, bukan dicari-cari).
-  const semua = tabTerlihat(roles, assignments, formRegistry, profile?.divisi ?? null, profile?.punya_akses_ai ?? false);
+  const { data: policy } = usePolicy();
+  const semua = tabTerlihat(roles, assignments, formRegistry, profile?.divisi ?? null, profile?.punya_akses_ai ?? false, marketingAktif(policy));
   // punyaTitikAbsen WAJIB juga diteruskan (sama alasan dengan divisi di
   // atas) -- tabLuapan() perlu tahu apakah 2 atau 3 slot tengah dipakai di
   // nav bawah supaya daftar "kalah prioritas" di sini cocok persis.

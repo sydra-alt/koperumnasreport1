@@ -38,6 +38,7 @@ import { formatRupiah } from '../lib/rupiah';
 import { bolehLihatTautanPos } from '../lib/posLink';
 import { Istilah } from '../components/Istilah';
 import { teksClosing, teksPte } from '../lib/istilah';
+import { marketingAktif } from '../lib/marketing';
 
 /**
  * Lembar angka datar untuk rekap Beranda: label kecil + angka mono, dipisah
@@ -417,7 +418,7 @@ function DaftarTugas() {
   // Definisi ini SENGAJA dari data yang ada: tidak ada baris assignment
   // form_key='personal_marketing' sama sekali -- tugas itu muncul dari peran
   // `karyawan`, bukan dari assignment (lihat hitungTugasHariIni).
-  const tampilPte = profile?.wajib_pte !== false && adaAturanPteDiOutlet === true;
+  const tampilPte = marketingAktif(policy) && profile?.wajib_pte !== false && adaAturanPteDiOutlet === true;
   const bagianPte = tampilPte ? <BagianPte policy={policy} poinBulanIni={poinBulanIni} progres={progres} /> : null;
 
   // Tata letak saja: di desktop tugas di kolom kiri (maks. 720px), PTE di kolom kanan kalau ada.
