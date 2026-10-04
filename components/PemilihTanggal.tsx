@@ -19,12 +19,11 @@ export function PemilihTanggal({ tanggal, onUbah }: PemilihTanggalProps) {
   const bukanHariIni = tanggal !== hariIni;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2.5">
       <button
         type="button"
         onClick={() => onUbah(tambahHari(tanggal, -1))}
-        className="border px-3"
-        style={{ borderColor: 'var(--garis)', minHeight: 44, minWidth: 44 }}
+        className="tombol-lingkar !w-10 !h-10 text-sm font-bold"
         aria-label="Tanggal sebelumnya"
       >
         ←
@@ -34,15 +33,14 @@ export function PemilihTanggal({ tanggal, onUbah }: PemilihTanggalProps) {
         value={tanggal}
         max={hariIni}
         onChange={(e) => e.target.value && onUbah(e.target.value)}
-        className="border px-2"
-        style={{ borderColor: 'var(--garis)', minHeight: 44, fontFamily: 'var(--mono)' }}
+        className="px-3 py-2 text-sm font-semibold"
+        style={{ minHeight: 40, fontFamily: 'var(--mono)' }}
       />
       <button
         type="button"
         onClick={() => onUbah(tambahHari(tanggal, 1))}
         disabled={tanggal >= hariIni}
-        className="border px-3"
-        style={{ borderColor: 'var(--garis)', minHeight: 44, minWidth: 44, opacity: tanggal >= hariIni ? 0.4 : 1 }}
+        className="tombol-lingkar !w-10 !h-10 text-sm font-bold disabled:opacity-40 disabled:pointer-events-none"
         aria-label="Tanggal berikutnya"
       >
         →
@@ -51,13 +49,13 @@ export function PemilihTanggal({ tanggal, onUbah }: PemilihTanggalProps) {
         <button
           type="button"
           onClick={() => onUbah(hariIni)}
-          className="border px-3 text-sm"
-          style={{ borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 44 }}
+          className="tombol-sekunder !py-1 !px-3.5 text-xs font-bold"
+          style={{ minHeight: 40 }}
         >
           Hari ini
         </button>
       )}
-      <span className="text-sm" style={{ color: 'var(--biru-3)' }}>
+      <span className="text-xs font-semibold px-2" style={{ color: 'var(--biru)' }}>
         {tanggalIndonesiaDariYmd(tanggal)}
       </span>
     </div>

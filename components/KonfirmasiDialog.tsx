@@ -35,26 +35,49 @@ export function KonfirmasiDialog({ terbuka, judul, pesan, ya, batal = 'Batal', b
         e.preventDefault();
         onBatal();
       }}
-      className="panel m-auto w-[min(92vw,380px)] p-0"
-      style={{ border: '1px solid var(--garis)', background: 'var(--kertas)', color: 'var(--tinta)' }}
+      className="neumo-kartu m-auto w-[min(92vw,400px)] p-0 backdrop:backdrop-blur-sm backdrop:bg-black/30"
+      style={{ border: '1px solid rgba(255, 255, 255, 0.85)', background: 'var(--permukaan)', color: 'var(--tinta)', borderRadius: '24px' }}
     >
-      <div className="flex flex-col gap-3 p-4">
-        <p style={{ fontFamily: 'var(--display)', fontWeight: 600, fontSize: 17 }}>{judul}</p>
-        {pesan && <p className="text-sm" style={{ color: 'var(--label)' }}>{pesan}</p>}
-        <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-4 p-6 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: bahaya ? 'rgba(217, 37, 37, 0.1)' : 'var(--biru-lembut)', color: bahaya ? 'var(--merah)' : 'var(--biru)', boxShadow: 'var(--bayangan-neumo-sm)' }}>
+          {bahaya ? (
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          ) : (
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+          )}
+        </div>
+
+        <div>
+          <p style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 18, color: 'var(--tinta)' }}>{judul}</p>
+          {pesan && <p className="mt-1 text-xs" style={{ color: 'var(--label)', lineHeight: 1.5 }}>{pesan}</p>}
+        </div>
+
+        <div className="mt-2 flex flex-col gap-2.5">
           <button
             type="button"
             onClick={onYa}
-            className="px-4"
-            style={{ minHeight: 44, borderRadius: 'var(--radius-pil)', background: bahaya ? 'var(--merah)' : 'var(--biru)', color: 'var(--kertas-2)' }}
+            className="tombol-utama w-full"
+            style={{
+              minHeight: 46,
+              background: bahaya ? 'linear-gradient(135deg, #D92525, #B71C1C)' : undefined,
+              boxShadow: bahaya ? '0 4px 14px rgba(217, 37, 37, 0.3)' : undefined,
+            }}
           >
             {ya}
           </button>
           <button
             type="button"
             onClick={onBatal}
-            className="border px-4"
-            style={{ minHeight: 44, borderRadius: 'var(--radius-pil)', borderColor: 'var(--garis)' }}
+            className="tombol-sekunder w-full"
+            style={{ minHeight: 46 }}
           >
             {batal}
           </button>

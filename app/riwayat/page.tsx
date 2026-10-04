@@ -45,24 +45,24 @@ export default function RiwayatPage() {
   const jumlahMerah = laporan.filter((r) => r.warna === 'merah').length;
 
   return (
-    <main className="mx-auto flex w-full max-w-[1120px] flex-col gap-3 px-4 py-5 md:gap-4 md:px-8 md:py-8">
-      <header className="flex flex-col gap-1">
+    <main className="mx-auto flex w-full max-w-[1120px] flex-col gap-4 px-4 py-5 md:gap-5 md:px-8 md:py-8">
+      <header className="neumo-kartu flex flex-col gap-1 p-5 md:p-6">
         <h1 className="sapaan">Laporan Saya</h1>
-        <p className="text-sm" style={{ color: 'var(--label)' }}>
+        <p className="text-sm mt-1" style={{ color: 'var(--label)' }}>
           Laporan yang sudah Anda kirim, 30 hari terakhir.
           {!isLoading && laporan.length > 0 ? ` ${laporan.length} laporan · ${jumlahTerlambat} terlambat` : ''}
         </p>
       </header>
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,720px)_300px] lg:items-start lg:gap-x-8">
-        <div className="flex flex-col gap-3 lg:col-start-1 lg:row-start-1">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,720px)_300px] lg:items-start lg:gap-x-8">
+        <div className="flex flex-col gap-4 lg:col-start-1 lg:row-start-1">
           {isLoading && <KerangkaDaftarKartu />}
 
           {!isLoading && laporan.length === 0 && (
-            <div className="panel">
-              <div className="panel-baris">
+            <div className="panel neumo-kartu">
+              <div className="panel-baris p-6 text-center">
                 <p className="judul-seksi">Belum ada laporan</p>
-                <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+                <p className="text-sm mt-1" style={{ color: 'var(--kosong)' }}>
                   Belum ada laporan yang terkirim dalam 30 hari terakhir.
                 </p>
               </div>
@@ -70,10 +70,10 @@ export default function RiwayatPage() {
           )}
 
           {kelompok.map((k) => (
-            <section key={k.tanggal} className="panel">
-              <div className="panel-baris flex items-baseline justify-between gap-3">
+            <section key={k.tanggal} className="panel neumo-kartu overflow-hidden">
+              <div className="panel-baris flex items-baseline justify-between gap-3 bg-[var(--permukaan-2)] px-5 py-3 border-b border-white/60">
                 <h2 className="judul-seksi">{tanggalIndonesiaDariYmd(k.tanggal)}</h2>
-                <span className="text-sm" style={{ fontFamily: 'var(--mono)', color: 'var(--label)' }}>{k.baris.length}</span>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full neumo-inset-sm" style={{ fontFamily: 'var(--mono)', color: 'var(--biru)' }}>{k.baris.length} laporan</span>
               </div>
               {k.baris.map((r) => {
                 const statusInfo = LABEL_STATUS[r.status];
@@ -82,14 +82,14 @@ export default function RiwayatPage() {
                   <Link
                     key={r.id}
                     href={`/riwayat/${r.id}`}
-                    className={`panel-baris flex items-center justify-between gap-3 ${r.warna ? (STATUS_BARIS[r.warna] ?? '') : ''}`}
+                    className={`panel-baris flex items-center justify-between gap-3 px-5 py-3.5 transition-all hover:bg-[var(--permukaan-bersih)] ${r.warna ? (STATUS_BARIS[r.warna] ?? '') : ''}`}
                     style={{ minHeight: 64, textDecoration: 'none', color: 'inherit' }}
                   >
                     <div className="min-w-0">
                       <p style={{ fontFamily: 'var(--display)', fontWeight: 600, fontSize: 15, lineHeight: 1.3 }}>
                         {formRegistry[r.formKey]?.nama ?? r.formKey}
                       </p>
-                      <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm" style={{ color: 'var(--label)' }}>
+                      <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm mt-0.5" style={{ color: 'var(--label)' }}>
                         {statusInfo && (
                           <span className="status-teks" style={{ color: statusInfo.warna }}>{statusInfo.teks}</span>
                         )}
@@ -99,7 +99,7 @@ export default function RiwayatPage() {
                         )}
                       </p>
                     </div>
-                    <span aria-hidden="true" style={{ color: 'var(--kosong)', flexShrink: 0 }}>›</span>
+                    <span className="tombol-lingkar !w-7 !h-7 text-xs font-bold text-[var(--label)]" aria-hidden="true">›</span>
                   </Link>
                 );
               })}
@@ -109,8 +109,8 @@ export default function RiwayatPage() {
 
         {/* Ringkasan (desktop): hitungan dari data yang sudah dimuat -- tanpa query baru. */}
         {!isLoading && laporan.length > 0 && (
-          <aside className="panel hidden lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1 lg:block" aria-label="Ringkasan">
-            <div className="panel-baris">
+          <aside className="panel neumo-kartu hidden lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1 lg:block overflow-hidden" aria-label="Ringkasan">
+            <div className="panel-baris bg-[var(--permukaan-2)] px-5 py-3 border-b border-white/60">
               <p className="judul-seksi">Ringkasan 30 hari</p>
             </div>
             {[
@@ -119,8 +119,8 @@ export default function RiwayatPage() {
               { teks: 'Perlu dikawal', jumlah: jumlahKuning, warna: 'var(--kuning)' },
               { teks: 'Urgent', jumlah: jumlahMerah, warna: 'var(--merah)' },
             ].map((s) => (
-              <div key={s.teks} className="panel-baris flex items-baseline justify-between gap-3">
-                <span className="text-sm" style={{ color: 'var(--label)' }}>{s.teks}</span>
+              <div key={s.teks} className="panel-baris flex items-baseline justify-between gap-3 px-5 py-3">
+                <span className="text-sm font-medium" style={{ color: 'var(--label)' }}>{s.teks}</span>
                 <span className="angka-kecil" style={{ color: s.warna, fontFamily: 'var(--mono)' }}>{s.jumlah}</span>
               </div>
             ))}

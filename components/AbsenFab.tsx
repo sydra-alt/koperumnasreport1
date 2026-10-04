@@ -31,27 +31,28 @@ export function AbsenFab({ userId }: { userId: string }) {
       aria-label={label}
     >
       <span
-        className="flex items-center justify-center border-2 border-white transition-all"
+        className="flex items-center justify-center transition-all"
         style={{
-          width: 42,
-          height: 42,
+          width: 46,
+          height: 46,
           borderRadius: '50%',
-          background: selesai ? 'var(--garis)' : 'var(--biru)',
+          background: selesai ? 'var(--permukaan)' : 'var(--gradien-brand)',
           color: selesai ? 'var(--label)' : '#fff',
-          transform: 'translateY(-6px)',
-          boxShadow: '0 2px 8px rgba(14,42,78,0.18)',
+          transform: 'translateY(-10px)',
+          boxShadow: selesai ? 'var(--bayangan-neumo-sm)' : 'var(--bayangan-neumo-aksen)',
+          border: '2px solid rgba(255, 255, 255, 0.95)',
         }}
       >
-        <NavIcon nama="absen" size={20} />
+        <NavIcon nama="absen" size={22} />
       </span>
       <span
         className="tracking-tight transition-colors"
         style={{
           fontFamily: 'var(--display)',
-          fontWeight: 600,
-          fontSize: 9.5,
+          fontWeight: 700,
+          fontSize: 10,
           color: selesai ? 'var(--label)' : 'var(--biru)',
-          marginTop: -4,
+          marginTop: -6,
         }}
       >
         {label}

@@ -28,16 +28,16 @@ export default function RiwayatDetailPage({ params }: { params: Promise<{ id: st
   const warnaInfo = laporan?.warna ? LABEL_WARNA[laporan.warna] : undefined;
 
   return (
-    <main className="mx-auto flex w-full max-w-[1120px] flex-col gap-3 px-4 py-5 md:gap-4 md:px-8 md:py-8">
-      <Link href="/riwayat" className="inline-flex w-fit items-center" style={{ minHeight: 44, color: 'var(--biru-3)', fontSize: 14 }}>
+    <main className="mx-auto flex w-full max-w-[1120px] flex-col gap-4 px-4 py-5 md:gap-5 md:px-8 md:py-8">
+      <Link href="/riwayat" className="tombol-sekunder inline-flex items-center gap-2 w-fit px-4 py-2 text-xs font-bold shadow-[var(--bayangan-neumo-sm)]">
         ← Kembali ke Laporan Saya
       </Link>
 
       {isLoading && <KerangkaDetailLaporan />}
 
       {!isLoading && !laporan && (
-        <div className="panel">
-          <div className="panel-baris">
+        <div className="panel neumo-kartu">
+          <div className="panel-baris p-6 text-center">
             <p style={{ color: 'var(--kosong)' }}>Laporan tidak ditemukan, atau bukan milik Anda.</p>
           </div>
         </div>
@@ -45,9 +45,9 @@ export default function RiwayatDetailPage({ params }: { params: Promise<{ id: st
 
       {laporan && schema && (
         <>
-          <header className="flex flex-col gap-1">
+          <header className="neumo-kartu flex flex-col gap-1 p-5 md:p-6">
             <h1 className="sapaan">{schema.nama}</h1>
-            <p className="text-sm" style={{ color: 'var(--label)' }}>
+            <p className="text-sm mt-1" style={{ color: 'var(--label)' }}>
               {tanggalIndonesiaDariYmd(laporan.tanggal)}
               {laporan.submittedAt ? ` · Dikirim ${jamWIB(new Date(laporan.submittedAt))}` : ''}
             </p>

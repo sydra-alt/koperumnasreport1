@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import { usePolicy } from '../../lib/api/policy';
 import { useTitikAbsenSaya, useAbsenHariIni, useKirimAbsen, useSetujuiPrivasiPresensi } from '../../lib/api/absensi';
@@ -239,10 +240,15 @@ export default function AbsenPage() {
 
   return (
     <main className={KELAS_HALAMAN}>
-      <h1 className="sapaan">Absen</h1>
+      <div className="flex items-center gap-3">
+        <Link href="/" className="tombol-lingkar text-lg font-bold" aria-label="Kembali ke Beranda">
+          ‹
+        </Link>
+        <h1 className="sapaan">Absen</h1>
+      </div>
 
       {layar === 'ringkasan' && (
-        <section className="panel">
+        <section className="panel neumo-kartu overflow-hidden">
           <div className="panel-baris">
             <p className="judul-seksi" suppressHydrationWarning>{tanggalIndonesiaWIB()}</p>
             {(profile?.nama || profile?.divisi) && (
@@ -479,8 +485,8 @@ function PanelPesan({
   children: React.ReactNode;
 }) {
   return (
-    <section className="panel">
-      <div className={`panel-baris status-${status} flex flex-col gap-2`} style={{ padding: 16 }}>
+    <section className="panel neumo-kartu overflow-hidden">
+      <div className={`panel-baris status-${status} flex flex-col gap-2 p-5`}>
         {konteks && <p style={{ fontSize: 12, color: 'var(--label)' }}>{konteks}</p>}
         <p style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 16, color: WARNA_STATUS_PESAN[status] }}>{judul}</p>
         {children}
@@ -492,8 +498,8 @@ function PanelPesan({
 /** Panel tunggu (mencari lokasi / mengirim): judul + bilah kerangka beranimasi (pola kerangka yang sudah ada, tanpa pemutar/spinner) + keterangan. */
 function PanelTunggu({ konteks, judul, keterangan }: { konteks: string | null; judul: string; keterangan: string }) {
   return (
-    <section className="panel" role="status" aria-live="polite">
-      <div className="panel-baris status-biru flex flex-col gap-3" style={{ padding: 16 }}>
+    <section className="panel neumo-kartu overflow-hidden" role="status" aria-live="polite">
+      <div className="panel-baris status-biru flex flex-col gap-3 p-5">
         {konteks && <p style={{ fontSize: 12, color: 'var(--label)' }}>{konteks}</p>}
         <p className="judul-seksi">{judul}</p>
         <div className="progres-bar" aria-hidden="true">
@@ -598,7 +604,7 @@ function PersetujuanPrivasi({
   return (
     <main className={KELAS_HALAMAN}>
       <h1 className="sapaan">Sebelum Anda Absen</h1>
-      <section className="panel">
+      <section className="panel neumo-kartu overflow-hidden">
         {baris.map((b) => (
           <div key={b.judul} className="panel-baris flex flex-col gap-1">
             <p style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, color: 'var(--biru)' }}>{b.judul}</p>

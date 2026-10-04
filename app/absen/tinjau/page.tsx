@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Terlindungi } from '../../../components/Terlindungi';
 import { PemilihTanggal } from '../../../components/PemilihTanggal';
 import { TombolEkspor } from '../../../components/TombolEkspor';
@@ -284,20 +285,18 @@ function TinjauAbsenIsi() {
             <span className="text-sm" style={{ color: 'var(--label)' }}>dari {jumlah.total} sudah absen</span>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5 p-1.5 rounded-2xl neumo-inset-sm">
             {(Object.keys(FILTER_LABEL) as Filter[]).map((f) => (
               <button
                 key={f}
                 type="button"
                 onClick={() => setFilter(f)}
-                className="border px-3 text-sm"
-                style={{
-                  borderColor: filter === f ? 'var(--biru)' : 'var(--garis)',
-                  color: filter === f ? 'var(--biru)' : 'var(--label)',
-                  background: filter === f ? 'var(--biru-lembut)' : 'transparent',
-                  minHeight: 44,
-                  borderRadius: 'var(--radius-pil)',
-                }}
+                className={`px-3.5 py-1.5 text-xs font-bold transition-all rounded-xl cursor-pointer ${
+                  filter === f
+                    ? 'nav-pil-aktif'
+                    : 'text-[var(--tinta)] hover:text-[var(--biru-2)] hover:bg-[var(--permukaan)]'
+                }`}
+                style={{ minHeight: 38 }}
               >
                 {FILTER_LABEL[f]}
                 {f === 'belum_absen' && jumlah.belumAbsen > 0 ? ` (${jumlah.belumAbsen})` : ''}
@@ -328,10 +327,17 @@ export default function TinjauAbsenPage() {
 
   return (
     <Terlindungi peran={['ceo', 'pusat']} boleh={bolehHrdKadiv}>
-      <main className="mx-auto flex max-w-md flex-col gap-4 p-6">
-        <h1 className="text-2xl" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
-          <Istilah nama="Tinjau" teks={TEKS_TINJAU}>Tinjau Absensi</Istilah>
-        </h1>
+      <main className="mx-auto flex max-w-xl flex-col gap-4 p-5 md:p-8">
+        <header className="neumo-kartu flex items-center justify-between gap-3 p-5">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="tombol-lingkar text-lg font-bold" aria-label="Kembali ke Beranda">
+              ‹
+            </Link>
+            <h1 className="sapaan">
+              <Istilah nama="Tinjau" teks={TEKS_TINJAU}>Tinjau Absensi</Istilah>
+            </h1>
+          </div>
+        </header>
         <TinjauAbsenIsi />
       </main>
     </Terlindungi>

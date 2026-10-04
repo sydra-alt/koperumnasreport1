@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { Terlindungi } from '../../components/Terlindungi';
 import { LaporForm } from '../../components/LaporForm';
 import { AngkaGrid } from '../../components/AngkaGrid';
@@ -286,25 +287,25 @@ function Isi() {
         ) : (
           <div className="flex flex-col gap-3">
             {picLokasi.map((p) => (
-              <div key={p.lokasi} className="border p-3" style={{ borderColor: 'var(--garis)' }}>
-                <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>
-                  📍 {p.lokasi} -- PIC: {p.picNama}
+              <div key={p.lokasi} className="kartu-status rail-biru p-4">
+                <p style={{ fontFamily: 'var(--display)', fontWeight: 600, fontSize: 15, color: 'var(--biru)' }}>
+                  📍 {p.lokasi} · PIC: {p.picNama}
                 </p>
-                <p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--label)' }}>
                   Kavling tersedia: {angka(p.data, 'kavling_tersedia')} · belum laku: {angka(p.data, 'kavling_belum_laku')} · kebutuhan:{' '}
                   {angka(p.data, 'kavling_kebutuhan_tambahan')}
                 </p>
-                <p>
+                <p className="mt-1 text-xs">
                   Pembangunan: {angka(p.data, 'unit_dibangun')} unit · Finishing: {angka(p.data, 'unit_finishing')} unit
                 </p>
-                <p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--label)' }}>
                   Jalan: {teks(p.data, 'jalan_status') ?? '—'} · Listrik: {teks(p.data, 'listrik_status') ?? '—'} · Air:{' '}
                   {teks(p.data, 'air_status') ?? '—'}
                 </p>
-                <p>
+                <p className="mt-1 text-xs">
                   Kebersihan: {p.data.kebersihan_baik === 'ya' ? '✅' : '❌'} · Keamanan (satpam bertugas): {p.data.ada_satpam === 'ya' ? '✅' : '❌'}
                 </p>
-                {teks(p.data, 'keputusan_ceo_judul') && <p style={{ color: 'var(--merah)' }}>Butuh keputusan CEO: {teks(p.data, 'keputusan_ceo_judul')}</p>}
+                {teks(p.data, 'keputusan_ceo_judul') && <p className="mt-2 text-xs font-semibold" style={{ color: 'var(--merah)' }}>Butuh keputusan CEO: {teks(p.data, 'keputusan_ceo_judul')}</p>}
               </div>
             ))}
           </div>
@@ -475,9 +476,14 @@ function Isi() {
         <button
           type="button"
           onClick={() => window.print()}
-          className="border px-4 py-2"
-          style={{ borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 44 }}
+          className="tombol-sekunder flex items-center justify-center gap-2"
+          style={{ minHeight: 48 }}
         >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="6 9 6 2 18 2 18 9" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
+          </svg>
           Cetak / Ekspor PDF
         </button>
         <TombolEkspor path="/api/ekspor/laporan" label="Rekap laporan per divisi (Excel)" />
@@ -500,6 +506,8 @@ function Isi() {
 }
 
 export default function TerpusatPage() {
+  const router = useRouter();
+
   return (
     <Terlindungi peran={['pusat', 'ceo']}>
       {/* PDF (§4 06-RENCANA-PRESENSI-MOBILE.md, "pakai CSS cetak yang sudah
@@ -518,10 +526,27 @@ export default function TerpusatPage() {
           body { font-size: 11px; }
         }
       `}</style>
-      <main className="flex flex-col gap-6 p-6">
-        <h1 className="text-2xl" style={{ color: 'var(--biru)' }}>
-          Laporan Terpusat
-        </h1>
+      <main className="mx-auto flex w-full max-w-[1120px] flex-col gap-5 px-4 py-5 md:gap-6 md:px-8 md:py-8">
+        <header className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="tombol-lingkar shrink-0 print-hide"
+            aria-label="Kembali"
+            title="Kembali"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+          </button>
+          <div>
+            <span className="text-xs font-bold tracking-wider uppercase" style={{ color: 'var(--label)' }}>Pusat & Eksekutif</span>
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--biru)' }}>
+              Laporan Terpusat
+            </h1>
+          </div>
+        </header>
         <Isi />
       </main>
     </Terlindungi>

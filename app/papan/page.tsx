@@ -67,7 +67,7 @@ function PapanKontrolIsi() {
 
   return (
     <div className="flex flex-col gap-5 md:gap-6">
-      <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
+      <header className="papan-hero neumo-kartu flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:gap-6 md:p-6">
         <h1 className="sapaan">Papan Kontrol</h1>
         <PemilihTanggal
           tanggal={tanggal}
@@ -97,7 +97,7 @@ function PapanKontrolIsi() {
               siapa pun (mis. sebelum akun dibagikan). Instruksi eksplisit
               user, 31 Agustus 2026. */}
           {belumMulai && !tampilkanDaftar ? (
-            <div className="kartu-status rail-netral flex flex-col gap-2">
+            <div className="kartu-status rail-netral flex flex-col gap-2 p-5">
               <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>
                 Belum ada laporan {tanggal === tanggalWIB() ? 'hari ini' : `pada ${tanggalIndonesiaDariYmd(tanggal)}`}
               </p>
@@ -122,16 +122,16 @@ function PapanKontrolIsi() {
                 {/* Ringkasan (DESIGN.md §7.1, §14) -- CEO scanning. SATU panel datar:
                     angka utama + progres, lalu baris status ringkas (bukan dua kartu
                     besar yang mengulang informasi yang sama). */}
-                <div className="panel">
-                  <div className="panel-baris flex flex-col gap-2" style={{ padding: '16px' }}>
+                <div className="panel papan-ringkasan neumo-kartu">
+                  <div className="panel-baris flex flex-col gap-2 p-5">
                     <p className="text-sm" style={{ color: 'var(--label)' }}>Laporan hari ini</p>
                     <div className="flex items-baseline gap-2">
                       <span className="angka-besar" style={{ color: 'var(--biru)' }}>{totalSudah}</span>
                       <span style={{ fontFamily: 'var(--display)', fontSize: 20, fontWeight: 700, color: 'var(--label)' }}>/{totalSemua}</span>
                       <span className="text-sm" style={{ color: 'var(--label)' }}>sudah masuk</span>
                     </div>
-                    <div className="progres-bar">
-                      <div className="progres-bar-isi" style={{ width: `${persen}%` }} />
+                    <div className="progres-bar neumo-inset-sm p-0.5" style={{ height: 8 }}>
+                      <div className="progres-bar-isi h-full rounded-full bg-brand-gradien shadow-[var(--bayangan-neumo-aksen)]" style={{ width: `${persen}%` }} />
                     </div>
                   </div>
 
@@ -173,7 +173,7 @@ function PapanKontrolIsi() {
                             {sudah}/{daftar.length}
                           </span>
                         </div>
-                        <div className="panel">
+                        <div className="panel neumo-kartu overflow-hidden">
                           {/* Belum lapor di atas, sudah lapor di bawah -- sorting visual */}
                           {[...daftar].sort((a, b) => (a.reportId ? 1 : 0) - (b.reportId ? 1 : 0)).map((b) => (
                             <PapanKartu
@@ -202,7 +202,7 @@ function PapanKontrolIsi() {
 export default function PapanPage() {
   return (
     <Terlindungi peran={['ceo', 'pusat']}>
-      <main className="mx-auto w-full max-w-[1120px] px-4 py-5 md:px-8 md:py-8">
+      <main className="papan-halaman mx-auto w-full max-w-[1120px] px-4 py-5 md:px-8 md:py-8">
         <PapanKontrolIsi />
       </main>
     </Terlindungi>

@@ -1,40 +1,49 @@
 :root {
-  /* Latar & garis — kanvas hangat, permukaan bersih, garis hangat halus */
-  --kertas:    #FAF8F5; /* kanvas hangat lembut */
-  --kertas-2:  #FFFFFF; /* permukaan panel/header/nav bersih */
-  --garis:     #EAE5DB; /* garis hangat halus */
-  --garis-tegas: #DCD5C8; /* garis hangat sekunder */
+  /* ============================================================
+     KANVAS & GARIS — sistem 3 lapisan kedalaman neumorphic
+     Kanvas (body) paling gelap → Kartu lebih terang → Inset cekung
+     Kontras antar lapisan ~13-15 poin lightness HSL agar timbul/cekung
+     JELAS TERLIHAT di monitor manapun — tidak boleh "nyaru".
+     ============================================================ */
+  --kertas:    #C2CCD8; /* kanvas dasar neumorphic — HSL(215,15%,82%) — gelap jelas */
+  --kertas-2:  #D6DDE8; /* permukaan panel/header/nav bersih */
+  --garis:     rgba(140, 158, 180, 0.55); /* garis halus, lebih kontras */
+  --garis-tegas: rgba(120, 142, 170, 0.65); /* batas sekunder tegas */
 
-  /* Permukaan */
-  --halaman:     #FAF8F5; /* latar halaman/body */
-  --permukaan:   #FFFFFF; /* kartu utama — putih bersih */
-  --permukaan-2: #F5F2EB; /* kartu di dalam kartu / permukaan sekunder */
+  /* Permukaan Neumorphic — 3 tier kedalaman KONTRAS TINGGI */
+  --halaman:          #C2CCD8; /* latar halaman/body — HSL(215,15%,82%) */
+  --permukaan:        #EDF1F7; /* kartu utama — HSL(216,40%,95%) — 13pt LEBIH TERANG dari kanvas */
+  --permukaan-bersih: #F5F7FB; /* hover state / kartu highlight — hampir putih */
+  --permukaan-2:      #B8C4D2; /* permukaan cekung / inset — lebih gelap dari kanvas */
 
-  /* Teks */
-  --tinta:     #142132; /* teks isi — slate gelap hangat dan kontras nyaman */
-  --label:     #64748B; /* abu netral halus — label field, teks pendukung */
+  /* Teks — Slate pekat agar sangat tajam & terbaca jelas di atas kartu/kanvas */
+  --tinta:     #0F172A; /* teks pekat slate-900 sangat tajam */
+  --label:     #475569; /* abu teks pendukung slate-600 jelas terbaca */
 
-  /* Aksen Brand — Deep Navy berwibawa & profesional */
-  --biru:      #0E2A4E; /* deep navy utama — tenang, kokoh, berwibawa */
-  --biru-2:    #1D3D66; /* navy pertengahan */
-  --biru-3:    #355C8B; /* steel navy aksen */
-  --biru-lembut: #EEF4FA; /* aksen latar lembut untuk pil aktif & tag */
-  --biru-garis:  #D0DFEE; /* garis batas navy lembut */
+  /* Aksen Brand — Deep Indigo / Royal Blue tegas berwibawa */
+  --biru:      #0A2540; /* deep navy utama untuk judul */
+  --biru-2:    #1565C0; /* royal blue terang berani */
+  --biru-3:    #1E88E5; /* blue aksen cerah */
+  --biru-lembut: #D6E4F7; /* aksen latar lembut untuk pil aktif & tag */
+  --biru-garis:  #9EC2E8; /* garis batas navy lembut */
+  --gradien-brand: linear-gradient(135deg, #0A3C78 0%, #1565C0 50%, #1E88E5 100%);
+  --gradien-brand-lembut: linear-gradient(135deg, #D6E4F7 0%, #E8F0FA 100%);
+  --gradien-kanvas: linear-gradient(145deg, #BBC6D4 0%, #C8D2DE 50%, #C2CCD8 100%); /* kanvas neumorphic gelap — kartu kontras tinggi */
 
-  /* Status Baku (hijau / kuning / merah) — tonal halus & bersahabat */
-  --hijau:        #1B6E45; /* hijau emerald terkalibrasi */
-  --hijau-lembut: #EDF7F1; /* latar baris/pil aman */
-  --hijau-garis:  #C6E7D3; /* border kartu aman */
+  /* Status Baku (hijau / kuning / merah) — tonal lembut berwibawa */
+  --hijau:        #15803D; /* hijau emerald */
+  --hijau-lembut: #D2EADC; /* latar baris/pil aman — diselaraskan dgn kanvas gelap */
+  --hijau-garis:  #A8D8B8; /* border kartu aman */
 
-  --kuning:        #B46E00; /* amber hangat terkalibrasi */
-  --kuning-lembut: #FEF7EB; /* latar perlu dikawal */
-  --kuning-garis:  #F8E0B0; /* border perlu dikawal */
+  --kuning:        #B45309; /* amber hangat */
+  --kuning-lembut: #F5EAC2; /* latar perlu dikawal — lebih saturasi */
+  --kuning-garis:  #F0D870; /* border perlu dikawal */
 
-  --merah:        #B8283B; /* crimson lembut terkalibrasi */
-  --merah-lembut: #FDF1F3; /* latar urgent / belum lapor */
-  --merah-garis:  #F7CBD2; /* border urgent */
+  --merah:        #B91C1C; /* crimson */
+  --merah-lembut: #F0CCCC; /* latar urgent / belum lapor — lebih saturasi */
+  --merah-garis:  #E8B0B0; /* border urgent */
 
-  --kosong:       #94A3B8; /* abu netral status kosong/belum ada */
+  --kosong:       #8494A8; /* abu netral status kosong/belum ada — sedikit lebih pekat */
 
   /* Huruf — Plus Jakarta Sans sebagai keluarga utama */
   --font:    var(--font-sans), "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
@@ -45,34 +54,58 @@
   /* Skala Tipografi */
   --ukuran-judul: 20px;
   --ukuran-label: 14px;
-  --ukuran-isi:   16px;
+  --ukuran-isi:   15px;
   --ukuran-progres: 20px;
   --ukuran-angka-besar: 28px;
   --ukuran-angka-hero: 32px;
   --ukuran-angka-kecil: 20px;
 
-  /* Bentuk */
-  --radius-kecil: 10px;  /* input, tombol */
-  --radius-besar: 16px;  /* kartu utama modern */
+  /* Bentuk Neumorphic — Sudut kurva lembut rounded-2xl dan rounded-3xl */
+  --radius-kecil: 12px;  /* input, tag kecil */
+  --radius-sedang: 18px; /* tombol, baris input */
+  --radius-besar: 24px;  /* kartu utama neumorphic */
+  --radius-hero:  28px;  /* kartu hero & profil */
   --radius-pil:   999px; /* tombol/badge berbentuk pil */
 
   /* Rail & progress */
-  --lebar-rail:     4px;  /* aksen vertikal kiri pada kartu status */
-  --tinggi-progres: 8px;  /* progress bar */
+  --lebar-rail:     5px;  /* aksen vertikal kiri pada kartu status */
+  --tinggi-progres: 10px; /* progress bar */
 
-  /* Bayangan Halus Bertingkat */
-  --bayangan-kartu: 0 1px 3px rgba(14, 42, 78, 0.04),
-                    0 6px 20px rgba(14, 42, 78, 0.04);
-  --bayangan-halus: 0 2px 8px rgba(14, 42, 78, 0.04);
-  --bayangan-melayang: 0 12px 32px rgba(14, 42, 78, 0.08);
+  /* ============================================================
+     BAYANGAN NEUMORPHIC — opacity tinggi (60-70%) utk kanvas gelap
+     Sisi gelap: slate-blue pekat,  Sisi terang: putih bersih
+     Dengan kanvas #C2CCD8, bayangan harus KUAT agar depth terasa.
+     ============================================================ */
+  --bayangan-neumo: 8px 8px 20px rgba(120, 138, 162, 0.65),
+                    -8px -8px 20px rgba(255, 255, 255, 0.75);
+  --bayangan-neumo-sm: 5px 5px 12px rgba(120, 138, 162, 0.55),
+                       -5px -5px 12px rgba(255, 255, 255, 0.75);
+  --bayangan-neumo-lg: 16px 16px 36px rgba(120, 138, 162, 0.65),
+                       -16px -16px 36px rgba(255, 255, 255, 0.70);
+  --bayangan-neumo-besar: 12px 12px 28px rgba(120, 138, 162, 0.60),
+                          -12px -12px 28px rgba(255, 255, 255, 0.70);
+  --bayangan-neumo-dalam: inset 5px 5px 10px rgba(120, 138, 162, 0.55),
+                           inset -5px -5px 10px rgba(255, 255, 255, 0.70);
+  --bayangan-neumo-dalam-sm: inset 3px 3px 6px rgba(120, 138, 162, 0.48),
+                              inset -3px -3px 6px rgba(255, 255, 255, 0.70);
+  --bayangan-neumo-tombol: 7px 7px 16px rgba(120, 138, 162, 0.55),
+                           -7px -7px 16px rgba(255, 255, 255, 0.70);
+  --bayangan-neumo-aksen: 0 10px 24px rgba(0, 50, 130, 0.35),
+                          6px 6px 14px rgba(120, 138, 162, 0.45),
+                          -6px -6px 14px rgba(255, 255, 255, 0.65);
+
+  /* Fallback bayangan halus */
+  --bayangan-kartu: var(--bayangan-neumo);
+  --bayangan-halus: var(--bayangan-neumo-sm);
+  --bayangan-melayang: var(--bayangan-neumo-lg);
 
   /* Jarak & tinggi sentuh */
   --jarak-field:  16px;
   --jarak-bagian: 28px;
-  --tinggi-input: 44px;
+  --tinggi-input: 46px;
 
   /* Tinggi nav bawah */
-  --tinggi-nav-bawah: 60px;
+  --tinggi-nav-bawah: 64px;
   --tambahan-fab-absen: 28px;
 
   /* Gerakan */

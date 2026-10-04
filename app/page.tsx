@@ -103,7 +103,9 @@ function DashboardCeo() {
             Keuangan Hari Ini
           </p>
           {!keuangan ? (
-            <p style={{ color: 'var(--kosong)' }}>Belum ada laporan Accounting hari ini.</p>
+            <div className="neumo-kartu-dalam p-5 rounded-2xl text-center text-sm font-semibold" style={{ color: 'var(--label)' }}>
+              Belum ada laporan Accounting hari ini.
+            </div>
           ) : (
             <LembarAngka
               utama={3}
@@ -175,7 +177,7 @@ function TombolPos() {
   return (
     <section>
       <p className="judul-seksi mb-2">Buka Sistem Toko</p>
-      <div className="panel panel-baris flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
+      <div className="neumo-kartu p-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
         <div className="flex flex-col gap-1">
           <p className="text-sm">
             Buka dashboard sistem kasir (produk, stok, opname, penjualan) yang <b>terpisah</b> dari laporan ini.
@@ -225,18 +227,20 @@ function labelStatusTugas(t: TugasDenganUrgensi, jam: string): string {
 /** Tugas PERTAMA (batas terdekat/paling terlambat): kartu besar, satu-satunya tombol berat di layar. */
 function KartuTugasUtama({ t, jam }: { t: TugasDenganUrgensi; jam: string }) {
   return (
-    <div className={`kartu-status ${RAIL_URGENSI[t.urgensi]} flex flex-col gap-3`} style={{ padding: '16px 18px' }}>
+    <div className={`kartu-status ${RAIL_URGENSI[t.urgensi]} flex flex-col gap-3.5 p-5 md:p-6`}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <span className="text-sm" style={{ color: 'var(--label)', fontWeight: 600 }}>Kerjakan dulu</span>
-        <span className="status-teks" style={{ color: WARNA_TEKS_URGENSI[t.urgensi] }}>{labelStatusTugas(t, jam)}</span>
+        <span className="text-xs uppercase tracking-wider font-bold text-[var(--label)]">Kerjakan dulu</span>
+        <span className="status-teks px-3 py-1 rounded-full bg-[var(--permukaan-2)] shadow-[var(--bayangan-neumo-dalam-sm)]" style={{ color: WARNA_TEKS_URGENSI[t.urgensi] }}>
+          {labelStatusTugas(t, jam)}
+        </span>
       </div>
       <div>
         <p style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 'var(--ukuran-judul)', lineHeight: 1.25 }}>{t.namaForm}</p>
         {t.scopeLabel && (
-          <p className="text-sm mt-0.5" style={{ color: 'var(--label)' }}>{t.scopeLabel}</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--label)' }}>{t.scopeLabel}</p>
         )}
       </div>
-      <Link href={`/lapor/${t.formKey}`} className="tombol-utama" style={{ width: '100%', maxWidth: 360, minHeight: 48 }}>
+      <Link href={`/lapor/${t.formKey}`} className="tombol-utama w-full md:w-auto self-start min-h-[48px] px-6">
         {t.tombol}
       </Link>
     </div>
@@ -248,13 +252,13 @@ const STATUS_BARIS: Record<Urgensi, string> = { lewat: 'status-merah', mendekati
 /** Tugas berikutnya: BARIS dalam satu panel (bukan kartu per tugas); tombol lebar tetap dan lebih ringan supaya judul tidak berebut ruang. */
 function BarisTugas({ t, jam }: { t: TugasDenganUrgensi; jam: string }) {
   return (
-    <div className={`panel-baris ${STATUS_BARIS[t.urgensi]} flex items-center gap-3`} style={{ padding: '12px 14px 12px 16px' }}>
+    <div className={`panel-baris ${STATUS_BARIS[t.urgensi]} flex items-center gap-3 p-4`}>
       <div className="min-w-0 flex-1">
         <p style={{ fontFamily: 'var(--display)', fontWeight: 600, fontSize: 'var(--ukuran-isi)', lineHeight: 1.3 }}>{t.namaForm}</p>
         {t.scopeLabel && (
           <p style={{ fontSize: 13, color: 'var(--label)', lineHeight: 1.3 }}>{t.scopeLabel}</p>
         )}
-        <p className="status-teks mt-0.5" style={{ color: WARNA_TEKS_URGENSI[t.urgensi] }}>{labelStatusTugas(t, jam)}</p>
+        <p className="status-teks mt-1" style={{ color: WARNA_TEKS_URGENSI[t.urgensi] }}>{labelStatusTugas(t, jam)}</p>
       </div>
       <Link
         href={`/lapor/${t.formKey}`}
@@ -513,16 +517,18 @@ function AbsenRingkas() {
   return (
     <Link
       href="/absen"
-      className={`panel panel-baris ${semuaSudah ? 'status-hijau' : ''} flex items-center justify-between gap-3 md:min-w-[340px]`}
+      className={`neumo-kartu flex items-center justify-between gap-3 px-4 py-2.5 md:min-w-[340px] transition-all hover:bg-[var(--permukaan-bersih)] active:shadow-[var(--bayangan-neumo-dalam)] ${
+        semuaSudah ? 'border-l-[5px] !border-l-[var(--hijau)]' : ''
+      }`}
       style={{ minHeight: 48, color: 'var(--tinta)', textDecoration: 'none' }}
     >
       <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
-        <span style={{ fontFamily: 'var(--display)', fontWeight: 700 }}>Absen</span>
+        <span style={{ fontFamily: 'var(--display)', fontWeight: 700, color: 'var(--biru)' }}>Absen</span>
         {bagian('Masuk', masuk)}
         <span style={{ color: 'var(--label)' }} aria-hidden>·</span>
         {bagian('Pulang', pulang)}
       </div>
-      <span aria-hidden style={{ color: 'var(--label)', fontSize: 20 }}>›</span>
+      <span className="tombol-lingkar !w-7 !h-7 text-xs font-bold text-[var(--label)]" aria-hidden>›</span>
     </Link>
   );
 }
@@ -531,12 +537,12 @@ export default function Home() {
   const { profile, roles, loading } = useAuth();
 
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-[1120px] flex-col gap-5 px-4 py-5 md:gap-7 md:px-8 md:py-8">
+    <main className="dashboard-halaman mx-auto flex min-h-svh w-full max-w-[1120px] flex-col gap-5 px-4 py-6 md:gap-7 md:px-8 md:py-8">
       {loading ? (
         <KerangkaBeranda />
       ) : (
         <>
-          <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
+          <header className="dashboard-hero neumo-kartu flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:gap-6 md:p-6">
             <h1 className="sapaan">
               {sapaanWaktu(jamWIB())}, {profile?.nama ?? '—'}.
             </h1>

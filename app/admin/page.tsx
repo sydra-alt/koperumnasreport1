@@ -48,6 +48,27 @@ type Tab = 'lokasi' | 'outlet' | 'assignment' | 'policy' | 'pengguna' | 'titik-a
 const gayaInput = { borderColor: 'var(--garis)', minHeight: 44 } as const;
 const gayaTombol = { borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 44 } as const;
 
+const INFO_KEBIJAKAN: Record<string, { judul: string; bantuan: string; jenis: 'angka' | 'jam' | 'teks' | 'saklar' | 'hari' }> = {
+  workdays: { judul: 'Hari kerja', bantuan: 'Laporan rutin hanya ditunggu pada hari yang dipilih.', jenis: 'hari' },
+  marketing_aktif: { judul: 'Aktivitas marketing', bantuan: 'Menampilkan atau menyembunyikan laporan dan kontrol marketing.', jenis: 'saklar' },
+  jam_masuk: { judul: 'Jam masuk standar', bantuan: 'Dipakai bila orang tidak memiliki jam masuk khusus.', jenis: 'jam' },
+  jam_pulang: { judul: 'Jam pulang standar', bantuan: 'Dipakai bila orang tidak memiliki jam pulang khusus.', jenis: 'jam' },
+  toleransi_terlambat_menit: { judul: 'Toleransi keterlambatan', bantuan: 'Jumlah menit setelah jam masuk sebelum dianggap terlambat.', jenis: 'angka' },
+  absen_radius_default_meter: { judul: 'Radius absen standar', bantuan: 'Jarak aman dari titik absen, dalam meter.', jenis: 'angka' },
+  absen_akurasi_maksimal_meter: { judul: 'Akurasi GPS minimum', bantuan: 'Akurasi GPS yang masih dapat diterima, dalam meter.', jenis: 'angka' },
+  absen_wajib_foto: { judul: 'Foto saat absen', bantuan: 'Mewajibkan foto ketika pengguna melakukan presensi.', jenis: 'saklar' },
+  deadline_default: { judul: 'Batas kirim laporan standar', bantuan: 'Dipakai untuk laporan yang tidak punya batas waktu khusus.', jenis: 'jam' },
+  ai_batas_pesan_harian: { judul: 'Batas pesan Asisten AI', bantuan: 'Maksimal pesan Asisten AI per orang setiap hari.', jenis: 'angka' },
+  gambar_max_px: { judul: 'Ukuran gambar maksimum', bantuan: 'Sisi terpanjang gambar akan disesuaikan hingga angka ini.', jenis: 'angka' },
+  lampiran_max_mb: { judul: 'Ukuran lampiran maksimum', bantuan: 'Ukuran file terbesar yang dapat diunggah, dalam MB.', jenis: 'angka' },
+};
+const NAMA_HARI_SINGKAT = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+const NAMA_PERAN: Record<string, string> = {
+  ceo: 'Pimpinan', pusat: 'Pusat laporan', admin: 'Admin aplikasi', karyawan: 'Karyawan', kadiv: 'Kepala divisi',
+  accounting: 'Accounting', manager_resto: 'Manajer resto', kontrol_marketing: 'Kontrol marketing',
+};
+function namaPeran(role: string) { return NAMA_PERAN[role] ?? role.replaceAll('_', ' '); }
+
 function TabLokasi() {
   const { data: daftar } = useDaftarLokasiAdmin();
   const tambah = useTambahLokasi();
@@ -539,40 +560,77 @@ function TabPolicy() {
   const ubah = useUbahPolicy();
   const [draf, setDraf] = useState<Record<string, string>>({});
 
+  function nilaiUntuk(p: { key: string; value: unknown }) {
+    return draf[p.key] ?? (typeof p.value === 'string' || typeof p.value === 'number' ? String(p.value) : '');
+  }
+
+  function simpanNilai(p: { key: string }, nilai: unknown) {
+    ubah.mutate({ key: p.key, value: nilai });
+  }
+
+  const pengaturanUmum = (daftar ?? []).filter((p) => INFO_KEBIJAKAN[p.key]);
+  const pengaturanLanjutan = (daftar ?? []).filter((p) => !INFO_KEBIJAKAN[p.key]);
+
   return (
-    <div className="flex flex-col gap-3">
-      {(daftar ?? []).map((p) => {
-        const nilaiDraf = draf[p.key] ?? JSON.stringify(p.value);
-        return (
-          <div key={p.key} className="border p-3" style={{ borderColor: 'var(--garis)' }}>
-            <p style={{ fontFamily: 'var(--mono)' }}>{p.key}</p>
-            <textarea
-              value={nilaiDraf}
-              onChange={(e) => setDraf((d) => ({ ...d, [p.key]: e.target.value }))}
-              className="w-full border p-2"
-              style={{ ...gayaInput, fontFamily: 'var(--mono)' }}
-              rows={2}
-            />
-            <button
-              type="button"
-              disabled={ubah.isPending}
-              onClick={() => {
-                try {
-                  const value = JSON.parse(nilaiDraf);
-                  ubah.mutate({ key: p.key, value });
-                } catch {
-                  alert('Nilai bukan JSON yang valid.');
-                }
-              }}
-              className="mt-2 border px-4 py-2"
-              style={gayaTombol}
-            >
-              Simpan
-            </button>
-            {ubah.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubah.error, 'menyimpan kebijakan')}</p>}
-          </div>
-        );
-      })}
+    <div className="flex flex-col gap-4">
+      <div className="admin-petunjuk">
+        <p className="admin-petunjuk-judul">Aturan yang mudah diatur</p>
+        <p>Ubah hanya aturan yang diperlukan. Pengaturan teknis tetap tersedia di bagian lanjutan.</p>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {pengaturanUmum.map((p) => {
+          const info = INFO_KEBIJAKAN[p.key];
+          const nilaiDraf = nilaiUntuk(p);
+          const nilaiBoolean = p.value === true;
+          const hariAktif = Array.isArray(p.value) ? p.value.map(Number) : [];
+          return (
+            <div key={p.key} className="admin-kartu-pengaturan">
+              <div>
+                <p className="admin-kartu-judul">{info.judul}</p>
+                <p className="admin-kartu-bantuan">{info.bantuan}</p>
+              </div>
+              {info.jenis === 'saklar' ? (
+                <button type="button" disabled={ubah.isPending} onClick={() => simpanNilai(p, !nilaiBoolean)} className={`admin-saklar ${nilaiBoolean ? 'aktif' : ''}`} aria-pressed={nilaiBoolean}>
+                  <span aria-hidden="true" />{nilaiBoolean ? 'Aktif' : 'Nonaktif'}
+                </button>
+              ) : info.jenis === 'hari' ? (
+                <div className="flex flex-wrap gap-2">
+                  {NAMA_HARI_SINGKAT.map((namaHari, index) => {
+                    const hari = index + 1;
+                    const aktif = hariAktif.includes(hari);
+                    return <button key={hari} type="button" disabled={ubah.isPending} onClick={() => simpanNilai(p, aktif ? hariAktif.filter((h) => h !== hari) : [...hariAktif, hari].sort())} className={`admin-hari ${aktif ? 'aktif' : ''}`} aria-pressed={aktif}>{namaHari}</button>;
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <input type={info.jenis === 'jam' ? 'time' : info.jenis === 'angka' ? 'number' : 'text'} value={nilaiDraf} onChange={(e) => setDraf((d) => ({ ...d, [p.key]: e.target.value }))} className="min-w-0 flex-1 border p-2" style={gayaInput} />
+                  <button type="button" disabled={ubah.isPending || (info.jenis === 'angka' && !nilaiDraf)} onClick={() => simpanNilai(p, info.jenis === 'angka' ? Number(nilaiDraf) : nilaiDraf)} className="border px-3" style={gayaTombol}>Simpan</button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <details className="admin-lanjutan">
+        <summary>Pengaturan lanjutan</summary>
+        <p className="admin-kartu-bantuan">Bagian ini untuk aturan khusus yang biasanya diatur oleh penanggung jawab sistem. Semua pengaturan tetap tersedia.</p>
+        <div className="flex flex-col gap-3 mt-3">
+          {pengaturanLanjutan.map((p) => {
+            const nilaiDraf = draf[p.key] ?? JSON.stringify(p.value);
+            return (
+              <div key={p.key} className="admin-kartu-pengaturan">
+                <div>
+                  <p className="admin-kartu-judul">{p.key.replaceAll('_', ' ')}</p>
+                  <p className="admin-kartu-bantuan">Nilai lanjutan — ubah hanya bila Anda memahami dampaknya.</p>
+                </div>
+                <textarea value={nilaiDraf} onChange={(e) => setDraf((d) => ({ ...d, [p.key]: e.target.value }))} className="w-full border p-2" style={{ ...gayaInput, fontFamily: 'var(--mono)' }} rows={2} />
+                <button type="button" disabled={ubah.isPending} onClick={() => { try { simpanNilai(p, JSON.parse(nilaiDraf)); } catch { alert('Nilainya belum dalam format yang benar. Jangan diubah bila ragu.'); } }} className="w-fit border px-3 py-2" style={gayaTombol}>Simpan pengaturan ini</button>
+              </div>
+            );
+          })}
+        </div>
+      </details>
+      {ubah.isError && <p className="text-sm" style={{ color: 'var(--merah)' }}>{pesanKesalahanDb(ubah.error, 'menyimpan pengaturan')}</p>}
     </div>
   );
 }
@@ -605,6 +663,10 @@ function TabPengguna() {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="admin-petunjuk">
+        <p className="admin-petunjuk-judul">Buat akun, lalu tentukan perannya</p>
+        <p>Peran menentukan menu yang boleh dibuka. Setelah pengguna dibuat, lanjutkan ke Penugasan untuk memilih pekerjaannya.</p>
+      </div>
       <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
         <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>Tambah pengguna baru</p>
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="border p-2" style={gayaInput} />
@@ -622,7 +684,7 @@ function TabPengguna() {
                 checked={rolesBaru.includes(r)}
                 onChange={(e) => setRolesBaru((prev) => (e.target.checked ? [...prev, r] : prev.filter((x) => x !== r)))}
               />
-              {r}
+              {namaPeran(r)}
             </label>
           ))}
         </div>
@@ -673,7 +735,7 @@ function TabPengguna() {
                       minHeight: 44,
                     }}
                   >
-                    {r}
+                    {namaPeran(r)}
                   </button>
                 );
               })}
@@ -772,6 +834,10 @@ function TabTitikAbsen() {
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="admin-petunjuk">
+        <p className="admin-petunjuk-judul">Dua langkah untuk presensi</p>
+        <p>Tambahkan titik absen terlebih dahulu. Setelah itu, tentukan siapa yang memakai titik tersebut dan jam kerjanya.</p>
+      </div>
       <div className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
         <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>Tambah titik absen</p>
         <input value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Nama titik (mis. Kantor Pusat)" className="border p-2" style={gayaInput} />
@@ -965,6 +1031,10 @@ function TabShift() {
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="admin-petunjuk">
+        <p className="admin-petunjuk-judul">Shift menentukan ritme kerja</p>
+        <p>Isi jam mulai, selesai, dan batas laporan. Pengguna hanya melihat shift yang ditugaskan kepadanya.</p>
+      </div>
       <div className="flex gap-2">
         <input value={namaBaru} onChange={(e) => setNamaBaru(e.target.value)} placeholder="Nama shift baru (mis. Pagi)" className="flex-1 border p-2" style={gayaInput} />
         <button
@@ -991,6 +1061,7 @@ function TabShift() {
               )}
               <div className="flex gap-2">
                 <input
+                  type="time"
                   value={d.jamMulai}
                   onChange={(e) => setDraf((v) => ({ ...v, [s.id]: { ...d, jamMulai: e.target.value } }))}
                   placeholder="Jam mulai (HH:mm)"
@@ -998,6 +1069,7 @@ function TabShift() {
                   style={{ ...gayaInput, fontFamily: 'var(--mono)' }}
                 />
                 <input
+                  type="time"
                   value={d.jamSelesai}
                   onChange={(e) => setDraf((v) => ({ ...v, [s.id]: { ...d, jamSelesai: e.target.value } }))}
                   placeholder="Jam selesai (HH:mm)"
@@ -1006,6 +1078,7 @@ function TabShift() {
                 />
               </div>
               <input
+                type="time"
                 value={d.batasLapor}
                 onChange={(e) => setDraf((v) => ({ ...v, [s.id]: { ...d, batasLapor: e.target.value } }))}
                 placeholder="Batas jam lapor (HH:mm) -- dipakai form 'per_shift' (mis. security)"
@@ -1050,44 +1123,51 @@ function TabShift() {
 }
 
 function Isi() {
-  const [tab, setTab] = useState<Tab>('lokasi');
-  const TAB: { key: Tab; label: string }[] = [
-    { key: 'lokasi', label: 'Lokasi' },
-    { key: 'outlet', label: 'Outlet' },
-    { key: 'assignment', label: 'Penugasan' },
-    { key: 'policy', label: 'Policy' },
-    { key: 'pengguna', label: 'Pengguna' },
-    { key: 'titik-absen', label: 'Titik Absen' },
-    { key: 'shift', label: 'Shift' },
+  const [tab, setTab] = useState<Tab>('pengguna');
+  const TAB: { key: Tab; label: string; bantuan: string }[] = [
+    { key: 'pengguna', label: 'Pengguna', bantuan: 'Buat akun dan atur perannya.' },
+    { key: 'assignment', label: 'Penugasan', bantuan: 'Tentukan pekerjaan tiap orang.' },
+    { key: 'titik-absen', label: 'Presensi', bantuan: 'Atur titik dan jadwal absen.' },
+    { key: 'shift', label: 'Shift kerja', bantuan: 'Atur jam kerja dan batas laporan.' },
+    { key: 'lokasi', label: 'Lokasi', bantuan: 'Kelola lokasi kerja.' },
+    { key: 'outlet', label: 'Outlet', bantuan: 'Kelola outlet dan jadwalnya.' },
+    { key: 'policy', label: 'Aturan aplikasi', bantuan: 'Atur kebijakan umum.' },
   ];
+  const tabAktif = TAB.find((t) => t.key === tab)!;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-1">
+    <div className="admin-ruang-kerja">
+      <div className="admin-petunjuk">
+        <p className="admin-petunjuk-judul">Mulai dari orangnya</p>
+        <p>Buat pengguna, lalu tentukan pekerjaan dan presensinya. Pengaturan yang jarang diubah disimpan di bagian akhir.</p>
+      </div>
+      <div className="admin-navigasi" aria-label="Bagian admin">
         {TAB.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
-            className="border px-3 py-2"
-            style={{
-              borderColor: 'var(--biru)',
-              background: tab === t.key ? 'var(--biru)' : 'transparent',
-              color: tab === t.key ? 'var(--kertas-2)' : 'var(--biru)',
-              minHeight: 44,
-            }}
+            className={`admin-nav-item ${tab === t.key ? 'aktif' : ''}`}
+            aria-pressed={tab === t.key}
           >
-            {t.label}
+            <span>{t.label}</span>
+            <small>{t.bantuan}</small>
           </button>
         ))}
       </div>
-      {tab === 'lokasi' && <TabLokasi />}
-      {tab === 'outlet' && <TabOutlet />}
-      {tab === 'assignment' && <TabPenugasan />}
-      {tab === 'policy' && <TabPolicy />}
-      {tab === 'pengguna' && <TabPengguna />}
-      {tab === 'titik-absen' && <TabTitikAbsen />}
-      {tab === 'shift' && <TabShift />}
+      <section className="admin-isi" aria-labelledby="admin-bagian-aktif">
+        <div className="admin-isi-kepala">
+          <h2 id="admin-bagian-aktif">{tabAktif.label}</h2>
+          <p>{tabAktif.bantuan}</p>
+        </div>
+        {tab === 'lokasi' && <TabLokasi />}
+        {tab === 'outlet' && <TabOutlet />}
+        {tab === 'assignment' && <TabPenugasan />}
+        {tab === 'policy' && <TabPolicy />}
+        {tab === 'pengguna' && <TabPengguna />}
+        {tab === 'titik-absen' && <TabTitikAbsen />}
+        {tab === 'shift' && <TabShift />}
+      </section>
     </div>
   );
 }
@@ -1095,10 +1175,12 @@ function Isi() {
 export default function AdminPage() {
   return (
     <Terlindungi peran={['ceo', 'admin']}>
-      <main className="flex flex-col gap-4 p-6">
-        <h1 className="text-2xl" style={{ color: 'var(--biru)' }}>
-          Admin
-        </h1>
+      <main className="admin-halaman">
+        <header className="admin-kepala-halaman">
+          <p>Pengelolaan kantor</p>
+          <h1>Atur aplikasi dengan tenang</h1>
+          <span>Pilih satu langkah, selesaikan, lalu lanjutkan ke langkah berikutnya.</span>
+        </header>
         <Isi />
       </main>
     </Terlindungi>

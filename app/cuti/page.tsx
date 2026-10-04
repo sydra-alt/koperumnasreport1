@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import { useAjukanCuti, useCutiSaya, useSignedUrlCuti, type CutiJenis } from '../../lib/api/cuti';
 import { KerangkaDaftarKartu } from '../../components/Kerangka';
@@ -9,8 +10,6 @@ import { tanggalIndonesiaDariYmd, tanggalWIB } from '../../lib/tanggal';
 const LABEL_JENIS: Record<CutiJenis, string> = { cuti: 'Cuti', sakit: 'Sakit', izin: 'Izin' };
 const WARNA_STATUS: Record<string, string> = { diajukan: 'var(--kuning)', disetujui: 'var(--hijau)', ditolak: 'var(--merah)' };
 const LABEL_STATUS: Record<string, string> = { diajukan: 'Menunggu persetujuan', disetujui: 'Disetujui', ditolak: 'Ditolak' };
-
-const gayaTombolUtama = { borderColor: 'var(--biru)', background: 'var(--biru)', color: 'var(--kertas-2)', minHeight: 48 } as const;
 
 export default function CutiPage() {
   const { session } = useAuth();
@@ -57,19 +56,23 @@ export default function CutiPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-6 p-6">
-      <h1 className="text-2xl" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
-        Ajukan Cuti / Sakit / Izin
-      </h1>
+    <main className="mx-auto flex max-w-lg flex-col gap-6 p-5 md:p-8">
+      <div className="flex items-center gap-3">
+        <Link href="/" className="tombol-lingkar text-lg font-bold" aria-label="Kembali ke Beranda">
+          ‹
+        </Link>
+        <h1 className="sapaan">
+          Ajukan Cuti / Sakit / Izin
+        </h1>
+      </div>
 
-      <form onSubmit={tanganiKirim} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
+      <form onSubmit={tanganiKirim} className="neumo-kartu flex flex-col gap-4 p-6">
+        <label className="flex flex-col gap-1 text-sm font-semibold text-[var(--label)]">
           Jenis
           <select
             value={jenis}
             onChange={(e) => setJenis(e.target.value as CutiJenis)}
-            className="border px-3"
-            style={{ borderColor: 'var(--garis)', minHeight: 44, borderRadius: 'var(--radius-kecil)' }}
+            className="w-full text-base font-medium"
           >
             <option value="cuti">Cuti</option>
             <option value="sakit">Sakit</option>
@@ -77,50 +80,45 @@ export default function CutiPage() {
           </select>
         </label>
 
-        {/* Di layar 360px dua isian tanggal bertumpuk -- berdampingan, isian tanggal selesai keluar layar 24px (audit UI R03). */}
+        {/* Di layar 360px dua isian tanggal bertumpuk */}
         <div className="flex flex-col gap-3 min-[400px]:flex-row">
-          <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
+          <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm font-semibold text-[var(--label)]">
             Tanggal mulai
             <input
               type="date"
               value={tanggalMulai}
               onChange={(e) => setTanggalMulai(e.target.value)}
-              className="w-full min-w-0 border px-3"
-              style={{ borderColor: 'var(--garis)', minHeight: 44, borderRadius: 'var(--radius-kecil)' }}
+              className="w-full min-w-0 text-base"
               required
             />
           </label>
-          <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
+          <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm font-semibold text-[var(--label)]">
             Tanggal selesai
             <input
               type="date"
               value={tanggalSelesai}
               onChange={(e) => setTanggalSelesai(e.target.value)}
-              className="w-full min-w-0 border px-3"
-              style={{ borderColor: 'var(--garis)', minHeight: 44, borderRadius: 'var(--radius-kecil)' }}
+              className="w-full min-w-0 text-base"
               required
             />
           </label>
         </div>
 
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm font-semibold text-[var(--label)]">
           Alasan
           <textarea
             value={keterangan}
             onChange={(e) => setKeterangan(e.target.value)}
-            className="border p-2"
-            style={{ borderColor: 'var(--garis)', borderRadius: 'var(--radius-kecil)' }}
+            className="w-full text-base"
             rows={3}
           />
         </label>
 
-        <div className="flex flex-col gap-1 text-sm">
-          <span>Surat (opsional -- foto/scan surat sakit atau izin)</span>
-          {/* Tombol pil aplikasi, bukan isian file bawaan browser ("Choose File / No file chosen"). */}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <div className="flex flex-col gap-1.5 text-sm">
+          <span className="font-semibold text-[var(--label)]">Surat (opsional -- foto/scan surat sakit atau izin)</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <label
-              className="tombol-pil inline-flex w-fit shrink-0 cursor-pointer items-center border px-4"
-              style={{ borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 44 }}
+              className="tombol-sekunder !rounded-full cursor-pointer px-4 py-2 text-xs font-bold"
             >
               {suratFile ? 'Ganti surat' : 'Lampirkan surat'}
               <input
@@ -130,7 +128,7 @@ export default function CutiPage() {
                 onChange={(e) => setSuratFile(e.target.files?.[0] ?? null)}
               />
             </label>
-            <span className="min-w-0 break-all" style={{ fontSize: 12, color: 'var(--kosong)' }}>
+            <span className="min-w-0 break-all text-xs" style={{ color: 'var(--kosong)' }}>
               {suratFile ? suratFile.name : 'Belum ada surat'}
             </span>
           </div>
@@ -139,40 +137,40 @@ export default function CutiPage() {
         <button
           type="submit"
           disabled={ajukan.isPending}
-          className="border px-4"
-          style={{ ...gayaTombolUtama, borderRadius: 'var(--radius-pil)' }}
+          className="tombol-utama w-full mt-2"
         >
-          {ajukan.isPending ? 'Mengirim…' : 'Ajukan'}
+          {ajukan.isPending ? 'Mengirim…' : 'Ajukan Permohonan'}
         </button>
 
         {pesan && (
-          <p className="text-sm" style={{ color: ajukan.isError ? 'var(--merah)' : 'var(--hijau)' }}>
+          <p className="text-sm font-medium mt-1 text-center" style={{ color: ajukan.isError ? 'var(--merah)' : 'var(--hijau)' }}>
             {pesan}
           </p>
         )}
       </form>
 
       <div className="flex flex-col gap-3">
-        <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
+        <p className="judul-seksi">
           Pengajuan Saya
         </p>
         {isLoading && <KerangkaDaftarKartu jumlah={2} />}
         {!isLoading && (riwayat ?? []).length === 0 && <p style={{ color: 'var(--kosong)' }}>Belum ada pengajuan.</p>}
         {(riwayat ?? []).map((r) => (
-          <div key={r.id} className="border p-3 text-sm" style={{ borderColor: 'var(--garis)', borderRadius: 'var(--radius-besar)' }}>
-            <p style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>
-              {LABEL_JENIS[r.jenis]} · {tanggalIndonesiaDariYmd(r.tanggalMulai)}
-              {r.tanggalSelesai !== r.tanggalMulai ? ` – ${tanggalIndonesiaDariYmd(r.tanggalSelesai)}` : ''}
-            </p>
-            <p style={{ color: WARNA_STATUS[r.status] }}>{LABEL_STATUS[r.status]}</p>
-            {r.keterangan && <p style={{ color: 'var(--kosong)' }}>{r.keterangan}</p>}
-            {r.catatanKeputusan && <p>Catatan: {r.catatanKeputusan}</p>}
+          <div key={r.id} className="kartu-status flex flex-col gap-2 p-4">
+            <div className="flex items-baseline justify-between gap-2">
+              <p style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 15 }}>
+                {LABEL_JENIS[r.jenis]} · {tanggalIndonesiaDariYmd(r.tanggalMulai)}
+                {r.tanggalSelesai !== r.tanggalMulai ? ` – ${tanggalIndonesiaDariYmd(r.tanggalSelesai)}` : ''}
+              </p>
+              <span className="status-teks" style={{ color: WARNA_STATUS[r.status] }}>{LABEL_STATUS[r.status]}</span>
+            </div>
+            {r.keterangan && <p className="text-sm" style={{ color: 'var(--label)' }}>{r.keterangan}</p>}
+            {r.catatanKeputusan && <p className="text-sm font-medium">Catatan: {r.catatanKeputusan}</p>}
             {r.suratPath && (
               <button
                 type="button"
                 onClick={() => void lihatSurat(r.suratPath as string)}
-                className="mt-1 border px-3 py-1 text-sm"
-                style={{ borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 44, borderRadius: 'var(--radius-kecil)' }}
+                className="tombol-sekunder self-start !py-1 !px-3 text-xs font-bold mt-1"
               >
                 Lihat surat
               </button>

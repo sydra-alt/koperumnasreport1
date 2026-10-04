@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Terlindungi } from '../../../components/Terlindungi';
 import { KerangkaDaftarKartu } from '../../../components/Kerangka';
 import { useAuth } from '../../../lib/auth/AuthProvider';
@@ -29,22 +30,24 @@ function Baris({ item }: { item: CutiTinjau }) {
   }
 
   return (
-    <li className="flex flex-col gap-2 border p-3" style={{ borderColor: 'var(--kuning)', borderRadius: 'var(--radius-besar)' }}>
-      <p style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
-        {item.userNama} — {LABEL_JENIS[item.jenis] ?? item.jenis}
-      </p>
-      <p className="text-sm" style={{ color: 'var(--kosong)' }}>
+    <li className="kartu-status rail-kuning flex flex-col gap-3 p-5">
+      <div className="flex items-baseline justify-between gap-2">
+        <p style={{ fontFamily: 'var(--display)', fontSize: 16, fontWeight: 700, color: 'var(--biru)' }}>
+          {item.userNama} — {LABEL_JENIS[item.jenis] ?? item.jenis}
+        </p>
+        <span className="status-teks" style={{ color: 'var(--kuning)' }}>Menunggu</span>
+      </div>
+      <p className="text-xs font-semibold" style={{ color: 'var(--label)', fontFamily: 'var(--mono)' }}>
         {tanggalIndonesiaDariYmd(item.tanggalMulai)}
         {item.tanggalSelesai !== item.tanggalMulai ? ` – ${tanggalIndonesiaDariYmd(item.tanggalSelesai)}` : ''}
       </p>
-      {item.keterangan && <p className="text-sm">{item.keterangan}</p>}
+      {item.keterangan && <p className="text-sm" style={{ color: 'var(--tinta)' }}>{item.keterangan}</p>}
       {item.suratPath && (
         <button
           type="button"
           onClick={() => void lihatSurat()}
           disabled={membukaSurat}
-          className="w-fit border px-3 py-2 text-sm"
-          style={{ borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 44, borderRadius: 'var(--radius-kecil)' }}
+          className="tombol-sekunder self-start !py-1.5 !px-3.5 text-xs font-bold"
         >
           {membukaSurat ? 'Membuka…' : 'Lihat surat'}
         </button>
@@ -52,18 +55,16 @@ function Baris({ item }: { item: CutiTinjau }) {
       <textarea
         value={catatan}
         onChange={(e) => setCatatan(e.target.value)}
-        placeholder="Catatan (opsional)"
-        className="border p-2 text-sm"
-        style={{ borderColor: 'var(--garis)', minHeight: 44, borderRadius: 'var(--radius-kecil)' }}
+        placeholder="Catatan persetujuan (opsional)"
+        className="w-full text-sm"
         rows={2}
       />
-      <div className="flex gap-2">
+      <div className="flex gap-3 mt-1">
         <button
           type="button"
           disabled={putuskan.isPending}
           onClick={() => putuskan.mutate({ id: item.id, disetujui: false, catatan: catatan.trim() || null })}
-          className="flex-1 border px-3"
-          style={{ borderColor: 'var(--merah)', color: 'var(--merah)', minHeight: 48, borderRadius: 'var(--radius-pil)' }}
+          className="tombol-sekunder flex-1 !text-[var(--merah)] hover:!bg-[var(--merah-lembut)]"
         >
           Tolak
         </button>
@@ -71,14 +72,13 @@ function Baris({ item }: { item: CutiTinjau }) {
           type="button"
           disabled={putuskan.isPending}
           onClick={() => putuskan.mutate({ id: item.id, disetujui: true, catatan: catatan.trim() || null })}
-          className="flex-1 border px-3"
-          style={{ borderColor: 'var(--hijau)', background: 'var(--hijau)', color: 'var(--kertas-2)', minHeight: 48, borderRadius: 'var(--radius-pil)' }}
+          className="tombol-utama flex-1 !bg-[var(--hijau)]"
         >
           Setujui
         </button>
       </div>
       {putuskan.isError && (
-        <p className="text-sm" style={{ color: 'var(--merah)' }}>
+        <p className="text-sm font-medium" style={{ color: 'var(--merah)' }}>
           {(putuskan.error as Error).message}
         </p>
       )}
@@ -92,12 +92,14 @@ function Isi() {
   if (isLoading) return <KerangkaDaftarKartu />;
 
   if (!antrean || antrean.length === 0) {
-    return <p style={{ color: 'var(--kosong)' }}>Tidak ada pengajuan yang menunggu persetujuan.</p>;
+    <div className="panel neumo-kartu p-6 text-center">
+      <p style={{ color: 'var(--kosong)' }}>Tidak ada pengajuan yang menunggu persetujuan.</p>
+    </div>
   }
 
   return (
-    <ul className="flex flex-col gap-3">
-      {antrean.map((item) => (
+    <ul className="flex flex-col gap-3.5 list-none p-0">
+      {(antrean ?? []).map((item) => (
         <Baris key={item.id} item={item} />
       ))}
     </ul>
@@ -106,19 +108,21 @@ function Isi() {
 
 export default function TinjauCutiPage() {
   const { roles, profile } = useAuth();
-  // Gerbang cuti SENGAJA BEDA dari Tinjau Absensi -- ceo + is_hrd_kadiv()
-  // SAJA, TANPA 'pusat' (instruksi eksplisit user, koreksi 1, 30 Agustus
-  // 2026): "Peran 'pusat' TIDAK otomatis dapat akses -- kalau suatu saat ada
-  // orang lain berperan pusat tanpa HRD, dia tidak boleh menyetujui cuti
-  // orang." RLS cuti_select (migrasi 0025) menegakkan aturan yang sama.
   const bolehHrdKadiv = roles.includes('kadiv') && profile?.divisi === 'HRD';
 
   return (
     <Terlindungi peran={['ceo']} boleh={bolehHrdKadiv}>
-      <main className="mx-auto flex max-w-md flex-col gap-4 p-6">
-        <h1 className="text-2xl" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
-          <Istilah nama="Tinjau" teks={TEKS_TINJAU}>Tinjau Cuti / Sakit / Izin</Istilah>
-        </h1>
+      <main className="mx-auto flex max-w-xl flex-col gap-5 p-5 md:p-8">
+        <header className="neumo-kartu flex items-center justify-between gap-3 p-5">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="tombol-lingkar text-lg font-bold" aria-label="Kembali ke Beranda">
+              ‹
+            </Link>
+            <h1 className="sapaan">
+              <Istilah nama="Tinjau" teks={TEKS_TINJAU}>Tinjau Cuti / Sakit / Izin</Istilah>
+            </h1>
+          </div>
+        </header>
         <Isi />
       </main>
     </Terlindungi>

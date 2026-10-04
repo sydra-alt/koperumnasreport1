@@ -1670,3 +1670,16 @@ Data POS lewat asisten hanya untuk orang yang punya baris `report_identity_links
 - **Deploy:** pos-fnb `d0c8be8` (worker `2b07d0cd`); sistem laporan `d26f6e9` + `32dc751`; migrasi **0071 DITERAPKAN** (policy `marketing_aktif=false`, dry run rollback dulu).
 - **pos-fnb:** rincian pajak "Pajak 15%" dari setting outlet di keranjang & struk + satu catatan "belum termasuk pajak"; petunjuk "setor ke rekening, catat Transfer" saat Tunai nonaktif; StatusMemuat/CatatanProses (5 dtk / 20 dtk + Coba lagi); TabelKartuHp untuk 5 tabel.
 - **Laporan:** marketing disembunyikan lewat `lib/marketing.ts` (nav, tugas, PTE, halaman, seksi Terpusat, blok PTA/PTE Manajer Resto jadi arsip); data/tabel PTE tidak dihapus; /terpusat dilipat (6.900 -> 3.200 px di HP). `uji-terpusat` dipensiunkan.
+
+## Batch — Standar Desain Neumorphic & Perbaikan Kontras Warna (4 Oktober 2026)
+
+- **Akar Masalah Kontras:** Pada Tailwind v4, sintaks arbitrary `bg-[var(--gradien-brand)]` diterjemahkan menjadi `background-color`, yang tidak valid untuk `linear-gradient(...)` sehingga diabaikan browser. Akibatnya, tombol/tab aktif menjadi transparan dengan teks putih di atas latar terang ("nyaru").
+- **Solusi Komprehensif:**
+  - `app/globals.css`: Dibuatkan aturan baku `.nav-pil-aktif`, `.tab-aktif`, dan `.bg-brand-gradien` dengan `background: var(--gradien-brand) !important; background-color: #1565C0 !important; color: #FFFFFF !important;` serta efek glow shadow neumorphic.
+  - `components/KopHalaman.tsx`: Seluruh pil navigasi desktop (`tabUtama`, `tabLainnya`, dropdown menu) beralih ke `.nav-pil-aktif` & `.nav-pil-inaktif`.
+  - `app/akun/page.tsx`: Switch preferensi (`.neumo-saklar`) menyembunyikan checkbox bawaan (`sr-only`), knob putih neumorphic bergeser halus dengan track royal blue. Baris "Ganti kata sandi" diperbaiki dengan flex-column agar tidak dempet.
+  - `app/keputusan/page.tsx`: Tab Menunggu/Riwayat dan lencana hitungan urgensi diperbarui dengan kontras tinggi.
+  - `app/tokens.css`: Token teks `--tinta: #0F172A` (slate-900) dan `--label: #475569` (slate-600) untuk keterbacaan tajam di semua jenis layar.
+  - Batang progres di `app/papan/page.tsx` & `components/FormRenderer.tsx`, serta tombol sort/filter di `app/marketing/page.tsx` & `app/absen/tinjau/page.tsx` dipastikan menyala solid.
+- **Verifikasi:** Seluruh halaman (`/`, `/akun`, `/keputusan`, `/papan`, `/marketing`, `/terpusat`, `/admin`) diaudit langsung di browser via tangkapan layar. `npm run lint` 0 error.
+

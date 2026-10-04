@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Terlindungi } from '../../components/Terlindungi';
 import { AntreanKartu, LABEL_STATUS, LABEL_URGENSI } from '../../components/AntreanKartu';
 import { KerangkaDaftarKartu } from '../../components/Kerangka';
@@ -29,10 +30,10 @@ const HASIL_RIWAYAT = ['disetujui', 'dicicil', 'ditunda', 'ditolak'] as const;
 /** Panel kosong sederhana (menggantikan teks polos). */
 function PanelKosong({ judul, isi }: { judul: string; isi: string }) {
   return (
-    <div className="panel">
-      <div className="panel-baris">
+    <div className="panel neumo-kartu">
+      <div className="panel-baris p-6 text-center">
         <p className="judul-seksi">{judul}</p>
-        <p className="text-sm" style={{ color: 'var(--kosong)' }}>{isi}</p>
+        <p className="text-sm mt-1" style={{ color: 'var(--kosong)' }}>{isi}</p>
       </div>
     </div>
   );
@@ -68,76 +69,93 @@ function KeputusanIsi() {
   const kelompok = TINGKAT_URGENSI.map((n) => ({ n, baris: antreanTerurut.filter((b) => b.urgensi === n) })).filter((k) => k.baris.length > 0);
   const lainnya = antreanTerurut.filter((b) => !(TINGKAT_URGENSI as readonly number[]).includes(b.urgensi));
 
-  const tabKelas = (aktif: boolean) => ({
-    minHeight: 44,
-    borderRadius: 10,
-    background: aktif ? 'var(--biru)' : 'transparent',
-    color: aktif ? 'var(--kertas-2)' : 'var(--tinta)',
-    fontWeight: aktif ? 600 : 500,
-    fontSize: 14,
-  });
-
   return (
-    <div className="flex flex-col gap-3 md:gap-4">
-      <header className="flex flex-col gap-1">
-        <h1 className="sapaan">Antrean Keputusan</h1>
-        {antrean && (
-          <p className="text-sm" style={{ color: 'var(--label)' }}>
-            {antrean.length} menunggu · {jumlahUrgent} urgent
-          </p>
-        )}
+    <div className="flex flex-col gap-4 md:gap-5">
+      <header className="neumo-kartu flex items-center justify-between gap-3 p-5 md:p-6">
+        <div className="flex items-center gap-3">
+          <Link href="/" className="tombol-lingkar text-lg font-bold" aria-label="Kembali ke Beranda">
+            ‹
+          </Link>
+          <div>
+            <h1 className="sapaan">Antrean Keputusan</h1>
+            {antrean && (
+              <p className="text-sm mt-0.5" style={{ color: 'var(--label)' }}>
+                {antrean.length} menunggu · {jumlahUrgent} urgent
+              </p>
+            )}
+          </div>
+        </div>
       </header>
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,720px)_300px] lg:items-start lg:gap-x-8">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,720px)_300px] lg:items-start lg:gap-x-8">
         {/* Tab (segmented control) */}
         <div
           role="tablist"
           aria-label="Daftar keputusan"
-          className="grid grid-cols-2 gap-1 p-1 lg:col-start-1 lg:row-start-1"
-          style={{ background: 'var(--permukaan)', border: '1px solid var(--garis)', borderRadius: 14 }}
+          className="grid grid-cols-2 gap-1.5 p-1.5 neumo-inset-sm rounded-2xl lg:col-start-1 lg:row-start-1"
         >
-          <button type="button" role="tab" aria-selected={tab === 'menunggu'} onClick={() => setTab('menunggu')} style={tabKelas(tab === 'menunggu')}>
-            Menunggu{antrean ? ` ${antrean.length}` : ''}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'menunggu'}
+            onClick={() => setTab('menunggu')}
+            className={`py-2 text-sm font-bold rounded-xl transition-all cursor-pointer ${
+              tab === 'menunggu'
+                ? 'nav-pil-aktif'
+                : 'text-[var(--tinta)] hover:text-[var(--biru-2)] hover:bg-[var(--permukaan)]'
+            }`}
+          >
+            Menunggu{antrean ? ` (${antrean.length})` : ''}
           </button>
-          <button type="button" role="tab" aria-selected={tab === 'riwayat'} onClick={() => setTab('riwayat')} style={tabKelas(tab === 'riwayat')}>
-            Riwayat{riwayat ? ` ${riwayat.length}` : ''}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'riwayat'}
+            onClick={() => setTab('riwayat')}
+            className={`py-2 text-sm font-bold rounded-xl transition-all cursor-pointer ${
+              tab === 'riwayat'
+                ? 'nav-pil-aktif'
+                : 'text-[var(--tinta)] hover:text-[var(--biru-2)] hover:bg-[var(--permukaan)]'
+            }`}
+          >
+            Riwayat{riwayat ? ` (${riwayat.length})` : ''}
           </button>
         </div>
 
         {/* Ringkasan (HP: di bawah tab; desktop: kolom samping sticky). Murni hitungan dari data yang sudah ada. */}
-        <aside className="panel lg:sticky lg:top-4 lg:col-start-2 lg:row-span-2 lg:row-start-1" aria-label="Ringkasan">
-          <div className="panel-baris hidden lg:block">
+        <aside className="panel neumo-kartu lg:sticky lg:top-4 lg:col-start-2 lg:row-span-2 lg:row-start-1 overflow-hidden" aria-label="Ringkasan">
+          <div className="panel-baris bg-[var(--permukaan-2)] px-5 py-3 border-b border-white/60 hidden lg:block">
             <p className="judul-seksi">{tab === 'menunggu' ? 'Ringkasan urgensi' : 'Ringkasan hasil'}</p>
           </div>
           <div className={`grid lg:grid-cols-1 ${tab === 'menunggu' ? 'grid-cols-3' : 'grid-cols-4'}`}>
             {(tab === 'menunggu'
               ? TINGKAT_URGENSI.map((n) => ({ kunci: `u${n}`, teks: LABEL_URGENSI[n].teks, warna: LABEL_URGENSI[n].warna, jumlah: jumlahPerUrgensi(n) }))
               : HASIL_RIWAYAT.map((h) => ({ kunci: h, teks: LABEL_STATUS[h].teks, warna: LABEL_STATUS[h].warna, jumlah: jumlahPerHasil(h) }))
-            ).map((s, i) => (
+            ).map((s) => (
               <div
                 key={s.kunci}
-                className={`flex flex-col gap-0.5 px-3 py-3 lg:flex-row lg:items-baseline lg:justify-between lg:px-4 ${
-                  i > 0 ? 'border-l lg:border-l-0 lg:border-t' : ''
-                } lg:border-t`}
-                style={{ borderColor: 'var(--garis)' }}
+                className="flex flex-col gap-0.5 px-3.5 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-5 border-b border-white/40"
               >
-                <span className="angka-kecil order-1 lg:order-2" style={{ color: s.warna, fontFamily: 'var(--mono)' }}>
-                  {tab === 'menunggu' ? (memuatAntrean ? '–' : s.jumlah) : memuatRiwayat ? '–' : s.jumlah}
-                </span>
-                <span className="order-2 text-sm lg:order-1" style={{ color: 'var(--label)', fontSize: 13 }}>
+                <span className="order-2 text-sm font-semibold lg:order-1" style={{ color: 'var(--tinta)', fontSize: 13 }}>
                   {s.teks}
+                </span>
+                <span
+                  className="order-1 lg:order-2 inline-flex items-center justify-center min-w-[28px] h-7 px-2.5 rounded-full font-bold text-xs shadow-[var(--bayangan-neumo-dalam-sm)]"
+                  style={{ color: s.warna, background: 'var(--permukaan)', border: '1px solid rgba(255, 255, 255, 0.7)' }}
+                >
+                  {tab === 'menunggu' ? (memuatAntrean ? '–' : s.jumlah) : memuatRiwayat ? '–' : s.jumlah}
                 </span>
               </div>
             ))}
           </div>
         </aside>
 
-        <div className="flex flex-col gap-3 lg:col-start-1 lg:row-start-2">
+        <div className="flex flex-col gap-4 lg:col-start-1 lg:row-start-2">
           {tab === 'menunggu' && (
             <>
               {!bolehMemutuskan && (
-                <div className="panel">
-                  <div className="panel-baris flex flex-wrap items-center gap-2">
+                <div className="panel neumo-kartu">
+                  <div className="panel-baris flex flex-wrap items-center gap-2 p-4">
                     <span className="text-sm" style={{ color: 'var(--label)' }}>Urutkan</span>
                     {(['urgensi', 'deadline', 'nominal'] as const).map((u) => (
                       <button

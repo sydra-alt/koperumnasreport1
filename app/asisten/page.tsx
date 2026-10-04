@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import {
@@ -17,14 +19,6 @@ import { ImporOpname } from '../../components/asisten/ImporOpname';
 import { ImporBelanja } from '../../components/asisten/ImporBelanja';
 import { ImporResep } from '../../components/asisten/ImporResep';
 import { TinjauUkuran } from '../../components/asisten/TinjauUkuran';
-
-/**
- * Asisten AI, fase 1 (28 September 2026) -- tanya jawab & analisis. Status
- * dari `ai_status()`: "belum diaktifkan" (policy hilang/batas 0), "tidak
- * tersedia untuk akun Anda" (profile.punya_akses_ai belum dinyalakan Admin), dan "jatah hari
- * ini habis" SENGAJA tiga pesan berbeda -- jangan digabung. Gerbang
- * sungguhan tetap di database dan di /api/ai/chat.
- */
 
 const CONTOH = ['Berapa omzet POS kemarin per outlet?', 'Siapa yang belum kirim laporan minggu ini?', 'Stok bahan apa yang di bawah minimum?'];
 
@@ -50,14 +44,29 @@ export default function AsistenPage() {
 
 function Pemberitahuan({ judul, isi }: { judul: string; isi: string }) {
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center gap-2 p-6 text-center">
-      <h1 className="text-2xl" style={{ color: 'var(--tinta)' }}>{judul}</h1>
-      <p style={{ color: 'var(--label)' }}>{isi}</p>
+    <main className="flex min-h-svh flex-col items-center justify-center p-6 text-center">
+      <div className="neumo-kartu flex w-full max-w-sm flex-col items-center gap-3 p-8">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: 'var(--biru-lembut)', color: 'var(--biru)' }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="11" width="18" height="10" rx="2" />
+            <circle cx="12" cy="5" r="2" />
+            <path d="M12 7v4" />
+            <line x1="8" y1="16" x2="8" y2="16" />
+            <line x1="16" y1="16" x2="16" y2="16" />
+          </svg>
+        </div>
+        <h1 className="text-xl font-bold" style={{ color: 'var(--tinta)' }}>{judul}</h1>
+        <p className="text-sm" style={{ color: 'var(--label)' }}>{isi}</p>
+        <Link href="/" className="tombol-utama mt-2 w-full text-center">
+          Kembali ke Beranda
+        </Link>
+      </div>
     </main>
   );
 }
 
 function Asisten() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [percakapanId, setPercakapanId] = useState<string | null>(null);
   const [draf, setDraf] = useState('');
@@ -111,89 +120,135 @@ function Asisten() {
     }
   }
 
-  const gayaTombolUtama = {
-    background: 'var(--biru)',
-    color: 'var(--kertas-2)',
-    borderRadius: 'var(--radius-kecil)',
-    minHeight: 44,
-  } as const;
-
   const daftarRiwayat = (
-    <nav aria-label="Riwayat percakapan" className="flex flex-col gap-1">
+    <nav aria-label="Riwayat percakapan" className="flex flex-col gap-1.5 pt-2">
       {daftar.isLoading ? <KerangkaTeks /> : null}
       {daftar.data?.length === 0 ? <p className="text-sm" style={{ color: 'var(--label)' }}>Belum ada percakapan.</p> : null}
-      {daftar.data?.map((c) => (
-        <button
-          key={c.id}
-          type="button"
-          onClick={() => {
-            setPercakapanId(c.id);
-            setGalat(null);
-            setRiwayatTerbuka(false);
-          }}
-          className="truncate px-3 py-2 text-left text-sm"
-          style={{
-            minHeight: 44,
-            borderRadius: 'var(--radius-kecil)',
-            background: c.id === percakapanId ? 'var(--biru-lembut)' : 'transparent',
-            color: c.id === percakapanId ? 'var(--biru)' : 'var(--tinta)',
-          }}
-          title={c.judul}
-        >
-          {c.judul}
-        </button>
-      ))}
+      {daftar.data?.map((c) => {
+        const aktif = c.id === percakapanId;
+        return (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => {
+              setPercakapanId(c.id);
+              setGalat(null);
+              setRiwayatTerbuka(false);
+            }}
+            className="truncate px-3.5 py-2.5 text-left text-sm transition-all"
+            style={{
+              minHeight: 44,
+              borderRadius: 'var(--radius-sedang)',
+              background: 'var(--permukaan)',
+              boxShadow: aktif ? 'var(--bayangan-neumo-dalam)' : 'var(--bayangan-neumo-sm)',
+              color: aktif ? 'var(--biru)' : 'var(--tinta)',
+              fontWeight: aktif ? 600 : 400,
+            }}
+            title={c.judul}
+          >
+            {c.judul}
+          </button>
+        );
+      })}
     </nav>
   );
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 md:flex-row md:p-6">
-      <aside className="flex flex-col gap-3 md:w-64 md:shrink-0">
-        <div className="flex gap-2">
-          <button type="button" onClick={mulaiBaru} className="flex-1 px-4 text-sm font-semibold" style={gayaTombolUtama}>
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 p-4 md:flex-row md:p-6">
+      {/* Kolom Samping / Sidebar Kontrol */}
+      <aside className="flex flex-col gap-3 md:w-68 md:shrink-0">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="tombol-lingkar shrink-0"
+            aria-label="Kembali"
+            title="Kembali"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            onClick={mulaiBaru}
+            className="tombol-utama flex flex-1 items-center justify-center gap-2"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
             Chat baru
           </button>
+
           <button
             type="button"
             onClick={() => setRiwayatTerbuka((v) => !v)}
-            className="border px-3 text-sm md:hidden"
-            style={{ borderColor: 'var(--garis-tegas)', borderRadius: 'var(--radius-kecil)', minHeight: 44 }}
+            className="tombol-sekunder px-3 text-sm md:hidden"
             aria-expanded={riwayatTerbuka}
           >
             Riwayat
           </button>
         </div>
-        {(
-          [
-            ['opname', 'Impor opname (Excel)'],
-            ['resep', 'Impor resep (Excel)'],
-            ['belanja', 'Impor belanja (foto nota)'],
-            ['ukuran', 'Tinjau jenis ukuran bahan'],
-          ] as const
-        ).map(([jenis, label]) => (
-          <button
-            key={jenis}
-            type="button"
-            onClick={() => {
-              setPanelImpor((v) => (v === jenis ? null : jenis));
-              setGalat(null);
-            }}
-            className="border px-4 text-sm"
-            style={{ borderColor: 'var(--biru-garis)', borderRadius: 'var(--radius-kecil)', minHeight: 44, color: 'var(--biru)' }}
-            aria-expanded={panelImpor === jenis}
-          >
-            {label}
-          </button>
-        ))}
+
+        <div className="flex flex-col gap-2 pt-2">
+          {(
+            [
+              ['opname', 'Impor opname (Excel)'],
+              ['resep', 'Impor resep (Excel)'],
+              ['belanja', 'Impor belanja (foto nota)'],
+              ['ukuran', 'Tinjau jenis ukuran bahan'],
+            ] as const
+          ).map(([jenis, label]) => {
+            const aktif = panelImpor === jenis;
+            return (
+              <button
+                key={jenis}
+                type="button"
+                onClick={() => {
+                  setPanelImpor((v) => (v === jenis ? null : jenis));
+                  setGalat(null);
+                }}
+                className="tombol-sekunder justify-start text-left text-xs"
+                style={{
+                  minHeight: 42,
+                  boxShadow: aktif ? 'var(--bayangan-neumo-dalam)' : 'var(--bayangan-neumo-sm)',
+                  color: aktif ? 'var(--biru)' : 'var(--tinta)',
+                  fontWeight: aktif ? 600 : 500,
+                }}
+                aria-expanded={panelImpor === jenis}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
         <div className={riwayatTerbuka ? 'block' : 'hidden md:block'}>{daftarRiwayat}</div>
       </aside>
 
+      {/* Area Chat Utama */}
       <section className="flex min-w-0 flex-1 flex-col gap-4">
-        <header className="flex flex-col gap-1">
-          <h1 style={{ fontSize: 'var(--ukuran-judul)', fontWeight: 600 }}>Asisten AI</h1>
-          <p className="text-sm" style={{ color: 'var(--label)' }}>
-            Jawaban hanya dari data yang bisa Anda lihat: laporan, absensi, dan data POS outletmu.
-          </p>
+        <header className="neumo-kartu flex items-center justify-between gap-4 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ background: 'var(--biru-lembut)', color: 'var(--biru)', boxShadow: 'var(--bayangan-neumo-sm)' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="10" rx="2" />
+                <circle cx="12" cy="5" r="2" />
+                <path d="M12 7v4" />
+                <line x1="8" y1="16" x2="8" y2="16" />
+                <line x1="16" y1="16" x2="16" y2="16" />
+              </svg>
+            </div>
+            <div>
+              <h1 style={{ fontFamily: 'var(--display)', fontSize: '18px', fontWeight: 700, color: 'var(--tinta)' }}>Asisten AI Koperumnas</h1>
+              <p className="text-xs" style={{ color: 'var(--label)' }}>
+                Tanya jawab &amp; analisis laporan, absensi, dan data POS.
+              </p>
+            </div>
+          </div>
         </header>
 
         {panelImpor ? (
@@ -225,16 +280,16 @@ function Asisten() {
 
         <div className="flex flex-col gap-4">
           {!percakapanId && !menunggu && !panelImpor ? (
-            <div className="flex flex-col gap-2">
-              <p className="text-sm" style={{ color: 'var(--label)' }}>Contoh pertanyaan:</p>
+            <div className="flex flex-col gap-2.5">
+              <p className="text-xs font-semibold" style={{ color: 'var(--label)' }}>Contoh pertanyaan cepat:</p>
               <div className="flex flex-wrap gap-2">
                 {CONTOH.map((c) => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setDraf(c)}
-                    className="border px-3 py-2 text-left text-sm"
-                    style={{ borderColor: 'var(--biru-garis)', borderRadius: 'var(--radius-pil)', minHeight: 44 }}
+                    className="tombol-sekunder text-left text-xs"
+                    style={{ minHeight: 40, borderRadius: 'var(--radius-pil)', paddingInline: 14 }}
                   >
                     {c}
                   </button>
@@ -248,54 +303,61 @@ function Asisten() {
           {menunggu ? (
             <>
               <Gelembung pesan={{ id: 'menunggu', peran: 'user', isi: menunggu, tabel: null, createdAt: '' }} />
-              <p className="text-sm" style={{ color: 'var(--label)' }} role="status">Menunggu jawaban...</p>
+              <p className="text-xs font-semibold" style={{ color: 'var(--biru)' }} role="status">Mengetik balasan...</p>
             </>
           ) : null}
           {galat ? (
             <p
-              className="border p-3 text-sm"
+              className="kartu-status rail-merah p-4 text-sm"
               role="alert"
-              style={{ borderColor: 'var(--merah-garis)', background: 'var(--merah-lembut)', color: 'var(--merah)', borderRadius: 'var(--radius-kecil)' }}
+              style={{ color: 'var(--merah)' }}
             >
               {galat}
             </p>
           ) : null}
         </div>
 
-        <form onSubmit={tanganiKirim} className="flex flex-col gap-2">
+        {/* Form Isian Pertanyaan (Neumorphic Inset Well) */}
+        <form onSubmit={tanganiKirim} className="mt-auto flex flex-col gap-2 pt-2">
           <label htmlFor="pertanyaan-ai" className="sr-only">Pertanyaan</label>
-          <textarea
-            id="pertanyaan-ai"
-            value={draf}
-            onChange={(e) => setDraf(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                e.currentTarget.form?.requestSubmit();
-              }
-            }}
-            rows={3}
-            maxLength={2000}
-            placeholder={habis ? 'Batas pesan hari ini sudah habis.' : 'Tulis pertanyaan...'}
-            disabled={habis || kirim.isPending}
-            className="w-full border p-3"
-            style={{ borderColor: 'var(--garis-tegas)', borderRadius: 'var(--radius-kecil)', background: 'var(--permukaan)' }}
-          />
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-sm" style={{ color: habis ? 'var(--merah)' : 'var(--label)' }}>
+          <div className="neumo-inset p-2" style={{ borderRadius: 'var(--radius-sedang)' }}>
+            <textarea
+              id="pertanyaan-ai"
+              value={draf}
+              onChange={(e) => setDraf(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  e.currentTarget.form?.requestSubmit();
+                }
+              }}
+              rows={3}
+              maxLength={2000}
+              placeholder={habis ? 'Batas pesan hari ini sudah habis.' : 'Tulis pertanyaan Anda di sini... (Enter untuk kirim)'}
+              disabled={habis || kirim.isPending}
+              className="w-full border-0 bg-transparent p-2 text-sm outline-none"
+              style={{ resize: 'none', color: 'var(--tinta)' }}
+            />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+            <span className="text-xs" style={{ color: habis ? 'var(--merah)' : 'var(--label)' }}>
               {status.data
                 ? habis
-                  ? `Batas ${status.data.batas} pesan per hari sudah tercapai. Coba lagi besok.`
+                  ? `Batas ${status.data.batas} pesan per hari sudah tercapai.`
                   : `Sisa ${status.data.batas - status.data.terpakai} dari ${status.data.batas} pesan hari ini`
                 : ''}
             </span>
             <button
               type="submit"
               disabled={habis || kirim.isPending || draf.trim() === ''}
-              className="px-6 text-sm font-semibold disabled:opacity-50"
-              style={gayaTombolUtama}
+              className="tombol-utama inline-flex items-center gap-2"
+              style={{ minHeight: 44, paddingInline: 22 }}
             >
-              {kirim.isPending ? 'Mengirim...' : 'Kirim'}
+              <span>{kirim.isPending ? 'Mengirim...' : 'Kirim'}</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
             </button>
           </div>
         </form>
@@ -309,11 +371,11 @@ function Gelembung({ pesan }: { pesan: PesanAi }) {
   return (
     <div className={`flex flex-col gap-2 ${dariUser ? 'items-end' : 'items-start'}`}>
       <div
-        className="max-w-[90%] whitespace-pre-wrap px-4 py-3"
+        className={dariUser ? 'max-w-[90%] whitespace-pre-wrap px-4 py-3 text-sm text-white' : 'neumo-kartu max-w-[90%] whitespace-pre-wrap px-5 py-4 text-sm'}
         style={{
-          borderRadius: 'var(--radius-besar)',
-          background: dariUser ? 'var(--biru-lembut)' : 'var(--permukaan)',
-          border: dariUser ? 'none' : '1px solid var(--garis)',
+          borderRadius: dariUser ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
+          background: dariUser ? 'linear-gradient(135deg, #1E4DB7, #3B6FE8)' : 'var(--permukaan)',
+          boxShadow: dariUser ? '0 4px 14px rgba(30, 77, 183, 0.28)' : 'var(--bayangan-neumo)',
         }}
       >
         <span className="sr-only">{dariUser ? 'Anda: ' : 'Asisten: '}</span>
@@ -322,14 +384,12 @@ function Gelembung({ pesan }: { pesan: PesanAi }) {
       {!dariUser && pesan.tabel
         ? pesan.tabel.map((t, i) => (
             <div key={i} className="flex w-full flex-col gap-2">
-              {/* Tautan tindak lanjut (impor opname) -- HANYA ke handoff POS internal. */}
               {t.tautan && t.tautan.href.startsWith('/api/pos-handoff?next=') ? (
                 <a
                   href={t.tautan.href}
                   target="_blank"
                   rel="noopener"
-                  className="inline-flex w-fit items-center px-5 text-sm font-semibold"
-                  style={{ background: 'var(--biru)', color: 'var(--kertas-2)', borderRadius: 'var(--radius-pil)', minHeight: 44 }}
+                  className="tombol-utama inline-flex w-fit items-center"
                 >
                   {t.tautan.label}
                 </a>
@@ -341,3 +401,4 @@ function Gelembung({ pesan }: { pesan: PesanAi }) {
     </div>
   );
 }
+

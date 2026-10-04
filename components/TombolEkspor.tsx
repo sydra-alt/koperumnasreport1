@@ -18,22 +18,24 @@ export function TombolEkspor({ path, label }: { path: string; label: string }) {
   const [bulan, setBulan] = useState(tanggalWIB().slice(0, 7)); // 'YYYY-MM'
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border p-3" style={{ borderColor: 'var(--garis)' }}>
-      <span style={{ fontFamily: 'var(--display)', fontWeight: 500 }}>{label}</span>
-      <input
-        type="month"
-        value={bulan}
-        onChange={(e) => setBulan(e.target.value)}
-        className="border px-2"
-        style={{ borderColor: 'var(--garis)' }}
-      />
-      <a
-        href={`${path}?bulan=${bulan}`}
-        className="border px-3"
-        style={{ borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
-      >
-        Unduh Excel
-      </a>
+    <div className="neumo-kartu flex flex-wrap items-center justify-between gap-3 p-4">
+      <span className="text-sm font-bold text-[var(--biru)]" style={{ fontFamily: 'var(--display)' }}>{label}</span>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <input
+          type="month"
+          value={bulan}
+          onChange={(e) => setBulan(e.target.value)}
+          className="text-sm font-semibold px-3 py-1.5"
+          style={{ minHeight: 40, fontFamily: 'var(--mono)' }}
+        />
+        <a
+          href={`${path}?bulan=${bulan}`}
+          className="tombol-sekunder !py-2 !px-4 text-xs font-bold"
+          style={{ minHeight: 40 }}
+        >
+          Unduh Excel ↗
+        </a>
+      </div>
     </div>
   );
 }

@@ -78,41 +78,41 @@ function LayarKonfirmasiKirim({ schema, info, onUbah }: { schema: FormSchema; in
   const d = new Date(info.submittedAt);
   const terlambat = info.status === 'terlambat';
   return (
-    <div className="flex flex-col items-center gap-4 py-8 text-center">
+    <div className="neumo-kartu mx-auto my-6 flex max-w-md flex-col items-center gap-5 p-7 text-center">
       <div
-        className="flex items-center justify-center"
-        style={{ width: 64, height: 64, borderRadius: '50%', background: terlambat ? 'var(--kuning)' : 'var(--hijau)', color: 'var(--kertas-2)', fontSize: 32 }}
+        className="flex items-center justify-center border-2 border-white shadow-[var(--bayangan-neumo)]"
+        style={{ width: 68, height: 68, borderRadius: '50%', background: terlambat ? 'var(--kuning)' : 'var(--hijau)', color: '#FFFFFF', fontSize: 32, fontWeight: 700 }}
       >
         {terlambat ? '!' : '✓'}
       </div>
 
       <div>
         <p className="angka-kecil" style={{ color: 'var(--biru)' }}>Laporan terkirim</p>
-        <p className="text-sm" style={{ color: 'var(--label)' }}>
+        <p className="text-sm mt-1" style={{ color: 'var(--label)' }}>
           {schema.nama} · {tanggalIndonesiaWIB(d)} · pukul {jamWIB(d)}
         </p>
       </div>
 
       {terlambat && info.pesanTerlambat && (
-        <div className="kartu-status rail-kuning text-sm text-left" style={{ maxWidth: '24rem' }}>
+        <div className="kartu-status rail-kuning text-sm text-left w-full">
           {info.pesanTerlambat}
         </div>
       )}
 
       {info.ringkasan && info.ringkasan.length > 0 && (
-        <p className="text-sm" style={{ color: 'var(--label)' }}>
+        <p className="text-sm px-3 py-2 rounded-xl neumo-inset-sm" style={{ color: 'var(--label)' }}>
           {info.ringkasan.join(' · ')}
         </p>
       )}
 
-      <div className="flex w-full max-w-sm flex-col gap-2">
-        <Link href="/riwayat" className="tombol-utama text-center">
+      <div className="flex w-full flex-col gap-3 mt-2">
+        <Link href="/riwayat" className="tombol-utama text-center w-full">
           Lihat laporan saya
         </Link>
-        <button type="button" onClick={onUbah} className="tombol-sekunder">
+        <button type="button" onClick={onUbah} className="tombol-sekunder w-full">
           Ubah laporan ini
         </button>
-        <Link href="/" className="px-4 py-3 text-center text-sm" style={{ color: 'var(--label)', minHeight: 44 }}>
+        <Link href="/" className="px-4 py-2 text-center text-xs font-semibold text-[var(--label)] hover:text-[var(--biru)]">
           Kembali ke beranda
         </Link>
       </div>
@@ -420,8 +420,8 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
         {/* Progres (§5.1) -- SATU panel: angka, bilah, dan lompat-ke-bagian. Di HP: deretan nomor
             bagian (ketuk = buka + gulir, sama seperti tombol peta lama); di desktop: kolom samping
             berisi nama + status. Murni navigasi UI -- tidak mengubah data. */}
-        <aside className="panel lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1" aria-label="Progres laporan">
-          <div className="panel-baris flex flex-col gap-2" style={{ padding: 16 }}>
+        <aside className="panel neumo-kartu lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1" aria-label="Progres laporan">
+          <div className="panel-baris flex flex-col gap-2.5 p-5">
             <div className="flex items-baseline justify-between gap-3">
               <p className="judul-seksi">Progres laporan</p>
               {catatanStatus && (
@@ -438,8 +438,8 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
                     dari {blokBerwajib.length} bagian wajib selesai · {blocks.length} bagian
                   </span>
                 </div>
-                <div className="progres-bar">
-                  <div className="progres-bar-isi" style={{ width: `${Math.round((totalSelesai / blokBerwajib.length) * 100)}%` }} />
+                <div className="progres-bar neumo-inset-sm p-0.5" style={{ height: 8 }}>
+                  <div className="progres-bar-isi h-full rounded-full bg-brand-gradien shadow-[var(--bayangan-neumo-aksen)]" style={{ width: `${Math.round((totalSelesai / blokBerwajib.length) * 100)}%` }} />
                 </div>
                 {blokBerwajib.length - totalSelesai > 0 && (
                   <p className="text-sm" style={{ color: 'var(--label)' }}>
@@ -453,7 +453,7 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
               </p>
             )}
           </div>
-          <nav className="panel-baris flex flex-wrap gap-2 lg:flex-col lg:gap-1.5" aria-label="Lompat ke bagian" style={{ padding: 12 }}>
+          <nav className="panel-baris flex flex-wrap gap-2 lg:flex-col lg:gap-1.5 p-3" aria-label="Lompat ke bagian">
             {blocks.map((block, i) => {
               const st = labelStatusBlok(block);
               const bermasalah = blokBermasalah(block);
@@ -464,13 +464,12 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
                   type="button"
                   onClick={() => bukaDanGulir(block.id)}
                   aria-label={`${block.judul}: ${st.teks}`}
-                  className="flex items-center justify-center gap-2 text-sm lg:justify-between lg:px-2"
+                  className="flex items-center justify-center gap-2 text-sm lg:justify-between lg:px-3 rounded-xl transition-all"
                   style={{
                     minHeight: 44,
                     minWidth: 44,
-                    borderRadius: 10,
-                    border: '1px solid var(--garis)',
-                    background: bermasalah ? 'var(--merah-lembut)' : selesai ? 'var(--hijau-lembut)' : 'var(--kertas)',
+                    boxShadow: 'var(--bayangan-neumo-sm)',
+                    background: bermasalah ? 'var(--merah-lembut)' : selesai ? 'var(--hijau-lembut)' : 'var(--permukaan)',
                     color: bermasalah ? 'var(--merah)' : selesai ? 'var(--hijau)' : 'var(--tinta)',
                     fontWeight: 600,
                   }}
@@ -486,7 +485,7 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
           </nav>
         </aside>
 
-        <div className="flex flex-col gap-3 lg:col-start-1 lg:row-start-1">
+        <div className="flex flex-col gap-4 lg:col-start-1 lg:row-start-1">
           {blocks.map((block, i) => {
             const bermasalah = blokBermasalah(block);
             const terbuka = bermasalah || dibukaManual.has(block.id);
@@ -494,7 +493,7 @@ export function FormRenderer({ schema, nilaiAwal, onSubmit, onChange, reportId, 
             const st = labelStatusBlok(block);
 
             return (
-              <section key={block.id} id={`bagian-${block.id}`} className="panel">
+              <section key={block.id} id={`bagian-${block.id}`} className="panel neumo-kartu overflow-hidden">
                 <button
                   type="button"
                   onClick={() => togel(block.id)}

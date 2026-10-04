@@ -44,21 +44,21 @@ export function SeksiLipat({
         const terbuka = (e.currentTarget as HTMLDetailsElement).open;
         if (terbuka !== buka) setPilihan(terbuka);
       }}
-      className="border print-seksi"
-      style={{ borderColor: 'var(--garis)', scrollMarginTop: 72 }}
+      className="neumo-kartu print-seksi transition-shadow"
+      style={{ scrollMarginTop: 80, overflow: 'hidden' }}
     >
-      <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-2 p-4" style={{ minHeight: 44 }}>
-        <span style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 500, color: 'var(--biru)' }}>
+      <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-3 p-4 select-none hover:opacity-90" style={{ minHeight: 48 }}>
+        <span style={{ fontFamily: 'var(--display)', fontSize: 'var(--ukuran-judul)', fontWeight: 600, color: 'var(--biru)' }}>
           {judul}
-          {ada === false && <span className="ml-2 text-sm" style={{ color: 'var(--kosong)', fontWeight: 400 }}>· belum ada laporan</span>}
+          {ada === false && <span className="ml-2 text-xs font-normal" style={{ color: 'var(--label)' }}>· belum ada laporan</span>}
         </span>
         {keterangan && (
-          <span className="text-sm" style={{ color: 'var(--biru-3)' }}>
+          <span className="text-xs font-medium" style={{ color: 'var(--label)' }}>
             {keterangan}
           </span>
         )}
       </summary>
-      <div className="flex flex-col gap-2 px-4 pb-4 text-sm">{children}</div>
+      <div className="flex flex-col gap-3 px-5 pb-5 text-sm" style={{ borderTop: '1px solid rgba(166, 180, 200, 0.16)', paddingTop: 16 }}>{children}</div>
     </details>
   );
 }
@@ -73,24 +73,32 @@ export function RingkasanSeksi({ butir }: { butir: ButirRingkasan[] }) {
   const terhitung = butir.filter((b) => b.ada !== undefined);
   const adaData = terhitung.filter((b) => b.ada).length;
   return (
-    <nav aria-label="Ringkasan bagian" className="panel flex flex-col gap-2 p-4">
-      <p style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>
-        Ringkasan: {adaData} dari {terhitung.length} laporan divisi sudah masuk
-      </p>
+    <nav aria-label="Ringkasan bagian" className="neumo-kartu flex flex-col gap-3 p-5">
+      <div className="flex items-center justify-between gap-3">
+        <p style={{ fontFamily: 'var(--display)', fontWeight: 600, color: 'var(--tinta)' }}>
+          Ringkasan Divisi
+        </p>
+        <span className="text-xs font-bold" style={{ color: adaData === terhitung.length ? 'var(--hijau)' : 'var(--biru)' }}>
+          {adaData} dari {terhitung.length} masuk
+        </span>
+      </div>
       <ul className="flex flex-wrap gap-2">
         {butir.map((b) => (
           <li key={b.id}>
             <a
               href={`#${b.id}`}
-              className="inline-flex items-center gap-1 border px-3 text-sm"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold transition-all"
               style={{
-                minHeight: 44,
+                minHeight: 38,
                 borderRadius: 'var(--radius-pil)',
-                borderColor: b.ada === false ? 'var(--merah)' : 'var(--garis)',
-                color: b.ada === false ? 'var(--merah)' : 'var(--tinta)',
+                background: 'var(--permukaan)',
+                boxShadow: 'var(--bayangan-neumo-sm)',
+                border: '1px solid rgba(255, 255, 255, 0.7)',
+                color: b.ada === false ? 'var(--merah)' : b.ada ? 'var(--hijau)' : 'var(--tinta)',
               }}
             >
-              {b.ada === false ? '○' : b.ada ? '●' : '·'} {b.label}
+              <span className="inline-block h-2 w-2 rounded-full" style={{ background: b.ada === false ? 'var(--merah)' : b.ada ? 'var(--hijau)' : 'var(--label)' }} />
+              {b.label}
             </a>
           </li>
         ))}

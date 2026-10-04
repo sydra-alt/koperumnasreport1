@@ -260,7 +260,7 @@ function BlokTanggal({ tanggal, judul, tampilPos, tampilkanCatatan = true, datar
         <p style={{ color: 'var(--kosong)' }}>Belum ada outlet aktif.</p>
       ) : (
         <>
-          <div className={datar ? 'panel' : 'flex flex-col gap-2'}>
+          <div className={datar ? 'neumo-kartu overflow-hidden' : 'flex flex-col gap-3'}>
             {data.map((r) => (
               <KartuOutlet key={r.outletId} r={r} tampilPos={tampilPos} datar={datar} />
             ))}

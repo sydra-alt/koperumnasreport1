@@ -99,26 +99,25 @@ export function AntreanKartu({ baris, bolehMemutuskan, onPutuskan, memutuskan }:
 
       {menunggu ? (
         bolehMemutuskan && (
-          <div className="flex flex-col gap-2 border-t pt-3" style={{ borderColor: 'var(--garis)' }}>
-            <textarea
-              value={catatan}
-              onChange={(e) => setCatatan(e.target.value)}
-              placeholder="Catatan keputusan (opsional)"
-              className="border p-2 text-sm"
-              style={{ borderColor: 'var(--garis)', resize: 'vertical' }}
-              rows={1}
-            />
-            {/* Hierarki tombol (DESIGN.md §13):
-                Setujui = primary blue, Cicil = amber outlined,
-                Tunda = neutral outlined, Tolak = merah outlined (bukan solid).
-                HP: grid 2x2 lebar sama; md+: satu baris. */}
+          <div className="flex flex-col gap-2.5 border-t pt-3" style={{ borderColor: 'rgba(166, 180, 200, 0.16)' }}>
+            <div className="neumo-inset-sm p-1" style={{ borderRadius: 'var(--radius-kecil)' }}>
+              <textarea
+                value={catatan}
+                onChange={(e) => setCatatan(e.target.value)}
+                placeholder="Catatan keputusan (opsional)"
+                className="w-full border-0 bg-transparent p-2 text-sm outline-none"
+                style={{ resize: 'vertical', color: 'var(--tinta)' }}
+                rows={1}
+              />
+            </div>
+            {/* Hierarki tombol (DESIGN.md §13) dengan neumorphic tactile buttons */}
             <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
               <button
                 type="button"
                 disabled={memutuskan}
                 onClick={() => onPutuskan('disetujui', catatan || null)}
                 className="tombol-utama"
-                style={{ fontSize: 14, padding: '8px 12px', minHeight: 44 }}
+                style={{ fontSize: 13, padding: '8px 12px', minHeight: 42 }}
               >
                 Setujui
               </button>
@@ -127,7 +126,7 @@ export function AntreanKartu({ baris, bolehMemutuskan, onPutuskan, memutuskan }:
                 disabled={memutuskan}
                 onClick={() => onPutuskan('dicicil', catatan || null)}
                 className="tombol-sekunder"
-                style={{ borderColor: 'var(--kuning)', color: 'var(--kuning)', fontSize: 14, padding: '8px 12px', minHeight: 44 }}
+                style={{ color: 'var(--kuning)', fontSize: 13, padding: '8px 12px', minHeight: 42 }}
               >
                 Cicil
               </button>
@@ -136,7 +135,7 @@ export function AntreanKartu({ baris, bolehMemutuskan, onPutuskan, memutuskan }:
                 disabled={memutuskan}
                 onClick={() => onPutuskan('ditunda', catatan || null)}
                 className="tombol-sekunder"
-                style={{ borderColor: 'var(--garis)', color: 'var(--tinta)', fontSize: 14, padding: '8px 12px', minHeight: 44 }}
+                style={{ color: 'var(--tinta)', fontSize: 13, padding: '8px 12px', minHeight: 42 }}
               >
                 Tunda
               </button>
@@ -145,7 +144,7 @@ export function AntreanKartu({ baris, bolehMemutuskan, onPutuskan, memutuskan }:
                 disabled={memutuskan}
                 onClick={() => onPutuskan('ditolak', catatan || null)}
                 className="tombol-sekunder"
-                style={{ borderColor: 'var(--merah)', color: 'var(--merah)', fontSize: 14, padding: '8px 12px', minHeight: 44 }}
+                style={{ color: 'var(--merah)', fontSize: 13, padding: '8px 12px', minHeight: 42 }}
               >
                 Tolak
               </button>

@@ -34,7 +34,9 @@ td.border, th.border {
 body {
   margin: 0;
   min-height: 100svh;
-  background: var(--halaman); /* DESIGN-MODERN.md §M2 (31 Agustus 2026): latar halaman abu muda, ganti dari --kertas -- kartu utama (putih, var(--permukaan)) terangkat lewat beda permukaan, bukan garis */
+  background: var(--gradien-kanvas); /* Kanvas neomorfik: aksen sangat lembut, bukan status atau dekorasi yang ramai. */
+  background-attachment: fixed;
+  background-size: cover;
   color: var(--tinta);
   font-family: var(--font);
   line-height: 1.5;
@@ -161,7 +163,7 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--biru);
+  background: var(--gradien-brand);
   color: #FFFFFF;
   border: none;
   border-radius: var(--radius-kecil);
@@ -176,14 +178,14 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   transition: transform var(--gerak-cepat), background var(--gerak-normal), box-shadow var(--gerak-normal);
 }
 .tombol-utama:hover {
-  background: var(--biru-2);
+  filter: brightness(1.04);
   box-shadow: 0 4px 14px rgba(14, 42, 78, 0.22);
 }
 .tombol-sekunder {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #FFFFFF;
+  background: var(--permukaan);
   color: var(--biru);
   border: 1px solid var(--garis-tegas);
   border-radius: var(--radius-kecil);
@@ -213,7 +215,7 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea {
    §T.6) -- HANYA untuk animasi ini, tidak untuk latar/tombol/kartu/rail lain.
    ================================ */
 .kerangka {
-  background: linear-gradient(90deg, #EEF1F4 25%, #F6F8F9 37%, #EEF1F4 63%);
+  background: linear-gradient(90deg, #B8C4D2 25%, #CDD6E0 37%, #B8C4D2 63%);
   background-size: 400% 100%;
   border-radius: 6px;
   animation: kerangka-geser 1.4s ease infinite;
@@ -297,7 +299,7 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   display: flex;
   align-items: center;
   border-top: 1px solid var(--garis);
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(194, 204, 216, 0.92);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow: 0 -4px 20px rgba(14, 42, 78, 0.05);
@@ -318,7 +320,7 @@ body { padding-bottom: calc(var(--tinggi-nav-bawah) + var(--tambahan-fab-absen) 
     position: sticky;
     top: 0;
     z-index: 30;
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(194, 204, 216, 0.90);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     box-shadow: var(--bayangan-halus);
@@ -415,6 +417,372 @@ nextjs-portal, [data-nextjs-dev-tools], [data-next-badge], div[data-nextjs-toast
 }
 @media (min-width: 768px) {
   .sapaan { font-size: 28px; }
+}
+
+/* ================================
+   LAPISAN NEUMORPHISM GLOBAL
+   Semua halaman berbagi kanvas lembut serta permukaan yang timbul dan cekung
+   sesuai standar Neumorphism murni. Elemen interaktif tactile, kontras nyaman,
+   dan status semantik tetap terbaca dengan jelas.
+   ================================ */
+.neumo-kartu,
+:where(div, section, article, form, fieldset, li).border:not(.kartu-status) {
+  background: var(--permukaan);
+  border: 1px solid rgba(255, 255, 255, 0.75) !important;
+  border-radius: var(--radius-besar);
+  box-shadow: var(--bayangan-neumo);
+}
+
+.kartu-status {
+  background: var(--permukaan);
+  border-left: var(--lebar-rail) solid var(--garis);
+  border-top: 1px solid rgba(255, 255, 255, 0.85);
+  border-right: 1px solid rgba(255, 255, 255, 0.45);
+  border-bottom: 1px solid rgba(166, 180, 200, 0.35);
+  border-radius: var(--radius-besar);
+  box-shadow: var(--bayangan-neumo);
+  transition: transform var(--gerak-cepat), box-shadow var(--gerak-normal);
+}
+
+.panel {
+  background: var(--permukaan);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: var(--radius-besar);
+  box-shadow: var(--bayangan-neumo);
+  overflow: hidden;
+}
+
+.panel-garis {
+  background: var(--permukaan-2);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-besar);
+  box-shadow: var(--bayangan-neumo-dalam);
+  overflow: hidden;
+}
+
+.neumo-inset,
+.neumo-cekung {
+  background: var(--permukaan-2);
+  border-radius: var(--radius-sedang);
+  box-shadow: var(--bayangan-neumo-dalam);
+  border: 1px solid rgba(195, 206, 222, 0.3);
+}
+
+.neumo-inset-sm {
+  background: var(--permukaan-2);
+  border-radius: var(--radius-kecil);
+  box-shadow: var(--bayangan-neumo-dalam-sm);
+}
+
+/* Isian Form Neumorphic (Inputs, Selects, Textareas) */
+input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+  background: var(--permukaan-2);
+  border: 1px solid rgba(195, 206, 222, 0.5) !important;
+  border-radius: var(--radius-sedang);
+  box-shadow: var(--bayangan-neumo-dalam);
+  color: var(--tinta);
+  padding: 10px 16px;
+  transition: border-color var(--gerak-normal), box-shadow var(--gerak-normal), background var(--gerak-normal);
+}
+input:not([type="checkbox"]):not([type="radio"]):focus, select:focus, textarea:focus {
+  outline: none;
+  background: var(--permukaan);
+  border-color: var(--biru-3) !important;
+  box-shadow: var(--bayangan-neumo-dalam), 0 0 0 3px rgba(59, 130, 246, 0.22);
+}
+
+/* Tombol Neumorphic */
+.tombol-utama {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gradien-brand);
+  color: #FFFFFF !important;
+  border: none;
+  border-radius: var(--radius-sedang);
+  padding: 11px 20px;
+  min-height: 46px;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: var(--ukuran-isi);
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: var(--bayangan-neumo-aksen);
+  transition: transform var(--gerak-cepat), filter var(--gerak-normal), box-shadow var(--gerak-normal);
+}
+.tombol-utama:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 10px 24px rgba(0, 71, 175, 0.32), 4px 4px 12px rgba(166, 180, 200, 0.40);
+}
+.tombol-utama:active:not(:disabled) {
+  transform: scale(0.97);
+  box-shadow: 0 4px 12px rgba(0, 71, 175, 0.25);
+}
+
+.tombol-sekunder,
+button.border,
+a.border {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--permukaan);
+  color: var(--biru);
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  border-radius: var(--radius-sedang);
+  padding: 10px 18px;
+  min-height: 44px;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: var(--ukuran-isi);
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: var(--bayangan-neumo-sm);
+  transition: transform var(--gerak-cepat), background var(--gerak-normal), box-shadow var(--gerak-normal);
+}
+.tombol-sekunder:hover,
+button.border:hover,
+a.border:hover {
+  background: var(--permukaan-bersih);
+  box-shadow: var(--bayangan-neumo);
+}
+.tombol-sekunder:active:not(:disabled),
+button.border:active:not(:disabled),
+a.border:active {
+  box-shadow: var(--bayangan-neumo-dalam);
+  transform: scale(0.97);
+}
+
+/* Tombol Lingkar Neumorphic (Back, Search, Action Buttons seperti referensi) */
+.tombol-lingkar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--permukaan);
+  color: var(--tinta);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: var(--bayangan-neumo-sm);
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform var(--gerak-cepat), box-shadow var(--gerak-normal), background var(--gerak-normal);
+}
+.tombol-lingkar:hover {
+  background: var(--permukaan-bersih);
+  box-shadow: var(--bayangan-neumo);
+}
+.tombol-lingkar:active:not(:disabled) {
+  box-shadow: var(--bayangan-neumo-dalam);
+  transform: scale(0.94);
+}
+
+/* Saklar Neumorphic (Toggle Switch identik dengan foto referensi) */
+.neumo-saklar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 52px;
+  height: 30px;
+  border-radius: var(--radius-pil);
+  background: var(--permukaan-2);
+  box-shadow: var(--bayangan-neumo-dalam);
+  cursor: pointer;
+  border: none;
+  padding: 3px;
+  transition: background var(--gerak-normal), box-shadow var(--gerak-normal);
+  flex-shrink: 0;
+}
+.neumo-saklar input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.neumo-saklar-jempol,
+.neumo-saklar-slider {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 2px 2px 6px rgba(100, 116, 139, 0.35), -1px -1px 3px rgba(255, 255, 255, 0.9);
+  transition: transform var(--gerak-normal), background var(--gerak-normal), box-shadow var(--gerak-normal);
+}
+.neumo-saklar:has(input:checked),
+.neumo-saklar.aktif {
+  background: var(--gradien-brand) !important;
+  box-shadow: inset 2px 2px 5px rgba(0, 30, 80, 0.45), inset -1px -1px 2px rgba(255, 255, 255, 0.3) !important;
+}
+.neumo-saklar:has(input:checked) .neumo-saklar-jempol,
+.neumo-saklar:has(input:checked) .neumo-saklar-slider,
+.neumo-saklar.aktif .neumo-saklar-jempol,
+.neumo-saklar.aktif .neumo-saklar-slider {
+  transform: translateX(22px);
+  background: #FFFFFF;
+  box-shadow: -2px 2px 6px rgba(0, 30, 80, 0.35), 1px 1px 3px rgba(255, 255, 255, 0.9);
+}
+
+/* ============================================================
+   KONTROL AKTIF & BRAND — ANTI NYARU / HIGH CONTRAST
+   Menjamin tombol, tab aktif, nav pill, dan progress bar
+   selalu menyala dengan warna brand berwibawa, kontras tinggi.
+   ============================================================ */
+.nav-pil-aktif,
+.tab-aktif,
+.bg-brand-gradien,
+[class*="bg-[var(--gradien-brand)]"] {
+  background: var(--gradien-brand) !important;
+  background-color: #1565C0 !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 0 4px 14px rgba(10, 60, 120, 0.42), var(--bayangan-neumo-sm) !important;
+  text-shadow: 0 1px 2px rgba(0, 20, 60, 0.35);
+}
+
+.nav-pil-aktif *,
+.tab-aktif *,
+.bg-brand-gradien *,
+[class*="bg-[var(--gradien-brand)]"] * {
+  color: #FFFFFF !important;
+}
+
+.nav-pil-inaktif {
+  background: var(--permukaan) !important;
+  color: var(--tinta) !important;
+  font-weight: 600 !important;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow: var(--bayangan-neumo-sm) !important;
+}
+
+.nav-pil-inaktif:hover {
+  background: var(--permukaan-bersih) !important;
+  color: var(--biru-2) !important;
+  box-shadow: var(--bayangan-neumo) !important;
+}
+
+.nav-pil-inaktif:active {
+  box-shadow: var(--bayangan-neumo-dalam-sm) !important;
+}
+
+/* Progress bar fill neumorphic */
+.progres-bar-isi {
+  background: var(--gradien-brand) !important;
+  background-color: #1565C0 !important;
+  box-shadow: 0 2px 8px rgba(10, 60, 120, 0.4) !important;
+}
+
+:is(button, a)[style*="background: var(--biru)"], :is(button, a)[class*="bg-[var(--biru)]"] {
+  background: var(--gradien-brand) !important;
+  background-color: #1565C0 !important;
+  color: #FFFFFF !important;
+  border-color: transparent !important;
+  box-shadow: var(--bayangan-neumo-aksen);
+}
+
+.nav-atas, .nav-bawah {
+  background: rgba(194, 204, 216, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 4px 20px rgba(140, 158, 180, 0.35);
+}
+.nav-atas nav { background: transparent; }
+
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
+}
+
+/* ADMIN — urutan kerja yang jelas untuk pemegang akun non-teknis. */
+.admin-halaman { width: min(100%, 1120px); margin-inline: auto; padding: 24px 16px 42px; }
+.admin-kepala-halaman { max-width: 43rem; margin-bottom: 24px; }
+.admin-kepala-halaman > p { margin: 0 0 5px; color: var(--biru); font-size: 13px; font-weight: 700; letter-spacing: .03em; }
+.admin-kepala-halaman h1 { margin: 0; font-size: clamp(28px, 4vw, 36px); line-height: 1.16; }
+.admin-kepala-halaman > span { display: block; margin-top: 9px; color: var(--label); font-size: 15px; }
+.admin-ruang-kerja { display: grid; gap: 18px; }
+.admin-petunjuk { border-radius: 20px; background: var(--gradien-brand-lembut); box-shadow: var(--bayangan-neumo); padding: 16px 18px; }
+.admin-petunjuk-judul { margin: 0; color: var(--biru); font-family: var(--display); font-size: 16px; font-weight: 700; }
+.admin-petunjuk p + p { margin: 4px 0 0; color: var(--label); font-size: 14px; line-height: 1.5; }
+.admin-navigasi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.admin-nav-item { min-height: 78px; border: 0; border-radius: 18px; background: var(--permukaan); box-shadow: var(--bayangan-neumo); color: var(--tinta); cursor: pointer; padding: 12px; text-align: left; transition: transform var(--gerak-cepat), background var(--gerak-normal), color var(--gerak-normal), box-shadow var(--gerak-normal); }
+.admin-nav-item span, .admin-nav-item small { display: block; }
+.admin-nav-item span { font-family: var(--display); font-size: 15px; font-weight: 700; }
+.admin-nav-item small { margin-top: 3px; color: var(--label); font-size: 12px; line-height: 1.35; }
+.admin-nav-item.aktif { background: var(--gradien-brand); box-shadow: 5px 7px 15px rgba(0, 71, 175, .20), -3px -3px 10px rgba(255, 255, 255, .70); color: white; }
+.admin-nav-item.aktif small { color: rgba(255, 255, 255, .82); }
+.admin-nav-item:active { box-shadow: var(--bayangan-neumo-dalam); transform: scale(.98); }
+.admin-isi { min-width: 0; border-radius: 24px; background: var(--permukaan); box-shadow: var(--bayangan-neumo); padding: 18px; }
+.admin-isi-kepala { margin-bottom: 18px; }
+.admin-isi-kepala h2 { margin: 0; font-size: 22px; }
+.admin-isi-kepala p { margin: 4px 0 0; color: var(--label); font-size: 14px; }
+.admin-kartu-pengaturan { display: flex; flex-direction: column; gap: 12px; border-radius: 18px; background: var(--permukaan-2); box-shadow: var(--bayangan-neumo-dalam); padding: 15px; }
+.admin-kartu-judul { margin: 0; font-family: var(--display); font-size: 15px; font-weight: 700; color: var(--tinta); text-transform: capitalize; }
+.admin-kartu-bantuan { margin: 3px 0 0; color: var(--label); font-size: 13px; line-height: 1.45; }
+.admin-saklar { display: inline-flex; align-items: center; gap: 9px; align-self: flex-start; min-height: 40px; border: 0; border-radius: var(--radius-pil); background: #DDE4ED; box-shadow: var(--bayangan-neumo-dalam); color: var(--label); cursor: pointer; padding: 5px 13px 5px 6px; font-weight: 700; }
+.admin-saklar span { display: block; width: 28px; height: 28px; border-radius: 50%; background: white; box-shadow: 2px 2px 5px rgba(109,127,148,.18); transition: transform var(--gerak-normal); }
+.admin-saklar.aktif { background: var(--gradien-brand); color: white; box-shadow: 4px 5px 12px rgba(0,71,175,.19); }
+.admin-saklar.aktif span { transform: translateX(4px); }
+.admin-hari { min-width: 42px; min-height: 40px; border: 0; border-radius: 12px; background: var(--permukaan); box-shadow: var(--bayangan-neumo); color: var(--label); cursor: pointer; font-size: 12px; font-weight: 700; }
+.admin-hari.aktif { background: var(--gradien-brand); color: white; box-shadow: 3px 4px 9px rgba(0,71,175,.20); }
+.admin-lanjutan { border-radius: 18px; background: var(--permukaan-2); box-shadow: var(--bayangan-neumo-dalam); padding: 14px 16px; }
+.admin-lanjutan summary { cursor: pointer; color: var(--biru); font-family: var(--display); font-size: 15px; font-weight: 700; }
+.dashboard-halaman, .papan-halaman { position: relative; }
+.dashboard-hero, .papan-hero { border-radius: 24px; background: var(--permukaan); box-shadow: var(--bayangan-neumo); padding: 18px; }
+.papan-ringkasan { background: var(--permukaan); box-shadow: var(--bayangan-neumo); }
+@media (min-width: 768px) {
+  .admin-halaman { padding: 34px 28px 56px; }
+  .admin-navigasi { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .dashboard-hero, .papan-hero { padding: 22px; }
+}
+
+/* AKUN — profil menjadi ruang pribadi, standar murni Neumorphic sesuai visual referensi. */
+.akun-halaman { width: min(100%, 960px); margin-inline: auto; padding: 24px 20px 48px; }
+.akun-intro { max-width: 38rem; }
+.akun-eyebrow { margin: 0 0 4px; color: var(--label); font-size: 13px; font-weight: 700; letter-spacing: .04em; }
+.akun-judul { margin: 0; font-size: 28px; line-height: 1.18; color: var(--tinta); }
+.akun-subjudul { margin: 8px 0 0; color: var(--label); font-size: 14px; line-height: 1.55; }
+.akun-grid { display: grid; gap: 24px; margin-top: 24px; }
+.akun-kartu { background: var(--permukaan); border-radius: var(--radius-sedang); box-shadow: var(--bayangan-neumo); border: 1px solid rgba(255, 255, 255, 0.75); }
+.akun-profil { padding: 24px; }
+.akun-profil-atas { display: flex; align-items: center; gap: 16px; }
+.akun-avatar { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: var(--permukaan); color: var(--biru); box-shadow: var(--bayangan-neumo); border: 2px solid rgba(255, 255, 255, 0.9); font-family: var(--display); font-size: 22px; font-weight: 700; }
+.akun-nama { margin: 0; color: var(--biru); font-family: var(--display); font-size: 20px; font-weight: 700; line-height: 1.3; }
+.akun-jabatan { margin: 4px 0 0; color: var(--label); font-size: 14px; }
+.akun-status { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; color: var(--hijau); font-size: 13px; font-weight: 700; background: rgba(30, 138, 76, 0.08); padding: 4px 12px; border-radius: var(--radius-pil); box-shadow: inset 1px 1px 2px rgba(166, 180, 200, 0.2); }
+.akun-status::before { width: 8px; height: 8px; border-radius: 50%; background: var(--hijau); content: ''; box-shadow: 0 0 6px rgba(30, 138, 76, 0.4); }
+.akun-peran { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.akun-peran span { border-radius: var(--radius-pil); background: var(--permukaan); color: var(--biru); padding: 5px 12px; font-size: 12px; font-weight: 700; box-shadow: var(--bayangan-neumo-sm); border: 1px solid rgba(255, 255, 255, 0.6); }
+.akun-seksi { display: flex; flex-direction: column; gap: 12px; }
+.akun-seksi-kepala { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
+.akun-seksi h2 { margin: 0; font-size: 18px; font-weight: 700; color: var(--tinta); }
+.akun-seksi-kepala p { margin: 0; color: var(--label); font-size: 13px; }
+.akun-daftar { overflow: hidden; border-radius: var(--radius-sedang); background: var(--permukaan); box-shadow: var(--bayangan-neumo); border: 1px solid rgba(255, 255, 255, 0.75); }
+.akun-item-kartu { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 64px; padding: 14px 18px; border-radius: var(--radius-sedang); background: var(--permukaan); box-shadow: var(--bayangan-neumo); border: 1px solid rgba(255, 255, 255, 0.75); color: var(--tinta); text-decoration: none; transition: transform var(--gerak-cepat), box-shadow var(--gerak-cepat); }
+.akun-item-kartu:hover { box-shadow: var(--bayangan-neumo-besar); }
+.akun-item-kartu:active { transform: scale(0.99); box-shadow: var(--bayangan-neumo-dalam); }
+.akun-baris { display: flex; align-items: center; gap: 14px; min-height: 68px; padding: 14px 18px; color: var(--tinta); text-decoration: none; transition: background var(--gerak-normal), color var(--gerak-normal), transform var(--gerak-cepat); }
+.akun-baris + .akun-baris { border-top: 1px solid rgba(166, 180, 200, 0.25); }
+.akun-baris:hover { background: rgba(21, 101, 192, 0.06); color: var(--biru-2); }
+.akun-baris:active { transform: scale(.99); }
+.akun-ikon { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 12px; background: var(--permukaan); color: var(--biru-2); box-shadow: var(--bayangan-neumo-sm); border: 1px solid rgba(255, 255, 255, 0.85); flex-shrink: 0; }
+.akun-baris-isi { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.akun-baris-judul { margin: 0; font-family: var(--display); font-size: 15px; font-weight: 700; color: var(--tinta); display: block; }
+.akun-baris-bantu { margin: 0; color: var(--label); font-size: 13px; display: block; line-height: 1.4; }
+.akun-panah { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; color: var(--label); font-size: 18px; line-height: 1; transition: transform var(--gerak-cepat); }
+.akun-baris:hover .akun-panah { color: var(--biru-2); transform: translateX(3px); }
+.akun-kosong { padding: 24px 20px; text-align: center; }
+.akun-kosong-ikon { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 16px; background: var(--permukaan); color: var(--biru); box-shadow: var(--bayangan-neumo-sm); }
+.akun-kosong p { margin: 10px 0 0; }
+.akun-kosong p + p { margin-top: 4px; color: var(--label); font-size: 14px; }
+.akun-keluar { align-self: flex-start; min-height: 48px; border: 1px solid rgba(217, 37, 37, 0.2); border-radius: var(--radius-pil); background: var(--permukaan); color: var(--merah); box-shadow: var(--bayangan-neumo); cursor: pointer; font-family: var(--display); font-size: 14px; font-weight: 700; padding: 12px 24px; transition: color var(--gerak-normal), background var(--gerak-normal), transform var(--gerak-cepat), box-shadow var(--gerak-cepat); }
+.akun-keluar:hover { background: var(--merah-lembut); box-shadow: var(--bayangan-neumo-besar); }
+.akun-keluar:active { box-shadow: var(--bayangan-neumo-dalam); transform: scale(.98); }
+@media (min-width: 768px) {
+  .akun-halaman { padding: 36px 28px 48px; }
+  .akun-grid { grid-template-columns: minmax(280px, .8fr) minmax(0, 1.2fr); align-items: start; }
+  .akun-profil { position: sticky; top: 96px; }
 }
 
 /* ================================

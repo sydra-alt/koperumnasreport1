@@ -1127,13 +1127,15 @@ Pada layar CEO, lebih baik menampilkan 4 kartu penting yang nyaman dibaca daripa
 
 # 23. Hal yang tetap dilarang
 
-Brief melarang HURUF BESAR SEMUA, sudut siku, font mono di luar angka, latar suram, skor karyawan 0–100 yang tidak berdasar, istilah teknis, terlalu banyak kotak berwarna, gradient, shadow tebal, animasi berlebihan, dan ikon tanpa label. fileciteturn0file0L117-L135
+Brief awal melarang HURUF BESAR SEMUA, sudut siku, font mono di luar angka, latar suram, skor karyawan 0–100 yang tidak berdasar, istilah teknis, terlalu banyak kotak berwarna, shadow tebal, animasi berlebihan, dan ikon tanpa label. fileciteturn0file0L117-L135
+
+**Pembaruan arah visual, 4 Oktober 2026:** aplikasi sekarang berpacu pada **neumorphism yang terkendali**. Gradien lembut diizinkan hanya untuk kanvas, permukaan brand, dan tindakan utama; ini menggantikan larangan gradien yang terlalu mutlak di draf awal. Gradien tidak boleh dipakai untuk status, isi data, atau sekadar memenuhi ruang kosong.
 
 Secara khusus, **jangan menerjemahkan “lebih berwarna” menjadi:**
 
 - 20 badge warna-warni dalam satu layar,
 - lingkaran merah/hijau/kuning di setiap item,
-- gradient biru ke ungu,
+- gradient pelangi atau kontras tinggi,
 - shadow besar,
 - kartu mengambang di atas kartu lain,
 - ilustrasi AI generik.
@@ -1320,7 +1322,7 @@ Maksimal empat level, jangan bikin 8–10 variasi abu-abu cuma untuk kesan "dept
 3. **Surface soft** -- field, sub-panel, area input.
 4. **Semantic soft** -- area status merah/kuning/hijau (`--merah-lembut`/`--kuning-lembut`/`--biru-lembut` di `app/tokens.css`).
 
-Kartu biasa cukup border lembut, TANPA shadow besar. Shadow (`--bayangan-kartu`) cuma untuk nav bawah, tombol mengambang Absen, dan panel yang sungguh mengambang -- bukan kartu biasa.
+Kartu biasa memakai elevasi neomorfik yang halus (`--bayangan-neumo`), bukan shadow gelap atau tebal. Input memakai versi cekung (`--bayangan-neumo-dalam`) dan tetap punya border/focus yang jelas. Warna status tidak boleh dihilangkan oleh efek elevasi.
 
 ## T.4 Laporan Terpusat (belum ada spesifikasi tersendiri di atas)
 
@@ -1359,9 +1361,9 @@ Hindari nada "AI menjelaskan database":
 
 ## T.6 Warna berwarna tapi tidak norak
 
-**Boleh**: soft red/amber/green surface, blue CTA, blue accent pada judul, tinted input background, angka berwarna status, rail kiri.
+**Boleh**: soft red/amber/green surface, blue CTA, blue accent pada judul, tinted input background, angka berwarna status, rail kiri, gradien kanvas yang sangat lembut, dan gradien biru brand untuk CTA utama.
 
-**Jangan**: gradient, neon, satu layar penuh 5 warna sekaligus, 10 badge pill berbeda, setiap baris diberi ikon warna berbeda, shadow tebal, glassmorphism, status dot berulang-ulang.
+**Jangan**: gradien pelangi/neon, satu layar penuh 5 warna sekaligus, 10 badge pill berbeda, setiap baris diberi ikon warna berbeda, shadow tebal, glassmorphism, status dot berulang-ulang.
 
 ## T.7 Arsitektur komponen — pola ilustratif, BUKAN nama komponen sungguhan
 
@@ -1396,3 +1398,13 @@ Redesign/perubahan visual baru dianggap selesai kalau, SELAIN checklist §25 di 
 > **Buat pengguna melihat hal yang penting sebelum mereka membacanya.**
 >
 > Gunakan warna untuk prioritas, tipografi untuk hierarki, spacing untuk pengelompokan, dan teks untuk memastikan makna. Jangan menggunakan dekorasi untuk menggantikan struktur informasi.
+
+## T.11 Neumorphism — arah implementasi global
+
+Neumorphism adalah bahasa visual utama aplikasi: kanvas biru-putih yang lembut, kartu/panel sedikit terangkat, serta kontrol yang dapat terasa sedikit cekung ketika digunakan. Ini harus membuat aplikasi terasa rapi dan hangat, bukan seperti UI demonstrasi yang terlalu mengilap.
+
+- Pakai token `--gradien-kanvas`, `--gradien-brand`, `--bayangan-neumo`, dan `--bayangan-neumo-dalam`; jangan membuat gradien atau bayangan baru per halaman.
+- Semua permukaan informasi utama memakai putih/transparan lembut di atas kanvas, radius 16–22 px, dan elevasi tipis. Pemisah daftar di dalam permukaan tetap boleh memakai garis halus.
+- Tombol tindakan utama memakai gradien brand. Tombol sekunder, kartu, dan item daftar memakai elevasi netral. Aksi bahaya tetap merah solid/soft agar makna tidak hilang.
+- Input harus selalu dapat dikenali sebagai area ketik: gunakan permukaan cekung, border lembut, dan focus ring biru. Neumorphism tidak boleh mengurangi kontras atau target sentuh 44 px.
+- Status merah, amber, dan hijau selalu menggunakan token semantik, rail, dan teks status. Jangan pernah mengubahnya menjadi gradien dekoratif.

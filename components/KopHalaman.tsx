@@ -90,22 +90,22 @@ export function KopHalaman() {
 
   return (
     <>
-      <header className="nav-atas border-b border-[var(--garis)] bg-white/95 backdrop-blur-md">
+      <header className="nav-atas border-b border-white/60 bg-[var(--halaman)]/95 backdrop-blur-md shadow-[0_4px_16px_rgba(166,180,200,0.35)]">
         <div className="flex items-center justify-between gap-4 px-6 py-3">
           <div className="flex items-center gap-3">
             <Image
               src="/logo-koperumnas.jpg"
               alt=""
-              width={32}
-              height={32}
-              className="rounded-lg border border-[var(--garis)] shadow-2xs"
+              width={34}
+              height={34}
+              className="rounded-xl border border-white/90 shadow-[var(--bayangan-neumo-sm)]"
             />
             <div className="flex items-center gap-3">
               <span className="text-base font-bold tracking-tight text-[var(--biru)]" style={{ fontFamily: 'var(--display)' }}>
                 Koperumnas Group
               </span>
               <span
-                className="hidden items-center gap-1.5 rounded-full border border-[var(--garis)] bg-[var(--halaman)] px-3 py-0.5 text-xs font-medium text-[var(--label)] sm:inline-flex"
+                className="hidden items-center gap-1.5 rounded-full border border-white/80 bg-[var(--permukaan)] px-3 py-1 text-xs font-semibold text-[var(--label)] shadow-[var(--bayangan-neumo-sm)] sm:inline-flex"
                 suppressHydrationWarning
               >
                 {tanggalIndonesiaWIB()}
@@ -115,12 +115,12 @@ export function KopHalaman() {
 
           <div className="flex items-center gap-3">
             {profile?.nama && (
-              <div className="hidden items-center gap-2 lg:flex">
+              <div className="hidden items-center gap-2 lg:flex rounded-full border border-white/80 bg-[var(--permukaan)] px-3 py-1 shadow-[var(--bayangan-neumo-sm)]">
                 <span className="text-xs font-semibold text-[var(--tinta)]">
                   {profile.nama}
                 </span>
                 {profile.divisi && (
-                  <span className="rounded-full border border-[var(--biru-garis)] bg-[var(--biru-lembut)] px-2 py-0.5 text-[11px] font-medium text-[var(--biru)]">
+                  <span className="rounded-full border border-[var(--biru-garis)] bg-[var(--biru-lembut)] px-2 py-0.5 text-[11px] font-bold text-[var(--biru)]">
                     {profile.divisi}
                   </span>
                 )}
@@ -129,24 +129,22 @@ export function KopHalaman() {
             <button
               type="button"
               onClick={() => void signOut()}
-              className="inline-flex cursor-pointer items-center justify-center rounded-full border border-[var(--garis)] px-3.5 py-1.5 text-xs font-medium text-[var(--label)] transition-all hover:border-[var(--merah-garis)] hover:bg-[var(--merah-lembut)] hover:text-[var(--merah)]"
+              className="inline-flex cursor-pointer items-center justify-center rounded-full border border-white/80 bg-[var(--permukaan)] px-4 py-1.5 text-xs font-semibold text-[var(--label)] shadow-[var(--bayangan-neumo-sm)] transition-all hover:text-[var(--merah)] hover:bg-[var(--merah-lembut)] active:shadow-[var(--bayangan-neumo-dalam)]"
             >
               Keluar
             </button>
           </div>
         </div>
 
-        <nav className="flex items-center gap-1.5 overflow-visible border-t border-[var(--garis)] bg-[var(--permukaan)] px-6 py-2">
+        <nav className="flex items-center gap-2 overflow-visible border-t border-white/60 bg-[var(--halaman)] px-6 py-2.5">
           {tabUtama.map((tab) => {
             const aktif = pathname === tab.href;
             return (
               <Link
                 key={tab.key}
                 href={tab.href}
-                className={`inline-flex shrink-0 items-center rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
-                  aktif
-                    ? 'bg-[var(--biru)] text-white shadow-xs'
-                    : 'text-[var(--label)] hover:bg-[var(--biru-lembut)] hover:text-[var(--biru)]'
+                className={`inline-flex shrink-0 items-center rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
+                  aktif ? 'nav-pil-aktif' : 'nav-pil-inaktif'
                 }`}
                 style={{ fontFamily: 'var(--display)' }}
               >
@@ -160,10 +158,8 @@ export function KopHalaman() {
               <button
                 type="button"
                 onClick={() => setMenuLainnyaTerbuka((prev) => !prev)}
-                className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                  tabLainnyaAktif
-                    ? 'bg-[var(--biru-lembut)] text-[var(--biru)] border border-[var(--biru-garis)]'
-                    : 'text-[var(--label)] hover:bg-[var(--biru-lembut)] hover:text-[var(--biru)]'
+                className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                  tabLainnyaAktif ? 'nav-pil-aktif' : 'nav-pil-inaktif'
                 }`}
                 style={{ fontFamily: 'var(--display)' }}
                 aria-expanded={menuLainnyaTerbuka}
@@ -187,11 +183,11 @@ export function KopHalaman() {
               </button>
 
               {menuLainnyaTerbuka && (
-                <div className="absolute top-full left-0 mt-2 z-50 min-w-[220px] rounded-2xl border border-[var(--garis)] bg-white p-2 shadow-lg ring-1 ring-black/5 animate-in fade-in-50 zoom-in-95">
+                <div className="absolute top-full left-0 mt-2 z-50 min-w-[220px] rounded-2xl border border-white/90 bg-[var(--permukaan)] p-2.5 shadow-[var(--bayangan-neumo-lg)] animate-in fade-in-50 zoom-in-95">
                   <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--label)] border-b border-[var(--garis)] mb-1">
                     Fitur &amp; Penugasan Lainnya
                   </div>
-                  <div className="flex flex-col gap-0.5">
+                  <div className="flex flex-col gap-1">
                     {tabLainnya.map((tab) => {
                       const aktif = pathname === tab.href;
                       return (
@@ -199,15 +195,15 @@ export function KopHalaman() {
                           key={tab.key}
                           href={tab.href}
                           onClick={() => setMenuLainnyaTerbuka(false)}
-                          className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium transition-all ${
+                          className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
                             aktif
-                              ? 'bg-[var(--biru-lembut)] font-semibold text-[var(--biru)]'
-                              : 'text-[var(--tinta)] hover:bg-[var(--halaman)] hover:text-[var(--biru)]'
+                              ? 'nav-pil-aktif'
+                              : 'text-[var(--tinta)] hover:bg-[var(--permukaan-bersih)] hover:text-[var(--biru-2)] active:shadow-[var(--bayangan-neumo-dalam)]'
                           }`}
                         >
                           <NavIcon nama={ikonUntukTab(tab.key)} size={16} />
                           <span>{tab.label}</span>
-                          {aktif && <span className="ml-auto size-1.5 rounded-full bg-[var(--biru)]" />}
+                          {aktif && <span className="ml-auto size-1.5 rounded-full bg-white" />}
                         </Link>
                       );
                     })}
@@ -247,15 +243,17 @@ function TabBawahLink({ tab, aktif }: { tab: TabNav; aktif: boolean }) {
       }}
     >
       <span
-        className={`flex items-center justify-center rounded-full px-3 py-1 transition-all ${
-          aktif ? 'bg-[var(--biru-lembut)] text-[var(--biru)]' : 'text-[var(--label)]'
+        className={`flex items-center justify-center rounded-full px-3.5 py-1.5 transition-all ${
+          aktif
+            ? 'bg-[var(--permukaan)] shadow-[var(--bayangan-neumo-sm)] border border-white/90 text-[var(--biru)]'
+            : 'text-[var(--label)] hover:text-[var(--biru)]'
         }`}
       >
         <NavIcon nama={ikonUntukTab(tab.key)} size={20} />
       </span>
       <span
         className={`text-[10px] tracking-tight transition-colors ${
-          aktif ? 'font-semibold text-[var(--biru)]' : 'font-medium text-[var(--label)]'
+          aktif ? 'font-bold text-[var(--biru)]' : 'font-medium text-[var(--label)]'
         }`}
       >
         {tab.label}

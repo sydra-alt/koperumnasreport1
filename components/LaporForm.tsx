@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import type { FieldValues } from 'react-hook-form';
 import { KerangkaForm } from './Kerangka';
 import { useAuth } from '../lib/auth/AuthProvider';
@@ -423,13 +424,17 @@ export function LaporForm({ formKey }: { formKey: string }) {
 
 
   return (
-    <main className="mx-auto flex w-full max-w-[1120px] flex-col gap-3 px-4 py-5 md:gap-4 md:px-8 md:py-8">
-      <h1 className="sapaan">{schema.nama}</h1>
+    <main className="mx-auto flex w-full max-w-[1120px] flex-col gap-4 px-4 py-5 md:gap-5 md:px-8 md:py-8">
+      <div className="flex items-center gap-3">
+        <Link href="/" className="tombol-lingkar text-lg font-bold" aria-label="Kembali ke Beranda">
+          ‹
+        </Link>
+        <h1 className="sapaan">{schema.nama}</h1>
+      </div>
 
-      {/* Identitas + status Personal Marketing dalam SATU panel ringkas (sebelumnya dua kartu
-          terpisah) -- isi/angka sama persis. */}
+      {/* Identitas + status Personal Marketing dalam SATU panel ringkas */}
       {profile && (
-        <div className="panel" suppressHydrationWarning>
+        <div className="panel neumo-kartu overflow-hidden" suppressHydrationWarning>
           <div className="panel-baris">
             <p style={{ fontSize: 12, color: 'var(--label)' }}>Identitas</p>
             <p style={{ fontFamily: 'var(--display)', fontWeight: 600, fontSize: 15, lineHeight: 1.35 }}>

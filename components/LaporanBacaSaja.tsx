@@ -211,7 +211,7 @@ export function LaporanBacaSaja({ schema, data, tanggal, lampiran, ringkasan }: 
 
       <div className="flex flex-col gap-3 lg:col-start-1 lg:row-start-1">
         {blockBerlaku.map((block, bi) => (
-          <section key={block.id} id={`bagian-${block.id}`} className="panel" style={{ scrollMarginTop: 12 }}>
+          <section key={block.id} id={`bagian-${block.id}`} className="panel neumo-kartu overflow-hidden" style={{ scrollMarginTop: 12 }}>
             <div className="panel-baris flex items-baseline gap-2">
               <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--kosong)' }}>{String(bi + 1).padStart(2, '0')}</span>
               <h2 className="judul-seksi">{block.judul}</h2>

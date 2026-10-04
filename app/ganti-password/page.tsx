@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import { createClient } from '../../lib/supabase/client';
-
 import { PASSWORD_AWAL } from '../../lib/passwordAwal';
 
 export default function GantiPasswordPage() {
+  const router = useRouter();
   const { session } = useAuth();
   const [baru, setBaru] = useState('');
   const [ulangi, setUlangi] = useState('');
@@ -47,17 +48,6 @@ export default function GantiPasswordPage() {
         return;
       }
 
-      // KRUSIAL, ditemukan 10 September 2026 lewat uji berulang (bukan
-      // sekadar dugaan): /api/ganti-password mengganti password lewat Auth
-      // Admin API (service_role, server-side) -- ini TIDAK memperbarui sesi
-      // browser sama sekali. Supabase mencabut sesi/refresh-token LAMA
-      // begitu password berubah, jadi cookie sesi yang sedang dipakai
-      // browser ini langsung mati -- navigasi APA PUN sesudahnya (router.push
-      // ATAUPUN window.location.assign, sudah dibuktikan keduanya gagal
-      // sama) akan ditendang proxy.ts balik ke /masuk karena getUser()
-      // gagal. Perbaikannya BUKAN soal cara pindah halaman -- harus login
-      // ULANG di klien dengan password BARU supaya cookie sesi yang valid
-      // benar-benar tertulis, SEBELUM menampilkan/meninggalkan layar ini.
       if (!session?.user.email) {
         setError('Kata sandi berhasil diganti, tapi sesi tidak bisa diperbarui otomatis. Tutup dan masuk ulang lewat halaman Masuk dengan kata sandi baru.');
         setMengirim(false);
@@ -71,14 +61,6 @@ export default function GantiPasswordPage() {
         return;
       }
 
-      // Tampilkan layar konfirmasi DULU (instruksi eksplisit user, 10
-      // September 2026) -- jangan langsung pindah halaman, supaya orang
-      // sungguh sadar passwordnya sudah berubah sebelum layar berikutnya
-      // muncul. Navigasi (di tombol "Lanjutkan" di bawah) pakai window.
-      // location.assign, BUKAN router.push -- alasan sama seperti
-      // app/masuk/page.tsx (race cookie sesi lama vs baru, lihat komentar
-      // di sana) -- sesi yang dipakai sekarang sudah sesi BARU dari login
-      // ulang di atas, bukan sesi lama yang sudah dicabut.
       setMengirim(false);
       setBerhasil(true);
     } catch {
@@ -89,20 +71,26 @@ export default function GantiPasswordPage() {
 
   if (berhasil) {
     return (
-      <main className="flex min-h-svh flex-col items-center justify-center p-6" style={{ background: 'var(--kertas)' }}>
-        <div className="kartu-status rail-hijau flex w-full max-w-sm flex-col gap-4 p-6" style={{ borderRadius: 'var(--radius-besar)' }}>
-          <h1 className="text-2xl" style={{ fontFamily: 'var(--display)', color: 'var(--hijau)' }}>
+      <main className="flex min-h-svh flex-col items-center justify-center p-6" style={{ background: 'var(--halaman)' }}>
+        <div className="neumo-kartu flex w-full max-w-sm flex-col items-center gap-4 p-8 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full" style={{ background: 'rgba(30, 138, 76, 0.1)', color: 'var(--hijau)', boxShadow: 'var(--bayangan-neumo-sm)' }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-bold" style={{ fontFamily: 'var(--display)', color: 'var(--hijau)' }}>
             Kata sandi berhasil diganti
           </h1>
-          <p className="text-sm">Simpan baik-baik, kalau lupa hubungi admin.</p>
+          <p className="text-xs" style={{ color: 'var(--label)' }}>
+            Kata sandi baru Anda sudah aktif. Simpan dengan baik, jangan bagikan ke orang lain.
+          </p>
           <button
             type="button"
-            // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- sengaja, sama alasan app/masuk/page.tsx (race cookie sesi)
             onClick={() => window.location.assign('/')}
-            className="px-4 py-3"
-            style={{ background: 'var(--biru)', color: 'var(--kertas-2)', minHeight: 44, borderRadius: 'var(--radius-pil)' }}
+            className="tombol-utama mt-2 w-full"
+            style={{ minHeight: 48 }}
           >
-            Lanjutkan
+            Lanjutkan ke Beranda
           </button>
         </div>
       </main>
@@ -110,112 +98,139 @@ export default function GantiPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center p-6" style={{ background: 'var(--kertas)' }}>
-      <form
-        onSubmit={handleSubmit}
-        className="flex w-full max-w-sm flex-col gap-4 border p-6"
-        style={{ borderColor: 'var(--garis)', borderRadius: 'var(--radius-besar)' }}
-      >
-        <h1 className="text-2xl" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
-          Ganti Kata Sandi
-        </h1>
-        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
-          Kata sandi awal akun Anda perlu diganti dulu sebelum bisa memakai sistem ini.
-        </p>
+    <main className="flex min-h-svh flex-col items-center justify-center p-6" style={{ background: 'var(--halaman)' }}>
+      <div className="w-full max-w-sm">
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="tombol-lingkar"
+            aria-label="Kembali"
+            title="Kembali"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+          </button>
+        </div>
 
-        <label className="flex flex-col gap-1">
-          <span>Kata sandi baru</span>
-          <div className="relative flex items-center">
-            <input
-              type={lihatBaru ? 'text' : 'password'}
-              required
-              autoComplete="new-password"
-              value={baru}
-              onChange={(e) => setBaru(e.target.value)}
-              className="w-full border px-2 py-2 pr-11"
-              style={{ borderColor: 'var(--garis)', minHeight: 44, borderRadius: 'var(--radius-kecil)' }}
-            />
-            <button
-              type="button"
-              onClick={() => setLihatBaru(!lihatBaru)}
-              className="absolute right-0 flex items-center justify-center p-2 text-label hover:opacity-80"
-              style={{ minHeight: 44, minWidth: 44, color: 'var(--label)' }}
-              aria-label={lihatBaru ? 'Sembunyikan kata sandi baru' : 'Tampilkan kata sandi baru'}
-              title={lihatBaru ? 'Sembunyikan kata sandi baru' : 'Tampilkan kata sandi baru'}
-            >
-              {lihatBaru ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-                  <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-                  <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-                  <line x1="2" y1="2" x2="22" y2="22" />
-                </svg>
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              )}
-            </button>
-          </div>
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span>Ketik ulang kata sandi baru</span>
-          <div className="relative flex items-center">
-            <input
-              type={lihatUlangi ? 'text' : 'password'}
-              required
-              autoComplete="new-password"
-              value={ulangi}
-              onChange={(e) => setUlangi(e.target.value)}
-              className="w-full border px-2 py-2 pr-11"
-              style={{ borderColor: 'var(--garis)', minHeight: 44, borderRadius: 'var(--radius-kecil)' }}
-            />
-            <button
-              type="button"
-              onClick={() => setLihatUlangi(!lihatUlangi)}
-              className="absolute right-0 flex items-center justify-center p-2 text-label hover:opacity-80"
-              style={{ minHeight: 44, minWidth: 44, color: 'var(--label)' }}
-              aria-label={lihatUlangi ? 'Sembunyikan ketik ulang kata sandi' : 'Tampilkan ketik ulang kata sandi'}
-              title={lihatUlangi ? 'Sembunyikan ketik ulang kata sandi' : 'Tampilkan ketik ulang kata sandi'}
-            >
-              {lihatUlangi ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-                  <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-                  <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-                  <line x1="2" y1="2" x2="22" y2="22" />
-                </svg>
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              )}
-            </button>
-          </div>
-        </label>
-
-        <p className="text-sm" style={{ color: 'var(--kosong)' }}>
-          Minimal 8 karakter, tidak boleh sama dengan kata sandi awal.
-        </p>
-
-        {error && (
-          <p className="text-sm" style={{ color: 'var(--merah)' }}>
-            {error}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={mengirim}
-          className="px-4 py-3"
-          style={{ background: 'var(--biru)', color: 'var(--kertas-2)', minHeight: 44, borderRadius: 'var(--radius-pil)' }}
+        <form
+          onSubmit={handleSubmit}
+          className="neumo-kartu flex flex-col gap-5 p-7 md:p-8"
         >
-          {mengirim ? 'Menyimpan…' : 'Simpan & Lanjutkan'}
-        </button>
-      </form>
+          <div>
+            <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
+              Ganti Kata Sandi
+            </h1>
+            <p className="mt-1 text-xs" style={{ color: 'var(--label)' }}>
+              Perbarui kata sandi akun Koperumnas Anda.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="sandi-baru" className="text-xs font-semibold" style={{ color: 'var(--tinta)' }}>
+              Kata sandi baru
+            </label>
+            <div className="neumo-inset relative flex items-center px-3.5 py-1" style={{ borderRadius: 'var(--radius-sedang)', minHeight: 48 }}>
+              <input
+                id="sandi-baru"
+                type={lihatBaru ? 'text' : 'password'}
+                required
+                autoComplete="new-password"
+                value={baru}
+                onChange={(e) => setBaru(e.target.value)}
+                placeholder="Minimal 8 karakter"
+                className="w-full border-0 bg-transparent pr-8 text-sm outline-none"
+                style={{ color: 'var(--tinta)' }}
+              />
+              <button
+                type="button"
+                onClick={() => setLihatBaru(!lihatBaru)}
+                className="absolute right-2.5 flex items-center justify-center p-1.5 hover:opacity-80"
+                style={{ color: 'var(--label)' }}
+                aria-label={lihatBaru ? 'Sembunyikan kata sandi baru' : 'Tampilkan kata sandi baru'}
+                title={lihatBaru ? 'Sembunyikan kata sandi baru' : 'Tampilkan kata sandi baru'}
+              >
+                {lihatBaru ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                    <line x1="2" y1="2" x2="22" y2="22" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="sandi-ulangi" className="text-xs font-semibold" style={{ color: 'var(--tinta)' }}>
+              Ketik ulang kata sandi baru
+            </label>
+            <div className="neumo-inset relative flex items-center px-3.5 py-1" style={{ borderRadius: 'var(--radius-sedang)', minHeight: 48 }}>
+              <input
+                id="sandi-ulangi"
+                type={lihatUlangi ? 'text' : 'password'}
+                required
+                autoComplete="new-password"
+                value={ulangi}
+                onChange={(e) => setUlangi(e.target.value)}
+                placeholder="Ulangi kata sandi baru"
+                className="w-full border-0 bg-transparent pr-8 text-sm outline-none"
+                style={{ color: 'var(--tinta)' }}
+              />
+              <button
+                type="button"
+                onClick={() => setLihatUlangi(!lihatUlangi)}
+                className="absolute right-2.5 flex items-center justify-center p-1.5 hover:opacity-80"
+                style={{ color: 'var(--label)' }}
+                aria-label={lihatUlangi ? 'Sembunyikan ketik ulang kata sandi' : 'Tampilkan ketik ulang kata sandi'}
+                title={lihatUlangi ? 'Sembunyikan ketik ulang kata sandi' : 'Tampilkan ketik ulang kata sandi'}
+              >
+                {lihatUlangi ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                    <line x1="2" y1="2" x2="22" y2="22" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <p className="text-xs" style={{ color: 'var(--label)' }}>
+            Syarat: Minimal 8 karakter, tidak boleh sama dengan kata sandi awal.
+          </p>
+
+          {error && (
+            <div className="kartu-status rail-merah p-3 text-xs" style={{ color: 'var(--merah)' }}>
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={mengirim}
+            className="tombol-utama mt-1 w-full"
+            style={{ minHeight: 48 }}
+          >
+            {mengirim ? 'Menyimpan…' : 'Simpan Kata Sandi'}
+          </button>
+        </form>
+      </div>
     </main>
   );
 }
+
