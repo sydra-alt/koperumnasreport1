@@ -102,6 +102,11 @@ try {
       perform set_config('uji.id_fauzy', id_fauzy::text, true);
       perform set_config('uji.id_toyib', id_toyib::text, true);
       perform set_config('uji.id_kasam', id_kasam::text, true);
+      -- Sejak 0069 (4 Oktober 2026) laporan hanya boleh dikirim yang DITUGASKAN.
+      -- Penugasan security kasam (seed lama) sudah tidak ada di data -- dibuat di
+      -- dalam transaksi uji ini (ikut di-ROLLBACK) supaya #12 tetap menguji
+      -- indeks unik per shift, bukan penugasan.
+      insert into public.assignment (user_id, form_key) values (id_kasam, 'security') on conflict do nothing;
       perform set_config('uji.r_acc', r_acc::text, true);
       perform set_config('uji.r_toyib', r_toyib::text, true);
       perform set_config('uji.r_dadang_kemarin', r_dadang_kemarin::text, true);

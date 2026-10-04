@@ -193,7 +193,7 @@ export function LaporForm({ formKey }: { formKey: string }) {
   if (berScope && kombinasiDitugaskan.length === 0) {
     return (
       <main className="p-6">
-        <p>Anda tidak punya penugasan untuk laporan ini.</p>
+        <p>Anda tidak ditugaskan untuk form ini.</p>
       </main>
     );
   }

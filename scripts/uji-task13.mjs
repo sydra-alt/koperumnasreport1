@@ -46,6 +46,14 @@ try {
   console.log(`Dadang=${dadang}  Tajur=${tajur}  Bekasi=${bekasi}`);
 
   langkah('SETUP — tambah penugasan kedua (Dadang jadi PIC Bekasi juga)');
+  // Sejak 0069 (4 Oktober 2026) laporan hanya boleh dikirim yang DITUGASKAN.
+  // Penugasan Tajur Dadang (seed lama) sudah tidak ada di data -- dipastikan
+  // ada di dalam transaksi uji ini (ikut di-ROLLBACK), lalu Bekasi ditambah.
+  await q(
+    `insert into assignment (user_id, form_key, lokasi_id) values ($1, 'pic_lokasi', $2)
+     on conflict do nothing;`,
+    [dadang, tajur],
+  );
   await q(
     `insert into assignment (user_id, form_key, lokasi_id) values ($1, 'pic_lokasi', $2)
      on conflict do nothing;`,
