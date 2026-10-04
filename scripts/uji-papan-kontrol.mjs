@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Uji Task 18 (Papan Kontrol) -- v_papan_hari_ini + tagih_laporan(), DB
+// Uji Task 18 (Papan Kontrol) -- papan_untuk_tanggal() (dulu view v_papan_hari_ini,
+// diganti fungsi bertanggal di 0020) + tagih_laporan(), DB
 // sungguhan lewat penyamaran RLS, dibungkus BEGIN...ROLLBACK.
 //
 //  1. Assignment baru (PIC Uji Papan, lokasi Tajur) langsung muncul sebagai
@@ -12,6 +13,7 @@
 //     report_id muncul di view, warna & status ikut benar. Baris tetap SATU
 //     (report_uniq tidak bentrok meski nudge sudah insert lebih dulu).
 
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
@@ -46,6 +48,15 @@ function cek(kondisi, pesan) {
 try {
   await client.connect();
   await q('begin;');
+  // 0070 belum terpasang? (badan tagih_laporan masih menulis report.shift) --
+  // jalankan migrasinya DI DALAM transaksi ini (dry run, ikut di-ROLLBACK).
+  const { rows: fDef } = await q(`select pg_get_functiondef('public.tagih_laporan(uuid)'::regprocedure) d;`);
+  if (!fDef[0].d.includes('shift_id')) {
+    const sql0070 = readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '0070_perbaiki_tagih_laporan_shift_id.sql'), 'utf8')
+      .split('\n').filter((l) => !/^\s*(begin|commit);\s*$/i.test(l)).join('\n');
+    await q(sql0070);
+    console.log('0070 belum terpasang -- dijalankan di dalam transaksi uji (DRY RUN, di-ROLLBACK).');
+  }
   await q('set local role postgres;');
 
   langkah('SETUP -- PIC Uji Papan (lokasi Tajur), Pusat sementara, Karyawan polos');
@@ -64,7 +75,7 @@ try {
   langkah('UJI 1 -- assignment baru langsung jadi kartu "belum lapor" di v_papan_hari_ini');
   await q('set local role authenticated;');
   await jadiSebagai(pusat);
-  let { rows: papan } = await q(`select * from v_papan_hari_ini where assignment_id = $1;`, [assignmentId]);
+  let { rows: papan } = await q(`select * from papan_untuk_tanggal() where assignment_id = $1;`, [assignmentId]);
   cek(papan.length === 1, `1 baris untuk assignment baru (dapat ${papan.length})`);
   cek(papan[0]?.report_id === null, 'report_id null -- belum lapor');
   cek(papan[0]?.nudged_at === null, 'nudged_at masih null sebelum ditagih');
@@ -87,7 +98,7 @@ try {
   langkah('UJI 3 -- Pusat menagih -- nudged_at terisi, report_id TETAP null');
   await jadiSebagai(pusat);
   await q(`select tagih_laporan($1);`, [assignmentId]);
-  ({ rows: papan } = await q(`select * from v_papan_hari_ini where assignment_id = $1;`, [assignmentId]));
+  ({ rows: papan } = await q(`select * from papan_untuk_tanggal() where assignment_id = $1;`, [assignmentId]));
   cek(papan[0]?.nudged_at !== null, 'nudged_at terisi setelah ditagih');
   cek(papan[0]?.report_id === null, 'report_id TETAP null -- nudge bukan submit palsu');
 
@@ -103,7 +114,7 @@ try {
   ]);
 
   await jadiSebagai(pusat);
-  ({ rows: papan } = await q(`select * from v_papan_hari_ini where assignment_id = $1;`, [assignmentId]));
+  ({ rows: papan } = await q(`select * from papan_untuk_tanggal() where assignment_id = $1;`, [assignmentId]));
   cek(papan[0]?.report_id === draftRows[0].id, 'report_id sekarang muncul di view -- kartu jadi "sudah lapor"');
   cek(papan[0]?.warna === 'kuning', `warna ikut terbawa ke view (dapat "${papan[0]?.warna}")`);
 

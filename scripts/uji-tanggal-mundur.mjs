@@ -55,8 +55,9 @@ try {
   const pusat = await buatProfilSementara('Pusat Uji Mundur', ['pusat']);
 
   await q(
-    `insert into report (form_key, tanggal, author_id, lokasi_id, shift, status, data) values
-     ('security', (now() at time zone 'Asia/Jakarta')::date - 1, $1, $2, 'pagi', 'terkirim', '{"satpam_hadir":4,"tamu_datang":9,"konsumen_datang":2,"ada_kejadian":"tidak"}'::jsonb);`,
+    // Kolom teks `report.shift` diganti `shift_id` (tabel shift, 0033).
+    `insert into report (form_key, tanggal, author_id, lokasi_id, shift_id, status, data) values
+     ('security', (now() at time zone 'Asia/Jakarta')::date - 1, $1, $2, (select id from shift order by nama limit 1), 'terkirim', '{"satpam_hadir":4,"tamu_datang":9,"konsumen_datang":2,"ada_kejadian":"tidak"}'::jsonb);`,
     [satpam, tajur],
   );
   await q(

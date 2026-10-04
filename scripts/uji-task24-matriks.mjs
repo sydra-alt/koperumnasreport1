@@ -366,8 +366,10 @@ try {
     await q(`
       do $$
       declare
-        shift_pagi uuid := (select id from public.shift where nama = 'Pagi');
-        shift_siang uuid := (select id from public.shift where nama = 'Siang');
+        -- Nama shift sudah diganti (Pagi/Siang -> Minggu/Sabtu/Weekday, 0033 dst.) --
+        -- ambil dua shift apa pun yang ada; yang diuji indeks unik per shift.
+        shift_pagi uuid := (select id from public.shift order by nama limit 1);
+        shift_siang uuid := (select id from public.shift order by nama offset 1 limit 1);
       begin
         insert into public.report (form_key, tanggal, author_id, shift_id, data)
         values ('security', (now() at time zone 'Asia/Jakarta')::date, current_setting('uji.id_kasam')::uuid, shift_pagi, '{}');

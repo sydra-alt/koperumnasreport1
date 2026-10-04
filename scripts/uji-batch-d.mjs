@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// PENSIUN (4 Oktober 2026): bergantung penugasan seed Kasam (security/DTI/pagi) yang sudah tidak ada; kedua topiknya kini diuji uji-checkpoint2.mjs #12 (laporan per shift) dan uji-task13.mjs (blok keputusan generik).
+console.log('uji-batch-d.mjs PENSIUN -- lihat baris 2 berkas ini; tidak ada yang dijalankan.');
+process.exit(0);
 // Uji Batch D (nav + Task 14 sebagian + Task 15 penuh) langsung ke DB, pola
 // sama dengan uji-checkpoint2.mjs / uji-task13.mjs. SEKALI PAKAI, dibungkus
 // BEGIN...ROLLBACK -- tidak ada yang tersimpan.
