@@ -42,7 +42,9 @@ import {
   daftarRoleUntuk,
   useDaftarGalat,
   useGalatPerHari,
+  useStatusCadangan,
 } from '../../lib/api/admin';
+import { ringkasCadangan } from '../../lib/cadanganStatus';
 import { KonfirmasiDialog } from '../../components/KonfirmasiDialog';
 
 type Tab = 'lokasi' | 'outlet' | 'assignment' | 'policy' | 'pengguna' | 'titik-absen' | 'shift' | 'galat';
@@ -1170,6 +1172,27 @@ function TabGalat() {
   );
 }
 
+/** "Cadangan terakhir: N hari lalu" -- dari status_cadangan yang ditulis job cadangan (docs/PEMULIHAN-DATA.md). */
+function StatusCadangan() {
+  const { data, isLoading, isError } = useStatusCadangan();
+  if (isLoading) return null;
+  const r = isError ? { teks: 'Cadangan terakhir: status tidak bisa dibaca', peringatan: true, catatan: null } : ringkasCadangan(data ?? null, new Date());
+  return (
+    <p
+      role={r.peringatan ? 'alert' : undefined}
+      className="text-sm"
+      style={
+        r.peringatan
+          ? { border: '1px solid var(--merah, #B42318)', color: 'var(--merah, #B42318)', borderRadius: 12, padding: 12 }
+          : { color: 'var(--label)' }
+      }
+    >
+      {r.teks}
+      {r.catatan ? ` -- ${r.catatan}` : ''}
+    </p>
+  );
+}
+
 function Isi() {
   const [tab, setTab] = useState<Tab>('pengguna');
   const TAB: { key: Tab; label: string; bantuan: string }[] = [
@@ -1186,6 +1209,7 @@ function Isi() {
 
   return (
     <div className="admin-ruang-kerja">
+      <StatusCadangan />
       <div className="admin-petunjuk">
         <p className="admin-petunjuk-judul">Mulai dari orangnya</p>
         <p>Buat pengguna, lalu tentukan pekerjaan dan presensinya. Pengaturan yang jarang diubah disimpan di bagian akhir.</p>

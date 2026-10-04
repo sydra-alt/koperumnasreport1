@@ -18,7 +18,8 @@ Berlaku untuk dua database produksi: **pos-fnb** (Supabase `txmkbklzhleavjhzrckm
 | Lokasi cadangan | `D:\USER\cadangan-koperumnas\` di laptop pengembang. Di luar semua repo git dan tidak pernah diunggah ke internet. |
 | Lokasi kunci | `C:\Users\USER\.koperumnas-cadangan\kunci-cadangan.txt`. File terpisah dari cadangannya. Isinya tidak pernah dicetak atau di-commit. |
 | Nama file | `pos-fnb-YYYY-MM-DD_HHMM.dump.enc`, `laporan-YYYY-MM-DD_HHMM.dump.enc` (jam WIB). |
-| Jadwal | Windows Task Scheduler **"Koperumnas Cadangan Database"**, tiap **Senin 09.00**. Kalau laptop mati saat itu, tugas berjalan begitu laptop menyala. |
+| Jadwal | Windows Task Scheduler **"Koperumnas Cadangan Database"**: tiap **Senin 09.00** dan **10 menit setelah login**, dalam mode susulan (`--susulan --jarak-jam 144`). Cadangan hanya dibuat kalau cadangan OK terakhir sudah lebih dari 6 hari, jadi jadwal yang terlewat karena laptop mati tersusul begitu laptop dipakai lagi. |
+| Status di aplikasi | Setiap percobaan menulis satu baris `status_cadangan` di database yang dicadangkan: tanggal, hasil, ukuran, dan nama file, tanpa rahasia. **Admin** (sistem laporan) dan **dashboard owner** (pos-fnb) menampilkan "Cadangan terakhir: N hari lalu", dengan peringatan merah kalau lebih dari 8 hari, belum pernah tercatat, atau percobaan terakhir gagal. |
 | Retensi | 56 hari (±8 cadangan mingguan). Minimal 4 file terbaru per database selalu disimpan. |
 | Catatan hasil | `D:\USER\cadangan-koperumnas\cadangan.log`: satu baris `OK`/`GAGAL` per database, tanpa kredensial. |
 | Uji pemulihan | Task **"Koperumnas Uji Pemulihan"**, tiap 4 minggu (Senin 10.00), hasilnya di `uji-pemulihan.log`. |
@@ -35,7 +36,9 @@ Berlaku untuk dua database produksi: **pos-fnb** (Supabase `txmkbklzhleavjhzrckm
 **Saat penjualan nyata dimulai, ubah jadwal ke harian** (PowerShell):
 
 ```powershell
-Set-ScheduledTask -TaskName 'Koperumnas Cadangan Database' -Trigger (New-ScheduledTaskTrigger -Daily -At 9am)
+$a = New-ScheduledTaskAction -Execute 'C:\nvm4w\nodejs\node.exe' -Argument 'scripts\cadangan\cadangkan.mjs --susulan --jarak-jam 20' -WorkingDirectory 'D:\USER\website_dev\reportkoperumnasgroup'
+$t2 = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME; $t2.Delay = 'PT10M'
+Set-ScheduledTask -TaskName 'Koperumnas Cadangan Database' -Action $a -Trigger @((New-ScheduledTaskTrigger -Daily -At 9am), $t2)
 ```
 
 Retensi tetap 56 hari, jadi sekitar 56 file per database dengan ukuran ±1 MB per file.

@@ -720,3 +720,23 @@ export function useGalatPerHari(hari: number) {
     },
   });
 }
+
+// --- Status cadangan database (migrasi 0073) -- RLS: CEO/Admin saja. ---
+
+export function useStatusCadangan() {
+  return useQuery({
+    queryKey: ['admin-status-cadangan'],
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('status_cadangan')
+        .select('terakhir_ok, hasil_terakhir, ukuran_byte')
+        .eq('basis_data', 'laporan')
+        .maybeSingle();
+      if (error) throw error;
+      return data
+        ? { terakhirOk: data.terakhir_ok ? new Date(data.terakhir_ok as string) : null, hasilTerakhir: data.hasil_terakhir as string, ukuranByte: data.ukuran_byte === null ? null : Number(data.ukuran_byte) }
+        : null;
+    },
+  });
+}

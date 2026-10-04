@@ -1,7 +1,14 @@
 // Cadangan terenkripsi database produksi (7 Oktober 2026) -- lihat docs/PEMULIHAN-DATA.md.
 //
 //   node scripts/cadangan/cadangkan.mjs --buat-kunci   sekali saja: membuat file kunci acak
-//   node scripts/cadangan/cadangkan.mjs                mencadangkan kedua database (dipanggil Task Scheduler)
+//   node scripts/cadangan/cadangkan.mjs                mencadangkan kedua database
+//   node scripts/cadangan/cadangkan.mjs --susulan [--jarak-jam 144]
+//       dipanggil Task Scheduler (Senin 09.00 DAN saat login): mencadangkan HANYA kalau cadangan OK
+//       terakhir lebih tua dari --jarak-jam (bawaan 144 jam = 6 hari; harian: 20). Jadwal yang
+//       terlewat karena laptop mati tersusul begitu laptop menyala lagi.
+//
+// Setiap percobaan menulis status_cadangan di database yang dicadangkan (tanggal, hasil, ukuran,
+// nama file -- tanpa rahasia), dibaca dashboard Admin/owner: "Cadangan terakhir: N hari lalu".
 //
 // - pg_dump (format custom) dari kedua proyek Supabase (pos-fnb & laporan), dialirkan LANGSUNG ke
 //   enkripsi AES-256-GCM -- tidak pernah ada salinan polos di disk.
@@ -17,6 +24,9 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import { Transform } from 'node:stream';
+import { createRequire } from 'node:module';
+
+const pg = createRequire(import.meta.url)('pg');
 
 const DIR_REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export const PG_BIN = process.env.KOPERUMNAS_PG_BIN || 'D:/USER/alat/pgsql/bin';
@@ -68,6 +78,37 @@ function cap() {
   return `${g('year')}-${g('month')}-${g('day')}_${g('hour')}${g('minute')}`;
 }
 
+/** Status terakhir untuk dashboard (tanpa rahasia). Gagal menulis status tidak menggagalkan cadangan. */
+async function tulisStatus(sumber, hasil) {
+  const e = envPg(sumber);
+  const c = new pg.Client({ host: e.PGHOST, port: Number(e.PGPORT), user: e.PGUSER, password: e.PGPASSWORD, database: e.PGDATABASE, ssl: { rejectUnauthorized: false } });
+  try {
+    await c.connect();
+    await c.query(
+      `insert into status_cadangan (basis_data, terakhir_coba, hasil_terakhir, terakhir_ok, ukuran_byte, nama_file)
+       values ($1, now(), $2, case when $2 = 'ok' then now() end, $3, $4)
+       on conflict (basis_data) do update set terakhir_coba = now(), hasil_terakhir = excluded.hasil_terakhir,
+         terakhir_ok = coalesce(excluded.terakhir_ok, status_cadangan.terakhir_ok),
+         ukuran_byte = coalesce(excluded.ukuran_byte, status_cadangan.ukuran_byte),
+         nama_file = coalesce(excluded.nama_file, status_cadangan.nama_file)`,
+      [sumber.nama, hasil.ok ? 'ok' : 'gagal', hasil.ukuran ?? null, hasil.namaFile ?? null],
+    );
+  } catch (err) {
+    catatLog(`STATUS-GAGAL ${sumber.nama}: ${String(err.message).replace(/postgres(ql)?:\/\/\S+/g, '[dsn]').slice(0, 200)}`);
+  } finally {
+    await c.end().catch(() => {});
+  }
+}
+
+/** Waktu cadangan OK terakhir per database, dari cadangan.log (lokal, tanpa jaringan). */
+export function okTerakhir(nama) {
+  const log = path.join(FOLDER, 'cadangan.log');
+  if (!fs.existsSync(log)) return null;
+  const baris = fs.readFileSync(log, 'utf8').split(/\r?\n/).filter((l) => l.includes(` OK ${nama} `));
+  const t = baris.length ? Date.parse(baris[baris.length - 1].split(' ')[0]) : NaN;
+  return Number.isNaN(t) ? null : t;
+}
+
 async function cadangkanSatu(sumber) {
   const salt = crypto.randomBytes(16);
   const iv = crypto.randomBytes(12);
@@ -92,10 +133,12 @@ async function cadangkanSatu(sumber) {
     fs.renameSync(sementara, akhir);
     const ukuran = fs.statSync(akhir).size;
     catatLog(`OK ${sumber.nama} ${path.basename(akhir)} ${(ukuran / 1024 / 1024).toFixed(2)} MB`);
+    await tulisStatus(sumber, { ok: true, ukuran, namaFile: path.basename(akhir) });
     return true;
   } catch (e) {
     fs.rmSync(sementara, { force: true });
     catatLog(`GAGAL ${sumber.nama}: ${String(e.message).replace(/postgres(ql)?:\/\/\S+/g, '[dsn]').slice(0, 300)}`);
+    await tulisStatus(sumber, { ok: false });
     return false;
   }
 }
@@ -125,8 +168,16 @@ async function utama() {
   }
   if (!fs.existsSync(KUNCI)) throw new Error(`File kunci tidak ada: ${KUNCI} (jalankan dengan --buat-kunci sekali)`);
   fs.mkdirSync(FOLDER, { recursive: true });
+  const susulan = process.argv.includes('--susulan');
+  const iJarak = process.argv.indexOf('--jarak-jam');
+  const jarakJam = iJarak > 0 ? Number(process.argv[iJarak + 1]) : 144;
   let semua = true;
   for (const s of SUMBER) {
+    const terakhir = okTerakhir(s.nama);
+    if (susulan && terakhir !== null && Date.now() - terakhir < jarakJam * 3_600_000) {
+      console.log(`LEWATI ${s.nama}: cadangan OK terakhir ${((Date.now() - terakhir) / 3_600_000).toFixed(1)} jam lalu (< ${jarakJam} jam)`);
+      continue;
+    }
     semua = (await cadangkanSatu(s)) && semua;
     rapikan(s.nama);
   }

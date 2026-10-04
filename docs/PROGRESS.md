@@ -1692,3 +1692,8 @@ Data POS lewat asisten hanya untuk orang yang punya baris `report_identity_links
 - **Cadangan (docs/PEMULIHAN-DATA.md):** pg_dump terenkripsi AES-256-GCM kedua database, Task Scheduler Senin 09.00 (harian saat penjualan nyata), retensi 56 hari, di `D:\USER\cadangan-koperumnas\`; uji pemulihan lolos (jumlah baris semua tabel sama); biaya Rp0.
 - **Log galat:** tabel `galat_aplikasi` sendiri di kedua database (tanpa layanan luar): error server + layar, peran dari sesi, pesan disensor, rem 60/menit, 2000 baris. Admin > Log galat (laporan), "Log Galat" owner (pos-fnb).
 - **Resep:** template resep per produk (lembar per outlet/menu bersama, dropdown bahan & satuan, takaran kosong), nama kembar di impor dipilih dari kode outlet lembar (KUNING); daftar produk tanpa resep diurutkan omzet. `bacaGrid` melewati lembar tersembunyi.
+
+## 7 Oktober 2026 (lanjutan) -- aturan PIN, status cadangan, panduan resep
+
+- **pos-fnb `16a162b`** (worker `f338f0cb`, migrasi 0057 dry run 7/7 lalu diterapkan, 996/996 test pada HEAD itu): manajer atur ulang PIN hanya kasir di outlet sendiri (selalu sementara), kasir "Ganti PIN" di layar kasir (lockout 5x sama), PIN baru 6 digit/tidak sepele/bukan PIN seed/unik di outlet (sidik HMAC `PIN_SIDIK_SECRET` + indeks unik), audit_logs reset_pin/ganti_pin; satuan ons; `docs/PANDUAN-ISI-RESEP-ITA.md` + panduan di Kelengkapan Resep; status cadangan di dashboard owner.
+- **Laporan:** migrasi **0073 DITERAPKAN** (`status_cadangan`, dry run 5/5); Admin menampilkan "Cadangan terakhir: N hari lalu" (merah > 8 hari). Job cadangan menulis status ke kedua database; Task Scheduler: Senin 09.00 + 10 menit setelah login, mode `--susulan` (jadwal terlewat tersusul).
