@@ -1663,3 +1663,10 @@ Data POS lewat asisten hanya untuk orang yang punya baris `report_identity_links
 - **Uji lama:** checkpoint2, task24, tanggal-mundur, papan-kontrol diperbaiki; batch-d dipensiunkan (alasan di baris 2).
 - **Perlu penugasan dari Admin (aturan 0069):** Sabrina (Pusat Pelaporan, peran pusat) dan Dadang (Humas / PIC Lokasi, akun nonaktif).
 - **Cloudflare:** masih paket Free per 5 Oktober 2026 (beban uji: 503/exceededCpu setelah muat pertama tiap rute).
+
+## 6 Oktober 2026 -- batch 3 audit UI + keputusan CEO
+
+- **Keputusan CEO:** Tunai tetap NONAKTIF (tunai disetor ke rekening, dicatat Transfer; butir Tunai dihapus dari Go-live checklist); harga tanpa pajak, pajak saat bayar (Indosteak 15%, Indokopi 10% -- sudah sesuai, tidak diubah); aktivitas marketing Koperumnas tidak berlaku.
+- **Deploy:** pos-fnb `d0c8be8` (worker `2b07d0cd`); sistem laporan `d26f6e9` + `32dc751`; migrasi **0071 DITERAPKAN** (policy `marketing_aktif=false`, dry run rollback dulu).
+- **pos-fnb:** rincian pajak "Pajak 15%" dari setting outlet di keranjang & struk + satu catatan "belum termasuk pajak"; petunjuk "setor ke rekening, catat Transfer" saat Tunai nonaktif; StatusMemuat/CatatanProses (5 dtk / 20 dtk + Coba lagi); TabelKartuHp untuk 5 tabel.
+- **Laporan:** marketing disembunyikan lewat `lib/marketing.ts` (nav, tugas, PTE, halaman, seksi Terpusat, blok PTA/PTE Manajer Resto jadi arsip); data/tabel PTE tidak dihapus; /terpusat dilipat (6.900 -> 3.200 px di HP). `uji-terpusat` dipensiunkan.
