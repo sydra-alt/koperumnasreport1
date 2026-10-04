@@ -1654,3 +1654,12 @@ Data POS lewat asisten hanya untuk orang yang punya baris `report_identity_links
 - **Tunai belum aktif:** halaman Metode Pembayaran pos-fnb butuh `price.manage` (owner saja); akun handoff paling tinggi manager (aturan #13.4), jadi diaktifkan CEO dari login owner pos-fnb (1 klik "Aktifkan"). Alur tunai + kembalian lolos di bisnis uji (F&B & thrift).
 - **CPU Worker (Error 1102):** paket Free (permintaan `exceededResources` berhenti tepat di 10 ms CPU). CPU permintaan sukses 7 hari: p50 9,7 ms, p90 250 ms, p99 694 ms; per rute (tail): `/` 783 ms, `/handoff` 520, `/products` 451, `/ingredients` 387, `/login` 270-530 ms, sedangkan navigasi RSC rute yang sama 5-15 ms -- biaya utama = memuat bundel 12 MB di isolate baru, bukan query. Tidak ada perubahan paket.
 - Uji: pos-fnb 955/955 + lint; laporan `uji-form-ditugaskan` 15/15, `uji-perbaikan-insert-policy`, `uji-riwayat`, `uji-tugas-beranda`, `uji-task13` lolos, `uji-terlambat-server` 47/47, `uji-akses-pos` 16/16; `npm run build` bersih. Gagal yang SUDAH ada sebelum 0069 (data/skema bergeser): checkpoint2/task24 #12 (shift "Pagi"/"Siang" tidak ada lagi), `uji-batch-d` (setup), `uji-tanggal-mundur`, `uji-papan-kontrol` (kolom/relasi hilang).
+
+## 5 Oktober 2026 -- batch 2 audit UI
+
+- **Deploy:** pos-fnb `ad3f68b` (worker `3228ac90`), sistem laporan `5b86df0` + `fabf995`; migrasi **0070 DITERAPKAN** (tagih_laporan memakai shift_id -- tombol "Tagih" Papan Kontrol gagal sejak 0033; dry run di uji-papan-kontrol dulu).
+- **pos-fnb:** 44px seluruh dashboard (P06); aksi atas kasir muat di 360px (P11); opname tanpa outlet thrifting + ringkasan dimuat server (P18); "Belum ada data" untuk outlet baru sampai batas pertama (P14); istilah Inggris & hari Indonesia (P12/P13); "Nama Anda (khusus kode bersama)" (P20); dialog konfirmasi aplikasi (P21); kartu "Fase 2/3" & petunjuk dev dihapus (P15/P17); nomor struk dipecah (P23); tombol "?" istilah sulit.
+- **Laporan:** Manajer/pembaruan/ulasan (bahasa), /cuti 360px (R03), PTE/Closing/Penugasan/Tinjau "?" (R06), "Lupa kata sandi? Hubungi admin." + atur ulang kata sandi Admin dengan konfirmasi dalam aplikasi (R02, diuji di produksi pada uji5 lalu dipulihkan).
+- **Uji lama:** checkpoint2, task24, tanggal-mundur, papan-kontrol diperbaiki; batch-d dipensiunkan (alasan di baris 2).
+- **Perlu penugasan dari Admin (aturan 0069):** Sabrina (Pusat Pelaporan, peran pusat) dan Dadang (Humas / PIC Lokasi, akun nonaktif).
+- **Cloudflare:** masih paket Free per 5 Oktober 2026 (beban uji: 503/exceededCpu setelah muat pertama tiap rute).
