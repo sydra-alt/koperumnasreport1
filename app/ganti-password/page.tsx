@@ -21,15 +21,15 @@ export default function GantiPasswordPage() {
     setError(null);
 
     if (baru.length < 8) {
-      setError('Password baru minimal 8 karakter.');
+      setError('Kata sandi baru minimal 8 karakter.');
       return;
     }
     if (baru === PASSWORD_AWAL) {
-      setError('Password baru tidak boleh sama dengan password awal.');
+      setError('Kata sandi baru tidak boleh sama dengan kata sandi awal.');
       return;
     }
     if (baru !== ulangi) {
-      setError('Kedua password yang diketik tidak sama.');
+      setError('Kedua kata sandi yang diketik tidak sama.');
       return;
     }
 
@@ -42,7 +42,7 @@ export default function GantiPasswordPage() {
       });
       const hasil = await res.json();
       if (!res.ok) {
-        setError(hasil.error ?? 'Gagal mengganti password.');
+        setError(hasil.error ?? 'Gagal mengganti kata sandi.');
         setMengirim(false);
         return;
       }
@@ -59,14 +59,14 @@ export default function GantiPasswordPage() {
       // ULANG di klien dengan password BARU supaya cookie sesi yang valid
       // benar-benar tertulis, SEBELUM menampilkan/meninggalkan layar ini.
       if (!session?.user.email) {
-        setError('Password berhasil diganti, tapi sesi tidak bisa diperbarui otomatis. Tutup dan masuk ulang lewat halaman Masuk dengan password baru.');
+        setError('Kata sandi berhasil diganti, tapi sesi tidak bisa diperbarui otomatis. Tutup dan masuk ulang lewat halaman Masuk dengan kata sandi baru.');
         setMengirim(false);
         return;
       }
       const supabase = createClient();
       const { error: errLoginUlang } = await supabase.auth.signInWithPassword({ email: session.user.email, password: baru });
       if (errLoginUlang) {
-        setError('Password berhasil diganti, tapi masuk ulang otomatis gagal. Tutup dan masuk ulang lewat halaman Masuk dengan password baru.');
+        setError('Kata sandi berhasil diganti, tapi masuk ulang otomatis gagal. Tutup dan masuk ulang lewat halaman Masuk dengan kata sandi baru.');
         setMengirim(false);
         return;
       }
@@ -82,7 +82,7 @@ export default function GantiPasswordPage() {
       setMengirim(false);
       setBerhasil(true);
     } catch {
-      setError('Gagal mengganti password. Coba lagi.');
+      setError('Gagal mengganti kata sandi. Coba lagi.');
       setMengirim(false);
     }
   }
@@ -117,14 +117,14 @@ export default function GantiPasswordPage() {
         style={{ borderColor: 'var(--garis)', borderRadius: 'var(--radius-besar)' }}
       >
         <h1 className="text-2xl" style={{ fontFamily: 'var(--display)', color: 'var(--biru)' }}>
-          Ganti Password
+          Ganti Kata Sandi
         </h1>
         <p className="text-sm" style={{ color: 'var(--kosong)' }}>
-          Password awal akun Anda perlu diganti dulu sebelum bisa memakai sistem ini.
+          Kata sandi awal akun Anda perlu diganti dulu sebelum bisa memakai sistem ini.
         </p>
 
         <label className="flex flex-col gap-1">
-          <span>Password baru</span>
+          <span>Kata sandi baru</span>
           <div className="relative flex items-center">
             <input
               type={lihatBaru ? 'text' : 'password'}
@@ -140,8 +140,8 @@ export default function GantiPasswordPage() {
               onClick={() => setLihatBaru(!lihatBaru)}
               className="absolute right-0 flex items-center justify-center p-2 text-label hover:opacity-80"
               style={{ minHeight: 44, minWidth: 44, color: 'var(--label)' }}
-              aria-label={lihatBaru ? 'Sembunyikan password baru' : 'Tampilkan password baru'}
-              title={lihatBaru ? 'Sembunyikan password baru' : 'Tampilkan password baru'}
+              aria-label={lihatBaru ? 'Sembunyikan kata sandi baru' : 'Tampilkan kata sandi baru'}
+              title={lihatBaru ? 'Sembunyikan kata sandi baru' : 'Tampilkan kata sandi baru'}
             >
               {lihatBaru ? (
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -161,7 +161,7 @@ export default function GantiPasswordPage() {
         </label>
 
         <label className="flex flex-col gap-1">
-          <span>Ketik ulang password baru</span>
+          <span>Ketik ulang kata sandi baru</span>
           <div className="relative flex items-center">
             <input
               type={lihatUlangi ? 'text' : 'password'}
@@ -177,8 +177,8 @@ export default function GantiPasswordPage() {
               onClick={() => setLihatUlangi(!lihatUlangi)}
               className="absolute right-0 flex items-center justify-center p-2 text-label hover:opacity-80"
               style={{ minHeight: 44, minWidth: 44, color: 'var(--label)' }}
-              aria-label={lihatUlangi ? 'Sembunyikan ketik ulang password' : 'Tampilkan ketik ulang password'}
-              title={lihatUlangi ? 'Sembunyikan ketik ulang password' : 'Tampilkan ketik ulang password'}
+              aria-label={lihatUlangi ? 'Sembunyikan ketik ulang kata sandi' : 'Tampilkan ketik ulang kata sandi'}
+              title={lihatUlangi ? 'Sembunyikan ketik ulang kata sandi' : 'Tampilkan ketik ulang kata sandi'}
             >
               {lihatUlangi ? (
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -198,7 +198,7 @@ export default function GantiPasswordPage() {
         </label>
 
         <p className="text-sm" style={{ color: 'var(--kosong)' }}>
-          Minimal 8 karakter, tidak boleh sama dengan password awal.
+          Minimal 8 karakter, tidak boleh sama dengan kata sandi awal.
         </p>
 
         {error && (

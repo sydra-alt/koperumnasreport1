@@ -141,6 +141,6 @@ export const f15Dti: FormSchema = {
         { key: 'besok_perbaikan_mesin', label: 'Perbaikan mesin', type: 'teks' },
       ],
     },
-    blokKeputusanCeo('Rekap DTI untuk Sabrina', 'Status DTI hari ini'),
+    blokKeputusanCeo('Rekap DTI untuk Pusat', 'Status DTI hari ini'),
   ],
 };

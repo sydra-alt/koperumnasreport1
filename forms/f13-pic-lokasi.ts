@@ -204,6 +204,6 @@ export const f13PicLokasi: FormSchema = {
         { key: 'besok_kirim_pusat', label: 'Yang harus dikirim pusat', type: 'teks' },
       ],
     },
-    blokKeputusanCeo('Rekap Lokasi untuk Sabrina', 'Status lokasi hari ini'),
+    blokKeputusanCeo('Rekap Lokasi untuk Pusat', 'Status lokasi hari ini'),
   ],
 };

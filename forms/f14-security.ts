@@ -139,6 +139,6 @@ export const f14Security: FormSchema = {
         { key: 'kebutuhan_pos', label: 'Kebutuhan pos', type: 'teks_panjang' },
       ],
     },
-    blokKeputusanCeo('Rekap Security untuk Sabrina', 'Status keamanan hari ini'),
+    blokKeputusanCeo('Rekap Security untuk Pusat', 'Status keamanan hari ini'),
   ],
 };

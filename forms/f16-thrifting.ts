@@ -25,7 +25,7 @@ import type { FormSchema } from './types';
  */
 export const f16Thrifting: FormSchema = {
   key: 'thrifting',
-  nama: 'Laporan Harian Thrifting (Ita)',
+  nama: 'Laporan Harian Thrifting',
   navLabel: 'Lapor Thrifting',
   scope: 'global',
   blocks: [

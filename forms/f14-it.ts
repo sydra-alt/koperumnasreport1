@@ -57,7 +57,7 @@ export const f14It: FormSchema = {
     {
       id: 'data_konsumen',
       judul: 'Pembaruan Data Konsumen di Sistem',
-      catatan: 'Angka di blok ini menjadi sumber laporan konsumen harian Sabrina ke CEO.',
+      catatan: 'Angka di blok ini menjadi sumber laporan konsumen harian Pusat ke CEO.',
       fields: [
         { key: 'konsumen_total', label: 'Total konsumen', type: 'angka' },
         { key: 'konsumen_aktif', label: 'Aktif', type: 'angka' },
@@ -241,7 +241,7 @@ export const f14It: FormSchema = {
         { key: 'besok_masalah', label: 'Masalah IT yang harus diselesaikan', type: 'teks' },
       ],
     },
-    blokKeputusanCeo('Rekap IT untuk Sabrina', 'Status IT hari ini', [
+    blokKeputusanCeo('Rekap IT untuk Pusat', 'Status IT hari ini', [
       { key: 'tindakan_sudah_dilakukan', label: 'Tindakan yang sudah dilakukan', type: 'teks_panjang' },
       { key: 'belum_selesai', label: 'Belum selesai', type: 'teks_panjang' },
     ]),

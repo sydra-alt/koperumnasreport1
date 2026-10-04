@@ -166,6 +166,6 @@ export const f15Pembangunan: FormSchema = {
         { key: 'besok_infrastruktur', label: 'Infrastruktur', type: 'teks' },
       ],
     },
-    blokKeputusanCeo('Rekap Pembangunan untuk Sabrina', 'Status pembangunan hari ini'),
+    blokKeputusanCeo('Rekap Pembangunan untuk Pusat', 'Status pembangunan hari ini'),
   ],
 };

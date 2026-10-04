@@ -139,6 +139,6 @@ export const f14Perizinan: FormSchema = {
         { key: 'besok_izin_terbit', label: 'Yang harus terbit', type: 'teks' },
       ],
     },
-    blokKeputusanCeo('Rekap Perizinan untuk Sabrina', 'Status perizinan hari ini'),
+    blokKeputusanCeo('Rekap Perizinan untuk Pusat', 'Status perizinan hari ini'),
   ],
 };

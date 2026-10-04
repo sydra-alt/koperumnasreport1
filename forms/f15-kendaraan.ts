@@ -203,6 +203,6 @@ export const f15Kendaraan: FormSchema = {
         { key: 'besok_dokumen_diurus', label: 'Dokumen yang harus diurus', type: 'teks' },
       ],
     },
-    blokKeputusanCeo('Rekap Kendaraan untuk Sabrina', 'Status kendaraan hari ini'),
+    blokKeputusanCeo('Rekap Kendaraan untuk Pusat', 'Status kendaraan hari ini'),
   ],
 };

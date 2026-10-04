@@ -24,7 +24,7 @@ export function PemilihTanggal({ tanggal, onUbah }: PemilihTanggalProps) {
         type="button"
         onClick={() => onUbah(tambahHari(tanggal, -1))}
         className="border px-3"
-        style={{ borderColor: 'var(--garis)', minHeight: 44 }}
+        style={{ borderColor: 'var(--garis)', minHeight: 44, minWidth: 44 }}
         aria-label="Tanggal sebelumnya"
       >
         ←
@@ -42,7 +42,7 @@ export function PemilihTanggal({ tanggal, onUbah }: PemilihTanggalProps) {
         onClick={() => onUbah(tambahHari(tanggal, 1))}
         disabled={tanggal >= hariIni}
         className="border px-3"
-        style={{ borderColor: 'var(--garis)', minHeight: 44, opacity: tanggal >= hariIni ? 0.4 : 1 }}
+        style={{ borderColor: 'var(--garis)', minHeight: 44, minWidth: 44, opacity: tanggal >= hariIni ? 0.4 : 1 }}
         aria-label="Tanggal berikutnya"
       >
         →

@@ -117,7 +117,7 @@ export const f14Hrd: FormSchema = {
         { key: 'pte_tidak_lengkap', label: 'Karyawan dengan PTE tidak lengkap', type: 'angka' },
         { key: 'tertinggal_target_undangan', label: 'Karyawan tertinggal target undangan (orang)', type: 'angka' },
         { key: 'tertinggal_target_closing', label: 'Karyawan tertinggal target closing (orang)', type: 'angka' },
-        { key: 'tindakan_kontrol_marketing', label: 'Tindakan HRD (koordinasi Pak Fauzi & Pak Dea)', type: 'teks_panjang' },
+        { key: 'tindakan_kontrol_marketing', label: 'Tindakan HRD (koordinasi dengan Kontrol Marketing)', type: 'teks_panjang' },
       ],
     },
     {
@@ -130,6 +130,6 @@ export const f14Hrd: FormSchema = {
         { key: 'besok_masalah', label: 'Masalah yang harus diselesaikan', type: 'teks' },
       ],
     },
-    blokKeputusanCeo('Rekap HRD untuk Sabrina', 'Status HRD hari ini'),
+    blokKeputusanCeo('Rekap HRD untuk Pusat', 'Status HRD hari ini'),
   ],
 };

@@ -119,6 +119,6 @@ export const f15Cs: FormSchema = {
         { key: 'besok_follow_up', label: 'Follow-up', type: 'teks' },
       ],
     },
-    blokKeputusanCeo('Rekap CS untuk Sabrina', 'Status CS hari ini'),
+    blokKeputusanCeo('Rekap CS untuk Pusat', 'Status CS hari ini'),
   ],
 };

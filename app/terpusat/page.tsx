@@ -391,7 +391,7 @@ function Isi() {
       {/* Seksi marketing disembunyikan kalau aktivitas marketing tidak berlaku (lib/marketing.ts). */}
       {tampilMarketing && (
       <>
-      <Seksi nomor="13" judul="Marketing -- Kontrol Pak Fauzi &amp; Pak Dea" sumber="dari rekap laporan marketing harian &amp; bulanan">
+      <Seksi nomor="13" judul="Marketing -- Kontrol Marketing" sumber="dari rekap laporan marketing harian &amp; bulanan">
         <AngkaGrid
           butir={[
             { label: 'Melakukan marketing hari ini', nilai: String(marketing?.sudahLaporHariIni ?? 0) },

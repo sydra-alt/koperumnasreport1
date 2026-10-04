@@ -98,7 +98,7 @@ export const f15Ga: FormSchema = {
         { key: 'persiapan_besok', label: 'Persiapan untuk besok', type: 'teks_panjang' },
       ],
     },
-    blokKeputusanCeo('Rekap Operasional Kantor untuk Sabrina', 'Status operasional kantor', [
+    blokKeputusanCeo('Rekap Operasional Kantor untuk Pusat', 'Status operasional kantor', [
       { key: 'kebutuhan_ga', label: 'Kebutuhan', type: 'teks_panjang' },
     ]),
   ],

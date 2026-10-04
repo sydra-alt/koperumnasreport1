@@ -58,7 +58,7 @@ export const f21Pusat: FormSchema = {
     },
     {
       id: 'kesimpulan',
-      judul: 'Kesimpulan Sabrina Hari Ini',
+      judul: 'Kesimpulan Pusat Hari Ini',
       fields: [
         { key: 'kesimpulan_selesai_aman', label: '🟢 Selesai/aman', type: 'teks_panjang' },
         { key: 'kesimpulan_dikawal_besok', label: '🟡 Harus dikawal besok', type: 'teks_panjang' },

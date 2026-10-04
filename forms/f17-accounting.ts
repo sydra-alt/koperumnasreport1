@@ -248,7 +248,7 @@ export const f17Accounting: FormSchema = {
     {
       id: 'rekonsiliasi_resto',
       judul: 'Rekonsiliasi Resto',
-      catatan: 'Omzet versi Manajer Resto dan versi Ita ditampilkan otomatis di atas untuk tiap outlet -- Anda mengisi angka sisi bank, selisih dihitung sistem.',
+      catatan: 'Omzet versi Manajer Resto dan versi Kontrol F&B ditampilkan otomatis di atas untuk tiap outlet -- Anda mengisi angka sisi bank, selisih dihitung sistem.',
       fields: [
         { key: 'cash_bank_indosteak', label: 'Indosteak -- Cash (versi bank)', type: 'uang' },
         { key: 'qris_bank_indosteak', label: 'Indosteak -- QRIS/Bank', type: 'uang' },

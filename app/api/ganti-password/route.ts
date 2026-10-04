@@ -32,10 +32,10 @@ export async function POST(request: Request) {
   const passwordBaru = typeof body?.password === 'string' ? body.password : '';
 
   if (passwordBaru.length < 8) {
-    return NextResponse.json({ error: 'Password baru minimal 8 karakter.' }, { status: 400 });
+    return NextResponse.json({ error: 'Kata sandi baru minimal 8 karakter.' }, { status: 400 });
   }
   if (passwordBaru === PASSWORD_AWAL) {
-    return NextResponse.json({ error: 'Password baru tidak boleh sama dengan password awal.' }, { status: 400 });
+    return NextResponse.json({ error: 'Kata sandi baru tidak boleh sama dengan kata sandi awal.' }, { status: 400 });
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -71,7 +71,7 @@ export const f16KontrolFnb: FormSchema = {
     },
     {
       id: 'verifikasi_sabita',
-      judul: 'Verifikasi dengan Bu Sabita',
+      judul: 'Verifikasi dengan Accounting',
       fields: [
         { key: 'mutasi_bank_dicek', label: 'Mutasi bank sudah dicek Accounting', type: 'ya_tidak' },
         { key: 'cash_sudah_disetor_verifikasi', label: 'Cash sudah disetor', type: 'ya_tidak' },
@@ -98,7 +98,7 @@ export const f16KontrolFnb: FormSchema = {
       fields: [
         { key: 'rab_kebutuhan_stok', label: 'RAB', type: 'uang' },
         { key: 'diajukan_pak_eri', label: 'Sudah diajukan ke Pak Eri', type: 'ya_tidak' },
-        { key: 'diajukan_bu_rika', label: 'Sudah diajukan ke Bu Rika', type: 'ya_tidak' },
+        { key: 'diajukan_bu_rika', label: 'Sudah diajukan ke Pembelian Pusat', type: 'ya_tidak' },
         {
           key: 'status_pengajuan_stok',
           label: 'Status',
