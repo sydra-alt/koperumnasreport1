@@ -68,6 +68,36 @@ const contoh = await buatXlsx((ws) => {
   );
 }
 
+// --- 1b. Template resep per produk pos-fnb (7 Oktober 2026): lembar "Daftar"
+// tersembunyi tidak dibaca & tidak ikut batas 600 baris; baris bahan tanpa nama
+// produk terverifikasi ke produk di atasnya.
+{
+  const wb = new ExcelJS.Workbook();
+  const daftar = wb.addWorksheet('Daftar', { state: 'hidden' });
+  for (let i = 0; i < 700; i++) daftar.addRow([`Bahan ${i}`]);
+  const ws = wb.addWorksheet('IKJT Indokopi Jatinegara');
+  ws.addRow(['Produk', 'Bahan', 'Takaran per porsi', 'Satuan']); // 1
+  ws.addRow(['Mie Bestie', 'Mie telur', 1, 'pcs']); // 2
+  ws.addRow([null, 'Kerupuk bawang', 15, 'gram']); // 3
+  ws.addRow(['Es Leci Tea']); // 4 -- belum diisi
+  const buf = await wb.xlsx.writeBuffer();
+  const grid = await bacaGrid(new Uint8Array(buf as unknown as ArrayBufferLike).slice().buffer);
+  cek('template: lembar tersembunyi dilewati (700 baris tidak memicu batas 600)', grid.length === 1 && grid[0]!.nama === 'IKJT Indokopi Jatinegara', grid.map((g) => g.nama));
+  const v = verifikasiBacaanResep(
+    parseBacaanResep(
+      JSON.stringify({
+        baris: [
+          { lembar: 1, baris: 2, produk: 'Mie Bestie', bahan: 'Mie telur', qty: 1, satuan: 'pcs' },
+          { lembar: 1, baris: 3, produk: 'Mie Bestie', bahan: 'Kerupuk bawang', qty: 15, satuan: 'gram' },
+        ],
+      }),
+      grid,
+    ),
+    grid,
+  );
+  cek('template: baris bahan di bawah nama produk terverifikasi, nama lembar ber-kode ikut', v.every((b) => b.terverifikasi && b.lembar === 'IKJT Indokopi Jatinegara'), v);
+}
+
 // --- 2. Tabel & ringkasan ---
 const IMPORT_ID = '0e6b7c1a-3f4d-4b5e-9a8b-1c2d3e4f5a6b';
 const PRODUK: ProdukResepHasil[] = [

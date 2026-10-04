@@ -687,3 +687,36 @@ export function useAturUlangKataSandi() {
     },
   });
 }
+
+// --- Log galat aplikasi (migrasi 0072) -- RLS: CEO/Admin saja. ---
+
+export type GalatAdmin = { id: number; terjadi_pada: string; sumber: 'server' | 'browser'; rute: string; metode: string | null; peran: string | null; pesan: string };
+export type GalatPerHari = { tanggal: string; server: number; browser: number };
+
+export function useDaftarGalat() {
+  return useQuery({
+    queryKey: ['admin-galat'],
+    queryFn: async (): Promise<GalatAdmin[]> => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('galat_aplikasi')
+        .select('id, terjadi_pada, sumber, rute, metode, peran, pesan')
+        .order('id', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return data as GalatAdmin[];
+    },
+  });
+}
+
+export function useGalatPerHari(hari: number) {
+  return useQuery({
+    queryKey: ['admin-galat-per-hari', hari],
+    queryFn: async (): Promise<GalatPerHari[]> => {
+      const supabase = createClient();
+      const { data, error } = await supabase.from('v_galat_per_hari').select('tanggal, server, browser').order('tanggal', { ascending: false }).limit(hari);
+      if (error) throw error;
+      return data as GalatPerHari[];
+    },
+  });
+}

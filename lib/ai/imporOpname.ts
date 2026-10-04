@@ -50,6 +50,9 @@ export async function bacaGrid(data: ArrayBuffer): Promise<Lembar[]> {
   const hasil: Lembar[] = [];
   let total = 0;
   wb.eachSheet((ws) => {
+    // Lembar tersembunyi = daftar pilihan dropdown (template resep per produk
+    // pos-fnb, lembar "Daftar"), bukan data: tidak dibaca dan tidak ikut batas baris.
+    if (ws.state && ws.state !== 'visible') return;
     const baris: BarisGrid[] = [];
     ws.eachRow({ includeEmpty: false }, (row, nomor) => {
       const sel: Sel[] = [];

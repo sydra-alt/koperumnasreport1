@@ -40,10 +40,12 @@ import {
   useUbahAksesPos,
   useUbahAksesAi,
   daftarRoleUntuk,
+  useDaftarGalat,
+  useGalatPerHari,
 } from '../../lib/api/admin';
 import { KonfirmasiDialog } from '../../components/KonfirmasiDialog';
 
-type Tab = 'lokasi' | 'outlet' | 'assignment' | 'policy' | 'pengguna' | 'titik-absen' | 'shift';
+type Tab = 'lokasi' | 'outlet' | 'assignment' | 'policy' | 'pengguna' | 'titik-absen' | 'shift' | 'galat';
 
 const gayaInput = { borderColor: 'var(--garis)', minHeight: 44 } as const;
 const gayaTombol = { borderColor: 'var(--biru)', color: 'var(--biru)', minHeight: 44 } as const;
@@ -1122,6 +1124,52 @@ function TabShift() {
   );
 }
 
+const formatWaktuGalat = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short' });
+
+/** Log galat aplikasi (migrasi 0072): kesalahan server & layar, tanpa data pribadi. */
+function TabGalat() {
+  const HARI = 14;
+  const { data: perHari, isLoading: memuatHari } = useGalatPerHari(HARI);
+  const { data: daftar, isLoading: memuatDaftar } = useDaftarGalat();
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="admin-petunjuk">
+        <p className="admin-petunjuk-judul">Kesalahan aplikasi</p>
+        <p>Dicatat otomatis saat halaman gagal, di server maupun di layar. Email, angka panjang (PIN, nomor telepon, nominal), dan token disensor. Disimpan 2000 kejadian terakhir.</p>
+      </div>
+      <section className="flex flex-col gap-2">
+        <h3 className="font-semibold">Jumlah per hari ({HARI} hari terakhir)</h3>
+        {memuatHari ? <p className="text-sm">Memuat...</p> : (perHari ?? []).length === 0 ? <p className="text-sm">Belum ada kesalahan tercatat.</p> : (
+          <ul className="flex flex-col divide-y text-sm" style={{ borderColor: 'var(--garis)' }}>
+            {(perHari ?? []).map((h) => (
+              <li key={h.tanggal} className="flex flex-wrap justify-between gap-2 py-2">
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{h.tanggal}</span>
+                <span>{h.server} server · {h.browser} layar</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <section className="flex flex-col gap-2">
+        <h3 className="font-semibold">100 kejadian terbaru</h3>
+        {memuatDaftar ? <p className="text-sm">Memuat...</p> : (daftar ?? []).length === 0 ? <p className="text-sm">Belum ada kesalahan tercatat.</p> : (
+          <ul className="flex flex-col gap-2">
+            {(daftar ?? []).map((g) => (
+              <li key={g.id} className="admin-kartu-pengaturan">
+                <div className="flex flex-col gap-1">
+                  <p className="admin-kartu-judul" style={{ wordBreak: 'break-all' }}>{g.metode ? `${g.metode} ` : ''}{g.rute}</p>
+                  <p className="admin-kartu-bantuan">{formatWaktuGalat.format(new Date(g.terjadi_pada))} · {g.sumber === 'server' ? 'server' : 'layar'} · peran: {g.peran ?? '-'}</p>
+                  <p className="text-sm" style={{ wordBreak: 'break-word' }}>{g.pesan}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function Isi() {
   const [tab, setTab] = useState<Tab>('pengguna');
   const TAB: { key: Tab; label: string; bantuan: string }[] = [
@@ -1132,6 +1180,7 @@ function Isi() {
     { key: 'lokasi', label: 'Lokasi', bantuan: 'Kelola lokasi kerja.' },
     { key: 'outlet', label: 'Outlet', bantuan: 'Kelola outlet dan jadwalnya.' },
     { key: 'policy', label: 'Aturan aplikasi', bantuan: 'Atur kebijakan umum.' },
+    { key: 'galat', label: 'Log galat', bantuan: 'Lihat kesalahan aplikasi terbaru.' },
   ];
   const tabAktif = TAB.find((t) => t.key === tab)!;
 
@@ -1167,6 +1216,7 @@ function Isi() {
         {tab === 'pengguna' && <TabPengguna />}
         {tab === 'titik-absen' && <TabTitikAbsen />}
         {tab === 'shift' && <TabShift />}
+        {tab === 'galat' && <TabGalat />}
       </section>
     </div>
   );

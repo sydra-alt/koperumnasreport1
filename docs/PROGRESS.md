@@ -1683,3 +1683,12 @@ Data POS lewat asisten hanya untuk orang yang punya baris `report_identity_links
   - Batang progres di `app/papan/page.tsx` & `components/FormRenderer.tsx`, serta tombol sort/filter di `app/marketing/page.tsx` & `app/absen/tinjau/page.tsx` dipastikan menyala solid.
 - **Verifikasi:** Seluruh halaman (`/`, `/akun`, `/keputusan`, `/papan`, `/marketing`, `/terpusat`, `/admin`) diaudit langsung di browser via tangkapan layar. `npm run lint` 0 error.
 
+
+## 7 Oktober 2026 -- arsip DEMO, cadangan, log galat, alat resep untuk Ita
+
+- **Keputusan:** "Pembelian Pusat" (R11) benar. Kontrol Harian / Pusat / laba rugi bulanan BELUM dikerjakan (menunggu keputusan CEO).
+- **Deploy:** pos-fnb `2cbc3ab` + `048dc6e` (worker `d1009f83`, migrasi 0056 diterapkan setelah dry run 12/12, 975/975 test); sistem laporan: migrasi **0072 DITERAPKAN** (dry run rollback 12/12 dulu).
+- **Arsip DEMO (lewat UI aplikasi, uji-ceo, akses POS dipulihkan):** 4 outlet nonaktif jadi "[ARSIP DEMO] ..."; transfer DEMO -> IKJT (approved, tidak pernah dikirim, 0 gerakan stok) dibatalkan dengan alasan; stok IKJT tidak berubah. Tidak ada yang dihapus. Outlet nonaktif keluar dari "semua outlet" laporan/ekspor/dashboard/asisten dan pemilih.
+- **Cadangan (docs/PEMULIHAN-DATA.md):** pg_dump terenkripsi AES-256-GCM kedua database, Task Scheduler Senin 09.00 (harian saat penjualan nyata), retensi 56 hari, di `D:\USER\cadangan-koperumnas\`; uji pemulihan lolos (jumlah baris semua tabel sama); biaya Rp0.
+- **Log galat:** tabel `galat_aplikasi` sendiri di kedua database (tanpa layanan luar): error server + layar, peran dari sesi, pesan disensor, rem 60/menit, 2000 baris. Admin > Log galat (laporan), "Log Galat" owner (pos-fnb).
+- **Resep:** template resep per produk (lembar per outlet/menu bersama, dropdown bahan & satuan, takaran kosong), nama kembar di impor dipilih dari kode outlet lembar (KUNING); daftar produk tanpa resep diurutkan omzet. `bacaGrid` melewati lembar tersembunyi.
