@@ -1,6 +1,13 @@
 # Rancangan Kontrol Harian & Laba Rugi Bulanan (Oktober 2026)
 
-Dokumen diskusi untuk CEO, Ita, dan pemilik. **Belum ada yang dibangun dari dokumen ini.** Angka "hari ini" dibaca langsung dari database produksi pada 6 Oktober 2026 (baca-saja).
+Dokumen diskusi untuk CEO, Ita, dan pemilik. Angka "hari ini" dibaca langsung dari database produksi pada 6 Oktober 2026 (baca-saja).
+
+**Pembaruan 7 Oktober 2026 — keputusan CEO (final):**
+- **Pilot 1 November 2026 di Indokopi Lite Kemayoran saja.** Cempaka Putih, Pekansari, dan Jatinegara menyusul setelah Kemayoran stabil. Di Kemayoran, laporan harian WhatsApp manual tetap berjalan paralel selama 2 minggu pertama (lihat bagian 8 dan 9).
+- **Pusat (Rumah Ibu Putri) menjadi lokasi stok.** CEO ingin melihat nilai aset persediaan di pusat dan di tiap outlet, dan barang terjual berpindah dari aset ke HPP. Rencananya menunggu persetujuan; belum dibangun.
+- **Alur laporan bulanan:** Draft → Ditinjau Ita → Final Akunting. CEO hanya melihat laporan Final (bagian 3a).
+- Cloudflare tetap paket Free untuk sekarang.
+- **Kontrol Harian (bagian 2) SUDAH DIBANGUN** pada 7 Oktober 2026: menu **Kontrol Harian** di sistem laporan.
 
 ## 0. Kondisi hari ini (fakta, bukan asumsi)
 
@@ -34,6 +41,8 @@ Dokumen diskusi untuk CEO, Ita, dan pemilik. **Belum ada yang dibangun dari doku
 | Tanggung jawab (pembelian, sistem/rekonsiliasi, Ita, PIC outlet) | Peran: owner, manajer, kasir, gudang, dan penugasan per outlet. | Pembagian tugas yang tertulis di layar ("menunggu siapa"). |
 
 ## 2. Kontrol Harian (untuk Ita)
+
+**Status: sudah dibangun (7 Oktober 2026).** Menu **Kontrol Harian** di sistem laporan. Ita, CEO, dan Admin bisa menulis catatan; Pusat dan Accounting hanya melihat. Data stok dan penjualan ditarik dari POS. **Uang masuk diambil dari isian Cash/QRIS/Bank di Laporan Harian Kontrol F&B Ita** (field yang sudah ada, tidak ada input baru). Status **OK** hanya muncul kalau semua data lengkap. Kalau ada yang kurang (tidak ada shift, tidak ada opname buka/tutup, produk terjual tanpa resep, Laporan Kontrol F&B belum ada atau masih draf), statusnya **Data belum lengkap** beserta daftar yang kurang.
 
 **Satu layar per tanggal**, satu baris per outlet, terbuka setiap pagi untuk hari kemarin.
 
@@ -82,9 +91,21 @@ Dokumen diskusi untuk CEO, Ita, dan pemilik. **Belum ada yang dibangun dari doku
   - Laba kotor = penjualan − HPP.
   - Untuk barang titipan, bagian pemilik titipan adalah biaya bagi hasil, bukan HPP. Ini perlu disepakati (pertanyaan 6).
 
+## 3a. Alur status laporan bulanan (keputusan CEO, 7 Oktober 2026)
+
+| Status | Siapa | Yang dilakukan | Siapa yang melihat |
+|---|---|---|---|
+| **Draft** | Sistem / Ita | Angka omzet, HPP, stok tersusun otomatis dari POS. Ita mulai meninjau. | Ita, Accounting |
+| **Ditinjau Ita** | Ita | Ita memeriksa penjualan dan stok (sisa aset, pemakaian), memberi catatan, lalu menandai "Ditinjau". | Ita, Accounting |
+| **Final Akunting** | Accounting | Accounting mengisi biaya bulanan (kontrak sewa, gaji, dan lainnya), memeriksa, lalu menetapkan Final. Bulan terkunci. | **CEO** (hanya Final), Ita, Accounting |
+
+- **CEO hanya melihat laporan berstatus Final Akunting.** Bulan yang belum final tidak tampil di layar CEO; yang tampil hanya keterangan "Bulan X belum final (status: Ditinjau Ita)".
+- **Membuka kembali bulan yang sudah Final** wajib menyertakan alasan dan tercatat: siapa, kapan, alasan, dan status sebelum/sesudah. Setelah dibuka kembali, status kembali ke Ditinjau Ita.
+- Biaya per baris menyimpan siapa yang mengisi dan kapan. Transaksi bulan yang sudah final tidak bisa diubah; koreksi dicatat di bulan berjalan.
+
 ## 4. Stok pusat "Pusat (Rumah Ibu Putri)"
 
-- **Usulan:** aktifkan outlet "Gudang" yang sudah ada (sudah bertanda dapur pusat), ganti namanya menjadi **Pusat (Rumah Ibu Putri)**. Lokasi ini tanpa kasir dan tanpa shift.
+- **Disetujui CEO (7 Oktober 2026): Pusat menjadi lokasi stok.** Rencana teknis diajukan terpisah dan belum dibangun. Catatan: outlet "Gudang" lama ternyata adalah outlet DEMO yang sudah diarsipkan ("[ARSIP DEMO] Gudang"), jadi Pusat akan menjadi lokasi baru, bukan menghidupkan arsip itu.
 - Pembelian masuk ke pusat. Outlet meminta barang lewat **Pindah Stok**; pusat mengirim, outlet menerima.
 - Bulanan pusat: stok awal pusat (opname akhir bulan lalu) + pembelian − stok akhir pusat (opname akhir bulan) = barang keluar. Angka ini dicocokkan dengan Σ pindah stok terkirim. Selisihnya adalah kehilangan atau pencatatan yang kurang, **bukan HPP**.
 - **Dampak ke Impor Belanja (item 3, jangan diubah dulu):**
@@ -117,6 +138,8 @@ Di laporan tutup, PIC mengisi permintaan per bahan. Sistem menyusunnya menjadi d
 
 ## 7. Pertanyaan untuk CEO (maks. 10)
 
+*Terjawab 7 Oktober 2026:* no. 1 (POS mulai 1 November di Kemayoran), no. 3 (Pusat menjadi lokasi stok; nama dan PIC menyusul), no. 5 (Ita meninjau, Accounting mengisi biaya dan menetapkan Final, CEO hanya melihat Final). Pertanyaan lain masih terbuka.
+
 1. Mulai tanggal berapa **semua** penjualan F&B wajib lewat POS (tanpa nota/catatan di luar sistem)?
 2. Omzet resmi laba rugi: POS saja, atau laporan harian boleh dipakai selama POS belum jalan?
 3. Setuju outlet "Gudang" diaktifkan dan diberi nama **Pusat (Rumah Ibu Putri)**? Siapa PIC opname pusat dan kirim barang?
@@ -127,3 +150,36 @@ Di laporan tutup, PIC mengisi permintaan per bahan. Sistem menyusunnya menjadi d
 8. Bahan apa saja yang dihitung harian per outlet (*Hitung Tiap Shift*) — siapa yang memilih daftar awalnya?
 9. Draf September: perlu disusun ulang dengan rumus pemilik setelah data ada, atau September ditutup dengan catatan "modal = perkiraan"?
 10. Manajer outlet boleh melihat laba rugi outletnya sendiri (tanpa rincian gaji per orang)?
+
+## 8. Rollout: Kemayoran dulu (keputusan CEO, 7 Oktober 2026)
+
+1. **1 November 2026: pilot di Indokopi Lite Kemayoran saja.** Menu kecil, volume rendah.
+2. **2 minggu pertama:** laporan harian WhatsApp manual tetap jalan paralel. Ita membandingkan Kontrol Harian dengan laporan manual setiap pagi.
+3. **Syarat lanjut ke outlet berikutnya:** 2 minggu berturut-turut semua penjualan Kemayoran lewat POS, opname buka/tutup terisi setiap hari, status Kontrol Harian "OK" atau "Selisih" dengan penyebab tertulis (bukan "Data belum lengkap"), dan tidak ada gangguan aplikasi yang membuat kasir pindah ke nota kertas lebih dari sekali seminggu.
+4. **Urutan berikutnya:** Cempaka Putih, Pekansari, lalu Jatinegara, masing-masing dengan pola yang sama.
+
+## 9. Daftar kesiapan Kemayoran untuk 31 Oktober 2026
+
+Dibaca dari produksi pada 7 Oktober 2026 (baca-saja). **OK** = siap, **Kurang** = belum ada, **Risiko** = ada tapi perlu dicek.
+
+| Butir | Keadaan sekarang | Status | Siapa bertindak |
+|---|---|---|---|
+| Perangkat kasir | **0 perangkat** terdaftar untuk Kemayoran | Kurang | Owner (menu Perangkat) + tablet outlet dihubungkan sekali |
+| Akun kasir | 2 kasir aktif | OK | — |
+| PIN kasir | **Kedua kasir masih memakai PIN bawaan seed** | Risiko | Manajer outlet: Karyawan → Atur Ulang PIN (PIN sementara), lalu kasir Ganti PIN |
+| Stok awal (Excel) & opname awal | **0 baris stok** di Kemayoran; satu-satunya opname (berkala, 29 Sep) dibatalkan; belum ada impor opname | Kurang | PIC Kemayoran menghitung, Ita mengimpor lewat Asisten AI > Impor opname |
+| Resep 16 produk | **4 dari 16** punya resep. Belum: Butterscotch, Caffe Latte, Caramel Sea Salt, Coklat Bestie, Es Leci Tea, Es teh manis, Gultic blok m, Kopi Aren Tua, matcha aren, matcha latte, Mie Bestie, Roti Kenangan Coklat Keju | Kurang | Ita (template resep per produk, lembar IKLK) |
+| Harga bahan | 6 bahan dipakai resep Kemayoran, **0 punya harga** | Kurang | Ita / pembelian: impor opname dengan harga, atau impor belanja |
+| Bahan "Hitung Tiap Shift" | **0 bahan** ditandai (tanpa ini opname buka/tutup kosong dan Kontrol Harian selalu "Data belum lengkap") | Kurang | Ita + manajer: tandai 10–20 bahan utama di menu Bahan |
+| Wajib opname shift | Aktif | OK | — |
+| Batas hari bisnis | 04.00, sudah dikonfirmasi | OK | — |
+| Pembayaran | QRIS dan Transfer aktif, Tunai nonaktif | OK | — |
+| Tunai di setting outlet | **Masih aktif**, padahal metode Tunai nonaktif. Kasir akan diminta modal dan hitung kas | Risiko | Owner/manajer: matikan "Tunai di outlet" di menu Outlet |
+| Pajak | 10% (Indokopi) | OK | — |
+| Penerima laporan WhatsApp | **0 penerima** untuk laporan tutup shift | Kurang | Manajer: menu Penerima WA |
+| Penugasan Kontrol F&B Ita | Ita punya Kontrol F&B untuk Jatinegara, Cempaka, Pekansari, **tapi tidak untuk Kemayoran**. Akibatnya uang masuk Kemayoran tidak bisa diisi dan Kontrol Harian selalu "Data belum lengkap" | Kurang | Admin: tambah penugasan kontrol_fnb Ita untuk Kemayoran |
+| Laporan Manajer Resto Kemayoran | 1 penugasan ada | OK | — |
+| Pemetaan outlet laporan ↔ POS | Sudah dipetakan | OK | — |
+| Pelatihan runbook | Tidak tercatat di sistem | Risiko | Manajer Kemayoran + Ita: latih kasir dengan `RUNBOOK-HARI-PERTAMA.md` minggu terakhir Oktober |
+| Gladi (rehearsal) di outlet | Belum pernah di tablet Kemayoran; uji beban di bisnis uji sudah dijalankan pengembang | Risiko | Manajer + pengembang: gladi 1 hari di tablet Kemayoran memakai bisnis uji, sebelum 31 Oktober |
+| Cadangan database | Mingguan otomatis, uji pulih lolos; kunci belum disalin ke tempat kedua | Risiko | CEO: simpan salinan kunci |

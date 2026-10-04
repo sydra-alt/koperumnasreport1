@@ -89,7 +89,12 @@ export function tabTerlihat(
   // "Asisten AI" -- PER ORANG (profile.punya_akses_ai, migrasi 0067), bukan
   // per peran. Tampilan saja; gerbang sungguhan boleh_pakai_ai() di database.
   const asisten: TabNav[] = bolehAi ? [{ key: 'asisten', label: 'Asisten AI', href: '/asisten' }] : [];
-  return [...tetap, ...dinamis, ...tinjau, ...tinjauKebersihan, ...tinjauCuti, ...asisten];
+  // "Kontrol Harian" (7 Oktober 2026) -- Ita = penugasan form kontrol_fnb (bukan peran),
+  // plus CEO/Admin (ubah) dan pusat/accounting (lihat). Gerbang sungguhan:
+  // boleh_lihat_kontrol_harian() di database (migrasi 0074).
+  const bolehKontrol = ['ceo', 'admin', 'pusat', 'accounting'].some((r) => roles.includes(r)) || assignments.some((a) => a.form_key === 'kontrol_fnb');
+  const kontrol: TabNav[] = bolehKontrol ? [{ key: 'kontrol-harian', label: 'Kontrol Harian', href: '/kontrol-harian' }] : [];
+  return [...tetap, ...kontrol, ...dinamis, ...tinjau, ...tinjauKebersihan, ...tinjauCuti, ...asisten];
 }
 
 
