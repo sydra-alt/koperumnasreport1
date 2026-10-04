@@ -1157,7 +1157,7 @@ function TabGalat() {
             {(daftar ?? []).map((g) => (
               <li key={g.id} className="admin-kartu-pengaturan">
                 <div className="flex flex-col gap-1">
-                  <p className="admin-kartu-judul" style={{ wordBreak: 'break-all' }}>{g.metode ? `${g.metode} ` : ''}{g.rute}</p>
+                  <p className="admin-kartu-judul" style={{ wordBreak: 'break-all', textTransform: 'none' }}>{g.metode ? `${g.metode} ` : ''}{g.rute}</p>
                   <p className="admin-kartu-bantuan">{formatWaktuGalat.format(new Date(g.terjadi_pada))} · {g.sumber === 'server' ? 'server' : 'layar'} · peran: {g.peran ?? '-'}</p>
                   <p className="text-sm" style={{ wordBreak: 'break-word' }}>{g.pesan}</p>
                 </div>
