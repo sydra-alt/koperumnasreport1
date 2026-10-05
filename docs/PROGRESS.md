@@ -1705,3 +1705,22 @@ Data POS lewat asisten hanya untuk orang yang punya baris `report_identity_links
 - **Dokumen rancangan:** alur bulanan, rollout Kemayoran, daftar kesiapan 31 Oktober (dibaca dari produksi).
 - **Gladi** (`pos-fnb/scripts/gladi-kemayoran.mts`, bisnis uji dihapus sesudahnya): Cloudflare Free = penghalang -- 68% muat halaman penuh 503 (layar kasir 94%), bayar p50 10,6 dtk, 2/30 order hilang.
 - **Catatan uji:** tes bagi hasil thrift gagal hanya antara 00.00-04.00 WIB (barang titipan yang masuk sebelum batas hari bisnis tidak ikut laporan hari itu) -- pertanyaan aturan bisnis, belum diubah. Tes audit diberi toleransi 2 detik selisih jam mesin vs server.
+
+## 8 Oktober 2026 -- Pusat fase A & B, Kesiapan Outlet, catatan batas hari
+
+- **Pusat fase A** (pos-fnb `01d4fc9`, laporan `a3a4672`):
+  - "Pusat (Rumah Ibu Putri)" dibuat di produksi lewat `createOutletWithDb` (`scripts/buat-pusat.mts`, audit `buat_pusat`). Pusat adalah gudang pusat tanpa kasir dan tanpa shift; arsip DEMO tidak disentuh.
+  - Harga kirim Pindah Stok = rata-rata Pusat dan terkunci. Hanya pemilik yang boleh mengganti, dengan alasan, dan tercatat di audit. Kiriman tidak boleh membuat stok minus.
+  - Impor belanja: setiap baris bawaan ke Pusat; baris yang langsung ke outlet wajib dicentang.
+  - Migrasi **0075 DITERAPKAN**: peran admin dipetakan ke manager di semua outlet POS.
+- **Pusat fase B** (pos-fnb `249fb7e`, laporan `6525785`):
+  - Halaman `/aset-persediaan` untuk CEO, Admin, Ita, dan Accounting, baca saja. Migrasi **0076 DITERAPKAN**.
+  - Rancangan §4a menjelaskan aliran ke laba rugi bulanan.
+- **Kesiapan Outlet** (pos-fnb `a99539d`, laporan `b2d7d7e`):
+  - Halaman `/kesiapan-outlet` untuk CEO dan Admin. Migrasi **0077 DITERAPKAN**.
+  - Kontrol Harian kini menyebut "belum bisa diisi karena belum ada penugasan".
+  - Uji HTTP di deploy: `scripts/uji-http-pusat.mjs`, 9/9.
+- **Uji bagi hasil** memakai waktu tetap (pos-fnb `32ab945`). Celah batas hari 04:00 pada hitungan titipan dicatat di pos-fnb `docs/04-CATATAN-TEKNIS.md` §21; itu bug yang diketahui dengan dampak hari ini nol, dan belum diperbaiki.
+- **Temuan "Tunai di outlet"** (`outlets.cash_enabled`, tidak diubah):
+  - Masih aktif di keempat outlet F&B walau metode Tunai nonaktif.
+  - Akibatnya kasir diminta modal awal, ditawari Kas Masuk/Keluar, dan diminta hitung kas saat tutup.
