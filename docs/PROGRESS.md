@@ -1697,3 +1697,11 @@ Data POS lewat asisten hanya untuk orang yang punya baris `report_identity_links
 
 - **pos-fnb `16a162b`** (worker `f338f0cb`, migrasi 0057 dry run 7/7 lalu diterapkan, 996/996 test pada HEAD itu): manajer atur ulang PIN hanya kasir di outlet sendiri (selalu sementara), kasir "Ganti PIN" di layar kasir (lockout 5x sama), PIN baru 6 digit/tidak sepele/bukan PIN seed/unik di outlet (sidik HMAC `PIN_SIDIK_SECRET` + indeks unik), audit_logs reset_pin/ganti_pin; satuan ons; `docs/PANDUAN-ISI-RESEP-ITA.md` + panduan di Kelengkapan Resep; status cadangan di dashboard owner.
 - **Laporan:** migrasi **0073 DITERAPKAN** (`status_cadangan`, dry run 5/5); Admin menampilkan "Cadangan terakhir: N hari lalu" (merah > 8 hari). Job cadangan menulis status ke kedua database; Task Scheduler: Senin 09.00 + 10 menit setelah login, mode `--susulan` (jadwal terlewat tersusul).
+
+## 7 Oktober 2026 (lanjutan 2) -- Kontrol Harian, kesiapan Kemayoran, gladi Cloudflare
+
+- **Keputusan CEO:** pilot 1 November di Kemayoran saja (WA manual paralel 2 minggu); Pusat jadi lokasi stok (rencana menunggu persetujuan, belum dibangun); laporan bulanan Draft -> Ditinjau Ita -> Final Akunting, CEO hanya melihat Final.
+- **Kontrol Harian:** pos-fnb `ce8f405` (`/api/integrasi/kontrol-harian`, 12 test) + laporan `c6fbc1a` (`/kontrol-harian`, migrasi **0074 DITERAPKAN**, dry run 23/23, 16/16 skrip uji). Uang masuk = isian Cash/QRIS/Bank Laporan Kontrol F&B (field yang sudah ada). Diuji ujung-ke-ujung di data gladi: beras tanpa resep selisih 500 g terdeteksi, status "Data belum lengkap" karena 2 produk tanpa resep.
+- **Dokumen rancangan:** alur bulanan, rollout Kemayoran, daftar kesiapan 31 Oktober (dibaca dari produksi).
+- **Gladi** (`pos-fnb/scripts/gladi-kemayoran.mts`, bisnis uji dihapus sesudahnya): Cloudflare Free = penghalang -- 68% muat halaman penuh 503 (layar kasir 94%), bayar p50 10,6 dtk, 2/30 order hilang.
+- **Catatan uji:** tes bagi hasil thrift gagal hanya antara 00.00-04.00 WIB (barang titipan yang masuk sebelum batas hari bisnis tidak ikut laporan hari itu) -- pertanyaan aturan bisnis, belum diubah. Tes audit diberi toleransi 2 detik selisih jam mesin vs server.
