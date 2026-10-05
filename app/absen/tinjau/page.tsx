@@ -291,11 +291,10 @@ function TinjauAbsenIsi() {
                 key={f}
                 type="button"
                 onClick={() => setFilter(f)}
-                className={`px-3.5 py-1.5 text-xs font-bold transition-all rounded-xl cursor-pointer ${
-                  filter === f
-                    ? 'nav-pil-aktif'
-                    : 'text-[var(--tinta)] hover:text-[var(--biru-2)] hover:bg-[var(--permukaan)]'
-                }`}
+                className={`px-3.5 py-1.5 text-xs font-bold transition-all rounded-xl cursor-pointer ${filter === f
+                  ? 'nav-pil-aktif'
+                  : 'text-[var(--tinta)] hover:text-[var(--biru-2)] hover:bg-[var(--permukaan)]'
+                  }`}
                 style={{ minHeight: 38 }}
               >
                 {FILTER_LABEL[f]}
