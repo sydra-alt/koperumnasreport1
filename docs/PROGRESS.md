@@ -1720,7 +1720,7 @@ Data POS lewat asisten hanya untuk orang yang punya baris `report_identity_links
   - Halaman `/kesiapan-outlet` untuk CEO dan Admin. Migrasi **0077 DITERAPKAN**.
   - Kontrol Harian kini menyebut "belum bisa diisi karena belum ada penugasan".
   - Uji HTTP di deploy: `scripts/uji-http-pusat.mjs`, 9/9.
-- **Uji bagi hasil** memakai waktu tetap (pos-fnb `32ab945`). Celah batas hari 04:00 pada hitungan titipan dicatat di pos-fnb `docs/04-CATATAN-TEKNIS.md` §21; itu bug yang diketahui dengan dampak hari ini nol, dan belum diperbaiki.
+- **Uji bagi hasil** memakai waktu tetap (pos-fnb `32ab945`). Celah batas hari 04:00 pada hitungan titipan **DIPERBAIKI 5 Oktober 2026** (disetujui CEO): `endOfPeriodInstant` sekarang memakai batas hari bisnis (`endDate+1` pada `dayCutoffTime` − 1ms), konsisten dengan `businessDate()`. Utilitas `period-boundary.ts` menjamin dua periode berurutan tidak pernah tumpang tindih atau ada celah. 16 unit test tambahan untuk edge cases.
 - **Temuan "Tunai di outlet"** (`outlets.cash_enabled`, tidak diubah):
   - Masih aktif di keempat outlet F&B walau metode Tunai nonaktif.
   - Akibatnya kasir diminta modal awal, ditawari Kas Masuk/Keluar, dan diminta hitung kas saat tutup.
