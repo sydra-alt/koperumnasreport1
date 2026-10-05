@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Terlindungi } from '../../components/Terlindungi';
 import { PemilihTanggal } from '../../components/PemilihTanggal';
 import { useAuth } from '../../lib/auth/AuthProvider';
@@ -141,6 +142,9 @@ function Isi() {
   const [tanggal, setTanggal] = useState(() => geserTanggalYmd(tanggalWIB(), -1));
   const { data, isLoading, isError, error } = useKontrolHarian(tanggal);
   const [pesan, setPesan] = useState('');
+  const { roles, profile } = useAuth();
+  // Tautan saja; gerbang sungguhan boleh_lihat_aset_persediaan() (migrasi 0076).
+  const bolehAset = ['ceo', 'admin', 'accounting'].some((r) => roles.includes(r)) || profile?.akses_semua_outlet_pos === true;
   const teksSemua = data ? teksWhatsApp(data.tanggal, data.baris) : '';
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-4 md:p-6">
@@ -149,6 +153,11 @@ function Isi() {
         <p className="text-sm" style={{ color: 'var(--label)' }}>
           Penjualan POS dibanding uang masuk dan pemakaian stok (opname awal + masuk − opname akhir) dibanding resep. Bahan yang tidak ada di resep otomatis menjadi selisih. Status OK hanya kalau datanya lengkap.
         </p>
+        {bolehAset ? (
+          <Link href="/aset-persediaan" className="text-sm underline flex items-center" style={{ color: 'var(--biru)', minHeight: 44 }}>
+            Nilai Aset Persediaan dan HPP bulanan
+          </Link>
+        ) : null}
       </header>
       <PemilihTanggal tanggal={tanggal} onUbah={setTanggal} />
       {isLoading ? <p className="text-sm">Memuat data POS dan laporan...</p> : null}

@@ -105,13 +105,45 @@ Dokumen diskusi untuk CEO, Ita, dan pemilik. Angka "hari ini" dibaca langsung da
 
 ## 4. Stok pusat "Pusat (Rumah Ibu Putri)"
 
-- **Disetujui CEO (7 Oktober 2026): Pusat menjadi lokasi stok.** Rencana teknis diajukan terpisah dan belum dibangun. Catatan: outlet "Gudang" lama ternyata adalah outlet DEMO yang sudah diarsipkan ("[ARSIP DEMO] Gudang"), jadi Pusat akan menjadi lokasi baru, bukan menghidupkan arsip itu.
+- **Disetujui CEO (7 Oktober 2026): Pusat menjadi lokasi stok.** **Fase A dibangun 8 Oktober 2026** (pos-fnb `01d4fc9`, laporan `a3a4672`): lokasi "Pusat (Rumah Ibu Putri)" (gudang pusat, tanpa kasir dan shift), harga kirim Pindah Stok = rata-rata Pusat (terkunci; pemilik boleh mengganti dengan alasan, tercatat di audit), kiriman tidak pernah membuat stok Pusat minus, impor belanja bawaan Pusat dengan centang "Belanja langsung ke outlet (tidak lewat pusat)", opname Pusat lewat impor opname. Akses POS ke Pusat: CEO, Admin (migrasi 0075), Ita. Catatan: outlet "Gudang" lama ternyata adalah outlet DEMO yang sudah diarsipkan ("[ARSIP DEMO] Gudang"), jadi Pusat akan menjadi lokasi baru, bukan menghidupkan arsip itu.
 - Pembelian masuk ke pusat. Outlet meminta barang lewat **Pindah Stok**; pusat mengirim, outlet menerima.
 - Bulanan pusat: stok awal pusat (opname akhir bulan lalu) + pembelian − stok akhir pusat (opname akhir bulan) = barang keluar. Angka ini dicocokkan dengan Σ pindah stok terkirim. Selisihnya adalah kehilangan atau pencatatan yang kurang, **bukan HPP**.
 - **Dampak ke Impor Belanja (item 3, jangan diubah dulu):**
   - Saat ini setiap baris nota memilih outlet tujuan.
   - Usulan setelah keputusan CEO: outlet bawaan setiap baris = Pusat. Pengecualian per baris tetap boleh untuk barang yang dibeli langsung oleh outlet (misalnya es batu, sayur harian).
   - Aturan "tanggal tidak sebelum opname terakhir outlet baris itu" otomatis berlaku untuk pusat.
+
+## 4a. Nilai Aset Persediaan (Pusat fase B, dibangun 8 Oktober 2026)
+
+Halaman `/aset-persediaan` (tautan dari Kontrol Harian), **baca saja** untuk CEO, Admin, Ita, dan Accounting. Gerbangnya `boleh_lihat_aset_persediaan()` (migrasi 0076). Ita dikenali dari tanda "akses semua outlet POS", bukan dari penugasan Kontrol F&B, karena penugasan itu juga dipegang Mba Rika.
+
+Semua angka dihitung dengan SQL di pos-fnb (`/api/integrasi/aset-persediaan`). Sistem laporan hanya menampilkan.
+
+- **Nilai persediaan saat ini:**
+  - Nilai = Σ (stok × harga rata-rata) per lokasi: Pusat lebih dulu, lalu tiap outlet F&B aktif. Total = jumlah nilai lokasi.
+  - Bahan yang **ada stoknya tetapi belum berharga** didaftar terpisah dan **tidak pernah dinilai Rp0**.
+  - **Stok minus** juga didaftar terpisah dan tidak mengurangi nilai.
+  - Selama salah satu dari dua daftar itu belum kosong, halaman menampilkan "belum lengkap", bukan angka final.
+  - Bahan "biaya saja" (tidak dilacak stoknya) tidak ikut.
+- **HPP bulanan:**
+  - HPP = Σ HPP yang tersimpan pada tiap penjualan saat dibayar (snapshot), per outlet F&B, menurut bulan bisnis.
+  - Ikut ditampilkan **jumlah penjualan yang HPP-nya belum lengkap**: ada bahan biaya saja tanpa harga, atau HPP 0 karena produk tanpa resep. Selama angka ini bukan 0, HPP bulan itu dibaca sebagai **batas bawah**.
+  - Refund tidak mengurangi HPP. Pusat tidak menjual, jadi tidak punya baris HPP.
+- **Nilai saat ini, belum per tanggal.** Untuk laba rugi diperlukan nilai pada akhir bulan. Lihat di bawah.
+
+**Cara angka ini mengalir ke laba rugi bulanan (§3, §3a), belum dibangun:**
+
+1. **Draft.**
+   - Pada akhir bulan, sistem menyimpan **snapshot** nilai persediaan per lokasi, beserta daftar tanpa harga dan stok minus, ke bulan itu.
+   - Snapshot diambil setelah opname akhir bulan terkonfirmasi. Nilai yang dipakai adalah snapshot, bukan nilai "saat ini" yang terus berubah.
+   - Baris HPP diisi dari angka HPP bulanan di atas, beserta badge "x dari y penjualan HPP belum lengkap".
+2. **Ditinjau Ita.**
+   - Ita mencocokkan nilai stok awal (snapshot bulan lalu) + pembelian − stok akhir (snapshot bulan ini) terhadap HPP penjualan dan Pindah Stok.
+   - Untuk Pusat: barang keluar = stok awal + pembelian − stok akhir. Angka ini dicocokkan dengan Σ Pindah Stok terkirim (§4); selisihnya kehilangan atau pencatatan, bukan HPP.
+   - Ita menulis catatan untuk bahan tanpa harga, stok minus, dan penjualan tanpa resep, lalu menandai "Ditinjau".
+3. **Final Akunting.**
+   - Accounting mengisi biaya dan menetapkan Final. Snapshot persediaan dan HPP bulan itu ikut terkunci; koreksi masuk ke bulan berjalan.
+   - CEO melihat laba rugi dengan baris "Persediaan akhir" (aset) dan "HPP". Badge kualitas tetap tampil kalau saat Final masih ada pengecualian, sehingga angka final tidak pernah tampak lebih lengkap dari datanya.
 
 ## 5. Tahap berikutnya (opsional): "Permintaan stok besok"
 

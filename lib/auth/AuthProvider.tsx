@@ -23,6 +23,9 @@ interface Profile {
   /** Migrasi 0067 -- boleh memakai Asisten AI (per orang, diatur Admin).
    * Di sini cuma untuk menampilkan tab; gerbang sungguhan boleh_pakai_ai(). */
   punya_akses_ai: boolean;
+  /** Migrasi 0068 -- semua outlet POS (Ita). Di sini cuma untuk menampilkan
+   * tautan Nilai Aset Persediaan; gerbang sungguhan boleh_lihat_aset_persediaan() (0076). */
+  akses_semua_outlet_pos?: boolean;
 }
 
 interface Assignment {
