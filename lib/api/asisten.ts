@@ -143,11 +143,11 @@ export function useOutletBelanja(enabled: boolean) {
     queryKey: ['ai-belanja-outlet'],
     enabled,
     retry: false,
-    queryFn: async (): Promise<{ id: string; name: string }[]> => {
+    queryFn: async (): Promise<{ id: string; name: string; isPusat?: boolean }[]> => {
       const res = await fetch('/api/asisten/impor-belanja', { cache: 'no-store' });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? 'Daftar outlet tidak bisa dibaca.');
-      return body.outlets as { id: string; name: string }[];
+      return body.outlets as { id: string; name: string; isPusat?: boolean }[];
     },
   });
 }

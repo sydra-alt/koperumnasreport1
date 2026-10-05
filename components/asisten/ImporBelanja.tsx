@@ -37,6 +37,9 @@ export function ImporBelanja({
   const [galatFoto, setGalatFoto] = useState('');
   const [menyiapkan, setMenyiapkan] = useState(false);
   const sibuk = menyiapkan || impor.isPending;
+  // Pusat (Rumah Ibu Putri) jadi bawaan: semua belanja masuk Pusat dulu (keputusan CEO, 8 Oktober 2026).
+  const pusatId = outlet.data?.find((o) => o.isPusat)?.id ?? '';
+  if (pusatId && outletId === '' && !sibuk) setOutletId(pusatId);
 
   function pilihFoto(f: File | null) {
     setGalatFoto('');
@@ -120,7 +123,7 @@ export function ImporBelanja({
             <option value="">{outlet.isLoading ? 'Memuat outlet...' : 'Pilih outlet'}</option>
             {outlet.data?.map((o) => (
               <option key={o.id} value={o.id}>
-                {o.name}
+                {o.isPusat ? `${o.name} (Pusat)` : o.name}
               </option>
             ))}
           </select>
