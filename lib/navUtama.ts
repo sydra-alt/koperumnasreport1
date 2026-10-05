@@ -94,7 +94,13 @@ export function tabTerlihat(
   // boleh_lihat_kontrol_harian() di database (migrasi 0074).
   const bolehKontrol = ['ceo', 'admin', 'pusat', 'accounting'].some((r) => roles.includes(r)) || assignments.some((a) => a.form_key === 'kontrol_fnb');
   const kontrol: TabNav[] = bolehKontrol ? [{ key: 'kontrol-harian', label: 'Kontrol Harian', href: '/kontrol-harian' }] : [];
-  return [...tetap, ...kontrol, ...dinamis, ...tinjau, ...tinjauKebersihan, ...tinjauCuti, ...asisten];
+  // "Laba Rugi Bulanan" (Oktober 2026) -- CEO, Admin, Accounting, dan Ita (penugasan kontrol_fnb).
+  // Gerbang sungguhan: boleh_lihat_laba_rugi() di database (migrasi 0078).
+  const bolehLabaRugi =
+    ['ceo', 'admin', 'accounting'].some((r) => roles.includes(r)) ||
+    assignments.some((a) => a.form_key === 'kontrol_fnb');
+  const labaRugi: TabNav[] = bolehLabaRugi ? [{ key: 'laba-rugi', label: 'Laba Rugi', href: '/laba-rugi' }] : [];
+  return [...tetap, ...kontrol, ...labaRugi, ...dinamis, ...tinjau, ...tinjauKebersihan, ...tinjauCuti, ...asisten];
 }
 
 

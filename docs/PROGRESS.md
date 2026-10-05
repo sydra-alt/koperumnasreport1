@@ -1724,3 +1724,15 @@ Data POS lewat asisten hanya untuk orang yang punya baris `report_identity_links
 - **Temuan "Tunai di outlet"** (`outlets.cash_enabled`, tidak diubah):
   - Masih aktif di keempat outlet F&B walau metode Tunai nonaktif.
   - Akibatnya kasir diminta modal awal, ditawari Kas Masuk/Keluar, dan diminta hitung kas saat tutup.
+
+## 5 Oktober 2026 -- Laba Rugi Bulanan terintegrasi (Item 2b & 3)
+
+- **Laba Rugi Bulanan terintegrasi** (laporan):
+  - Migrasi **0078 DITERAPKAN** (`supabase/migrations/0078_laba_rugi_bulanan.sql`): `kategori_biaya` (9 kategori seeded), `biaya_bulanan`, `biaya_bulanan_riwayat`, `laporan_bulanan` (Draft -> Ditinjau Ita -> Final Akunting), `laporan_bulanan_manual`, `laporan_bulanan_riwayat_status`. Trigger kekekalan `check_laporan_bulanan_immutability` menjamin data bulan `final_akunting` terkunci; pembukaan kembali hanya oleh CEO/Admin dengan alasan tercatat. Bucket storage `biaya_bulanan` terpasang.
+  - Jembatan bertanda tangan Laba Rugi (`posHandoff.ts`): audience `pos-fnb-pnl-bridge`, TTL 60 detik, single-use nonce, SQL aggregation di server POS, role checked di kedua sisi.
+  - Route handler `app/api/laba-rugi/route.ts`: agregasi multi-outlet dan konsolidasi, penanganan mode manual dengan badge `Sumber: manual`, pembatasan CEO (hanya melihat angka Final Akunting; bulan draft/ditinjau menampilkan pemberitahuan).
+  - Ekspor Excel `app/api/laba-rugi/export/route.ts`: workbook Excel terformat profesional dengan header, pemisah ribuan, rincian biaya per kategori, baris kontrol fisik, dan konsolidasi seluruh outlet.
+  - Halaman UI `app/laba-rugi/page.tsx`: kartu KPI utama, struktur laporan owner, baris kontrol opname fisik (stok awal + masuk − stok akhir vs HPP resep), audit badges kualitas data, salin ringkasan WhatsApp wa.me, modal input biaya, modal input manual draf, modal tinjau Ita, modal finalkan Akunting, dan modal buka kembali.
+  - Navigasi & Ikon: tab `laba-rugi` di `lib/navUtama.ts` untuk CEO, Admin, Accounting, dan Ita (penugasan `kontrol_fnb`); ikon SVG konsisten di `components/NavIcon.tsx` (`laba-rugi`, `kontrol-harian`, `keuangan`, `cuti`).
+  - Pengujian: `scripts/dry-run-0078.mjs` (25/25 uji lolos di transaksi rollback), `scripts/uji-laba-rugi.mts` (52/52 uji lolos, mencakup verifikasi fixture 4 outlet manual Ita September), typecheck `tsc --noEmit` bersih, `next build` 39/39 rute lolos.
+

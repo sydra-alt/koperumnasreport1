@@ -29,6 +29,11 @@ const HANDOFF_AUDIENCE = 'pos-fnb-handoff';
  * sebaliknya.
  */
 export const AI_QUERY_AUDIENCE = 'pos-fnb-ai-query';
+/**
+ * Audience KETIGA (5 Oktober 2026, koreksi CEO): token jembatan Laba Rugi Bulanan
+ * ke `POST /api/integrasi/pnl` pos-fnb (lib/labaRugi.ts).
+ */
+export const PNL_BRIDGE_AUDIENCE = 'pos-fnb-pnl-bridge';
 const HANDOFF_TOKEN_TTL_SECONDS = 60;
 
 /** Hasil `akses_pos_saya()` (migrasi 0068), dibawa apa adanya. */
@@ -52,7 +57,7 @@ function base64UrlEncode(buf: Buffer): string {
  */
 export function buatTokenPos(
   user: { id: string; email: string },
-  audience: typeof HANDOFF_AUDIENCE | typeof AI_QUERY_AUDIENCE,
+  audience: typeof HANDOFF_AUDIENCE | typeof AI_QUERY_AUDIENCE | typeof PNL_BRIDGE_AUDIENCE,
   tambahan: { nama?: string | null; akses: AksesPos | null },
 ): string {
   const secret = process.env.POS_HANDOFF_SECRET;
@@ -79,4 +84,8 @@ export function buatTokenPos(
 
 export function buatTokenHandoffPos(user: { id: string; email: string }, tambahan: { nama?: string | null; akses: AksesPos | null }): string {
   return buatTokenPos(user, HANDOFF_AUDIENCE, tambahan);
+}
+
+export function buatTokenPnlBridge(user: { id: string; email: string }, tambahan: { nama?: string | null; akses: AksesPos | null }): string {
+  return buatTokenPos(user, PNL_BRIDGE_AUDIENCE, tambahan);
 }

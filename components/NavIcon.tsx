@@ -70,6 +70,32 @@ const IKON: Record<string, ReactNode> = {
       <circle cx="12" cy="12" r="2.6" style={gaya} />
     </>
   ),
+  'laba-rugi': (
+    <>
+      <path d="M3 3v18h18" style={gaya} />
+      <path d="M7 16l4-5 4 3 6-7" style={gaya} />
+      <path d="M17 7h4v4" style={gaya} />
+    </>
+  ),
+  'kontrol-harian': (
+    <>
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" style={gaya} />
+      <rect x="9" y="3" width="6" height="4" rx="1" style={gaya} />
+      <path d="m9 14 2 2 4-4" style={gaya} />
+    </>
+  ),
+  keuangan: (
+    <>
+      <rect x="3" y="6" width="18" height="13" rx="2" style={gaya} />
+      <path d="M3 10h18M16 14h2" style={gaya} />
+    </>
+  ),
+  cuti: (
+    <>
+      <rect x="3" y="4" width="18" height="18" rx="2" style={gaya} />
+      <path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01" style={gaya} />
+    </>
+  ),
 };
 
 /** `key` tab (§ `lib/navUtama.ts`) -> nama ikon -- `lapor-dinamis-*` dipetakan ke ikon "lapor" yang sama. */
