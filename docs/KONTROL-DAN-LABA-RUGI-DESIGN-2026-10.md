@@ -181,5 +181,5 @@ Dibaca dari produksi pada 7 Oktober 2026 (baca-saja). **OK** = siap, **Kurang** 
 | Laporan Manajer Resto Kemayoran | 1 penugasan ada | OK | — |
 | Pemetaan outlet laporan ↔ POS | Sudah dipetakan | OK | — |
 | Pelatihan runbook | Tidak tercatat di sistem | Risiko | Manajer Kemayoran + Ita: latih kasir dengan `RUNBOOK-HARI-PERTAMA.md` minggu terakhir Oktober |
-| Gladi (rehearsal) di outlet | Belum pernah di tablet Kemayoran; uji beban di bisnis uji sudah dijalankan pengembang | Risiko | Manajer + pengembang: gladi 1 hari di tablet Kemayoran memakai bisnis uji, sebelum 31 Oktober |
+| Gladi (rehearsal) di outlet | Belum pernah di tablet Kemayoran. **Gladi otomatis 1 hari di bisnis uji (5 Okt, paket Cloudflare Free): 68% muat halaman penuh gagal 503 ("Worker exceeded resource limits"), layar kasir /pos 94% dan Buka Shift 82%; bayar butuh 10–21 detik; satu order 17–96 detik; 2 dari 30 order gagal walau dicoba ulang.** Navigasi di dalam aplikasi hampir tidak pernah gagal (0,1%). | Risiko (penghalang) | CEO: naik ke Workers Paid sebelum 1 November, lalu gladi diulang; manajer + pengembang: gladi 1 hari di tablet Kemayoran |
 | Cadangan database | Mingguan otomatis, uji pulih lolos; kunci belum disalin ke tempat kedua | Risiko | CEO: simpan salinan kunci |
