@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Terlindungi } from '../../components/Terlindungi';
 import { useAuth } from '../../lib/auth/AuthProvider';
 import { usePolicy } from '../../lib/api/policy';
@@ -1254,6 +1255,9 @@ export default function AdminPage() {
           <p>Pengelolaan kantor</p>
           <h1>Atur aplikasi dengan tenang</h1>
           <span>Pilih satu langkah, selesaikan, lalu lanjutkan ke langkah berikutnya.</span>
+          <Link href="/kesiapan-outlet" className="text-sm underline flex items-center" style={{ color: 'var(--biru)', minHeight: 44 }}>
+            Kesiapan Outlet: apa yang masih kurang sebelum POS dipakai
+          </Link>
         </header>
         <Isi />
       </main>

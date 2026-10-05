@@ -71,14 +71,21 @@ export type BarisKontrol = {
 
 const angka = (s: string | null | undefined) => (s === null || s === undefined || s === '' ? null : Number(s));
 
-export function gabungKontrol(pos: OutletPos | null, uang: UangOutlet, catatan: CatatanKontrol, posGalat: string | null = null): BarisKontrol {
+/**
+ * adaPenugasan (migrasi 0077): false = outlet ini tidak punya penugasan Kontrol F&B, jadi laporan
+ * uang masuk memang tidak mungkin ada -- pesannya menyebut penyebab itu, bukan "belum diisi".
+ */
+export const PESAN_TANPA_PENUGASAN = 'Uang masuk belum bisa diisi karena belum ada penugasan Kontrol F&B untuk outlet ini (Admin: tambah penugasan kontrol_fnb)';
+
+export function gabungKontrol(pos: OutletPos | null, uang: UangOutlet, catatan: CatatanKontrol, posGalat: string | null = null, adaPenugasan = true): BarisKontrol {
   const kurang: string[] = [];
   if (!pos) kurang.push(posGalat ? `Data POS tidak tersedia: ${posGalat}` : 'Outlet ini tidak ada di data POS');
   else kurang.push(...pos.stok.kurang);
 
   const nilaiUang = [uang.cash, uang.qris, uang.bank];
   let masuk: number | null = null;
-  if (uang.status_laporan === null) kurang.push('Uang masuk belum diisi: Laporan Harian Kontrol F&B tanggal ini belum ada');
+  if (uang.status_laporan === null && !adaPenugasan) kurang.push(PESAN_TANPA_PENUGASAN);
+  else if (uang.status_laporan === null) kurang.push('Uang masuk belum diisi: Laporan Harian Kontrol F&B tanggal ini belum ada');
   else if (uang.status_laporan === 'draft') kurang.push('Laporan Harian Kontrol F&B tanggal ini masih draf (uang masuk belum final)');
   else if (nilaiUang.every((n) => n === null)) kurang.push('Uang masuk (Cash/QRIS/Bank) kosong di Laporan Harian Kontrol F&B');
   else masuk = nilaiUang.reduce<number>((t, n) => t + (n ?? 0), 0);

@@ -31,10 +31,11 @@ export async function GET(request: Request) {
   if (galatHak) return NextResponse.json({ galat: 'Gagal memeriksa hak akses.' }, { status: 500, headers: HEADER });
   if (!boleh) return NextResponse.json({ galat: 'Kontrol Harian hanya untuk Ita, CEO, Admin, Pusat, dan Accounting.', tidakBerhak: true }, { status: 403, headers: HEADER });
 
-  const [uangRes, catatanRes, ubahRes, pos] = await Promise.all([
+  const [uangRes, catatanRes, ubahRes, penugasanRes, pos] = await Promise.all([
     supabase.rpc('kontrol_harian_uang', { p_tanggal: tanggal }),
     supabase.from('kontrol_harian_catatan').select('outlet_id, penyebab, tindakan, diubah_pada').eq('tanggal', tanggal),
     supabase.rpc('boleh_ubah_kontrol_harian'),
+    supabase.rpc('kontrol_harian_penugasan'),
     ambilPos(tanggal),
   ]);
   if (uangRes.error || catatanRes.error) {
@@ -43,12 +44,16 @@ export async function GET(request: Request) {
 
   const posPerId = new Map<string, OutletPos>((pos.data ?? []).map((o) => [o.posOutletId, o]));
   const catatanPerOutlet = new Map((catatanRes.data ?? []).map((c) => [c.outlet_id as string, c]));
+  // Migrasi 0077. Kalau gagal dibaca, anggap ada penugasan (pesan lama "belum diisi") -- tidak memblokir halaman.
+  const tanpaPenugasan = new Set(
+    penugasanRes.error ? [] : ((penugasanRes.data ?? []) as { outlet_id: string; ada_penugasan: boolean }[]).filter((p) => !p.ada_penugasan).map((p) => p.outlet_id),
+  );
   const baris = ((uangRes.data ?? []) as UangOutlet[])
     .map((u) => {
       const c = catatanPerOutlet.get(u.outlet_id);
       const catatan: CatatanKontrol = c ? { penyebab: c.penyebab as string, tindakan: c.tindakan as string, diubah_pada: c.diubah_pada as string } : null;
       const uang: UangOutlet = { ...u, cash: u.cash === null ? null : Number(u.cash), qris: u.qris === null ? null : Number(u.qris), bank: u.bank === null ? null : Number(u.bank) };
-      return gabungKontrol(posPerId.get(u.pos_outlet_id) ?? null, uang, catatan, pos.galat);
+      return gabungKontrol(posPerId.get(u.pos_outlet_id) ?? null, uang, catatan, pos.galat, !tanpaPenugasan.has(u.outlet_id));
     })
     .sort((a, b) => a.outletNama.localeCompare(b.outletNama, 'id'));
 
