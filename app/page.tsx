@@ -115,16 +115,16 @@ function DashboardCeo() {
                 { label: 'Net cashflow', nilai: formatRupiah(keuangan.net), warna: keuangan.net < 0 ? 'var(--merah)' : undefined },
                 ...(ringkasanKeuangan
                   ? [
-                      { label: 'Dana tersedia', nilai: formatRupiah(ringkasanKeuangan.danaTersedia) },
-                      { label: 'Piutang', nilai: formatRupiah(ringkasanKeuangan.piutangTotal) },
-                      { label: 'Kewajiban 7 hari', nilai: formatRupiah(ringkasanKeuangan.kewajiban7Hari) },
-                      { label: 'Kewajiban 30 hari', nilai: formatRupiah(ringkasanKeuangan.kewajiban30Hari) },
-                      {
-                        label: 'Surplus/kekurangan (vs kewajiban 30 hari)',
-                        nilai: formatRupiah(ringkasanKeuangan.surplusKekurangan),
-                        warna: ringkasanKeuangan.surplusKekurangan < 0 ? 'var(--merah)' : undefined,
-                      },
-                    ]
+                    { label: 'Dana tersedia', nilai: formatRupiah(ringkasanKeuangan.danaTersedia) },
+                    { label: 'Piutang', nilai: formatRupiah(ringkasanKeuangan.piutangTotal) },
+                    { label: 'Kewajiban 7 hari', nilai: formatRupiah(ringkasanKeuangan.kewajiban7Hari) },
+                    { label: 'Kewajiban 30 hari', nilai: formatRupiah(ringkasanKeuangan.kewajiban30Hari) },
+                    {
+                      label: 'Surplus/kekurangan (vs kewajiban 30 hari)',
+                      nilai: formatRupiah(ringkasanKeuangan.surplusKekurangan),
+                      warna: ringkasanKeuangan.surplusKekurangan < 0 ? 'var(--merah)' : undefined,
+                    },
+                  ]
                   : []),
               ]}
             />
@@ -252,18 +252,24 @@ const STATUS_BARIS: Record<Urgensi, string> = { lewat: 'status-merah', mendekati
 /** Tugas berikutnya: BARIS dalam satu panel (bukan kartu per tugas); tombol lebar tetap dan lebih ringan supaya judul tidak berebut ruang. */
 function BarisTugas({ t, jam }: { t: TugasDenganUrgensi; jam: string }) {
   return (
-    <div className={`panel-baris ${STATUS_BARIS[t.urgensi]} flex items-center gap-3 p-4`}>
+    <div className={`panel-baris ${STATUS_BARIS[t.urgensi]} flex flex-col items-stretch gap-3 p-4 sm:flex-row sm:items-center`}>
       <div className="min-w-0 flex-1">
-        <p style={{ fontFamily: 'var(--display)', fontWeight: 600, fontSize: 'var(--ukuran-isi)', lineHeight: 1.3 }}>{t.namaForm}</p>
+        <p style={{ fontFamily: 'var(--display)', fontWeight: 600, fontSize: 'var(--ukuran-isi)', lineHeight: 1.3, overflowWrap: 'anywhere' }}>
+          {t.namaForm}
+        </p>
         {t.scopeLabel && (
-          <p style={{ fontSize: 13, color: 'var(--label)', lineHeight: 1.3 }}>{t.scopeLabel}</p>
+          <p style={{ fontSize: 13, color: 'var(--label)', lineHeight: 1.4, overflowWrap: 'anywhere' }}>
+            {t.scopeLabel}
+          </p>
         )}
-        <p className="status-teks mt-1" style={{ color: WARNA_TEKS_URGENSI[t.urgensi] }}>{labelStatusTugas(t, jam)}</p>
+        <p className="status-teks mt-1" style={{ color: WARNA_TEKS_URGENSI[t.urgensi] }}>
+          {labelStatusTugas(t, jam)}
+        </p>
       </div>
       <Link
         href={`/lapor/${t.formKey}`}
-        className="tombol-sekunder"
-        style={{ flex: '0 0 112px', width: 112, minHeight: 44, padding: '8px', fontSize: 14, whiteSpace: 'nowrap' }}
+        className="tombol-sekunder w-full sm:w-auto sm:shrink-0"
+        style={{ minHeight: 44, minWidth: 112, padding: '8px 16px', fontSize: 14, whiteSpace: 'nowrap' }}
       >
         {t.tombol}
       </Link>
@@ -517,9 +523,8 @@ function AbsenRingkas() {
   return (
     <Link
       href="/absen"
-      className={`neumo-kartu flex items-center justify-between gap-3 px-4 py-2.5 md:min-w-[340px] transition-all hover:bg-[var(--permukaan-bersih)] active:shadow-[var(--bayangan-neumo-dalam)] ${
-        semuaSudah ? 'border-l-[5px] !border-l-[var(--hijau)]' : ''
-      }`}
+      className={`neumo-kartu flex items-center justify-between gap-3 px-4 py-2.5 md:min-w-[340px] transition-all hover:bg-[var(--permukaan-bersih)] active:shadow-[var(--bayangan-neumo-dalam)] ${semuaSudah ? 'border-l-[5px] !border-l-[var(--hijau)]' : ''
+        }`}
       style={{ minHeight: 48, color: 'var(--tinta)', textDecoration: 'none' }}
     >
       <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
